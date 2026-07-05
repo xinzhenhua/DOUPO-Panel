@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>豆粕基本面自动预警仪表盘</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:14px;scroll-behavior:smooth}
+body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sans-serif;min-height:100vh}
+:root{
+  --r:#e84141;--r2:#ff6b6b;--rd:#1a0808;--rb:#3d1212;
+  --g:#00b37a;--g2:#00d492;--gd:#051a0f;--gb:#0a3d22;
+  --b:#4a9eff;--bd:#050d1a;--bb:#0d2545;
+  --gold:#d4a017;--goldd:#1a1200;
+  --n:#6b7280;--bg0:#080808;--bg1:#0f0f0f;--bg2:#141414;--bg3:#1c1c1c;
+  --bdr:#222;--t1:#ebebeb;--t2:#a0a0a0;--t3:#555;
+}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,8,8,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--bdr);padding:14px}
+.topbar h1{font-size:16px;font-weight:900;color:var(--t1)}
+.topbar h1 span{color:var(--r)}
+.topbar .sub{font-size:11px;color:var(--t3);margin-top:2px}
+.main{max-width:720px;margin:0 auto;padding:14px}
+.stitle{font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;text-transform:uppercase;padding:14px 0 8px;border-bottom:1px solid var(--bdr);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.card{background:var(--bg1);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:10px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card-title{font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.badge-auto{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
+.badge-manual{background:var(--goldd);color:var(--gold);border:1px solid #3d2d00}
+.badge-offline{background:var(--bg3);color:var(--t3)}
+.sync-time{font-size:10px;color:var(--t3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}}
+.stat{text-align:center;padding:10px;background:var(--bg2);border-radius:8px}
+.stat .sv{font-size:20px;font-weight:900;display:block;line-height:1;margin-bottom:4px}
+.stat .sl{font-size:10px;color:var(--t3)}
+.sv.pos{color:var(--r)}.sv.neg{color:var(--g)}.sv.neutral{color:var(--t1)}.sv.warn{color:var(--gold)}
+.ir{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:11px}
+.ir:last-child{border-bottom:none}
+.il{color:var(--t3);min-width:90px;flex-shrink:0}
+.iv{color:var(--t2);line-height:1.5;flex:1}
+.iv .r{color:var(--r);font-weight:700}.iv .g{color:var(--g);font-weight:700}
+.iv .b{color:var(--b);font-weight:700}.iv .gold{color:var(--gold);font-weight:700}
+.alert-box{border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;line-height:1.7}
+.alert-box.bull{background:var(--rd);border:1px solid var(--rb);color:#d47a5a}
+.alert-box.bear{background:var(--gd);border:1px solid var(--gb);color:#5ab87a}
+.alert-box.neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t3)}
+.alert-box .at{font-weight:700;margin-bottom:3px;display:block}
+.alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}
+.mfield{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.mfield label{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase}
+.minput{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:8px 10px;color:var(--t1);font-size:13px;outline:none;width:100%;transition:border .2s}
+.minput:focus{border-color:var(--b)}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:420px){.mrow{grid-template-columns:1fr}}
+.setup-toggle{width:100%;padding:10px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}
+.setup-panel{display:none;background:var(--bg2);border-radius:8px;padding:14px;margin-bottom:10px;font-size:12px;color:var(--t2);line-height:1.9}
+.setup-panel.open{display:block}
+.setup-panel h3{font-size:12px;color:var(--t1);margin:10px 0 4px}
+.setup-panel h3:first-child{margin-top:0}
+.setup-panel code{background:var(--bg3);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--gold)}
+.setup-panel pre{background:var(--bg3);padding:10px;border-radius:6px;overflow-x:auto;font-size:10px;color:var(--t2);margin:6px 0}
+.setup-panel a{color:var(--b)}
+.setup-panel ol,.setup-panel ul{padding-left:18px;margin:4px 0}
+.loading{text-align:center;padding:20px;color:var(--t3);font-size:11px}
+.divider{height:1px;background:var(--bdr);margin:10px 0}
+.stars{color:var(--gold);font-size:10px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>豆粕<span>M</span> 基本面自动预警仪表盘</h1>
+  <div class="sub">天气自动实时更新 · USDA/CBOT数据每日两次同步 · 其余数据手动录入</div>
+</div>
+<div class="main" id="mainContent">
+
+<button class="setup-toggle" onclick="toggleSetup()">📖 首次使用？点击查看部署说明</button>
+<div class="setup-panel" id="setupPanel"></div>
+
+<!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
+<div class="stitle">🌦️ 美国主产区天气监测</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">未来7天降雨 + 气温预报</div>
+    <span class="badge badge-auto" id="weatherBadge">🟢 实时自动</span>
+  </div>
+  <div id="weatherContent" class="loading">正在拉取 Open-Meteo 实时天气数据...</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">官方干旱监测（US Drought Monitor）</div>
+    <span class="badge" id="droughtBadge">检查中...</span>
+  </div>
+  <div id="droughtContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<!-- ============ 人民币汇率（真自动，浏览器实时抓取，Frankfurter API） ============ -->
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">人民币汇率 USD/CNY</div>
+    <span class="badge badge-auto" id="fxBadge">🟢 实时自动</span>
+  </div>
+  <div id="fxContent" class="loading">正在拉取实时汇率...</div>
+</div>
+
+<!-- ============ USDA + CBOT 板块（GitHub Actions 同步） ============ -->
+<div class="stitle">📊 USDA出口销售 + 供需库存</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">出口销售报告（ESR）</div>
+    <span class="badge" id="esrBadge">检查中...</span>
+  </div>
+  <div id="esrContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">供需库存（PSD，等同WASDE核心数据）</div>
+    <span class="badge" id="psdBadge">检查中...</span>
+  </div>
+  <div id="psdContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<div class="stitle">💰 CBOT豆粕期货价格</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">最新收盘价</div>
+    <span class="badge" id="cbotBadge">检查中...</span>
+  </div>
+  <div id="cbotContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<!-- ============ 手动录入板块（无公开API，需人工填写） ============ -->
+<div class="stitle">✍️ 手动录入（无公开数据接口）</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">国内供需 · 每周更新</div>
+    <span class="badge badge-manual">🟡 手动</span>
+  </div>
+  <div class="mrow">
+    <div class="mfield"><label>油厂开机率(%)</label><input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>豆粕商业库存(万吨)</label><input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"></div>
+  </div>
+  <div class="mrow">
+    <div class="mfield"><label>现货基差(元/吨，正=现货贵)</label><input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>本周到港预报(万吨)</label><input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">需求端 · 每月更新</div>
+    <span class="badge badge-manual">🟡 手动</span>
+  </div>
+  <div class="mrow">
+    <div class="mfield"><label>猪粮比</label><input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>能繁母猪存栏(万头)</label><input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"></div>
+  </div>
+  <div class="mrow">
+    <div class="mfield"><label>中国大豆月度进口量(万吨)</label><input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"></div>
+  </div>
+  <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
+  <div style="font-size:10px;color:var(--t3);margin-top:4px">
+    数据来源：油厂开机率/库存→汇易咨询cnhnb.com · 进口量→customs.gov.cn · 能繁母猪→moa.gov.cn
+  </div>
+</div>
+
+<!-- ============ 综合预警 ============ -->
+<div class="stitle">🚨 综合基本面预警</div>
+<div class="card" id="alertCard">
+  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+</div>
+
+</div><!-- /main -->
+<script>
+// ===================== 设置说明面板 =====================
+const SETUP_HTML = `
+<h3>① 完全自动、无需设置的板块</h3>
+<p>打开这个网页立刻能用，不需要任何操作：</p>
+<ul>
+<li>🌦️ 天气预报（Open-Meteo）</li>
+<li>🏜️ 官方干旱监测数据（US Drought Monitor，通过下方②的GitHub Actions同步）</li>
+<li>💰 人民币汇率（Frankfurter/ECB，浏览器直接实时拉取）</li>
+</ul>
+
+<h3>② 让 USDA/CBOT/干旱监测 也自动更新（一次性设置，约15分钟）</h3>
+<ol>
+<li>注册免费 USDA API 密钥：打开 <code>api.data.gov/signup</code>，填邮箱，几秒钟就能收到密钥</li>
+<li>在 GitHub 新建一个仓库（Public或Private都行），把我给你的这几个文件传上去：
+  <pre>index.html
+fetch_data.py
+.github/workflows/update-data.yml
+data/latest.json（占位文件，首次留空JSON即可）</pre>
+</li>
+<li>仓库 → Settings → Secrets and variables → Actions → New repository secret
+  <br>Name填 <code>USDA_API_KEY</code>，Value填你申请到的密钥</li>
+<li>仓库 → Settings → Pages → Source 选 "Deploy from a branch" → 选 main分支 → Save
+  <br>几分钟后会给你一个 <code>https://你的用户名.github.io/仓库名/</code> 网址</li>
+<li>仓库 → Actions 标签页 → 找到"更新豆粕基本面数据" → 点 "Run workflow" 手动跑一次
+  <br>跑完之后 data/latest.json 会被自动更新并提交</li>
+<li>之后完全自动：每天北京时间9:00和21:30各自动跑一次，不需要你管</li>
+</ol>
+
+<h3>③ 为什么还有6个字段必须手动填？</h3>
+<p>诚实说明，不是我偷懒，是这几类数据背后的机构确实没有公开接口：</p>
+<ul>
+<li><b>开机率 / 商业库存 / 现货基差 / 到港预报</b>：来自汇易咨询、钢联(mysteel)、天下粮仓等<u>商业数据服务商</u>，他们把这类数据当作付费产品卖，没有免费公开接口。如果你愿意付费订阅其中某家的数据API，我可以帮你接进来。</li>
+<li><b>猪粮比 / 能繁母猪存栏</b>：来自农业农村部(moa.gov.cn)，网站上是表格展示，没有设计给第三方调用的接口。理论上可以硬抓网页表格(scraping)，但页面结构一旦改版脚本就会失效，且部分政府网站不欢迎自动抓取，不建议这样做。</li>
+<li><b>中国大豆月度进口量</b>：中国海关总署(customs.gov.cn)同样没有公开API。<u>可尝试的替代方案</u>：联合国贸易统计库(UN Comtrade, comtradeapi.un.org)有官方公开API，包含各国申报的双边贸易数据，可查到中国大豆进口的官方统计，但通常有1-2个月的滞后。如果你想要，告诉我，我可以再做一版接入这个数据源。</li>
+</ul>
+
+<h3>④ 诚实说明</h3>
+<p>USDA/CBOT/干旱监测这三块，我核实了接口文档、格式、参数都正确，并用模拟数据完整测试过解析逻辑。但受限于我自己代码沙盒的网络白名单，无法对 api.fas.usda.gov / query1.finance.yahoo.com / usdmdataservices.unl.edu 做真正的端到端联网测试。GitHub Actions有完整网络权限，理论上能跑通；如果部署后某个字段一直显示"暂无数据"，把 Actions 运行日志截图发我，我根据实际报错调整脚本。</p>
+<p>汇率(Frankfurter)和天气(Open-Meteo)这两个，我查证了官方文档明确支持浏览器直接调用(CORS)，可信度更高。</p>
+
+<h3>⑤ 没设置GitHub Actions之前会怎样？</h3>
+<p>USDA/CBOT/干旱监测板块会显示"⚪ 尚未同步"，天气/汇率/手动录入/预警完全正常使用，不受影响。</p>
+`;
+document.getElementById('setupPanel').innerHTML = SETUP_HTML;
+function toggleSetup(){document.getElementById('setupPanel').classList.toggle('open');}
+
+// ===================== 天气板块：Open-Meteo 实时抓取 =====================
+const BELT_LOCATIONS = [
+  {name:'爱荷华(Iowa)', lat:41.878, lon:-93.097},
+  {name:'伊利诺伊(Illinois)', lat:39.798, lon:-89.644},
+  {name:'明尼苏达(Minnesota)', lat:44.986, lon:-93.279},
+];
+
+async function loadWeather(){
+  const el = document.getElementById('weatherContent');
+  const badge = document.getElementById('weatherBadge');
+  try{
+    const results = await Promise.all(BELT_LOCATIONS.map(async loc=>{
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=precipitation_sum,temperature_2m_max&forecast_days=7&timezone=America%2FChicago`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('weather fetch failed: '+res.status);
+      const data = await res.json();
+      const precip7d = data.daily.precipitation_sum.reduce((a,b)=>a+(b||0),0);
+      const maxTemps = data.daily.temperature_2m_max.filter(v=>v!=null);
+      const avgMaxTemp = maxTemps.reduce((a,b)=>a+b,0)/maxTemps.length;
+      return {...loc, precip7d: Math.round(precip7d*10)/10, avgMaxTemp: Math.round(avgMaxTemp*10)/10};
+    }));
+
+    const avgPrecip = results.reduce((s,r)=>s+r.precip7d,0)/results.length;
+    const avgTemp = results.reduce((s,r)=>s+r.avgMaxTemp,0)/results.length;
+
+    const now = new Date();
+    const month = now.getMonth()+1;
+    const isCriticalWindow = month===7 || month===8;
+
+    let riskLevel, riskColor, riskText;
+    if(avgPrecip < 10 && avgTemp > 30){
+      riskLevel='high'; riskColor='r'; riskText='干旱高温风险 — 偏多信号';
+    } else if(avgPrecip < 20){
+      riskLevel='medium'; riskColor='gold'; riskText='降雨偏少，持续观察';
+    } else {
+      riskLevel='low'; riskColor='g'; riskText='降雨充沛 — 偏空信号';
+    }
+
+    let html = `<div class="grid2">`;
+    results.forEach(r=>{
+      html += `<div class="stat">
+        <span class="sv ${r.precip7d<10?'pos':r.precip7d<20?'warn':'neg'}">${r.precip7d}mm</span>
+        <div class="sl">${r.name} · 未来7天降雨</div>
+      </div>`;
+    });
+    html += `</div><div class="divider"></div>`;
+    html += `<div class="ir"><div class="il">平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
+    html += `<div class="ir"><div class="il">平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
+    html += `<div class="ir"><div class="il">当前时段</div><div class="iv">${isCriticalWindow?'<span class="gold">⭐ 7-8月授粉灌浆关键期，天气影响最大</span>':'非关键炒作期，影响权重较低'}</div></div>`;
+    html += `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于爱荷华/伊利诺伊/明尼苏达三地平均未来7天降雨与气温</div>`;
+
+    el.innerHTML = html;
+    badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
+    window._weatherRisk = riskLevel;
+  }catch(e){
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">天气数据拉取失败</span>${e.message}，请检查网络后刷新页面重试</div>`;
+    badge.textContent = '❌ 拉取失败';
+    badge.className = 'badge badge-offline';
+  }
+}
+
+// ===================== USDA/CBOT/干旱 数据：读取 data/latest.json =====================
+async function loadSyncedData(){
+  try{
+    const res = await fetch('data/latest.json?t='+Date.now());
+    if(!res.ok) throw new Error('not found');
+    const data = await res.json();
+    renderEsr(data.exportSales, data.generatedAt);
+    renderPsd(data.supplyDemand, data.generatedAt);
+    renderCbot(data.cbotPrice, data.generatedAt);
+    renderDrought(data.droughtMonitor, data.generatedAt);
+    window._syncedData = data;
+  }catch(e){
+    ['esr','psd','cbot','drought'].forEach(k=>{
+      document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
+      document.getElementById(k+'Badge').className = 'badge badge-offline';
+      document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
+    });
+  }
+  updateOverallAlert();
+}
+
+function renderDrought(dm, genAt){
+  const badge = document.getElementById('droughtBadge');
+  const el = document.getElementById('droughtContent');
+  if(!dm || !dm.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>`;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
+  let rows = '';
+  Object.keys(dm.byState).forEach(st=>{
+    const s = dm.byState[st];
+    if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
+    const cls = s.severeOrWorsePct>=20?'r':s.severeOrWorsePct>=5?'gold':'g';
+    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">D2+级别 ${s.severeOrWorsePct}%</span>　D0:${s.d0}% D1:${s.d1}% D2:${s.d2}% D3:${s.d3}% D4:${s.d4}%</div></div>`;
+  });
+  const avg = dm.avgSevereOrWorsePct;
+  const avgCls = avg>=20?'bull':avg>=5?'neutral':'bear';
+  const avgText = avg>=20?'干旱面积占比高 — 偏多信号':avg>=5?'干旱面积占比中等，持续观察':'基本无严重干旱 — 偏空信号';
+  el.innerHTML = rows + `<div class="alert-box ${avgCls}"><span class="at">三州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>`;
+  window._droughtSignal = avg>=20?1:avg<5?-1:0;
+}
+
+// ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
+async function loadFxRate(){
+  const badge = document.getElementById('fxBadge');
+  const el = document.getElementById('fxContent');
+  try{
+    const res = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=CNY');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const rate = data.rates.CNY;
+    // 拉前一天数据算涨跌（周末/节假日会自动回退到上一个交易日，属正常）
+    const d = new Date(data.date);
+    d.setDate(d.getDate()-3); // 往前推3天确保能跨过周末拿到上一个交易日
+    const prevDateStr = d.toISOString().slice(0,10);
+    let change = null, changePct = null, prevDateUsed = null;
+    try{
+      const res2 = await fetch(`https://api.frankfurter.dev/v1/${prevDateStr}..${data.date}?base=USD&symbols=CNY`);
+      const series = await res2.json();
+      const dates = Object.keys(series.rates||{}).sort();
+      if(dates.length>=2){
+        const prevRate = series.rates[dates[0]].CNY;
+        change = Math.round((rate-prevRate)*10000)/10000;
+        changePct = Math.round((rate-prevRate)/prevRate*10000)/100;
+        prevDateUsed = dates[0];
+      }
+    }catch(e2){ /* 涨跌算不出来就只显示当前值，不影响主要功能 */ }
+
+    badge.textContent = '🟢 '+data.date;
+    const chgHtml = change!=null ? `<div class="stat"><span class="sv ${change>0?'pos':change<0?'neg':'neutral'}">${change>0?'+':''}${change} (${changePct>0?'+':''}${changePct}%)</span><div class="sl">较${prevDateUsed||'前一交易日'}</div></div>` : '';
+    el.innerHTML = `<div class="grid2">
+      <div class="stat"><span class="sv neutral">${rate.toFixed(4)}</span><div class="sl">1美元 = ? 人民币</div></div>
+      ${chgHtml}
+    </div>
+    <div class="alert-box neutral" style="margin-top:8px"><span class="at">${change>0?'人民币贬值 → 进口成本上升，偏多':change<0?'人民币升值 → 进口成本下降，偏空':'汇率变化不大'}</span>数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>`;
+    window._fxSignal = change>0?1:change<0?-1:0;
+  }catch(e){
+    badge.textContent = '❌ 拉取失败';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">汇率拉取失败</span>${e.message}</div>`;
+  }
+  updateOverallAlert();
+}
+
+function fmtTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+function renderEsr(esr, genAt){
+  const badge = document.getElementById('esrBadge');
+  const el = document.getElementById('esrContent');
+  if(!esr || !esr.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${esr?esr.reason:'未知原因'}</span></div>`;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const wow = esr.wowChangePct;
+  const wowCls = wow>30?'r':wow<-30?'g':'neutral';
+  const alertText = wow>30?'净销售环比大增，偏多信号':wow<-30?'净销售环比大减，偏空信号':'环比变化在正常区间';
+  el.innerHTML = `
+    <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}</div></div>
+    <div class="ir"><div class="il">本周净销售</div><div class="iv"><span class="b">${esr.latestTotalMT?.toLocaleString()} 吨</span></div></div>
+    <div class="ir"><div class="il">上周净销售</div><div class="iv">${esr.prevTotalMT?.toLocaleString()} 吨</div></div>
+    <div class="ir"><div class="il">环比变化</div><div class="iv"><span class="${wowCls==='r'?'r':wowCls==='g'?'g':''}">${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</span></div></div>
+    <div class="ir"><div class="il">中国采购量</div><div class="iv"><span class="gold">${esr.chinaLatestMT?.toLocaleString()} 吨</span></div></div>
+    <div class="alert-box ${wowCls==='r'?'bull':wowCls==='g'?'bear':'neutral'}"><span class="at">${alertText}</span></div>
+  `;
+  window._esrSignal = wow>30?1:wow<-30?-1:0;
+}
+
+function renderPsd(psd, genAt){
+  const badge = document.getElementById('psdBadge');
+  const el = document.getElementById('psdContent');
+  if(!psd || !psd.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${psd?psd.reason:'未知原因'}</span></div>`;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  el.innerHTML = `
+    <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}</div></div>
+    <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks?.toLocaleString()}</span></div></div>
+    <div class="ir"><div class="il">产量</div><div class="iv">${psd.production?.toLocaleString()}</div></div>
+    <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption?.toLocaleString()}</div></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为USDA标准计量单位，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
+  `;
+}
+
+function renderCbot(cbot, genAt){
+  const badge = document.getElementById('cbotBadge');
+  const el = document.getElementById('cbotContent');
+  if(!cbot || !cbot.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${cbot?cbot.reason:'未知原因'}</span>建议：这个可以用你自己注册的免费金融API替代（Alpha Vantage/Twelve Data等），把 fetch_data.py 里的 fetch_cbot_price() 函数换成对应接口即可</div>`;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const chg = cbot.change;
+  const chgCls = chg>0?'r':chg<0?'g':'';
+  el.innerHTML = `
+    <div class="grid2">
+      <div class="stat"><span class="sv neutral">${cbot.price}</span><div class="sl">最新价（美分/短吨）</div></div>
+      <div class="stat"><span class="sv ${chgCls==='r'?'pos':chgCls==='g'?'neg':'neutral'}">${chg>0?'+':''}${chg} (${cbot.changePct>0?'+':''}${cbot.changePct}%)</span><div class="sl">较前一交易日</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">数据时间：${fmtTime(cbot.asOf)} · 来源：${cbot.source}</div>
+  `;
+  window._cbotSignal = chg>0?-1:chg<0?1:0; // CBOT涨→对国内豆粕偏多(-1按我们评分习惯做多=负)... 这里仅展示，不纳入自动打分避免混淆
+}
+
+// ===================== 手动数据 + 综合预警 =====================
+function loadManual(){
+  const saved = JSON.parse(localStorage.getItem('soymeal_manual')||'{}');
+  Object.keys(saved).forEach(k=>{
+    const el = document.getElementById(k);
+    if(el) el.value = saved[k];
+  });
+}
+function saveManualAndRefresh(){
+  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import'];
+  const data = {};
+  ids.forEach(id=>{ data[id] = document.getElementById(id).value; });
+  localStorage.setItem('soymeal_manual', JSON.stringify(data));
+  updateOverallAlert();
+}
+
+function updateOverallAlert(){
+  const crush = parseFloat(document.getElementById('m_crush').value);
+  const stock = parseFloat(document.getElementById('m_stock').value);
+  const basis = parseFloat(document.getElementById('m_basis').value);
+  const hogratio = parseFloat(document.getElementById('m_hogratio').value);
+
+  let score = 0;
+  const notes = [];
+
+  if(!isNaN(crush)){
+    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); }
+    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); }
+  }
+  if(!isNaN(stock)){
+    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); }
+    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); }
+  }
+  if(!isNaN(basis)){
+    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); }
+    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); }
+  }
+  if(!isNaN(hogratio)){
+    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); }
+    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); }
+  }
+  if(window._weatherRisk==='high'){ score+=1; notes.push('天气预报：干旱高温风险 → 偏多'); }
+  else if(window._weatherRisk==='low'){ score-=1; notes.push('天气预报：降雨充沛 → 偏空'); }
+  if(window._droughtSignal===1){ score+=1; notes.push('官方干旱监测：严重干旱面积大 → 偏多'); }
+  else if(window._droughtSignal===-1){ score-=1; notes.push('官方干旱监测：基本无干旱 → 偏空'); }
+  if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
+  else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
+  if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
+  else if(window._fxSignal===-1){ score-=1; notes.push('人民币升值 → 进口成本下降，偏空'); }
+
+  const el = document.getElementById('alertContent');
+  if(notes.length===0){
+    el.innerHTML = '<div class="alert-box neutral"><span class="at">数据不足</span>请至少填写几项手动数据，或等天气/USDA数据加载完成</div>';
+    return;
+  }
+
+  let cls, title;
+  if(score>=3){ cls='bull'; title='综合偏多 +'+score; }
+  else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
+  else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
+
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>${notes.join('<br>')}</div>`;
+}
+
+// ===================== 初始化 =====================
+loadManual();
+loadWeather();
+loadFxRate();
+loadSyncedData();
+</script>
+</body>
+</html>
