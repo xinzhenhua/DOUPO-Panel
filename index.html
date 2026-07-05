@@ -55,6 +55,11 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .minput:focus{border-color:var(--b)}
 .mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:420px){.mrow{grid-template-columns:1fr}}
+.field-ind{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
+.field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
+.field-ind.neutral{background:var(--bg3);color:var(--t3)}
+.field-ind:empty{display:none}
 .setup-toggle{width:100%;padding:10px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}
 .setup-panel{display:none;background:var(--bg2);border-radius:8px;padding:14px;margin-bottom:10px;font-size:12px;color:var(--t2);line-height:1.9}
 .setup-panel.open{display:block}
@@ -141,12 +146,12 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
     <span class="badge badge-manual">🟡 手动</span>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>油厂开机率(%)</label><input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"></div>
-    <div class="mfield"><label>豆粕商业库存(万吨)</label><input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>油厂开机率(%)</label><input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_crush"></span></div>
+    <div class="mfield"><label>豆粕商业库存(万吨)</label><input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_stock"></span></div>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>现货基差(元/吨，正=现货贵)</label><input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"></div>
-    <div class="mfield"><label>本周到港预报(万吨)</label><input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>现货基差(元/吨，正=现货贵)</label><input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_basis"></span></div>
+    <div class="mfield"><label>本周到港预报(万吨)</label><input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span></div>
   </div>
 </div>
 
@@ -156,11 +161,11 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
     <span class="badge badge-manual">🟡 手动</span>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>猪粮比</label><input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"></div>
-    <div class="mfield"><label>能繁母猪存栏(万头)</label><input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>猪粮比</label><input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_hogratio"></span></div>
+    <div class="mfield"><label>能繁母猪存栏(万头)</label><input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_sows"></span></div>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>中国大豆月度进口量(万吨)</label><input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"></div>
+    <div class="mfield"><label>中国大豆月度进口量(万吨)</label><input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span></div>
   </div>
   <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
   <div style="font-size:10px;color:var(--t3);margin-top:4px">
@@ -358,11 +363,12 @@ async function loadFxRate(){
 
     badge.textContent = '🟢 '+data.date;
     const chgHtml = change!=null ? `<div class="stat"><span class="sv ${change>0?'pos':change<0?'neg':'neutral'}">${change>0?'+':''}${change} (${changePct>0?'+':''}${changePct}%)</span><div class="sl">较${prevDateUsed||'前一交易日'}</div></div>` : '';
+    const fxAlertCls = change>0?'bull':change<0?'bear':'neutral';
     el.innerHTML = `<div class="grid2">
       <div class="stat"><span class="sv neutral">${rate.toFixed(4)}</span><div class="sl">1美元 = ? 人民币</div></div>
       ${chgHtml}
     </div>
-    <div class="alert-box neutral" style="margin-top:8px"><span class="at">${change>0?'人民币贬值 → 进口成本上升，偏多':change<0?'人民币升值 → 进口成本下降，偏空':'汇率变化不大'}</span>数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>`;
+    <div class="alert-box ${fxAlertCls}" style="margin-top:8px"><span class="at">${change>0?'人民币贬值 → 进口成本上升，偏多':change<0?'人民币升值 → 进口成本下降，偏空':'汇率变化不大'}</span>数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>`;
     window._fxSignal = change>0?1:change<0?-1:0;
   }catch(e){
     badge.textContent = '❌ 拉取失败';
@@ -410,15 +416,31 @@ function renderPsd(psd, genAt){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${psd?psd.reason:'未知原因'}</span></div>`;
+    window._psdSignal = 0;
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
+
+  // 库存消费比 = 期末库存 / 国内消费 × 100%（沿用之前基本面表格里定的阈值：<10%紧张偏多，10-15%偏紧，>20%宽松偏空）
+  let ratioHtml = '';
+  if(psd.endingStocks!=null && psd.domesticConsumption){
+    const ratio = psd.endingStocks/psd.domesticConsumption*100;
+    const rCls = ratio<10?'r':ratio<15?'gold':ratio>20?'g':'';
+    const rSignal = ratio<15?1:ratio>20?-1:0;
+    const rText = ratio<10?'非常紧张 → 偏多':ratio<15?'偏紧 → 偏多倾向':ratio>20?'宽松 → 偏空':'正常区间';
+    ratioHtml = `<div class="ir"><div class="il">库存消费比</div><div class="iv"><span class="${rCls}">${ratio.toFixed(1)}%</span> ${rText}</div></div>`;
+    window._psdSignal = rSignal;
+  } else {
+    window._psdSignal = 0;
+  }
+
   el.innerHTML = `
     <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}</div></div>
     <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks?.toLocaleString()}</span></div></div>
     <div class="ir"><div class="il">产量</div><div class="iv">${psd.production?.toLocaleString()}</div></div>
     <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption?.toLocaleString()}</div></div>
+    ${ratioHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为USDA标准计量单位，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
   `;
 }
@@ -453,6 +475,7 @@ function loadManual(){
     const el = document.getElementById(k);
     if(el) el.value = saved[k];
   });
+  updateOverallAlert(); // 恢复上次填写的数值后，立刻显示对应颜色指示，不用等用户重新输入才触发
 }
 function saveManualAndRefresh(){
   const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import'];
@@ -462,31 +485,72 @@ function saveManualAndRefresh(){
   updateOverallAlert();
 }
 
+function setInd(id, dir, text){
+  // dir: 1=偏多(红/pos), -1=偏空(绿/neg), 0=中性/neutral, null=不显示(还没填)
+  const el = document.getElementById(id);
+  if(dir===null){ el.className='field-ind'; el.textContent=''; return; }
+  el.className = 'field-ind ' + (dir===1?'pos':dir===-1?'neg':'neutral');
+  el.textContent = text;
+}
+
 function updateOverallAlert(){
   const crush = parseFloat(document.getElementById('m_crush').value);
   const stock = parseFloat(document.getElementById('m_stock').value);
   const basis = parseFloat(document.getElementById('m_basis').value);
+  const arrival = parseFloat(document.getElementById('m_arrival').value);
   const hogratio = parseFloat(document.getElementById('m_hogratio').value);
+  const sows = parseFloat(document.getElementById('m_sows').value);
+  const cnImport = parseFloat(document.getElementById('m_import').value);
 
   let score = 0;
   const notes = [];
 
   if(!isNaN(crush)){
-    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); }
-    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); }
-  }
+    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); }
+    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); }
+    else{ setInd('ind_crush',0,'→ 中性'); }
+  } else setInd('ind_crush', null);
+
   if(!isNaN(stock)){
-    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); }
-    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); }
-  }
+    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); }
+    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); }
+    else{ setInd('ind_stock',0,'→ 中性'); }
+  } else setInd('ind_stock', null);
+
   if(!isNaN(basis)){
-    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); }
-    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); }
-  }
+    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); setInd('ind_basis',1,'→ 偏多'); }
+    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); setInd('ind_basis',-1,'→ 偏空'); }
+    else{ setInd('ind_basis',0,'→ 中性'); }
+  } else setInd('ind_basis', null);
+
+  // 本周到港预报：到港少=供给收紧=偏多；到港多=供给宽松=偏空（阈值为经验估算，非官方硬性标准）
+  if(!isNaN(arrival)){
+    if(arrival < 180){ score+=1; notes.push('到港'+arrival+'万吨（&lt;180，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); }
+    else if(arrival > 250){ score-=1; notes.push('到港'+arrival+'万吨（&gt;250，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); }
+    else{ setInd('ind_arrival',0,'→ 中性'); }
+  } else setInd('ind_arrival', null);
+
   if(!isNaN(hogratio)){
-    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); }
-    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); }
-  }
+    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); }
+    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); }
+    else{ setInd('ind_hogratio',0,'→ 中性'); }
+  } else setInd('ind_hogratio', null);
+
+  // 能繁母猪：低于3750万头目标（产能调控线）=未来供给偏紧=偏多；远超目标=产能过剩=偏空
+  if(!isNaN(sows)){
+    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（&lt;3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); }
+    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（&gt;3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); }
+    else{ setInd('ind_sows',0,'→ 中性'); }
+  } else setInd('ind_sows', null);
+
+  // 中国大豆月度进口量：逻辑与"到港预报"保持一致——进口少=供给收紧=偏多；进口多=供给宽松=偏空
+  // （这里做了个修正：之前独立表格里曾把"进口增长"标成偏多，和到港预报的方向矛盾，现在统一为同一套供需逻辑）
+  if(!isNaN(cnImport)){
+    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（&lt;800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); }
+    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（&gt;1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); }
+    else{ setInd('ind_import',0,'→ 中性'); }
+  } else setInd('ind_import', null);
+
   if(window._weatherRisk==='high'){ score+=1; notes.push('天气预报：干旱高温风险 → 偏多'); }
   else if(window._weatherRisk==='low'){ score-=1; notes.push('天气预报：降雨充沛 → 偏空'); }
   if(window._droughtSignal===1){ score+=1; notes.push('官方干旱监测：严重干旱面积大 → 偏多'); }
@@ -495,6 +559,8 @@ function updateOverallAlert(){
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
   else if(window._fxSignal===-1){ score-=1; notes.push('人民币升值 → 进口成本下降，偏空'); }
+  if(window._psdSignal===1){ score+=1; notes.push('库存消费比偏低 → 供给偏紧，偏多'); }
+  else if(window._psdSignal===-1){ score-=1; notes.push('库存消费比偏高 → 供给宽松，偏空'); }
 
   const el = document.getElementById('alertContent');
   if(notes.length===0){
