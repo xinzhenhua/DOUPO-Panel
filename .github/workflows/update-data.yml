@@ -1,0 +1,41 @@
+name: 更新豆粕基本面数据
+
+# 触发条件：
+# 1. 每天北京时间 9:00 和 21:30 各跑一次（对应 UTC 01:00 和 13:30）
+#    9:00 是为了赶在你早盘看盘前有最新数据
+#    21:30 是为了覆盖 USDA 出口销售报告（每周四美东早上8:30 = 北京时间周四21:30左右）
+# 2. 支持手动触发（在 GitHub 仓库的 Actions 标签页点 "Run workflow"）
+on:
+  schedule:
+    - cron: "0 1 * * *"    # 每天 UTC 01:00 = 北京时间 09:00
+    - cron: "30 13 * * *"  # 每天 UTC 13:30 = 北京时间 21:30
+  workflow_dispatch: {}
+
+permissions:
+  contents: write  # 需要这个权限才能把抓到的数据提交回仓库
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 运行数据抓取脚本
+        env:
+          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+        run: python3 fetch_data.py
+
+      - name: 提交更新后的数据文件
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/latest.json
+          # 如果数据没变化就不产生空提交
+          git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
