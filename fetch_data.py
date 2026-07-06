@@ -186,6 +186,33 @@ def get_soybean_meal_psd_code():
     return None
 
 
+def get_psd_attribute_names():
+    """
+    获取 attributeId → 属性名称 的对照表。
+    真实部署后发现：PSD接口返回的数据行里只有数字的 attributeId（比如7），
+    没有人类可读的 attributeName 字符串，所以需要额外查一次"属性名称对照表"接口。
+    接口的确切路径没有100%确认（USDA没有给出完整的可交互文档），
+    这里按最可能的几种命名尝试，只要有一个成功就用哪个。
+    """
+    candidate_paths = [
+        f"{USDA_BASE}/psd/commodityAttributes",
+        f"{USDA_BASE}/psd/attributes",
+        f"{USDA_BASE}/psd/commodityattribute",
+    ]
+    for path in candidate_paths:
+        data, debug = fetch_json_debug(path, headers={"X-Api-Key": USDA_API_KEY})
+        if data:
+            mapping = {}
+            for item in data:
+                aid = item.get("attributeId")
+                name = item.get("attributeName") or item.get("attributeDesc") or item.get("name")
+                if aid is not None and name:
+                    mapping[aid] = name
+            if mapping:
+                return mapping, path
+    return None, None
+
+
 def fetch_psd_supply_demand():
     code = get_soybean_meal_psd_code()
     if not code:
@@ -202,8 +229,11 @@ def fetch_psd_supply_demand():
     if not rows:
         return {"available": False, "reason": "PSD接口无返回数据", "debug": debug}
 
-    # 用"模糊匹配"代替精确字符串比对：忽略大小写、忽略多余空格，
-    # 避免因为接口实际字段是 "ending stocks" 或 "Ending  Stocks" 这种细微差异而完全匹配不上。
+    # 实际部署后发现真实返回结构是数字ID (attributeId/unitId)，不是字符串名称，
+    # 所以要么a)有attributeName字符串字段（旧版/其他数据源可能这样），要么b)只有attributeId数字，
+    # 这里两种情况都兼容处理。
+    has_string_names = any(r.get("attributeName") for r in rows)
+
     wanted_normalized = {
         "ending stocks": "Ending Stocks",
         "production": "Production",
@@ -212,16 +242,39 @@ def fetch_psd_supply_demand():
     }
     out = {}
     seen_attrs = set()
-    for r in rows:
-        # 字段名本身也做兼容：有的版本可能是 attributeName，也可能是 AttributeName / attribute_name
-        attr = r.get("attributeName") or r.get("AttributeName") or r.get("attribute_name")
-        val = r.get("value") if "value" in r else r.get("Value")
-        if attr is None:
-            continue
-        seen_attrs.add(attr)
-        norm = " ".join(attr.lower().split())  # 转小写+合并多余空格
-        if norm in wanted_normalized:
-            out[wanted_normalized[norm]] = val
+
+    if has_string_names:
+        # 情况A：接口真的返回了字符串字段名（用容错匹配：忽略大小写、多余空格）
+        for r in rows:
+            attr = r.get("attributeName") or r.get("AttributeName") or r.get("attribute_name")
+            val = r.get("value") if "value" in r else r.get("Value")
+            if attr is None:
+                continue
+            seen_attrs.add(attr)
+            norm = " ".join(attr.lower().split())
+            if norm in wanted_normalized:
+                out[wanted_normalized[norm]] = val
+    else:
+        # 情况B（实测中遇到的真实情况）：只有数字 attributeId，需要额外查名称对照表
+        attr_map, attr_map_source = get_psd_attribute_names()
+        if attr_map:
+            # 同一个 attributeId 可能有多个月份的记录，取 calendarYear+month 最新的一条
+            rows_sorted = sorted(rows, key=lambda r: (r.get("calendarYear") or "", r.get("month") or ""))
+            latest_by_attr = {}
+            for r in rows_sorted:
+                aid = r.get("attributeId")
+                if aid is not None:
+                    latest_by_attr[aid] = r  # 排序后一路覆盖，最后剩下的就是每个attributeId最新一条
+            for aid, r in latest_by_attr.items():
+                name = attr_map.get(aid)
+                if not name:
+                    continue
+                seen_attrs.add(f"{aid}:{name}")
+                norm = " ".join(name.lower().split())
+                if norm in wanted_normalized:
+                    out[wanted_normalized[norm]] = r.get("value")
+        else:
+            seen_attrs = {f"attributeId={r.get('attributeId')}" for r in rows}
 
     result = {
         "available": True,
@@ -234,12 +287,16 @@ def fetch_psd_supply_demand():
         "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
     }
 
-    # 如果四个关键字段一个都没匹配上，说明接口返回的字段名和我们预设的不一样，
-    # 把实际收到的所有 attributeName 值列出来，方便直接看出真实名称是什么，不用去翻原始接口。
+    # 如果四个关键字段一个都没匹配上，说明还是没能正确识别，
+    # 把实际收到的信息列出来，方便直接看出真实情况是什么，不用去翻原始接口。
     if not out:
+        if has_string_names:
+            warning = "已连接上接口并拿到数据，但字段名一个都没匹配上，可能是接口实际用的attributeName和预期不同"
+        else:
+            warning = "接口返回的是数字attributeId而不是字符串名称，且未能成功获取attributeId对照表（这个对照表接口的确切路径尚未100%确认）"
         result["debug"] = {
-            "warning": "已连接上接口并拿到数据，但字段名一个都没匹配上，可能是接口实际用的attributeName和预期不同",
-            "actualAttributeNamesSeen": sorted(seen_attrs)[:30],
+            "warning": warning,
+            "actualAttributeNamesSeen": sorted(str(a) for a in seen_attrs)[:30],
             "sampleRawRow": rows[0] if rows else None,
         }
 
@@ -286,7 +343,10 @@ def fetch_cbot_price():
 #    实测干旱分级 (D0-D4)，网页端(index.html)里天气板块用降雨预报算的是
 #    "风险倾向"，这里补的是"官方实际认定的干旱状态"。
 # ---------------------------------------------------------------------------
+# 州名用两字母缩写做显示/内部key，但查询接口的aoi参数官方文档明确要求"两位数FIPS代码"
+# （之前的bug就在这里：用了邮政缩写"IA"当aoi值，接口返回200+空数组，因为查无此州）
 DROUGHT_STATES = ["IA", "IL", "MN"]  # 爱荷华/伊利诺伊/明尼苏达，豆粕主产区
+DROUGHT_STATE_FIPS = {"IA": "19", "IL": "17", "MN": "27"}  # 官方文档：droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
 
 
 def fetch_drought_monitor():
@@ -298,9 +358,10 @@ def fetch_drought_monitor():
     out = {}
     debugs = {}
     for state in DROUGHT_STATES:
+        fips = DROUGHT_STATE_FIPS[state]
         url = (
             "https://usdmdataservices.unl.edu/api/StateStatistics/"
-            f"GetDroughtSeverityStatisticsByArea?aoi={state}"
+            f"GetDroughtSeverityStatisticsByArea?aoi={fips}"
             f"&startdate={start.strftime('%-m/%-d/%Y')}&enddate={end.strftime('%-m/%-d/%Y')}"
             "&statisticsType=1"
         )
