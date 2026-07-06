@@ -1,35 +1,45 @@
 {
-  "generatedAt": "2026-07-05T14:55:47.050871+00:00",
+  "generatedAt": "2026-07-05T14:36:28.910933+00:00",
   "cbotPrice": {
-    "available": true,
-    "price": 304.4,
-    "change": -2.2,
-    "changePct": -0.72,
-    "asOf": "2026-07-02T04:00:00+00:00",
-    "source": "Yahoo Finance (非官方接口，仅供参考)"
+    "available": false,
+    "reason": "Yahoo Finance接口无返回（可能被限流或接口变更）",
+    "debug": {
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/ZM=F?interval=1d&range=5d",
+      "httpStatus": 403,
+      "error": "HTTP 403: Forbidden",
+      "rawSnippet": "Host not in allowlist: query1.finance.yahoo.com. Add this host to your network egress settings to allow access."
+    }
   },
   "droughtMonitor": {
     "available": false,
-    "reason": "USDM接口未返回任何州的数据"
+    "reason": "USDM接口未返回任何州的数据",
+    "debug": {
+      "IA": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=IA&startdate=6/21/2026&enddate=7/5/2026&statisticsType=1",
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+      },
+      "IL": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=IL&startdate=6/21/2026&enddate=7/5/2026&statisticsType=1",
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+      },
+      "MN": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=MN&startdate=6/21/2026&enddate=7/5/2026&statisticsType=1",
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+      }
+    }
   },
   "exportSales": {
-    "available": true,
-    "weekEnding": "2025-10-02T00:00:00",
-    "latestTotalMT": 221822,
-    "prevTotalMT": 289347,
-    "wowChangePct": -23.3,
-    "chinaLatestMT": 0,
-    "source": "USDA-FAS ESR API",
-    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
+    "available": false,
+    "reason": "缺少 USDA_API_KEY"
   },
   "supplyDemand": {
-    "available": true,
-    "marketYear": 2026,
-    "endingStocks": null,
-    "production": null,
-    "totalSupply": null,
-    "domesticConsumption": null,
-    "source": "USDA-FAS PSD API (WASDE同源数据)",
-    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
+    "available": false,
+    "reason": "缺少 USDA_API_KEY"
   }
 }
