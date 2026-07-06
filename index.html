@@ -309,13 +309,45 @@ async function loadSyncedData(){
   updateOverallAlert();
 }
 
+function renderDebugInfo(debug){
+  if(!debug) return '';
+  // 场景A：字段名对不上但接口本身是通的（PSD/ESR那种），结构是 {warning, actualAttributeNamesSeen或actualFieldsSeen, sampleRawRow}
+  const fieldsSeen = debug.actualAttributeNamesSeen || debug.actualFieldsSeen;
+  if(debug.warning || fieldsSeen){
+    let html = '<div style="background:var(--bg2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:10px;color:var(--t3);font-family:monospace;overflow-x:auto">';
+    html += '<div style="color:var(--gold);font-weight:700;margin-bottom:4px">🔍 诊断信息</div>';
+    if(fieldsSeen) html += `实际收到的字段名: ${esc(JSON.stringify(fieldsSeen))}<br>`;
+    if(debug.sampleRawRow) html += `原始数据样例: ${esc(JSON.stringify(debug.sampleRawRow))}<br>`;
+    html += '</div>';
+    return html;
+  }
+  // 场景B：网络请求失败（ESR/CBOT/drought那种），结构可能是单个{url,httpStatus,error,rawSnippet}
+  // 也可能是按州分组的{IA:{...}, IL:{...}, MN:{...}}
+  const entries = debug.url ? {'请求':debug} : debug;
+  let html = '<div style="background:var(--bg2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:10px;color:var(--t3);font-family:monospace;overflow-x:auto">';
+  html += '<div style="color:var(--gold);font-weight:700;margin-bottom:4px">🔍 诊断信息（帮助定位问题，不用去翻GitHub Actions日志）</div>';
+  Object.keys(entries).forEach(key=>{
+    const d = entries[key];
+    if(!d) return;
+    html += `<div style="margin-bottom:4px">`;
+    if(d.httpStatus) html += `[${key}] HTTP状态码: ${d.httpStatus}<br>`;
+    if(d.error) html += `[${key}] 错误: ${esc(d.error)}<br>`;
+    if(d.rawSnippet) html += `[${key}] 返回内容片段: ${esc(d.rawSnippet.slice(0,200))}${d.rawSnippet.length>200?'...':''}<br>`;
+    if(d.note) html += `[${key}] ${esc(d.note)}<br>`;
+    html += `</div>`;
+  });
+  html += '</div>';
+  return html;
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function renderDrought(dm, genAt){
   const badge = document.getElementById('droughtBadge');
   const el = document.getElementById('droughtContent');
   if(!dm || !dm.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>` + renderDebugInfo(dm?dm.debug:null);
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
@@ -390,7 +422,7 @@ function renderEsr(esr, genAt){
   if(!esr || !esr.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${esr?esr.reason:'未知原因'}</span></div>`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${esr?esr.reason:'未知原因'}</span></div>` + renderDebugInfo(esr?esr.debug:null);
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
@@ -398,6 +430,7 @@ function renderEsr(esr, genAt){
   const wow = esr.wowChangePct;
   const wowCls = wow>30?'r':wow<-30?'g':'neutral';
   const alertText = wow>30?'净销售环比大增，偏多信号':wow<-30?'净销售环比大减，偏空信号':'环比变化在正常区间';
+  const esrMismatchWarning = esr.debug ? `<div class="alert-box neutral"><span class="at">⚠️ 数值可能不准确</span>已连接上接口，但净销售量汇总为0，可能是字段名候选没匹配上</div>` + renderDebugInfo(esr.debug) : '';
   el.innerHTML = `
     <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}</div></div>
     <div class="ir"><div class="il">本周净销售</div><div class="iv"><span class="b">${esr.latestTotalMT?.toLocaleString()} 吨</span></div></div>
@@ -405,6 +438,7 @@ function renderEsr(esr, genAt){
     <div class="ir"><div class="il">环比变化</div><div class="iv"><span class="${wowCls==='r'?'r':wowCls==='g'?'g':''}">${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</span></div></div>
     <div class="ir"><div class="il">中国采购量</div><div class="iv"><span class="gold">${esr.chinaLatestMT?.toLocaleString()} 吨</span></div></div>
     <div class="alert-box ${wowCls==='r'?'bull':wowCls==='g'?'bear':'neutral'}"><span class="at">${alertText}</span></div>
+    ${esrMismatchWarning}
   `;
   window._esrSignal = wow>30?1:wow<-30?-1:0;
 }
@@ -415,7 +449,7 @@ function renderPsd(psd, genAt){
   if(!psd || !psd.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${psd?psd.reason:'未知原因'}</span></div>`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${psd?psd.reason:'未知原因'}</span></div>` + renderDebugInfo(psd?psd.debug:null);
     window._psdSignal = 0;
     return;
   }
@@ -435,12 +469,20 @@ function renderPsd(psd, genAt){
     window._psdSignal = 0;
   }
 
+  // 如果接口连上了、有数据，但四个关键字段一个都没取到值(说明字段名对不上)，
+  // 明确提示这个情况，而不是默默显示undefined让人误以为是网页本身的bug
+  let mismatchWarning = '';
+  if(psd.endingStocks==null && psd.production==null && psd.domesticConsumption==null){
+    mismatchWarning = `<div class="alert-box neutral"><span class="at">⚠️ 已连接上接口，但字段名没匹配上</span>接口返回了数据，但预设的属性名称(Ending Stocks等)在实际返回里找不到，下方诊断信息里的"实际字段名"会显示真实名称</div>` + renderDebugInfo(psd.debug);
+  }
+
   el.innerHTML = `
     <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}</div></div>
-    <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks?.toLocaleString()}</span></div></div>
-    <div class="ir"><div class="il">产量</div><div class="iv">${psd.production?.toLocaleString()}</div></div>
-    <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption?.toLocaleString()}</div></div>
+    <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks!=null?psd.endingStocks.toLocaleString():'--'}</span></div></div>
+    <div class="ir"><div class="il">产量</div><div class="iv">${psd.production!=null?psd.production.toLocaleString():'--'}</div></div>
+    <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption!=null?psd.domesticConsumption.toLocaleString():'--'}</div></div>
     ${ratioHtml}
+    ${mismatchWarning}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为USDA标准计量单位，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
   `;
 }
@@ -451,7 +493,7 @@ function renderCbot(cbot, genAt){
   if(!cbot || !cbot.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${cbot?cbot.reason:'未知原因'}</span>建议：这个可以用你自己注册的免费金融API替代（Alpha Vantage/Twelve Data等），把 fetch_data.py 里的 fetch_cbot_price() 函数换成对应接口即可</div>`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${cbot?cbot.reason:'未知原因'}</span>建议：这个可以用你自己注册的免费金融API替代（Alpha Vantage/Twelve Data等），把 fetch_data.py 里的 fetch_cbot_price() 函数换成对应接口即可</div>` + renderDebugInfo(cbot?cbot.debug:null);
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
