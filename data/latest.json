@@ -1,50 +1,116 @@
 {
-  "generatedAt": "2026-07-06T16:32:55.950946+00:00",
+  "generatedAt": "2026-07-07T02:10:17.572537+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 313.5,
-    "change": 5.8,
-    "changePct": 1.88,
-    "asOf": "2026-07-06T04:00:00+00:00",
+    "price": 313.7,
+    "change": 6.0,
+    "changePct": 1.95,
+    "asOf": "2026-07-07T02:00:11+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
     "available": true,
+    "anomalous": true,
     "byState": {
       "IA": {
         "available": true,
+        "anomalous": true,
         "validDate": "2026-06-30T00:00:00",
         "d0": 18776.87,
         "d1": 6840.84,
         "d2": 1.9,
-        "d3": 0.0,
-        "d4": 0.0,
+        "d3": 0,
+        "d4": 0,
         "severeOrWorsePct": 1.9
       },
       "IL": {
         "available": true,
+        "anomalous": true,
         "validDate": "2026-06-30T00:00:00",
         "d0": 6043.23,
         "d1": 0.0,
-        "d2": 0.0,
-        "d3": 0.0,
-        "d4": 0.0,
+        "d2": 0,
+        "d3": 0,
+        "d4": 0,
         "severeOrWorsePct": 0
       },
       "MN": {
         "available": true,
+        "anomalous": true,
         "validDate": "2026-06-30T00:00:00",
         "d0": 60706.52,
         "d1": 25537.95,
         "d2": 9779.32,
-        "d3": 0.0,
-        "d4": 0.0,
+        "d3": 0,
+        "d4": 0,
         "severeOrWorsePct": 9779.3
       }
     },
     "avgSevereOrWorsePct": 3260.4,
     "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
-    "sourceUrl": "https://droughtmonitor.unl.edu/"
+    "sourceUrl": "https://droughtmonitor.unl.edu/",
+    "debug": {
+      "IA": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/23/2026&enddate=7/7/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37724.00,\"d0\":18587.50,\"d1\":4659.61,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IA",
+          "none": 37534.63,
+          "d0": 18776.87,
+          "d1": 6840.84,
+          "d2": 1.9,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2,
+        "anomalyWarning": "数值超出0-100范围(官方文档说应为百分比)，原始行: {'mapDate': '2026-06-30T00:00:00', 'stateAbbreviation': 'IA', 'none': 37534.63, 'd0': 18776.87, 'd1': 6840.84, 'd2': 1.9, 'd3': 0.0, 'd4': 0.0, 'validStart': '2026-06-30T00:00:00', 'validEnd': '2026-07-06T23:59:59', 'statisticFormatID': 1}"
+      },
+      "IL": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/23/2026&enddate=7/7/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":44422.41,\"d0\":11960.14,\"d1\":1012.51,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IL",
+          "none": 50339.32,
+          "d0": 6043.23,
+          "d1": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2,
+        "anomalyWarning": "数值超出0-100范围(官方文档说应为百分比)，原始行: {'mapDate': '2026-06-30T00:00:00', 'stateAbbreviation': 'IL', 'none': 50339.32, 'd0': 6043.23, 'd1': 0.0, 'd2': 0.0, 'd3': 0.0, 'd4': 0.0, 'validStart': '2026-06-30T00:00:00', 'validEnd': '2026-07-06T23:59:59', 'statisticFormatID': 1}"
+      },
+      "MN": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/23/2026&enddate=7/7/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":19344.88,\"d0\":65036.30,\"d1\":34333.72,\"d2\":11541.83,\"d3\":71.19,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "MN",
+          "none": 23674.66,
+          "d0": 60706.52,
+          "d1": 25537.95,
+          "d2": 9779.32,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2,
+        "anomalyWarning": "数值超出0-100范围(官方文档说应为百分比)，原始行: {'mapDate': '2026-06-30T00:00:00', 'stateAbbreviation': 'MN', 'none': 23674.66, 'd0': 60706.52, 'd1': 25537.95, 'd2': 9779.32, 'd3': 0.0, 'd4': 0.0, 'validStart': '2026-06-30T00:00:00', 'validEnd': '2026-07-06T23:59:59', 'statisticFormatID': 1}"
+      }
+    }
   },
   "exportSales": {
     "available": true,
