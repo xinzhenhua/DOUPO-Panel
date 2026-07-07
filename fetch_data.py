@@ -366,6 +366,11 @@ def fetch_drought_monitor():
             "&statisticsType=1"
         )
         rows, debug = fetch_json_debug(url, headers={"Accept": "application/json"})
+        # 无论成功失败，都强制把原始样本存进debug里。
+        # 上次的教训：只有失败时才存样本，导致"看起来成功但数值离谱"这种情况没有原始数据可查。
+        if rows:
+            debug["sampleRawRow"] = rows[0]
+            debug["totalRowsReturned"] = len(rows)
         debugs[state] = debug
         if not rows:
             out[state] = {"available": False}
@@ -380,30 +385,47 @@ def fetch_drought_monitor():
                     return latest[k]
             return None
 
-        d2_plus = (g("D2", "d2") or 0) + (g("D3", "d3") or 0) + (g("D4", "d4") or 0)
+        d0, d1 = g("D0", "d0"), g("D1", "d1")
+        d2, d3, d4 = g("D2", "d2") or 0, g("D3", "d3") or 0, g("D4", "d4") or 0
+        d2_plus = d2 + d3 + d4
+
+        # 官方文档明确写着 statisticsType=1 应该返回"0到100的百分比"。
+        # 上次实测发现返回了18776.87这种离谱数值，说明哪里不对（具体原因还没100%确认）。
+        # 这里加一道"合理范围检查"：只要有任何一个数值超出0-100，就不要装作没事发生，
+        # 明确标记为异常，附上完整原始行，而不是显示一个误导性的百分比。
+        all_vals = [v for v in [d0, d1, d2, d3, d4] if v is not None]
+        is_anomalous = any(v < 0 or v > 100 for v in all_vals)
+
         out[state] = {
             "available": True,
+            "anomalous": is_anomalous,
             "validDate": g("ValidStart", "validStart", "MapDate", "mapDate"),
-            "d0": g("D0", "d0"),
-            "d1": g("D1", "d1"),
-            "d2": g("D2", "d2"),
-            "d3": g("D3", "d3"),
-            "d4": g("D4", "d4"),
+            "d0": d0,
+            "d1": d1,
+            "d2": d2,
+            "d3": d3,
+            "d4": d4,
             "severeOrWorsePct": round(d2_plus, 1),
         }
+        if is_anomalous:
+            debugs[state]["anomalyWarning"] = f"数值超出0-100范围(官方文档说应为百分比)，原始行: {latest}"
 
     available_states = {k: v for k, v in out.items() if v.get("available")}
     if not available_states:
         return {"available": False, "reason": "USDM接口未返回任何州的数据", "debug": debugs}
 
     avg_severe = sum(v["severeOrWorsePct"] for v in available_states.values()) / len(available_states)
+    any_anomalous = any(v.get("anomalous") for v in available_states.values())
 
     return {
         "available": True,
+        "anomalous": any_anomalous,
         "byState": out,
         "avgSevereOrWorsePct": round(avg_severe, 1),
         "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
         "sourceUrl": "https://droughtmonitor.unl.edu/",
+        # 不管本次是否异常，都附上原始样本方便随时核对，不用等到下次出问题才临时加诊断
+        "debug": debugs,
     }
 
 
