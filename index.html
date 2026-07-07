@@ -350,16 +350,30 @@ function renderDrought(dm, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>` + renderDebugInfo(dm?dm.debug:null);
     return;
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
   const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
   let rows = '';
   Object.keys(dm.byState).forEach(st=>{
     const s = dm.byState[st];
     if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
+    if(s.anomalous){
+      rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="r">⚠️ 数值异常</span>　D0:${s.d0} D1:${s.d1} D2:${s.d2} D3:${s.d3} D4:${s.d4}（超出0-100正常范围，暂不可信）</div></div>`;
+      return;
+    }
     const cls = s.severeOrWorsePct>=20?'r':s.severeOrWorsePct>=5?'gold':'g';
     rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">D2+级别 ${s.severeOrWorsePct}%</span>　D0:${s.d0}% D1:${s.d1}% D2:${s.d2}% D3:${s.d3}% D4:${s.d4}%</div></div>`;
   });
+
+  if(dm.anomalous){
+    // 数值超出合理范围，不显示可能误导人的"干旱面积占比"结论，明确提示这是bug还没修完
+    badge.textContent = '⚠️ 数据异常';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = rows + `<div class="alert-box neutral"><span class="at">⚠️ 检测到数值超出0-100正常范围，可能是接口字段解析有误</span>暂不采用此次数据做判断，已保留原始数据供排查</div>` + renderDebugInfo(dm.debug);
+    window._droughtSignal = 0;
+    return;
+  }
+
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
   const avg = dm.avgSevereOrWorsePct;
   const avgCls = avg>=20?'bull':avg>=5?'neutral':'bear';
   const avgText = avg>=20?'干旱面积占比高 — 偏多信号':avg>=5?'干旱面积占比中等，持续观察':'基本无严重干旱 — 偏空信号';
@@ -502,7 +516,7 @@ function renderCbot(cbot, genAt){
   const chgCls = chg>0?'r':chg<0?'g':'';
   el.innerHTML = `
     <div class="grid2">
-      <div class="stat"><span class="sv neutral">${cbot.price}</span><div class="sl">最新价（美分/短吨）</div></div>
+      <div class="stat"><span class="sv neutral">${cbot.price}</span><div class="sl">最新价（美元/短吨）</div></div>
       <div class="stat"><span class="sv ${chgCls==='r'?'pos':chgCls==='g'?'neg':'neutral'}">${chg>0?'+':''}${chg} (${cbot.changePct>0?'+':''}${cbot.changePct}%)</span><div class="sl">较前一交易日</div></div>
     </div>
     <div style="font-size:10px;color:var(--t3);margin-top:6px">数据时间：${fmtTime(cbot.asOf)} · 来源：${cbot.source}</div>
