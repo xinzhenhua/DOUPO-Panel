@@ -439,14 +439,20 @@ function renderEsr(esr, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${esr?esr.reason:'未知原因'}</span></div>` + renderDebugInfo(esr?esr.debug:null);
     return;
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
+  if(esr.isStale){
+    badge.textContent = '⚠️ 数据可能过期 '+fmtTime(genAt);
+    badge.className = 'badge badge-offline';
+  } else {
+    badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+    badge.className = 'badge badge-auto';
+  }
   const wow = esr.wowChangePct;
   const wowCls = wow>30?'r':wow<-30?'g':'neutral';
   const alertText = wow>30?'净销售环比大增，偏多信号':wow<-30?'净销售环比大减，偏空信号':'环比变化在正常区间';
-  const esrMismatchWarning = esr.debug ? `<div class="alert-box neutral"><span class="at">⚠️ 数值可能不准确</span>已连接上接口，但净销售量汇总为0，可能是字段名候选没匹配上</div>` + renderDebugInfo(esr.debug) : '';
+  const esrMismatchWarning = esr.debug ? `<div class="alert-box neutral"><span class="at">⚠️ ${esr.isStale?'数据可能过期':'数值可能不准确'}</span>${esr.debug.warning||'已连接上接口，但净销售量汇总为0，可能是字段名候选没匹配上'}</div>` + renderDebugInfo(esr.debug) : '';
   el.innerHTML = `
-    <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}</div></div>
+    <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}${esr.dataAgeDays!=null?` <span style="color:var(--t3)">(距今${esr.dataAgeDays}天)</span>`:''}</div></div>
+    <div class="ir"><div class="il">使用的市场年度</div><div class="iv">${esr.marketYearUsed}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
     <div class="ir"><div class="il">本周净销售</div><div class="iv"><span class="b">${esr.latestTotalMT?.toLocaleString()} 吨</span></div></div>
     <div class="ir"><div class="il">上周净销售</div><div class="iv">${esr.prevTotalMT?.toLocaleString()} 吨</div></div>
     <div class="ir"><div class="il">环比变化</div><div class="iv"><span class="${wowCls==='r'?'r':wowCls==='g'?'g':''}">${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</span></div></div>
@@ -491,7 +497,8 @@ function renderPsd(psd, genAt){
   }
 
   el.innerHTML = `
-    <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}</div></div>
+    <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
+    <div class="ir"><div class="il">WASDE版本</div><div class="iv"><span class="b">${psd.wasdeVintage||'未知'}</span><span style="color:var(--t3)">（可对照 <a href="https://apps.fas.usda.gov/psdonline/" target="_blank" style="color:var(--b)">PSD Online</a> 核实是否为最新月报）</span></div></div>
     <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks!=null?psd.endingStocks.toLocaleString():'--'}</span></div></div>
     <div class="ir"><div class="il">产量</div><div class="iv">${psd.production!=null?psd.production.toLocaleString():'--'}</div></div>
     <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption!=null?psd.domesticConsumption.toLocaleString():'--'}</div></div>
