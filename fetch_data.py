@@ -93,22 +93,43 @@ def get_soybean_meal_esr_code():
     return None
 
 
-def get_latest_market_year():
-    now = datetime.now(timezone.utc)
-    # 豆粕的美国市场年一般是10月-次年9月，这里做一个简单近似
-    return now.year if now.month >= 10 else now.year - 1
-
-
 def fetch_esr_export_sales():
     code = get_soybean_meal_esr_code()
     if not code:
         return {"available": False, "reason": "未能找到豆粕的ESR商品编码"}
 
-    my = get_latest_market_year()
-    url = f"{USDA_BASE}/esr/exports/commodityCode/{code}/allCountries/marketYear/{my}"
-    rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
+    # ★ 已修复：之前用"10月做分界"猜市场年度，实测发现猜错了
+    #   （查到marketYear=2025时，最新数据停在2025-10-02，说明那是个已完结、不再更新的年度）。
+    #   现在不再猜，而是同时试几个候选年份，用真实返回数据里最新的日期来判断哪个年度是当前活跃的。
+    now = datetime.now(timezone.utc)
+    candidate_years = [now.year - 1, now.year, now.year + 1]
+    best_rows, best_debug, best_year = None, None, None
+    all_attempts_debug = {}
+
+    for candidate_my in candidate_years:
+        url = f"{USDA_BASE}/esr/exports/commodityCode/{code}/allCountries/marketYear/{candidate_my}"
+        rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
+        all_attempts_debug[str(candidate_my)] = {
+            "httpStatus": debug.get("httpStatus"),
+            "rowCount": len(rows) if rows else 0,
+            "latestWeekFound": max((r.get("weekEndingDate") for r in rows if r.get("weekEndingDate")), default=None) if rows else None,
+        }
+        if not rows:
+            continue
+        candidate_latest_week = max((r.get("weekEndingDate") for r in rows if r.get("weekEndingDate")), default=None)
+        if candidate_latest_week is None:
+            continue
+        best_latest_week = max((r.get("weekEndingDate") for r in best_rows if r.get("weekEndingDate")), default=None) if best_rows else None
+        if best_rows is None or candidate_latest_week > best_latest_week:
+            best_rows, best_debug, best_year = rows, debug, candidate_my
+
+    rows, debug = best_rows, best_debug
     if not rows:
-        return {"available": False, "reason": "ESR接口无返回数据", "debug": debug}
+        return {
+            "available": False,
+            "reason": "ESR接口无返回数据（已尝试" + "、".join(str(y) for y in candidate_years) + "这几个候选年份）",
+            "debug": all_attempts_debug,
+        }
 
     # 关键点：每周有多个国家的记录，不能直接用 rows[-1]/rows[-2]
     # （那样可能取到"同一周的另一个国家"而不是"上一周"）。
@@ -151,9 +172,23 @@ def fetch_esr_export_sales():
     if prev_total:
         wow_change_pct = round((latest_total - prev_total) / abs(prev_total) * 100, 1)
 
+    # 计算数据新鲜度：即便三个候选年份里选出了"最新的"，也可能三个都不新鲜
+    # （比如接口本身更新滞后）。ESR是每周更新的报告，超过25天没更新就该提醒一下。
+    try:
+        latest_date_parsed = datetime.fromisoformat(latest_week_date.replace("Z", "+00:00"))
+        if latest_date_parsed.tzinfo is None:
+            latest_date_parsed = latest_date_parsed.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - latest_date_parsed).days
+    except (ValueError, AttributeError):
+        age_days = None
+    is_stale = age_days is not None and age_days > 25
+
     result = {
         "available": True,
         "weekEnding": latest_week_date,
+        "marketYearUsed": best_year,
+        "dataAgeDays": age_days,
+        "isStale": is_stale,
         "latestTotalMT": latest_total,
         "prevTotalMT": prev_total,
         "wowChangePct": wow_change_pct,
@@ -161,6 +196,12 @@ def fetch_esr_export_sales():
         "source": "USDA-FAS ESR API",
         "sourceUrl": "https://apps.fas.usda.gov/esrqs/",
     }
+    if is_stale:
+        result["debug"] = {
+            "warning": f"三个候选年份({candidate_years})里最新数据是{latest_week_date}，距今{age_days}天，"
+                       f"已超过25天的新鲜度阈值，ESR是每周更新的报告，这可能意味着接口有延迟或候选年份范围需要调整",
+            "allCandidateYearsResults": all_attempts_debug,
+        }
     # 如果拿到了记录，但汇总出来的数值全是0，很可能是 weeklyExports/grossNewSales/netSales
     # 这几个候选字段名都没命中，附上实际字段名方便诊断
     if latest_total == 0 and prev_total == 0 and latest_week:
@@ -213,27 +254,10 @@ def get_psd_attribute_names():
     return None, None
 
 
-def fetch_psd_supply_demand():
-    code = get_soybean_meal_psd_code()
-    if not code:
-        return {"available": False, "reason": "未能找到豆粕的PSD商品编码"}
-
-    year = datetime.now(timezone.utc).year
-    url = f"{USDA_BASE}/psd/commodity/{code}/country/US/year/{year}"
-    rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
-    if not rows:
-        # 尝试上一年（有些数据在跨年时还未更新到今年）
-        year -= 1
-        url = f"{USDA_BASE}/psd/commodity/{code}/country/US/year/{year}"
-        rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
-    if not rows:
-        return {"available": False, "reason": "PSD接口无返回数据", "debug": debug}
-
-    # 实际部署后发现真实返回结构是数字ID (attributeId/unitId)，不是字符串名称，
-    # 所以要么a)有attributeName字符串字段（旧版/其他数据源可能这样），要么b)只有attributeId数字，
-    # 这里两种情况都兼容处理。
+def _parse_psd_rows(rows, attr_map):
+    """把一批PSD原始行解析成 {Ending Stocks:.., Production:.., ...} 的字典，
+    同时返回这批数据里最新的 (calendarYear, month) 组合，用来判断新鲜度。"""
     has_string_names = any(r.get("attributeName") for r in rows)
-
     wanted_normalized = {
         "ending stocks": "Ending Stocks",
         "production": "Production",
@@ -242,9 +266,16 @@ def fetch_psd_supply_demand():
     }
     out = {}
     seen_attrs = set()
+    latest_vintage = None  # (calendarYear, month) 里最新的一个，代表这批数据最新是哪个月的WASDE修订版本
+
+    for r in rows:
+        cy, mo = r.get("calendarYear"), r.get("month")
+        if cy and mo:
+            vintage = (cy, mo)
+            if latest_vintage is None or vintage > latest_vintage:
+                latest_vintage = vintage
 
     if has_string_names:
-        # 情况A：接口真的返回了字符串字段名（用容错匹配：忽略大小写、多余空格）
         for r in rows:
             attr = r.get("attributeName") or r.get("AttributeName") or r.get("attribute_name")
             val = r.get("value") if "value" in r else r.get("Value")
@@ -254,31 +285,82 @@ def fetch_psd_supply_demand():
             norm = " ".join(attr.lower().split())
             if norm in wanted_normalized:
                 out[wanted_normalized[norm]] = val
+    elif attr_map:
+        rows_sorted = sorted(rows, key=lambda r: (r.get("calendarYear") or "", r.get("month") or ""))
+        latest_by_attr = {}
+        for r in rows_sorted:
+            aid = r.get("attributeId")
+            if aid is not None:
+                latest_by_attr[aid] = r
+        for aid, r in latest_by_attr.items():
+            name = attr_map.get(aid)
+            if not name:
+                continue
+            seen_attrs.add(f"{aid}:{name}")
+            norm = " ".join(name.lower().split())
+            if norm in wanted_normalized:
+                out[wanted_normalized[norm]] = r.get("value")
     else:
-        # 情况B（实测中遇到的真实情况）：只有数字 attributeId，需要额外查名称对照表
-        attr_map, attr_map_source = get_psd_attribute_names()
-        if attr_map:
-            # 同一个 attributeId 可能有多个月份的记录，取 calendarYear+month 最新的一条
-            rows_sorted = sorted(rows, key=lambda r: (r.get("calendarYear") or "", r.get("month") or ""))
-            latest_by_attr = {}
-            for r in rows_sorted:
-                aid = r.get("attributeId")
-                if aid is not None:
-                    latest_by_attr[aid] = r  # 排序后一路覆盖，最后剩下的就是每个attributeId最新一条
-            for aid, r in latest_by_attr.items():
-                name = attr_map.get(aid)
-                if not name:
-                    continue
-                seen_attrs.add(f"{aid}:{name}")
-                norm = " ".join(name.lower().split())
-                if norm in wanted_normalized:
-                    out[wanted_normalized[norm]] = r.get("value")
+        seen_attrs = {f"attributeId={r.get('attributeId')}" for r in rows}
+
+    return out, seen_attrs, has_string_names, latest_vintage
+
+
+def fetch_psd_supply_demand():
+    code = get_soybean_meal_psd_code()
+    if not code:
+        return {"available": False, "reason": "未能找到豆粕的PSD商品编码"}
+
+    attr_map, attr_map_source = get_psd_attribute_names()
+
+    # ★ 同样的教训：不再猜哪个"year"参数值对应当前活跃的市场年度，
+    #   而是同时试几个候选年份，用每批数据里真实出现的"最新WASDE修订月份"来判断哪个最新。
+    now_year = datetime.now(timezone.utc).year
+    candidate_years = [now_year - 1, now_year, now_year + 1]
+    best = None  # {"year":, "rows":, "out":, "seen_attrs":, "has_string_names":, "vintage":}
+    all_attempts = {}
+
+    for candidate_year in candidate_years:
+        url = f"{USDA_BASE}/psd/commodity/{code}/country/US/year/{candidate_year}"
+        rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
+        all_attempts[str(candidate_year)] = {
+            "httpStatus": debug.get("httpStatus"),
+            "rowCount": len(rows) if rows else 0,
+        }
+        if not rows:
+            continue
+        out, seen_attrs, has_string_names, vintage = _parse_psd_rows(rows, attr_map)
+        all_attempts[str(candidate_year)]["latestVintage"] = vintage
+        candidate = {
+            "year": candidate_year, "rows": rows, "out": out,
+            "seen_attrs": seen_attrs, "has_string_names": has_string_names, "vintage": vintage,
+        }
+        # 优先选"有实际匹配到数值"且"vintage最新"的候选；vintage为None时排到最后
+        if best is None:
+            best = candidate
         else:
-            seen_attrs = {f"attributeId={r.get('attributeId')}" for r in rows}
+            best_sort_key = (bool(best["out"]), best["vintage"] or ("", ""))
+            cand_sort_key = (bool(out), vintage or ("", ""))
+            if cand_sort_key > best_sort_key:
+                best = candidate
+
+    if best is None:
+        return {
+            "available": False,
+            "reason": "PSD接口无返回数据（已尝试" + "、".join(str(y) for y in candidate_years) + "这几个候选年份）",
+            "debug": all_attempts,
+        }
+
+    year = best["year"]
+    out = best["out"]
+    seen_attrs = best["seen_attrs"]
+    has_string_names = best["has_string_names"]
+    vintage = best["vintage"]
 
     result = {
         "available": True,
         "marketYear": year,
+        "wasdeVintage": f"{vintage[0]}年{vintage[1]}月版" if vintage else "未知",
         "endingStocks": out.get("Ending Stocks"),
         "production": out.get("Production"),
         "totalSupply": out.get("Total Supply"),
@@ -297,7 +379,8 @@ def fetch_psd_supply_demand():
         result["debug"] = {
             "warning": warning,
             "actualAttributeNamesSeen": sorted(str(a) for a in seen_attrs)[:30],
-            "sampleRawRow": rows[0] if rows else None,
+            "sampleRawRow": best["rows"][0] if best["rows"] else None,
+            "allCandidateYearsAttempted": all_attempts,
         }
 
     return result
@@ -366,8 +449,6 @@ def fetch_drought_monitor():
             "&statisticsType=1"
         )
         rows, debug = fetch_json_debug(url, headers={"Accept": "application/json"})
-        # 无论成功失败，都强制把原始样本存进debug里。
-        # 上次的教训：只有失败时才存样本，导致"看起来成功但数值离谱"这种情况没有原始数据可查。
         if rows:
             debug["sampleRawRow"] = rows[0]
             debug["totalRowsReturned"] = len(rows)
@@ -375,7 +456,7 @@ def fetch_drought_monitor():
         if not rows:
             out[state] = {"available": False}
             continue
-        # 取最新一条记录；字段名为 D0-D4 的百分比（各版本字段可能是 D0..D4 或 d0..d4，做兼容）
+        # 取最新一条记录
         rows_sorted = sorted(rows, key=lambda r: r.get("ValidStart") or r.get("validStart") or "")
         latest = rows_sorted[-1]
 
@@ -385,16 +466,32 @@ def fetch_drought_monitor():
                     return latest[k]
             return None
 
-        d0, d1 = g("D0", "d0"), g("D1", "d1")
-        d2, d3, d4 = g("D2", "d2") or 0, g("D3", "d3") or 0, g("D4", "d4") or 0
-        d2_plus = d2 + d3 + d4
+        # ★ 已确认修复（感谢实测原始数据核实）：
+        # d0/d1/d2/d3/d4 不是百分比，是"平方英里"的原始面积！
+        # 证据：爱荷华 none(37534.63) + d0(18776.87) = 56311.5 ≈ 爱荷华全州面积(56273平方英里)
+        # 说明"none"代表无干旱区域面积，"d0"代表D0及以上(至少轻度干旱)的区域面积，
+        # 两者相加 = 全州面积。真正的百分比 = 各等级面积 ÷ (none+d0) × 100
+        none_area = g("none", "None", "NONE")
+        d0_area, d1_area = g("D0", "d0"), g("D1", "d1")
+        d2_area = g("D2", "d2") or 0
+        d3_area = g("D3", "d3") or 0
+        d4_area = g("D4", "d4") or 0
 
-        # 官方文档明确写着 statisticsType=1 应该返回"0到100的百分比"。
-        # 上次实测发现返回了18776.87这种离谱数值，说明哪里不对（具体原因还没100%确认）。
-        # 这里加一道"合理范围检查"：只要有任何一个数值超出0-100，就不要装作没事发生，
-        # 明确标记为异常，附上完整原始行，而不是显示一个误导性的百分比。
-        all_vals = [v for v in [d0, d1, d2, d3, d4] if v is not None]
-        is_anomalous = any(v < 0 or v > 100 for v in all_vals)
+        if none_area is not None and d0_area is not None and (none_area + d0_area) > 0:
+            total_area = none_area + d0_area
+            d0 = round(d0_area / total_area * 100, 2)
+            d1 = round(d1_area / total_area * 100, 2) if d1_area is not None else None
+            d2 = round(d2_area / total_area * 100, 2)
+            d3 = round(d3_area / total_area * 100, 2)
+            d4 = round(d4_area / total_area * 100, 2)
+            d2_plus = d2 + d3 + d4
+            is_anomalous = False
+        else:
+            # 拿不到 none 字段时没法换算，保留原始数值但标记异常，不能装作换算成功了
+            d0, d1, d2, d3, d4 = d0_area, d1_area, d2_area, d3_area, d4_area
+            d2_plus = (d2 or 0) + (d3 or 0) + (d4 or 0)
+            is_anomalous = True
+            debugs[state]["anomalyWarning"] = "找不到'none'字段，无法换算成百分比（需要 none+d0=全州面积 这个关系式来计算）"
 
         out[state] = {
             "available": True,
@@ -407,8 +504,6 @@ def fetch_drought_monitor():
             "d4": d4,
             "severeOrWorsePct": round(d2_plus, 1),
         }
-        if is_anomalous:
-            debugs[state]["anomalyWarning"] = f"数值超出0-100范围(官方文档说应为百分比)，原始行: {latest}"
 
     available_states = {k: v for k, v in out.items() if v.get("available")}
     if not available_states:
