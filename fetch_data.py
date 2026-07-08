@@ -82,21 +82,33 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
 # 1. USDA-FAS 出口销售数据 (ESR)
 # ---------------------------------------------------------------------------
 def get_soybean_meal_esr_code():
-    """动态查找"大豆粕/豆饼"在 ESR 商品列表里的编码，避免硬编码错误的代码。"""
-    data = fetch_json(f"{USDA_BASE}/esr/commodities", headers={"X-Api-Key": USDA_API_KEY})
+    """动态查找"大豆粕/豆饼"在 ESR 商品列表里的编码，避免硬编码错误的代码。
+    返回 (code, debug)：code为None时，debug里会说明具体是"请求失败"还是"没匹配上"，
+    这两种情况原因完全不同，不应该用同一句模糊的错误信息掩盖。"""
+    data, debug = fetch_json_debug(f"{USDA_BASE}/esr/commodities", headers={"X-Api-Key": USDA_API_KEY})
     if not data:
-        return None
+        debug["failureStage"] = "请求/esr/commodities本身失败（网络问题、认证失败、或被限流）"
+        return None, debug
     for item in data:
         name = (item.get("commodityName") or "").lower()
         if "soybean" in name and ("meal" in name or "cake" in name):
-            return item.get("commodityCode")
-    return None
+            return item.get("commodityCode"), None
+    # 请求成功、拿到了数据，但没有一条命中"soybean"+"meal/cake"，
+    # 这跟"请求失败"是完全不同的情况——很可能是接口把商品名称改了，附上实际收到的完整列表方便核对
+    debug["failureStage"] = "接口请求成功，拿到了商品列表，但没有一条命中'soybean'+'meal或cake'关键词"
+    debug["actualCommodityNamesSeen"] = sorted(set((item.get("commodityName") or "") for item in data))[:50]
+    debug["totalCommoditiesReturned"] = len(data)
+    return None, debug
 
 
 def fetch_esr_export_sales():
-    code = get_soybean_meal_esr_code()
+    code, code_lookup_debug = get_soybean_meal_esr_code()
     if not code:
-        return {"available": False, "reason": "未能找到豆粕的ESR商品编码"}
+        return {
+            "available": False,
+            "reason": "未能找到豆粕的ESR商品编码",
+            "debug": code_lookup_debug,
+        }
 
     # ★ 已修复：之前用"10月做分界"猜市场年度，实测发现猜错了
     #   （查到marketYear=2025时，最新数据停在2025-10-02，说明那是个已完结、不再更新的年度）。
@@ -217,14 +229,19 @@ def fetch_esr_export_sales():
 # 2. USDA-FAS 供需库存数据 (PSD) —— 等同 WASDE 里豆粕/大豆的核心数字
 # ---------------------------------------------------------------------------
 def get_soybean_meal_psd_code():
-    data = fetch_json(f"{USDA_BASE}/psd/commodities", headers={"X-Api-Key": USDA_API_KEY})
+    """返回 (code, debug)，跟ESR那边一样区分'请求失败'和'没匹配上'两种不同情况。"""
+    data, debug = fetch_json_debug(f"{USDA_BASE}/psd/commodities", headers={"X-Api-Key": USDA_API_KEY})
     if not data:
-        return None
+        debug["failureStage"] = "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+        return None, debug
     for item in data:
         name = (item.get("commodityName") or "").lower()
         if "soybean" in name and "meal" in name:
-            return item.get("commodityCode")
-    return None
+            return item.get("commodityCode"), None
+    debug["failureStage"] = "接口请求成功，拿到了商品列表，但没有一条命中'soybean'+'meal'关键词"
+    debug["actualCommodityNamesSeen"] = sorted(set((item.get("commodityName") or "") for item in data))[:50]
+    debug["totalCommoditiesReturned"] = len(data)
+    return None, debug
 
 
 def get_psd_attribute_names():
@@ -307,9 +324,13 @@ def _parse_psd_rows(rows, attr_map):
 
 
 def fetch_psd_supply_demand():
-    code = get_soybean_meal_psd_code()
+    code, code_lookup_debug = get_soybean_meal_psd_code()
     if not code:
-        return {"available": False, "reason": "未能找到豆粕的PSD商品编码"}
+        return {
+            "available": False,
+            "reason": "未能找到豆粕的PSD商品编码",
+            "debug": code_lookup_debug,
+        }
 
     attr_map, attr_map_source = get_psd_attribute_names()
 
