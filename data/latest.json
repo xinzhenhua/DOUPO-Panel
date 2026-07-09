@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-09T05:59:26.716909+00:00",
+  "generatedAt": "2026-07-09T06:29:37.047865+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 310.0,
-    "change": -4.5,
-    "changePct": -1.43,
+    "price": 310.1,
+    "change": -4.4,
+    "changePct": -1.4,
     "asOf": "2026-07-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -135,87 +135,87 @@
   },
   "chinaImportsOfficial": {
     "available": false,
-    "reason": "UN Comtrade接口无返回数据",
+    "reason": "UN Comtrade对202606~202506这些月份逐个查询都没有数据",
     "debug": {
-      "url": "https://comtradeapi.un.org/public/v1/preview/C/M/HS?reporterCode=156&period=202605,202604,202603,202602,202601,202512,202511,202510,202509,202508,202507,202506&partnerCode=0&cmdCode=1201&flowCode=M",
-      "httpStatus": 400,
-      "error": "HTTP 400: Bad Request",
-      "rawSnippet": "{\"error\":\"Maximum number of periods for preview is 1\",\"details\":null}",
-      "periodsAttempted": [
-        "202605",
-        "202604",
-        "202603",
-        "202602",
-        "202601",
-        "202512",
-        "202511",
-        "202510",
-        "202509",
-        "202508",
-        "202507",
-        "202506"
-      ],
-      "note": "使用/public/v1/preview/免费端点，无需订阅密钥"
+      "periodsAttempted": {
+        "202606": {
+          "httpStatus": 200,
+          "error": null,
+          "rowCount": 0
+        },
+        "202605": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202604": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202603": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202602": {
+          "httpStatus": 200,
+          "error": null,
+          "rowCount": 0
+        },
+        "202601": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202512": {
+          "httpStatus": 200,
+          "error": null,
+          "rowCount": 0
+        },
+        "202511": {
+          "httpStatus": 200,
+          "error": null,
+          "rowCount": 0
+        },
+        "202510": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202509": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202508": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202507": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        },
+        "202506": {
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
+          "rowCount": 0
+        }
+      },
+      "note": "已改为逐月单独查询(preview端点限制一次只能查1个月)"
     }
   },
   "arrivalEstimate": {
-    "available": false,
-    "reason": "未能从检验数据中匹配到大豆发往中国的记录",
-    "debug": {
-      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json?$order=date%20DESC&$limit=3000",
-      "httpStatus": 200,
-      "rawSnippet": "[{\"date\":\"2026-07-02T00:00:00.000\",\"cert_date\":\"2026-07-02T00:00:00.000\",\"week\":\"26\",\"month\":\"7\",\"quarter\":\"3\",\"year\":\"2026\",\"type_shipm\":\"BU\",\"type_carrier\":\"6\",\"type_carrier_text\":\"CONTAINER\",\"carrier_name\":\"42044722\",\"grain\":\"SOYBEANS\",\"grade\":\"1\",\"class\":\"YSB\",\"destination\":\"VIETNAM\",\"port\":\"INTERIOR\",\"ams_reg\":\"INTERIOR\",\"fgis_reg\":\"INTERIOR\",\"state\":\"KS\",\"mt\":\"490\",\"pounds\":\"1080000\",\"field_office\":\"DIOO\"}\n,{\"date\":\"2026-07-02T00:00:00.000\",\"cert_date\":\"2026-07-02T00:00:00.000\",\"week\":\"26\"",
-      "totalRowsReturned": 3000,
-      "sampleRawRow": {
-        "date": "2026-07-02T00:00:00.000",
-        "cert_date": "2026-07-02T00:00:00.000",
-        "week": "26",
-        "month": "7",
-        "quarter": "3",
-        "year": "2026",
-        "type_shipm": "BU",
-        "type_carrier": "6",
-        "type_carrier_text": "CONTAINER",
-        "carrier_name": "42044722",
-        "grain": "SOYBEANS",
-        "grade": "1",
-        "class": "YSB",
-        "destination": "VIETNAM",
-        "port": "INTERIOR",
-        "ams_reg": "INTERIOR",
-        "fgis_reg": "INTERIOR",
-        "state": "KS",
-        "mt": "490",
-        "pounds": "1080000",
-        "field_office": "DIOO"
-      },
-      "matchedSoybeanChinaRows": 0,
-      "allFieldNamesSeenInData": [
-        "ams_reg",
-        "carrier_name",
-        "cert_date",
-        "class",
-        "date",
-        "destination",
-        "fgis_reg",
-        "field_office",
-        "grade",
-        "grain",
-        "month",
-        "mt",
-        "port",
-        "pounds",
-        "quarter",
-        "state",
-        "subclass",
-        "type_carrier",
-        "type_carrier_text",
-        "type_shipm",
-        "week",
-        "year"
-      ],
-      "warning": "没有匹配到'大豆+发往中国'的记录，commodity/destination/port_region这几个字段名仍是猜测，可能不对，请核对上面allFieldNamesSeenInData列出的真实字段名"
-    }
+    "available": true,
+    "estimatedWanTons": 0.0,
+    "gulfPortionMetricTons": 0,
+    "pnwPortionMetricTons": 0,
+    "methodology": "湾区港口约35天海运+西北太平洋港口约18天海运，按此反推2026-06-04(湾区)和2026-06-21(西北太平洋)前后装船量",
+    "source": "USDA/AMS 谷物出口检验数据（推算值，非直接测量）",
+    "sourceUrl": "https://agtransport.usda.gov/",
+    "debug": null
   },
   "soymealStock": {
     "available": false,
