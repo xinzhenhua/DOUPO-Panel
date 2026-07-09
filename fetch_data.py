@@ -47,7 +47,9 @@ USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 USDA_BASE = "https://api.fas.usda.gov/api"
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_BASE = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "deepseek-r1-distill-llama-70b"
+GROQ_MODEL = "openai/gpt-oss-120b"  # ★已修复：deepseek-r1-distill-llama-70b已被Groq下架("model_decommissioned")
+# 查了Groq官方deprecation文档，这个型号目前是他们反复推荐的迁移目标（最稳定）。
+# 如果想换成国产的通义千问模型，改成 "qwen/qwen3.6-27b" 即可（相对新一些，暂无法确认长期稳定性）。
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 TAVILY_BASE = "https://api.tavily.com"
 UNCOMTRADE_API_KEY = os.environ.get("UNCOMTRADE_API_KEY", "")
