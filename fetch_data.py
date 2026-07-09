@@ -9,9 +9,25 @@
 1. USDA-FAS 出口销售数据（ESR）- 豆粕(Soybean Cake and Meal)
 2. USDA-FAS 供需库存数据（PSD）- 等同 WASDE 核心数据
 3. CBOT 豆粕期货价格（通过 Yahoo Finance 非官方接口）
+4. US Drought Monitor 官方干旱监测数据
+5. UN Comtrade 中国大豆进口官方数据
+6. USDA/AMS 谷物出口检验数据（用来推算"本周到港预报"）
+7. AI辅助搜索（Groq跑DeepSeek开源蒸馏模型 + Tavily搜索）：
+   豆粕商业库存 / 猪粮比 / 能繁母猪存栏 / 现货基差 / 开机率
+
+关于第7项的技术选型说明：
+用户明确要求"免费"方案，这里用的是官方、合法的免费层组合：
+- Groq(groq.com)：官方免费开发者层，用来调用DeepSeek R1蒸馏模型做推理
+  （不是逆向工程DeepSeek官方付费API，是Groq自己合法托管的开源权重版本）
+- Tavily(tavily.com)：官方免费层，每月1000次搜索，无需绑卡
+这套组合完全合法、稳定，跟"抓取/逆向工程免费个人聊天产品来做自动化"
+这种ToS风险很高、随时可能失效的方案是两回事。
 
 运行方式：
     export USDA_API_KEY=你的api.data.gov密钥
+    export GROQ_API_KEY=你的groq.com密钥
+    export TAVILY_API_KEY=你的tavily.com密钥
+    export UNCOMTRADE_API_KEY=你的comtradeplus.un.org密钥
     python3 fetch_data.py
 
 输出：
@@ -20,6 +36,7 @@
 
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -28,6 +45,13 @@ from datetime import datetime, timezone
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 USDA_BASE = "https://api.fas.usda.gov/api"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_BASE = "https://api.groq.com/openai/v1"
+GROQ_MODEL = "deepseek-r1-distill-llama-70b"
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+TAVILY_BASE = "https://api.tavily.com"
+UNCOMTRADE_API_KEY = os.environ.get("UNCOMTRADE_API_KEY", "")
+UNCOMTRADE_BASE = "https://comtradeapi.un.org/data/v1"
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "data", "latest.json")
 
 # ---------------------------------------------------------------------------
@@ -79,8 +103,286 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
 
 
 # ---------------------------------------------------------------------------
-# 1. USDA-FAS 出口销售数据 (ESR)
+# AI辅助搜索核心框架：Tavily搜索 + Groq(DeepSeek蒸馏模型)提取 + 时效性验证
 # ---------------------------------------------------------------------------
+def tavily_search(query, max_results=5):
+    """调用Tavily搜索API（官方免费层，每月1000次，无需绑卡）。
+    返回搜索结果列表：[{title, url, content, published_date}, ...]，失败返回None。"""
+    if not TAVILY_API_KEY:
+        return None, {"error": "缺少 TAVILY_API_KEY"}
+    url = f"{TAVILY_BASE}/search"
+    payload = json.dumps({
+        "api_key": TAVILY_API_KEY,
+        "query": query,
+        "max_results": max_results,
+        "search_depth": "advanced",
+        "include_answer": False,
+    }).encode("utf-8")
+    debug = {"url": url, "query": query}
+    try:
+        req = urllib.request.Request(
+            url, data=payload, method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            results = data.get("results", [])
+            debug["resultCount"] = len(results)
+            return results, debug
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:300]
+        except Exception:  # noqa: BLE001
+            pass
+        debug["error"] = f"HTTP {e.code}: {e.reason}"
+        debug["rawSnippet"] = body
+        print(f"[WARN] Tavily搜索失败(HTTP {e.code}): {query} -> {body}", file=sys.stderr)
+        return None, debug
+    except Exception as e:  # noqa: BLE001
+        debug["error"] = str(e)
+        print(f"[WARN] Tavily搜索失败: {query} -> {e}", file=sys.stderr)
+        return None, debug
+
+
+def groq_extract(system_prompt, user_prompt):
+    """调用Groq API跑DeepSeek R1蒸馏模型做信息提取（官方免费开发者层）。
+    返回模型输出的文本，失败返回None。"""
+    if not GROQ_API_KEY:
+        return None, {"error": "缺少 GROQ_API_KEY"}
+    url = f"{GROQ_BASE}/chat/completions"
+    payload = json.dumps({
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.1,  # 要的是准确提取事实，不是创意发散，温度调低
+        "max_tokens": 800,
+    }).encode("utf-8")
+    debug = {"url": url}
+    try:
+        req = urllib.request.Request(
+            url, data=payload, method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            content = data["choices"][0]["message"]["content"]
+            return content, debug
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:300]
+        except Exception:  # noqa: BLE001
+            pass
+        debug["error"] = f"HTTP {e.code}: {e.reason}"
+        debug["rawSnippet"] = body
+        print(f"[WARN] Groq调用失败(HTTP {e.code}): {body}", file=sys.stderr)
+        return None, debug
+    except Exception as e:  # noqa: BLE001
+        debug["error"] = str(e)
+        print(f"[WARN] Groq调用失败: {e}", file=sys.stderr)
+        return None, debug
+
+
+def _extract_json_from_ai_response(text):
+    """DeepSeek R1蒸馏模型是推理模型，输出里常带<think>...</think>思考过程，
+    真正的JSON答案在思考过程之后。这里做容错提取：
+    先去掉<think>标签，再找文本里第一个{...}JSON块。"""
+    if not text:
+        return None
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    # 去掉可能的markdown代码块包裹
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned.strip())
+    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if not match:
+        return None
+    try:
+        return json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+
+
+def ai_search_with_staleness_check(indicator_name, search_queries, extraction_instruction,
+                                     max_age_days, max_retries=2):
+    """
+    时效性分级验证模块（核心机制）：
+    ① 用Tavily搜索 → 把结果喂给Groq/DeepSeek提取 {数值, 日期, 来源, 原文片段}
+    ② 解析AI返回的日期，算出距今天数
+    ③ 超过 max_age_days → 判定过期，换一个更强调"要最新"的搜索词重试
+    ④ 最多重试 max_retries 次，仍过期则返回结果但标记 isStale=True
+       （前端会显示+橙色警告，但不会隐藏数值，方便你自己判断要不要用）
+
+    search_queries: 一个列表，按优先级尝试的搜索词（比如开机率先试"我的钢铁网豆粕开机率"再试通用词）
+    """
+    all_debug = {"indicator": indicator_name, "attempts": []}
+    last_stale_result = None
+
+    for attempt in range(max_retries + 1):
+        query_idx = min(attempt, len(search_queries) - 1)
+        query = search_queries[query_idx]
+        if attempt > 0:
+            # 重试时明确要求"更新的数据"，而不是重复同一个搜索词指望运气
+            query = query + f"（请找最近{max_age_days}天内发布的最新数据，不要旧数据）"
+
+        results, search_debug = tavily_search(query, max_results=5)
+        attempt_log = {"attempt": attempt + 1, "query": query, "searchDebug": search_debug}
+
+        if not results:
+            attempt_log["outcome"] = "搜索失败或无结果"
+            all_debug["attempts"].append(attempt_log)
+            continue
+
+        # 把搜索结果拼成上下文喂给AI
+        context = "\n\n".join(
+            f"来源{i+1}: {r.get('title','')}\nURL: {r.get('url','')}\n"
+            f"发布日期: {r.get('published_date','未知')}\n内容: {r.get('content','')[:800]}"
+            for i, r in enumerate(results)
+        )
+        system_prompt = (
+            "你是一个专业的农产品期货数据助手。根据提供的搜索结果，提取用户要求的具体数据。"
+            "必须只返回一个JSON对象，不要有任何其他文字说明。"
+            'JSON格式严格为：{"数值": <数字或字符串>, "日期": "YYYY-MM-DD", "来源": "<URL>", "原文片段": "<支持这个数值的原文摘录，20字以内>"}'
+            "如果搜索结果里找不到明确数据，数值字段填null。日期必须是文中明确提到的发布/统计日期，不能是你的推测。"
+        )
+        user_prompt = f"{extraction_instruction}\n\n搜索结果：\n{context}"
+
+        ai_text, groq_debug = groq_extract(system_prompt, user_prompt)
+        attempt_log["groqDebug"] = groq_debug
+
+        if not ai_text:
+            attempt_log["outcome"] = "Groq调用失败"
+            all_debug["attempts"].append(attempt_log)
+            continue
+
+        parsed = _extract_json_from_ai_response(ai_text)
+        if not parsed or parsed.get("数值") is None:
+            attempt_log["outcome"] = "AI未能从搜索结果中提取到有效数值"
+            attempt_log["aiRawResponse"] = ai_text[:500]
+            all_debug["attempts"].append(attempt_log)
+            continue
+
+        # 计算数据新鲜度
+        date_str = parsed.get("日期")
+        age_days = None
+        if date_str:
+            try:
+                parsed_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                if parsed_date.tzinfo is None:
+                    parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                age_days = (datetime.now(timezone.utc) - parsed_date).days
+            except ValueError:
+                age_days = None
+
+        is_stale = age_days is None or age_days > max_age_days
+        attempt_log["outcome"] = f"提取成功，数据日期{date_str}，距今{age_days}天" + ("（过期）" if is_stale else "（新鲜）")
+        all_debug["attempts"].append(attempt_log)
+
+        if not is_stale:
+            return {
+                "available": True,
+                "value": parsed.get("数值"),
+                "date": date_str,
+                "ageDays": age_days,
+                "isStale": False,
+                "source": parsed.get("来源"),
+                "quote": parsed.get("原文片段"),
+                "attemptsUsed": attempt + 1,
+                "debug": all_debug,
+            }
+        # 过期就继续下一轮重试（如果还有重试次数的话），先把这轮结果存起来备用
+        last_stale_result = {
+            "available": True,
+            "value": parsed.get("数值"),
+            "date": date_str,
+            "ageDays": age_days,
+            "isStale": True,
+            "source": parsed.get("来源"),
+            "quote": parsed.get("原文片段"),
+            "attemptsUsed": attempt + 1,
+            "debug": all_debug,
+        }
+
+    # 重试次数用完，仍然过期：按用户确认的方案——显示+警告+仍可手动覆盖
+    if last_stale_result is not None:
+        return last_stale_result
+    return {"available": False, "reason": f"{max_retries+1}次尝试后仍未能提取到有效数据", "debug": all_debug}
+
+
+# ---------------------------------------------------------------------------
+# AI辅助搜索：5个手动指标的自动化（用户确认可以AI搜索直接同步的部分）
+# ---------------------------------------------------------------------------
+def fetch_soymeal_stock_ai():
+    """全国豆粕商业库存(万吨)，每周更新，10天有效期"""
+    return ai_search_with_staleness_check(
+        indicator_name="豆粕商业库存",
+        search_queries=["全国豆粕商业库存 最新 万吨", "豆粕库存 汇易 mysteel 周度数据"],
+        extraction_instruction="提取中国全国豆粕商业库存的最新数值，单位是万吨。只要一个全国总量数字，不要地区分项。",
+        max_age_days=10,
+        max_retries=2,
+    )
+
+
+def fetch_hog_grain_ratio_ai():
+    """猪粮比，每周更新，10天有效期"""
+    return ai_search_with_staleness_check(
+        indicator_name="猪粮比",
+        search_queries=["猪粮比 最新 农业农村部", "生猪价格 玉米价格 比价 最新周度"],
+        extraction_instruction="提取中国最新的猪粮比数值（生猪价格与玉米价格的比值，正常盈亏线是6:1）。只要比值数字本身，比如6.2。",
+        max_age_days=10,
+        max_retries=2,
+    )
+
+
+def fetch_breeding_sows_ai():
+    """能繁母猪存栏(万头)，每月更新，45天有效期"""
+    return ai_search_with_staleness_check(
+        indicator_name="能繁母猪存栏",
+        search_queries=["能繁母猪存栏量 最新 农业农村部 万头", "能繁母猪 存栏 环比 月度数据"],
+        extraction_instruction="提取中国最新的能繁母猪存栏量，单位是万头。国家产能调控目标是3750万头。",
+        max_age_days=45,
+        max_retries=2,
+    )
+
+
+def fetch_spot_basis_ai():
+    """现货基差(元/吨)，全国平均，只需要符号方向，10天有效期"""
+    return ai_search_with_staleness_check(
+        indicator_name="现货基差",
+        search_queries=["豆粕现货基差 全国平均 最新 元/吨", "豆粕基差报价 汇总 本周"],
+        extraction_instruction=(
+            "提取中国豆粕现货基差的全国平均水平，单位元/吨。"
+            "基差=现货价-期货价，正数代表现货贵(正基差)，负数代表现货便宜(负基差)。"
+            "只需要一个能代表全国平均水平的数字，如果只找到分地区数据，请取平均或选一个有代表性的数字并说明。"
+        ),
+        max_age_days=10,
+        max_retries=2,
+    )
+
+
+def fetch_crush_rate_ai():
+    """油厂开机率(%)，优先尝试我的钢铁网(Mysteel)搜索，找不到再用通用搜索兜底"""
+    return ai_search_with_staleness_check(
+        indicator_name="油厂开机率",
+        search_queries=[
+            "我的钢铁网 mysteel 豆粕 油厂开机率 全国",  # 优先：Mysteel专门查询
+            "豆粕 油厂开机率 全国 最新 汇易咨询",       # 次选：汇易咨询
+            "大豆压榨开机率 全国平均 本周",             # 兜底：通用搜索
+        ],
+        extraction_instruction=(
+            "提取中国全国大豆油厂开机率的最新数值，单位是百分比。"
+            "只需要一个能代表全国平均水平的百分比数字（不要单个地区的数字），"
+            "参考阈值：低于40%算偏多信号，高于60%算偏空信号。"
+        ),
+        max_age_days=10,
+        max_retries=2,
+    )
+
+
 def get_soybean_meal_esr_code():
     """动态查找"大豆粕/豆饼"在 ESR 商品列表里的编码，避免硬编码错误的代码。
     返回 (code, debug)：code为None时，debug里会说明具体是"请求失败"还是"没匹配上"，
@@ -546,6 +848,164 @@ def fetch_drought_monitor():
 
 
 # ---------------------------------------------------------------------------
+# 中国大豆进口量：UN Comtrade 官方API（免费注册，每天500次额度）
+# ---------------------------------------------------------------------------
+CHINA_REPORTER_CODE = "156"  # UN Comtrade 国家代码：中国
+SOYBEAN_HS_CODE = "1201"      # HS编码：大豆
+
+
+def fetch_china_soybean_imports_comtrade():
+    """从UN Comtrade官方API拿中国大豆月度进口量。
+    这是真正的官方国际贸易统计数据，不是AI搜索，但有1-2个月的公开滞后。"""
+    if not UNCOMTRADE_API_KEY:
+        return {"available": False, "reason": "缺少 UNCOMTRADE_API_KEY"}
+
+    now = datetime.now(timezone.utc)
+    # 官方数据通常有1-2个月滞后，从2个月前开始往前找最近3个月，取能拿到的最新一个月
+    periods = []
+    for months_back in range(2, 6):
+        y, m = now.year, now.month - months_back
+        while m <= 0:
+            m += 12
+            y -= 1
+        periods.append(f"{y}{m:02d}")
+
+    url = (
+        f"{UNCOMTRADE_BASE}/get/C/M/HS"
+        f"?reporterCode={CHINA_REPORTER_CODE}&period={','.join(periods)}"
+        f"&partnerCode=0&cmdCode={SOYBEAN_HS_CODE}&flowCode=M"
+    )
+    data, debug = fetch_json_debug(url, headers={"Ocp-Apim-Subscription-Key": UNCOMTRADE_API_KEY})
+    if not data:
+        return {"available": False, "reason": "UN Comtrade接口无返回数据", "debug": debug}
+
+    rows = data.get("data") if isinstance(data, dict) else data
+    if not rows:
+        return {
+            "available": False,
+            "reason": "UN Comtrade返回了空结果（可能所查月份还没发布数据）",
+            "debug": {**debug, "sampleResponse": data},
+        }
+
+    # 取period最新的一条（qty单位通常是净重公斤，换算成万吨）
+    rows_sorted = sorted(rows, key=lambda r: str(r.get("period", "")))
+    latest = rows_sorted[-1]
+    net_weight_kg = latest.get("netWgt") or latest.get("qty")
+    if net_weight_kg is None:
+        return {
+            "available": False,
+            "reason": "拿到数据但找不到重量字段(netWgt/qty)",
+            "debug": {"sampleRawRow": latest, "actualFieldsSeen": sorted(latest.keys())},
+        }
+
+    wan_tons = round(net_weight_kg / 1000 / 10000, 1)  # 公斤→吨→万吨
+    period = str(latest.get("period"))
+    return {
+        "available": True,
+        "period": f"{period[:4]}年{period[4:]}月",
+        "importsWanTons": wan_tons,
+        "source": "UN Comtrade（联合国贸易统计数据库，官方数据，通常滞后1-2个月）",
+        "sourceUrl": "https://comtradeplus.un.org/",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 本周到港预报（推算）：USDA/AMS 谷物出口检验数据 + 分港口海运时间推算
+# ---------------------------------------------------------------------------
+GRAIN_INSPECTIONS_URL = "https://agtransport.usda.gov/resource/sruw-w49i.json"
+
+# 用户确认：按港口分别计算海运天数（比统一按30天更精确）
+PORT_TRANSIT_DAYS = {
+    "gulf": 35,     # 墨西哥湾港口 → 中国，约35天
+    "pnw": 18,      # 西北太平洋港口(太平洋西北) → 中国，约18天
+}
+
+
+def fetch_arrival_estimate():
+    """
+    推算逻辑：这周从美国装船"发往中国"的大豆，还在海上，
+    要过几周才会真正到港。所以反过来推：
+    "N周前从湾区装船的量" + "M周前从西北太平洋装船的量"
+    ≈ "这周大约会到港的量"（N=35天≈5周，M=18天≈2.5周）
+
+    这是推算/估计方法，不是直接测量，前端会标注清楚。
+    """
+    from datetime import timedelta
+
+    debug = {"url": GRAIN_INSPECTIONS_URL}
+    # 拉最近70天的检验数据，足够覆盖两种港口的推算窗口
+    end = datetime.now(timezone.utc).date()
+    start = end - timedelta(days=70)
+    # ★ 用urllib.parse.quote正确编码，之前直接拼字符串导致空格没转义，
+    #   请求会被拒绝("URL can't contain control characters")
+    import urllib.parse
+    where_clause = f"inspection_date between '{start.isoformat()}' and '{end.isoformat()}'"
+    query_url = f"{GRAIN_INSPECTIONS_URL}?$where={urllib.parse.quote(where_clause)}&$limit=5000"
+    rows, fetch_debug = fetch_json_debug(query_url)
+    debug.update(fetch_debug)
+    if not rows:
+        return {"available": False, "reason": "USDA谷物出口检验接口无返回数据", "debug": debug}
+
+    debug["totalRowsReturned"] = len(rows)
+    debug["sampleRawRow"] = rows[0] if rows else None
+
+    def parse_row(r):
+        # 字段名是猜测的（没有拿到过真实原始样本），做多候选兼容
+        commodity = (r.get("commodity") or r.get("grain") or "").lower()
+        destination = (r.get("destination") or r.get("country") or "").lower()
+        port_region = (r.get("port_region") or r.get("district") or r.get("customs_district") or "").lower()
+        date_str = r.get("inspection_date") or r.get("week_ending") or r.get("date")
+        qty = r.get("quantity") or r.get("metric_tons") or r.get("weekly_metric_tons")
+        return commodity, destination, port_region, date_str, qty
+
+    def is_gulf(port_region):
+        return any(k in port_region for k in ["gulf", "new orleans", "louisiana", "mississippi"])
+
+    def is_pnw(port_region):
+        return any(k in port_region for k in ["pnw", "pacific northwest", "portland", "seattle", "tacoma", "washington", "oregon", "columbia"])
+
+    gulf_target_date = end - timedelta(days=PORT_TRANSIT_DAYS["gulf"])
+    pnw_target_date = end - timedelta(days=PORT_TRANSIT_DAYS["pnw"])
+
+    gulf_total, pnw_total = 0, 0
+    matched_rows = 0
+    for r in rows:
+        commodity, destination, port_region, date_str, qty = parse_row(r)
+        if "soybean" not in commodity or "china" not in destination or qty is None:
+            continue
+        try:
+            row_date = datetime.fromisoformat(str(date_str).replace("Z", "")).date()
+        except (ValueError, TypeError):
+            continue
+        matched_rows += 1
+        # 落在湾区推算窗口(±3天容差，因为检验不是每天都有)附近 且 确实是湾区港口
+        if is_gulf(port_region) and abs((row_date - gulf_target_date).days) <= 3:
+            gulf_total += qty
+        elif is_pnw(port_region) and abs((row_date - pnw_target_date).days) <= 3:
+            pnw_total += qty
+
+    debug["matchedSoybeanChinaRows"] = matched_rows
+    if matched_rows == 0:
+        debug["warning"] = "没有匹配到'大豆+发往中国'的记录，可能是字段名猜测的不对，需要真实原始数据核对"
+        return {"available": False, "reason": "未能从检验数据中匹配到大豆发往中国的记录", "debug": debug}
+
+    total_metric_tons = gulf_total + pnw_total
+    wan_tons = round(total_metric_tons / 10000, 1)
+
+    return {
+        "available": True,
+        "estimatedWanTons": wan_tons,
+        "gulfPortionMetricTons": gulf_total,
+        "pnwPortionMetricTons": pnw_total,
+        "methodology": f"湾区港口约{PORT_TRANSIT_DAYS['gulf']}天海运+西北太平洋港口约{PORT_TRANSIT_DAYS['pnw']}天海运，"
+                       f"按此反推{gulf_target_date}(湾区)和{pnw_target_date}(西北太平洋)前后装船量",
+        "source": "USDA/AMS 谷物出口检验数据（推算值，非直接测量）",
+        "sourceUrl": "https://agtransport.usda.gov/",
+        "debug": debug if matched_rows < 5 else None,  # 匹配数太少时也把诊断带上，方便核对
+    }
+
+
+# ---------------------------------------------------------------------------
 # 主流程
 # ---------------------------------------------------------------------------
 def main():
@@ -556,19 +1016,38 @@ def main():
             "并在 GitHub 仓库 Settings → Secrets 里添加 USDA_API_KEY。",
             file=sys.stderr,
         )
+    if not GROQ_API_KEY or not TAVILY_API_KEY:
+        print(
+            "[WARN] 未设置 GROQ_API_KEY / TAVILY_API_KEY，AI辅助搜索的5个指标（库存/猪粮比/"
+            "能繁母猪/基差/开机率）将标记为不可用。\n"
+            "       Groq密钥：console.groq.com（官方免费开发者层）\n"
+            "       Tavily密钥：tavily.com（官方免费层，每月1000次）",
+            file=sys.stderr,
+        )
+    if not UNCOMTRADE_API_KEY:
+        print(
+            "[WARN] 未设置 UNCOMTRADE_API_KEY，中国大豆进口量(官方数据)将标记为不可用。\n"
+            "       请到 comtradeplus.un.org 免费注册。",
+            file=sys.stderr,
+        )
+
+    no_usda_key = {"available": False, "reason": "缺少 USDA_API_KEY"}
+    no_ai_key = {"available": False, "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"}
 
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "droughtMonitor": fetch_drought_monitor(),
-        "exportSales": fetch_esr_export_sales() if USDA_API_KEY else {
-            "available": False,
-            "reason": "缺少 USDA_API_KEY",
-        },
-        "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else {
-            "available": False,
-            "reason": "缺少 USDA_API_KEY",
-        },
+        "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
+        "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
+        "chinaImportsOfficial": fetch_china_soybean_imports_comtrade(),
+        "arrivalEstimate": fetch_arrival_estimate(),
+        # 以下5个是AI辅助搜索的指标（用户确认可以直接自动同步的部分）
+        "soymealStock": fetch_soymeal_stock_ai() if (GROQ_API_KEY and TAVILY_API_KEY) else no_ai_key,
+        "hogGrainRatio": fetch_hog_grain_ratio_ai() if (GROQ_API_KEY and TAVILY_API_KEY) else no_ai_key,
+        "breedingSows": fetch_breeding_sows_ai() if (GROQ_API_KEY and TAVILY_API_KEY) else no_ai_key,
+        "spotBasis": fetch_spot_basis_ai() if (GROQ_API_KEY and TAVILY_API_KEY) else no_ai_key,
+        "crushRate": fetch_crush_rate_ai() if (GROQ_API_KEY and TAVILY_API_KEY) else no_ai_key,
     }
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
