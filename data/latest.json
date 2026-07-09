@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-09T08:37:40.983736+00:00",
+  "generatedAt": "2026-07-09T16:11:09.776866+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 309.9,
-    "change": -4.6,
-    "changePct": -1.46,
+    "price": 314.4,
+    "change": -0.1,
+    "changePct": -0.03,
     "asOf": "2026-07-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -15,9 +15,9 @@
       "IA": {
         "available": true,
         "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 33.34,
-        "d1": 12.15,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 31.41,
+        "d1": 10.05,
         "d2": 0.0,
         "d3": 0.0,
         "d4": 0.0,
@@ -26,9 +26,9 @@
       "IL": {
         "available": true,
         "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 10.72,
-        "d1": 0.0,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 10.25,
+        "d1": 1.01,
         "d2": 0.0,
         "d3": 0.0,
         "d4": 0.0,
@@ -37,87 +37,87 @@
       "MN": {
         "available": true,
         "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 71.94,
-        "d1": 30.26,
-        "d2": 11.59,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 74.74,
+        "d1": 29.06,
+        "d2": 11.46,
         "d3": 0.0,
         "d4": 0.0,
-        "severeOrWorsePct": 11.6
+        "severeOrWorsePct": 11.5
       }
     },
-    "avgSevereOrWorsePct": 3.9,
+    "avgSevereOrWorsePct": 3.8,
     "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37724.00,\"d0\":18587.50,\"d1\":4659.61,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":38621.55,\"d0\":17689.95,\"d1\":5657.09,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"I",
         "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
+          "mapDate": "2026-07-07T00:00:00",
           "stateAbbreviation": "IA",
-          "none": 37534.63,
-          "d0": 18776.87,
-          "d1": 6840.84,
+          "none": 38621.55,
+          "d0": 17689.95,
+          "d1": 5657.09,
           "d2": 1.9,
           "d3": 0.0,
           "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 2
+        "totalRowsReturned": 3
       },
       "IL": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":44422.41,\"d0\":11960.14,\"d1\":1012.51,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50603.44,\"d0\":5779.10,\"d1\":567.37,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"no",
         "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
+          "mapDate": "2026-07-07T00:00:00",
           "stateAbbreviation": "IL",
-          "none": 50339.32,
-          "d0": 6043.23,
-          "d1": 0.0,
+          "none": 50603.44,
+          "d0": 5779.1,
+          "d1": 567.37,
           "d2": 0.0,
           "d3": 0.0,
           "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 2
+        "totalRowsReturned": 3
       },
       "MN": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":19344.88,\"d0\":65036.30,\"d1\":34333.72,\"d2\":11541.83,\"d3\":71.19,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":21314.89,\"d0\":63066.29,\"d1\":24520.07,\"d2\":9672.11,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbrevia",
         "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
+          "mapDate": "2026-07-07T00:00:00",
           "stateAbbreviation": "MN",
-          "none": 23674.66,
-          "d0": 60706.52,
-          "d1": 25537.95,
-          "d2": 9779.32,
+          "none": 21314.89,
+          "d0": 63066.29,
+          "d1": 24520.07,
+          "d2": 9672.11,
           "d3": 0.0,
           "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 2
+        "totalRowsReturned": 3
       }
     }
   },
   "exportSales": {
     "available": true,
-    "weekEnding": "2026-06-25T00:00:00",
+    "weekEnding": "2026-07-02T00:00:00",
     "marketYearUsed": 2026,
-    "dataAgeDays": 14,
+    "dataAgeDays": 7,
     "isStale": false,
-    "latestTotalMT": 436042,
-    "prevTotalMT": 279312,
-    "wowChangePct": 56.1,
+    "latestTotalMT": 492923,
+    "prevTotalMT": 436042,
+    "wowChangePct": 13.0,
     "chinaLatestMT": 0,
     "source": "USDA-FAS ESR API",
     "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
@@ -160,12 +160,12 @@
         },
         "202602": {
           "httpStatus": 200,
-          "error": "HTTP 429: Too Many Requests",
+          "error": null,
           "rowCount": 0
         },
         "202601": {
           "httpStatus": 200,
-          "error": "HTTP 429: Too Many Requests",
+          "error": null,
           "rowCount": 0
         },
         "202512": {
@@ -175,7 +175,7 @@
         },
         "202511": {
           "httpStatus": 200,
-          "error": "HTTP 429: Too Many Requests",
+          "error": null,
           "rowCount": 0
         },
         "202510": {
@@ -240,8 +240,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions"
           },
-          "outcome": "AI未能从搜索结果中提取到有效数值",
-          "aiRawResponse": "{\"数值\": null, \"日期\": null, \"来源\": null, \"原文片段\": null}"
+          "outcome": "提取成功，数据日期2025-04-01，距今464天（过期）"
         },
         {
           "attempt": 2,
@@ -267,7 +266,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6684, Requested 4058. Please try again in 20.565s. Need more tokens? Upgrade to Dev Tier today at https://con"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 7692, Requested 3888. Please try again in 26.85s. Need more tokens? Upgrade to Dev Tier today at https://cons"
           },
           "outcome": "Groq调用失败"
         }
@@ -291,7 +290,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6107, Requested 3942. Please try again in 15.3675s. Need more tokens? Upgrade to Dev Tier today at https://co"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6983, Requested 3975. Please try again in 22.185s. Need more tokens? Upgrade to Dev Tier today at https://con"
           },
           "outcome": "Groq调用失败"
         },
@@ -306,7 +305,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5513, Requested 4243. Please try again in 13.17s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6374, Requested 3680. Please try again in 15.405s. Need more tokens? Upgrade to Dev Tier today at https://con"
           },
           "outcome": "Groq调用失败"
         },
@@ -321,7 +320,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5461, Requested 4243. Please try again in 12.78s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6322, Requested 3680. Please try again in 15.014999999s. Need more tokens? Upgrade to Dev Tier today at https"
           },
           "outcome": "Groq调用失败"
         }
@@ -345,7 +344,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4917, Requested 3875. Please try again in 5.94s. Need more tokens? Upgrade to Dev Tier today at https://conso"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5704, Requested 3985. Please try again in 12.6675s. Need more tokens? Upgrade to Dev Tier today at https://co"
           },
           "outcome": "Groq调用失败"
         },
@@ -360,7 +359,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4401, Requested 4053. Please try again in 3.405s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4756, Requested 3893. Please try again in 4.8675s. Need more tokens? Upgrade to Dev Tier today at https://con"
           },
           "outcome": "Groq调用失败"
         },
@@ -375,7 +374,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4350, Requested 4053. Please try again in 3.0225s. Need more tokens? Upgrade to Dev Tier today at https://con"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4704, Requested 3893. Please try again in 4.4775s. Need more tokens? Upgrade to Dev Tier today at https://con"
           },
           "outcome": "Groq调用失败"
         }
@@ -405,7 +404,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 3905, Requested 4253. Please try again in 1.185s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4115, Requested 4108. Please try again in 1.6725s. Need more tokens? Upgrade to Dev Tier today at https://con"
           },
           "outcome": "Groq调用失败"
         },
@@ -433,7 +432,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 7179, Requested 4071. Please try again in 24.375s. Need more tokens? Upgrade to Dev Tier today at https://con"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 7496, Requested 4325. Please try again in 28.6575s. Need more tokens? Upgrade to Dev Tier today at https://co"
           },
           "outcome": "Groq调用失败"
         }
@@ -457,7 +456,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6595, Requested 3622. Please try again in 16.6275s. Need more tokens? Upgrade to Dev Tier today at https://co"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6927, Requested 3791. Please try again in 20.384999999s. Need more tokens? Upgrade to Dev Tier today at https"
           },
           "outcome": "Groq调用失败"
         },
@@ -472,7 +471,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6036, Requested 4406. Please try again in 18.315s. Need more tokens? Upgrade to Dev Tier today at https://con"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6281, Requested 4398. Please try again in 20.092499999s. Need more tokens? Upgrade to Dev Tier today at https"
           },
           "outcome": "Groq调用失败"
         },
@@ -487,7 +486,7 @@
           "groqDebug": {
             "url": "https://api.groq.com/openai/v1/chat/completions",
             "error": "HTTP 429: Too Many Requests",
-            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5440, Requested 3846. Please try again in 9.645s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5326, Requested 4279. Please try again in 12.0375s. Need more tokens? Upgrade to Dev Tier today at https://co"
           },
           "outcome": "Groq调用失败"
         }
