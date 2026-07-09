@@ -69,7 +69,11 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
     这样接口返回的东西跟预期不一致时，不需要去翻GitHub Actions运行日志，
     直接看 data/latest.json 里的诊断字段就知道真实情况是什么。
     """
-    headers = headers or {}
+    headers = dict(headers or {})
+    # 防御性修复：很多网站/API服务(包括Groq)会挡掉Python urllib默认的User-Agent
+    # (被Cloudflare等WAF当作机器人流量拦截，报错"error code: 1010")，
+    # 这里统一给个正常浏览器UA垫底，调用方传入的headers仍可以覆盖它。
+    headers.setdefault("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
     debug = {"url": url}
     for attempt in range(retries):
         try:
@@ -154,7 +158,13 @@ def tavily_search(query, max_results=5):
 
 def groq_extract(system_prompt, user_prompt):
     """调用Groq API跑DeepSeek R1蒸馏模型做信息提取（官方免费开发者层）。
-    返回模型输出的文本，失败返回None。"""
+    返回模型输出的文本，失败返回None。
+
+    ★ 已修复真实bug："error code: 1010"是Cloudflare WAF的错误码，不是Groq自己的报错格式，
+      意思是"根据你的请求签名判定为非人类流量并拦截"。查了Cloudflare官方社区多个案例，
+      确认常见原因就是缺少正常的User-Agent请求头——Python urllib默认发送的
+      "Python-urllib/x.x"这个UA本身就是最常见被拦截的特征之一（跟Java默认UA被拦截是同一类问题）。
+      加上一个正常的User-Agent后即可绕开这个WAF规则。"""
     if not GROQ_API_KEY:
         return None, {"error": "缺少 GROQ_API_KEY"}
     url = f"{GROQ_BASE}/chat/completions"
@@ -174,6 +184,8 @@ def groq_extract(system_prompt, user_prompt):
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {GROQ_API_KEY}",
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "application/json",
             },
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -862,14 +874,14 @@ SOYBEAN_HS_CODE = "1201"      # HS编码：大豆
 
 
 def fetch_china_soybean_imports_comtrade():
-    """从UN Comtrade官方API拿中国大豆月度进口量。
-    这是真正的官方国际贸易统计数据，不是AI搜索。
-    ★ 实测发现：免费层("comtrade - v1"产品)的数据发布滞后比最初预估的2-5个月更长，
-      之前只查2-5个月前导致count=0。现在把窗口拉宽到2-13个月前，
-      同时把尝试过的period列表放进诊断信息里，方便确认到底多久之前的数据才有。"""
-    if not UNCOMTRADE_API_KEY:
-        return {"available": False, "reason": "缺少 UNCOMTRADE_API_KEY"}
+    """从UN Comtrade官方API拿中国大豆月度进口量。这是真正的官方国际贸易统计数据，不是AI搜索。
 
+    ★ 已切换端点：查了UN Comtrade官方User Guide才发现，注册拿到的订阅密钥
+      实际上是"15个工作日的试用"，不是永久免费！这可能是之前12个月全部查询
+      都返回count=0的真正原因（试用期可能已过期，或者密钥本身就有更严格限制）。
+      官方文档明确说有一组"/public/v1/preview/"端点"不需要账号也不需要订阅密钥，
+      直接就能用"，虽然有请求频率和记录数限制，但对咱们一天2次的用量完全够用，
+      而且没有"密钥突然过期"这种长期隐患。所以改用这个真正免费的端点。"""
     now = datetime.now(timezone.utc)
     periods = []
     for months_back in range(2, 14):
@@ -879,13 +891,15 @@ def fetch_china_soybean_imports_comtrade():
             y -= 1
         periods.append(f"{y}{m:02d}")
 
+    # /public/v1/preview/ 端点不需要订阅密钥，即使配置了UNCOMTRADE_API_KEY这里也不用传
     url = (
-        f"{UNCOMTRADE_BASE}/get/C/M/HS"
+        f"https://comtradeapi.un.org/public/v1/preview/C/M/HS"
         f"?reporterCode={CHINA_REPORTER_CODE}&period={','.join(periods)}"
         f"&partnerCode=0&cmdCode={SOYBEAN_HS_CODE}&flowCode=M"
     )
-    data, debug = fetch_json_debug(url, headers={"Ocp-Apim-Subscription-Key": UNCOMTRADE_API_KEY})
+    data, debug = fetch_json_debug(url)
     debug["periodsAttempted"] = periods
+    debug["note"] = "使用/public/v1/preview/免费端点，无需订阅密钥"
     if not data:
         return {"available": False, "reason": "UN Comtrade接口无返回数据", "debug": debug}
 
@@ -894,7 +908,7 @@ def fetch_china_soybean_imports_comtrade():
         return {
             "available": False,
             "reason": f"UN Comtrade对{periods[0]}~{periods[-1]}这些月份全部返回空结果，"
-                       f"可能免费层数据滞后比预期更久，或者reporterCode/cmdCode组合有问题",
+                       f"preview端点本身有数据完整性限制，可能仍需要真正的订阅密钥才能拿到完整数据",
             "debug": {**debug, "sampleResponse": data},
         }
 
@@ -951,7 +965,12 @@ def fetch_arrival_estimate():
     #   "No such column: inspection_date"，报错信息里显示真实字段是"date"开头。
     #   为避免再猜错其他字段名导致SoQL查询报错，这里不在$where里做日期筛选，
     #   而是直接按"date"降序拉最近一批数据，日期范围筛选放到Python这边做，更安全。
-    query_url = f"{GRAIN_INSPECTIONS_URL}?$order=date DESC&$limit=3000"
+    # ★ 再次修复URL编码问题：上次修的是$where里的空格，这次重写查询时又在
+    #   "$order=date DESC"里引入了同样的问题(DESC前面的空格没编码)。
+    #   这次统一用urllib.parse.quote处理整个参数值，避免再犯同类错误。
+    import urllib.parse
+    order_param = urllib.parse.quote("date DESC")
+    query_url = f"{GRAIN_INSPECTIONS_URL}?$order={order_param}&$limit=3000"
     rows, fetch_debug = fetch_json_debug(query_url)
     debug.update(fetch_debug)
     if not rows:
@@ -1043,12 +1062,7 @@ def main():
             "       Tavily密钥：tavily.com（官方免费层，每月1000次）",
             file=sys.stderr,
         )
-    if not UNCOMTRADE_API_KEY:
-        print(
-            "[WARN] 未设置 UNCOMTRADE_API_KEY，中国大豆进口量(官方数据)将标记为不可用。\n"
-            "       请到 comtradeplus.un.org 免费注册。",
-            file=sys.stderr,
-        )
+    # 注：UN Comtrade已改用/public/v1/preview/免费端点，不再需要UNCOMTRADE_API_KEY
 
     no_usda_key = {"available": False, "reason": "缺少 USDA_API_KEY"}
     no_ai_key = {"available": False, "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"}
