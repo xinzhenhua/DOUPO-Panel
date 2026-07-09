@@ -876,61 +876,55 @@ SOYBEAN_HS_CODE = "1201"      # HS编码：大豆
 def fetch_china_soybean_imports_comtrade():
     """从UN Comtrade官方API拿中国大豆月度进口量。这是真正的官方国际贸易统计数据，不是AI搜索。
 
-    ★ 已切换端点：查了UN Comtrade官方User Guide才发现，注册拿到的订阅密钥
-      实际上是"15个工作日的试用"，不是永久免费！这可能是之前12个月全部查询
-      都返回count=0的真正原因（试用期可能已过期，或者密钥本身就有更严格限制）。
-      官方文档明确说有一组"/public/v1/preview/"端点"不需要账号也不需要订阅密钥，
-      直接就能用"，虽然有请求频率和记录数限制，但对咱们一天2次的用量完全够用，
-      而且没有"密钥突然过期"这种长期隐患。所以改用这个真正免费的端点。"""
+    ★ 已修复：实测报错"Maximum number of periods for preview is 1"，
+      说明免费的/public/v1/preview/端点一次只能查1个月份，不能像之前那样
+      12个月份逗号拼一起查。现在改成从最近的候选月份开始，一个一个单独查，
+      查到第一个有数据的就停（用query loop而不是combined query）。"""
     now = datetime.now(timezone.utc)
     periods = []
-    for months_back in range(2, 14):
+    for months_back in range(1, 14):
         y, m = now.year, now.month - months_back
         while m <= 0:
             m += 12
             y -= 1
         periods.append(f"{y}{m:02d}")
 
-    # /public/v1/preview/ 端点不需要订阅密钥，即使配置了UNCOMTRADE_API_KEY这里也不用传
-    url = (
-        f"https://comtradeapi.un.org/public/v1/preview/C/M/HS"
-        f"?reporterCode={CHINA_REPORTER_CODE}&period={','.join(periods)}"
-        f"&partnerCode=0&cmdCode={SOYBEAN_HS_CODE}&flowCode=M"
-    )
-    data, debug = fetch_json_debug(url)
-    debug["periodsAttempted"] = periods
-    debug["note"] = "使用/public/v1/preview/免费端点，无需订阅密钥"
-    if not data:
-        return {"available": False, "reason": "UN Comtrade接口无返回数据", "debug": debug}
+    all_attempts = {}
+    for period in periods:
+        url = (
+            f"https://comtradeapi.un.org/public/v1/preview/C/M/HS"
+            f"?reporterCode={CHINA_REPORTER_CODE}&period={period}"
+            f"&partnerCode=0&cmdCode={SOYBEAN_HS_CODE}&flowCode=M"
+        )
+        data, debug = fetch_json_debug(url)
+        rows = data.get("data") if isinstance(data, dict) else data
+        all_attempts[period] = {
+            "httpStatus": debug.get("httpStatus"),
+            "error": debug.get("error"),
+            "rowCount": len(rows) if rows else 0,
+        }
+        if not rows:
+            continue
 
-    rows = data.get("data") if isinstance(data, dict) else data
-    if not rows:
+        latest = rows[0]
+        net_weight_kg = latest.get("netWgt") or latest.get("qty")
+        if net_weight_kg is None:
+            all_attempts[period]["note"] = "有数据但找不到重量字段"
+            continue
+
+        wan_tons = round(net_weight_kg / 1000 / 10000, 1)  # 公斤→吨→万吨
         return {
-            "available": False,
-            "reason": f"UN Comtrade对{periods[0]}~{periods[-1]}这些月份全部返回空结果，"
-                       f"preview端点本身有数据完整性限制，可能仍需要真正的订阅密钥才能拿到完整数据",
-            "debug": {**debug, "sampleResponse": data},
+            "available": True,
+            "period": f"{period[:4]}年{period[4:]}月",
+            "importsWanTons": wan_tons,
+            "source": "UN Comtrade（联合国贸易统计数据库，官方数据，preview端点，通常有发布滞后）",
+            "sourceUrl": "https://comtradeplus.un.org/",
         }
 
-    # 取period最新的一条（qty单位通常是净重公斤，换算成万吨）
-    rows_sorted = sorted(rows, key=lambda r: str(r.get("period", "")))
-    latest = rows_sorted[-1]
-    net_weight_kg = latest.get("netWgt") or latest.get("qty")
-    if net_weight_kg is None:
-        return {
-            "available": False,
-            "reason": "拿到数据但找不到重量字段(netWgt/qty)",
-            "debug": {"sampleRawRow": latest, "actualFieldsSeen": sorted(latest.keys())},
-        }
-
-    wan_tons = round(net_weight_kg / 1000 / 10000, 1)  # 公斤→吨→万吨
-    period = str(latest.get("period"))
     return {
-        "available": True,
-        "period": f"{period[:4]}年{period[4:]}月",
-        "importsWanTons": wan_tons,
-        "source": "UN Comtrade（联合国贸易统计数据库，官方数据，通常滞后1-2个月）",
-        "sourceUrl": "https://comtradeplus.un.org/",
+        "available": False,
+        "reason": f"UN Comtrade对{periods[0]}~{periods[-1]}这些月份逐个查询都没有数据",
+        "debug": {"periodsAttempted": all_attempts, "note": "已改为逐月单独查询(preview端点限制一次只能查1个月)"},
     }
 
 
@@ -979,21 +973,36 @@ def fetch_arrival_estimate():
     debug["totalRowsReturned"] = len(rows)
     debug["sampleRawRow"] = rows[0] if rows else None
 
+    # ★ 已用真实原始数据确认字段名（之前全是猜测）：
+    #   数量字段是"mt"（字符串形式的metric tons，不是quantity/metric_tons这些猜测名）
+    #   commodity字段确认是"grain"（值形如"SOYBEANS"），destination确认就是"destination"
+    #   port字段存在，但实测很多记录是"INTERIOR"（内陆装运点），没法直接判断走哪个海岸，
+    #   所以改用"state"（发货州）作为湾区/西北太平洋的主要判断依据，port作为辅助信号。
+    GULF_STATES = {"ia","il","in","mo","ks","ne","oh","ky","tn","ar","la","ms","tx","mn","wi","sd","nd"}
+    PNW_STATES = {"wa","or","id","mt"}
+
     def parse_row(r):
-        # 字段名部分已确认(date)，其余(commodity/destination/port/quantity)仍是猜测，
-        # 做多候选兼容；如果都匹配不上，下面的诊断信息会把完整原始字段列出来
-        commodity = (r.get("commodity") or r.get("grain") or "").lower()
-        destination = (r.get("destination") or r.get("country") or r.get("destination_region") or "").lower()
-        port_region = (r.get("port_region") or r.get("district") or r.get("customs_district") or r.get("port") or "").lower()
-        date_str = r.get("date") or r.get("week_ending") or r.get("cert_date")
-        qty = r.get("quantity") or r.get("metric_tons") or r.get("weekly_metric_tons") or r.get("kilograms")
-        return commodity, destination, port_region, date_str, qty
+        commodity = (r.get("grain") or r.get("commodity") or "").lower()
+        destination = (r.get("destination") or r.get("country") or "").lower()
+        port_field = (r.get("port") or r.get("port_region") or "").lower()
+        state = (r.get("state") or "").lower()
+        date_str = r.get("date") or r.get("cert_date") or r.get("week_ending")
+        qty_raw = r.get("mt") or r.get("quantity") or r.get("metric_tons")
+        try:
+            qty = float(qty_raw) if qty_raw is not None else None
+        except (ValueError, TypeError):
+            qty = None
+        return commodity, destination, port_field, state, date_str, qty
 
-    def is_gulf(port_region):
-        return any(k in port_region for k in ["gulf", "new orleans", "louisiana", "mississippi"])
+    def is_gulf(port_field, state):
+        if any(k in port_field for k in ["gulf", "new orleans", "louisiana", "mississippi"]):
+            return True
+        return state in GULF_STATES
 
-    def is_pnw(port_region):
-        return any(k in port_region for k in ["pnw", "pacific northwest", "portland", "seattle", "tacoma", "washington", "oregon", "columbia"])
+    def is_pnw(port_field, state):
+        if any(k in port_field for k in ["pnw", "pacific northwest", "portland", "seattle", "tacoma", "columbia"]):
+            return True
+        return state in PNW_STATES
 
     gulf_target_date = end - timedelta(days=PORT_TRANSIT_DAYS["gulf"])
     pnw_target_date = end - timedelta(days=PORT_TRANSIT_DAYS["pnw"])
@@ -1003,7 +1012,7 @@ def fetch_arrival_estimate():
     all_field_names_seen = set()
     for r in rows:
         all_field_names_seen.update(r.keys())
-        commodity, destination, port_region, date_str, qty = parse_row(r)
+        commodity, destination, port_field, state, date_str, qty = parse_row(r)
         if not date_str:
             continue
         try:
@@ -1015,16 +1024,16 @@ def fetch_arrival_estimate():
         if "soybean" not in commodity or "china" not in destination or qty is None:
             continue
         matched_rows += 1
-        # 落在湾区推算窗口(±3天容差，因为检验不是每天都有)附近 且 确实是湾区港口
-        if is_gulf(port_region) and abs((row_date - gulf_target_date).days) <= 3:
+        # 落在湾区推算窗口(±3天容差，因为检验不是每天都有)附近 且 确实是湾区相关(港口名或发货州)
+        if is_gulf(port_field, state) and abs((row_date - gulf_target_date).days) <= 3:
             gulf_total += qty
-        elif is_pnw(port_region) and abs((row_date - pnw_target_date).days) <= 3:
+        elif is_pnw(port_field, state) and abs((row_date - pnw_target_date).days) <= 3:
             pnw_total += qty
 
     debug["matchedSoybeanChinaRows"] = matched_rows
     debug["allFieldNamesSeenInData"] = sorted(all_field_names_seen)
     if matched_rows == 0:
-        debug["warning"] = "没有匹配到'大豆+发往中国'的记录，commodity/destination/port_region这几个字段名仍是猜测，可能不对，请核对上面allFieldNamesSeenInData列出的真实字段名"
+        debug["warning"] = "没有匹配到'大豆+发往中国'的记录，请核对上面allFieldNamesSeenInData列出的真实字段名"
         return {"available": False, "reason": "未能从检验数据中匹配到大豆发往中国的记录", "debug": debug}
 
     total_metric_tons = gulf_total + pnw_total
