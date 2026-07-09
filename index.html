@@ -56,6 +56,13 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:420px){.mrow{grid-template-columns:1fr}}
 .field-ind{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.ai-suggest{background:var(--bg2);border-radius:6px;padding:6px 8px;margin-bottom:5px;font-size:10px;color:var(--t3);line-height:1.6}
+.ai-suggest.fresh{border-left:2px solid var(--g)}
+.ai-suggest.stale{border-left:2px solid var(--gold)}
+.ai-suggest.unavailable{border-left:2px solid var(--bdr)}
+.ai-suggest b{color:var(--t2)}
+.ai-suggest a{color:var(--b)}
+.ai-use-btn{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);cursor:pointer;margin-left:4px}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
@@ -138,39 +145,86 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
   <div id="cbotContent" class="loading">正在读取同步数据...</div>
 </div>
 
-<!-- ============ 手动录入板块（无公开API，需人工填写） ============ -->
-<div class="stitle">✍️ 手动录入（无公开数据接口）</div>
+<!-- ============ AI辅助搜索板块（Groq+DeepSeek蒸馏模型 + Tavily搜索） ============ -->
+<div class="stitle">🤖 AI辅助搜索（每天2次自动同步，仍可手动覆盖）</div>
 <div class="card">
   <div class="card-head">
     <div class="card-title">国内供需 · 每周更新</div>
-    <span class="badge badge-manual">🟡 手动</span>
+    <span class="badge badge-auto">🤖 AI搜索</span>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>油厂开机率(%)</label><input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_crush"></span></div>
-    <div class="mfield"><label>豆粕商业库存(万吨)</label><input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_stock"></span></div>
+    <div class="mfield">
+      <label>油厂开机率(%)</label>
+      <div class="ai-suggest" id="ai_crush"></div>
+      <input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_crush"></span>
+    </div>
+    <div class="mfield">
+      <label>豆粕商业库存(万吨)</label>
+      <div class="ai-suggest" id="ai_stock"></div>
+      <input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_stock"></span>
+    </div>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>现货基差(元/吨，正=现货贵)</label><input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_basis"></span></div>
-    <div class="mfield"><label>本周到港预报(万吨)</label><input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span></div>
+    <div class="mfield">
+      <label>现货基差(元/吨，正=现货贵，全国平均)</label>
+      <div class="ai-suggest" id="ai_basis"></div>
+      <input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_basis"></span>
+    </div>
+    <div class="mfield">
+      <label>本周到港预报(万吨)</label>
+      <div class="ai-suggest" id="ai_arrival"></div>
+      <input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
+    </div>
   </div>
 </div>
 
 <div class="card">
   <div class="card-head">
     <div class="card-title">需求端 · 每月更新</div>
-    <span class="badge badge-manual">🟡 手动</span>
+    <span class="badge badge-auto">🤖 AI搜索</span>
   </div>
   <div class="mrow">
-    <div class="mfield"><label>猪粮比</label><input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_hogratio"></span></div>
-    <div class="mfield"><label>能繁母猪存栏(万头)</label><input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_sows"></span></div>
-  </div>
-  <div class="mrow">
-    <div class="mfield"><label>中国大豆月度进口量(万吨)</label><input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span></div>
+    <div class="mfield">
+      <label>猪粮比</label>
+      <div class="ai-suggest" id="ai_hogratio"></div>
+      <input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_hogratio"></span>
+    </div>
+    <div class="mfield">
+      <label>能繁母猪存栏(万头)</label>
+      <div class="ai-suggest" id="ai_sows"></div>
+      <input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_sows"></span>
+    </div>
   </div>
   <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
-  <div style="font-size:10px;color:var(--t3);margin-top:4px">
-    数据来源：油厂开机率/库存→汇易咨询cnhnb.com · 进口量→customs.gov.cn · 能繁母猪→moa.gov.cn
+</div>
+
+<!-- ============ 中国大豆进口（官方UN Comtrade + AI搜索对比） ============ -->
+<div class="stitle">🚢 中国大豆进口量（官方数据 + AI搜索对比）</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">UN Comtrade 官方贸易统计</div>
+    <span class="badge" id="comtradeBadge">检查中...</span>
   </div>
+  <div id="comtradeContent" class="loading">正在读取同步数据...</div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">手动录入 / AI搜索对比值(万吨)</div>
+    <span class="badge badge-manual">🟡 可编辑</span>
+  </div>
+  <div class="ai-suggest" id="ai_import"></div>
+  <input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span>
+  <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 建议对照上方UN Comtrade官方数据和AI搜索结果，两者不一致时以官方数据为准</div>
+</div>
+
+<!-- ============ 本周到港预报（推算） ============ -->
+<div class="stitle">⚓ 本周到港预报（基于USDA出口检验数据推算）</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">分港口海运时间推算</div>
+    <span class="badge" id="arrivalBadge">检查中...</span>
+  </div>
+  <div id="arrivalContent" class="loading">正在读取同步数据...</div>
 </div>
 
 <!-- ============ 综合预警 ============ -->
@@ -298,15 +352,92 @@ async function loadSyncedData(){
     renderPsd(data.supplyDemand, data.generatedAt);
     renderCbot(data.cbotPrice, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
+    renderComtrade(data.chinaImportsOfficial, data.generatedAt);
+    renderArrivalEstimate(data.arrivalEstimate, data.generatedAt);
+    renderAiSuggest('ai_crush', data.crushRate, '%');
+    renderAiSuggest('ai_stock', data.soymealStock, '万吨');
+    renderAiSuggest('ai_basis', data.spotBasis, '元/吨');
+    renderAiSuggest('ai_arrival', null, '万吨'); // 到港预报走推算板块，不用AI搜索
+    renderAiSuggest('ai_hogratio', data.hogGrainRatio, '');
+    renderAiSuggest('ai_sows', data.breedingSows, '万头');
+    renderAiSuggest('ai_import', null, '万吨'); // 进口量走UN Comtrade板块，这里留空不重复渲染
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought'].forEach(k=>{
+    ['esr','psd','cbot','drought','comtrade','arrival'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
     });
   }
   updateOverallAlert();
+}
+
+function renderAiSuggest(elId, data, unit){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!data || !data.available){
+    el.className = 'ai-suggest unavailable';
+    el.innerHTML = `🤖 AI搜索：${data?data.reason:'尚未配置GROQ_API_KEY/TAVILY_API_KEY'}`;
+    return;
+  }
+  const cls = data.isStale ? 'stale' : 'fresh';
+  const staleTag = data.isStale ? ' ⚠️数据可能过期，请核实' : ' ✅新鲜';
+  el.className = 'ai-suggest ' + cls;
+  el.innerHTML = `🤖 AI找到：<b>${data.value}${unit}</b>${staleTag}
+    <button class="ai-use-btn" onclick="useAiValue('${elId.replace('ai_','m_')}', ${JSON.stringify(data.value)})">采用</button><br>
+    日期：${data.date||'未知'}（距今${data.ageDays!=null?data.ageDays+'天':'未知'}）
+    ${data.source?` · <a href="${data.source}" target="_blank">来源</a>`:''}
+    ${data.quote?`<br>原文："${data.quote}"`:''}`;
+  // 如果用户之前从没手动填过这个字段(输入框还是空的)，自动帮ta填上AI找到的值，省去手动抄一遍的麻烦
+  // （用户仍可以直接编辑覆盖，覆盖后的值才是最终参与打分的值）
+  const inputEl = document.getElementById(elId.replace('ai_','m_'));
+  if(inputEl && inputEl.value === '' && !data.isStale){
+    inputEl.value = data.value;
+    saveManualAndRefresh();
+  }
+}
+
+function useAiValue(inputId, value){
+  const el = document.getElementById(inputId);
+  if(el){ el.value = value; saveManualAndRefresh(); }
+}
+
+function renderComtrade(ct, genAt){
+  const badge = document.getElementById('comtradeBadge');
+  const el = document.getElementById('comtradeContent');
+  if(!ct || !ct.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ct?ct.reason:'未知原因'}</span>官方数据通常有1-2个月发布滞后，属正常现象</div>` + renderDebugInfo(ct?ct.debug:null);
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  el.innerHTML = `
+    <div class="ir"><div class="il">数据月份</div><div class="iv">${ct.period}</div></div>
+    <div class="ir"><div class="il">进口量</div><div class="iv"><span class="b">${ct.importsWanTons} 万吨</span></div></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">来源：${ct.source}</div>
+  `;
+}
+
+function renderArrivalEstimate(ae, genAt){
+  const badge = document.getElementById('arrivalBadge');
+  const el = document.getElementById('arrivalContent');
+  if(!ae || !ae.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ae?ae.reason:'未知原因'}</span></div>` + renderDebugInfo(ae?ae.debug:null);
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  el.innerHTML = `
+    <div class="ir"><div class="il">推算到港量</div><div class="iv"><span class="b">${ae.estimatedWanTons} 万吨</span></div></div>
+    <div class="ir"><div class="il">湾区部分</div><div class="iv">${(ae.gulfPortionMetricTons/10000).toFixed(1)} 万吨</div></div>
+    <div class="ir"><div class="il">西北太平洋部分</div><div class="iv">${(ae.pnwPortionMetricTons/10000).toFixed(1)} 万吨</div></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">⚠️ 这是推算值：${ae.methodology}</div>
+    <button class="ai-use-btn" style="margin-top:6px" onclick="useAiValue('m_arrival', ${ae.estimatedWanTons})">采用此推算值到本周到港预报</button>
+  `;
 }
 
 function renderDebugInfo(debug){
