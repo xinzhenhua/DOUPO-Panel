@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-07-09T02:13:27.072642+00:00",
+  "generatedAt": "2026-07-09T02:29:22.321266+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 311.0,
-    "change": -7.4,
-    "changePct": -2.32,
-    "asOf": "2026-07-09T02:03:02+00:00",
+    "price": 310.9,
+    "change": -7.5,
+    "changePct": -2.36,
+    "asOf": "2026-07-09T02:18:42+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
@@ -135,7 +135,18 @@
   },
   "chinaImportsOfficial": {
     "available": false,
-    "reason": "缺少 UNCOMTRADE_API_KEY"
+    "reason": "UN Comtrade返回了空结果（可能所查月份还没发布数据）",
+    "debug": {
+      "url": "https://comtradeapi.un.org/data/v1/get/C/M/HS?reporterCode=156&period=202605,202604,202603,202602&partnerCode=0&cmdCode=1201&flowCode=M",
+      "httpStatus": 200,
+      "rawSnippet": "{\"elapsedTime\":\"0.14 secs\",\"count\":0,\"data\":[],\"error\":\"\"}",
+      "sampleResponse": {
+        "elapsedTime": "0.14 secs",
+        "count": 0,
+        "data": [],
+        "error": ""
+      }
+    }
   },
   "arrivalEstimate": {
     "available": false,
@@ -149,22 +160,272 @@
   },
   "soymealStock": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "豆粕商业库存",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "全国豆粕商业库存 最新 万吨",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "全国豆粕商业库存 最新 万吨",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "hogGrainRatio": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "猪粮比",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "猪粮比 最新 农业农村部",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "猪粮比 最新 农业农村部",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "breedingSows": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "能繁母猪存栏",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "能繁母猪存栏量 最新 农业农村部 万头",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪存栏量 最新 农业农村部 万头",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "spotBasis": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "现货基差",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "豆粕现货基差 全国平均 最新 元/吨",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕现货基差 全国平均 最新 元/吨",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "crushRate": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "油厂开机率",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "我的钢铁网 mysteel 豆粕 油厂开机率 全国",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "我的钢铁网 mysteel 豆粕 油厂开机率 全国",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕 油厂开机率 全国 最新 汇易咨询（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕 油厂开机率 全国 最新 汇易咨询（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "大豆压榨开机率 全国平均 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "大豆压榨开机率 全国平均 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 403: Forbidden",
+            "rawSnippet": "error code: 1010\n"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   }
 }
