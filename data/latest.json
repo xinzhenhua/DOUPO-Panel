@@ -1,38 +1,137 @@
 {
-  "generatedAt": "2026-07-09T06:17:57.797049+00:00",
+  "generatedAt": "2026-07-09T08:37:40.983736+00:00",
   "cbotPrice": {
-    "available": false,
-    "reason": "Yahoo Finance接口无返回（可能被限流或接口变更）",
-    "debug": {
-      "httpStatus": 403,
-      "error": "mocked"
-    }
+    "available": true,
+    "price": 309.9,
+    "change": -4.6,
+    "changePct": -1.46,
+    "asOf": "2026-07-09T04:00:00+00:00",
+    "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
-    "available": false,
-    "reason": "USDM接口未返回任何州的数据",
-    "debug": {
+    "available": true,
+    "anomalous": false,
+    "byState": {
       "IA": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 33.34,
+        "d1": 12.15,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "IL": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 10.72,
+        "d1": 0.0,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "MN": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 71.94,
+        "d1": 30.26,
+        "d2": 11.59,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 11.6
+      }
+    },
+    "avgSevereOrWorsePct": 3.9,
+    "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
+    "sourceUrl": "https://droughtmonitor.unl.edu/",
+    "debug": {
+      "IA": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37724.00,\"d0\":18587.50,\"d1\":4659.61,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IA",
+          "none": 37534.63,
+          "d0": 18776.87,
+          "d1": 6840.84,
+          "d2": 1.9,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
+      },
+      "IL": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":44422.41,\"d0\":11960.14,\"d1\":1012.51,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IL",
+          "none": 50339.32,
+          "d0": 6043.23,
+          "d1": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
+      },
+      "MN": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":19344.88,\"d0\":65036.30,\"d1\":34333.72,\"d2\":11541.83,\"d3\":71.19,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "MN",
+          "none": 23674.66,
+          "d0": 60706.52,
+          "d1": 25537.95,
+          "d2": 9779.32,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
       }
     }
   },
   "exportSales": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
+    "available": true,
+    "weekEnding": "2026-06-25T00:00:00",
+    "marketYearUsed": 2026,
+    "dataAgeDays": 14,
+    "isStale": false,
+    "latestTotalMT": 436042,
+    "prevTotalMT": 279312,
+    "wowChangePct": 56.1,
+    "chinaLatestMT": 0,
+    "source": "USDA-FAS ESR API",
+    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
   },
   "supplyDemand": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
+    "available": true,
+    "marketYear": 2025,
+    "wasdeVintage": "2026年06月版",
+    "endingStocks": 408.0,
+    "production": 57200.0,
+    "totalSupply": 58309.0,
+    "domesticConsumption": 39757.0,
+    "source": "USDA-FAS PSD API (WASDE同源数据)",
+    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
   },
   "chinaImportsOfficial": {
     "available": false,
@@ -40,68 +139,68 @@
     "debug": {
       "periodsAttempted": {
         "202606": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": null,
           "rowCount": 0
         },
         "202605": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202604": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202603": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": null,
           "rowCount": 0
         },
         "202602": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202601": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202512": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202511": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202510": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202509": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202508": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202507": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         },
         "202506": {
-          "httpStatus": 403,
-          "error": "mocked",
+          "httpStatus": 200,
+          "error": "HTTP 429: Too Many Requests",
           "rowCount": 0
         }
       },
@@ -109,32 +208,290 @@
     }
   },
   "arrivalEstimate": {
-    "available": false,
-    "reason": "USDA谷物出口检验接口无返回数据",
-    "debug": {
-      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json",
-      "httpStatus": 403,
-      "error": "mocked"
-    }
+    "available": true,
+    "estimatedWanTons": 0.0,
+    "gulfPortionMetricTons": 0,
+    "pnwPortionMetricTons": 0,
+    "methodology": "湾区港口约35天海运+西北太平洋港口约18天海运，按此反推2026-06-04(湾区)和2026-06-21(西北太平洋)前后装船量",
+    "source": "USDA/AMS 谷物出口检验数据（推算值，非直接测量）",
+    "sourceUrl": "https://agtransport.usda.gov/",
+    "debug": null
   },
   "soymealStock": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "available": true,
+    "value": 99.29,
+    "date": "2025-11-21",
+    "ageDays": 230,
+    "isStale": true,
+    "source": "https://notice.10jqka.com.cn/api/original/adab56639c70e25a.pdf",
+    "quote": "豆粕库存99.29万吨",
+    "attemptsUsed": 2,
+    "debug": {
+      "indicator": "豆粕商业库存",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "全国豆粕商业库存 最新 万吨",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "全国豆粕商业库存 最新 万吨",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions"
+          },
+          "outcome": "AI未能从搜索结果中提取到有效数值",
+          "aiRawResponse": "{\"数值\": null, \"日期\": null, \"来源\": null, \"原文片段\": null}"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions"
+          },
+          "outcome": "提取成功，数据日期2025-11-21，距今230天（过期）"
+        },
+        {
+          "attempt": 3,
+          "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕库存 汇易 mysteel 周度数据（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6684, Requested 4058. Please try again in 20.565s. Need more tokens? Upgrade to Dev Tier today at https://con"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "hogGrainRatio": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "猪粮比",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "猪粮比 最新 农业农村部",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "猪粮比 最新 农业农村部",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6107, Requested 3942. Please try again in 15.3675s. Need more tokens? Upgrade to Dev Tier today at https://co"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5513, Requested 4243. Please try again in 13.17s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "生猪价格 玉米价格 比价 最新周度（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5461, Requested 4243. Please try again in 12.78s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "breedingSows": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "能繁母猪存栏",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "能繁母猪存栏量 最新 农业农村部 万头",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪存栏量 最新 农业农村部 万头",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4917, Requested 3875. Please try again in 5.94s. Need more tokens? Upgrade to Dev Tier today at https://conso"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4401, Requested 4053. Please try again in 3.405s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "能繁母猪 存栏 环比 月度数据（请找最近45天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 4350, Requested 4053. Please try again in 3.0225s. Need more tokens? Upgrade to Dev Tier today at https://con"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "spotBasis": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "available": true,
+    "value": 545.5,
+    "date": "2024-01-09",
+    "ageDays": 912,
+    "isStale": true,
+    "source": "https://www.cifco.net/upload/other/file/202504141744612848365.pdf",
+    "quote": "2024-01-09 548 528 538 568",
+    "attemptsUsed": 2,
+    "debug": {
+      "indicator": "现货基差",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "豆粕现货基差 全国平均 最新 元/吨",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕现货基差 全国平均 最新 元/吨",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 3905, Requested 4253. Please try again in 1.185s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions"
+          },
+          "outcome": "提取成功，数据日期2024-01-09，距今912天（过期）"
+        },
+        {
+          "attempt": 3,
+          "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕基差报价 汇总 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 7179, Requested 4071. Please try again in 24.375s. Need more tokens? Upgrade to Dev Tier today at https://con"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   },
   "crushRate": {
     "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "reason": "3次尝试后仍未能提取到有效数据",
+    "debug": {
+      "indicator": "油厂开机率",
+      "attempts": [
+        {
+          "attempt": 1,
+          "query": "我的钢铁网 mysteel 豆粕 油厂开机率 全国",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "我的钢铁网 mysteel 豆粕 油厂开机率 全国",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6595, Requested 3622. Please try again in 16.6275s. Need more tokens? Upgrade to Dev Tier today at https://co"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 2,
+          "query": "豆粕 油厂开机率 全国 最新 汇易咨询（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "豆粕 油厂开机率 全国 最新 汇易咨询（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 6036, Requested 4406. Please try again in 18.315s. Need more tokens? Upgrade to Dev Tier today at https://con"
+          },
+          "outcome": "Groq调用失败"
+        },
+        {
+          "attempt": 3,
+          "query": "大豆压榨开机率 全国平均 本周（请找最近10天内发布的最新数据，不要旧数据）",
+          "searchDebug": {
+            "url": "https://api.tavily.com/search",
+            "query": "大豆压榨开机率 全国平均 本周（请找最近10天内发布的最新数据，不要旧数据）",
+            "resultCount": 5
+          },
+          "groqDebug": {
+            "url": "https://api.groq.com/openai/v1/chat/completions",
+            "error": "HTTP 429: Too Many Requests",
+            "rawSnippet": "{\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kx2am5d6fvkrh07akcnjvvhf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 5440, Requested 3846. Please try again in 9.645s. Need more tokens? Upgrade to Dev Tier today at https://cons"
+          },
+          "outcome": "Groq调用失败"
+        }
+      ]
+    }
   }
 }
