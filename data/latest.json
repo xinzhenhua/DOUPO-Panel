@@ -1,136 +1,77 @@
 {
-  "generatedAt": "2026-07-08T15:43:19.053155+00:00",
+  "generatedAt": "2026-07-08T20:23:41.995027+00:00",
   "cbotPrice": {
-    "available": true,
-    "price": 310.3,
-    "change": -8.1,
-    "changePct": -2.54,
-    "asOf": "2026-07-08T04:00:00+00:00",
-    "source": "Yahoo Finance (非官方接口，仅供参考)"
+    "available": false,
+    "reason": "Yahoo Finance接口无返回（可能被限流或接口变更）",
+    "debug": {
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/ZM=F?interval=1d&range=5d",
+      "httpStatus": 403,
+      "error": "HTTP 403: Forbidden",
+      "rawSnippet": "Host not in allowlist: query1.finance.yahoo.com. Add this host to your network egress settings to allow access."
+    }
   },
   "droughtMonitor": {
-    "available": true,
-    "anomalous": false,
-    "byState": {
-      "IA": {
-        "available": true,
-        "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 33.34,
-        "d1": 12.15,
-        "d2": 0.0,
-        "d3": 0.0,
-        "d4": 0.0,
-        "severeOrWorsePct": 0.0
-      },
-      "IL": {
-        "available": true,
-        "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 10.72,
-        "d1": 0.0,
-        "d2": 0.0,
-        "d3": 0.0,
-        "d4": 0.0,
-        "severeOrWorsePct": 0.0
-      },
-      "MN": {
-        "available": true,
-        "anomalous": false,
-        "validDate": "2026-06-30T00:00:00",
-        "d0": 71.94,
-        "d1": 30.26,
-        "d2": 11.59,
-        "d3": 0.0,
-        "d4": 0.0,
-        "severeOrWorsePct": 11.6
-      }
-    },
-    "avgSevereOrWorsePct": 3.9,
-    "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
-    "sourceUrl": "https://droughtmonitor.unl.edu/",
+    "available": false,
+    "reason": "USDM接口未返回任何州的数据",
     "debug": {
       "IA": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37724.00,\"d0\":18587.50,\"d1\":4659.61,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
-        "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
-          "stateAbbreviation": "IA",
-          "none": 37534.63,
-          "d0": 18776.87,
-          "d1": 6840.84,
-          "d2": 1.9,
-          "d3": 0.0,
-          "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
-          "statisticFormatID": 1
-        },
-        "totalRowsReturned": 2
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
       },
       "IL": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":44422.41,\"d0\":11960.14,\"d1\":1012.51,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
-        "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
-          "stateAbbreviation": "IL",
-          "none": 50339.32,
-          "d0": 6043.23,
-          "d1": 0.0,
-          "d2": 0.0,
-          "d3": 0.0,
-          "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
-          "statisticFormatID": 1
-        },
-        "totalRowsReturned": 2
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
       },
       "MN": {
         "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":19344.88,\"d0\":65036.30,\"d1\":34333.72,\"d2\":11541.83,\"d3\":71.19,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
-        "sampleRawRow": {
-          "mapDate": "2026-06-30T00:00:00",
-          "stateAbbreviation": "MN",
-          "none": 23674.66,
-          "d0": 60706.52,
-          "d1": 25537.95,
-          "d2": 9779.32,
-          "d3": 0.0,
-          "d4": 0.0,
-          "validStart": "2026-06-30T00:00:00",
-          "validEnd": "2026-07-06T23:59:59",
-          "statisticFormatID": 1
-        },
-        "totalRowsReturned": 2
+        "httpStatus": 403,
+        "error": "HTTP 403: Forbidden",
+        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
       }
     }
   },
   "exportSales": {
-    "available": true,
-    "weekEnding": "2026-06-25T00:00:00",
-    "marketYearUsed": 2026,
-    "dataAgeDays": 13,
-    "isStale": false,
-    "latestTotalMT": 436042,
-    "prevTotalMT": 279312,
-    "wowChangePct": 56.1,
-    "chinaLatestMT": 0,
-    "source": "USDA-FAS ESR API",
-    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
+    "available": false,
+    "reason": "缺少 USDA_API_KEY"
   },
   "supplyDemand": {
-    "available": true,
-    "marketYear": 2025,
-    "wasdeVintage": "2026年06月版",
-    "endingStocks": 408.0,
-    "production": 57200.0,
-    "totalSupply": 58309.0,
-    "domesticConsumption": 39757.0,
-    "source": "USDA-FAS PSD API (WASDE同源数据)",
-    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
+    "available": false,
+    "reason": "缺少 USDA_API_KEY"
+  },
+  "chinaImportsOfficial": {
+    "available": false,
+    "reason": "缺少 UNCOMTRADE_API_KEY"
+  },
+  "arrivalEstimate": {
+    "available": false,
+    "reason": "USDA谷物出口检验接口无返回数据",
+    "debug": {
+      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json?$where=inspection_date between '2026-04-29' and '2026-07-08'&$limit=5000",
+      "error": "URL can't contain control characters. \"/resource/sruw-w49i.json?$where=inspection_date between '2026-04-29' and '2026-07-08'&$limit=5000\" (found at least ' ')"
+    }
+  },
+  "soymealStock": {
+    "available": false,
+    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+  },
+  "hogGrainRatio": {
+    "available": false,
+    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+  },
+  "breedingSows": {
+    "available": false,
+    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+  },
+  "spotBasis": {
+    "available": false,
+    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+  },
+  "crushRate": {
+    "available": false,
+    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
   }
 }
