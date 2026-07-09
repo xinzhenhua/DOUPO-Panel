@@ -107,12 +107,16 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
 # ---------------------------------------------------------------------------
 def tavily_search(query, max_results=5):
     """调用Tavily搜索API（官方免费层，每月1000次，无需绑卡）。
-    返回搜索结果列表：[{title, url, content, published_date}, ...]，失败返回None。"""
+    返回搜索结果列表：[{title, url, content, published_date}, ...]，失败返回None。
+
+    ★ 已修复真实bug：之前把api_key塞进了请求body里，但Tavily官方文档和多个独立示例
+      一致确认认证方式是"Authorization: Bearer tvly-xxx"这个HTTP请求头，
+      body里不需要（也不应该）带api_key。之前代码完全没设置这个请求头，
+      导致每次请求都认证失败，这就是5个AI搜索指标全部失败的真正原因。"""
     if not TAVILY_API_KEY:
         return None, {"error": "缺少 TAVILY_API_KEY"}
     url = f"{TAVILY_BASE}/search"
     payload = json.dumps({
-        "api_key": TAVILY_API_KEY,
         "query": query,
         "max_results": max_results,
         "search_depth": "advanced",
@@ -122,7 +126,10 @@ def tavily_search(query, max_results=5):
     try:
         req = urllib.request.Request(
             url, data=payload, method="POST",
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {TAVILY_API_KEY}",
+            },
         )
         with urllib.request.urlopen(req, timeout=25) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -856,14 +863,16 @@ SOYBEAN_HS_CODE = "1201"      # HS编码：大豆
 
 def fetch_china_soybean_imports_comtrade():
     """从UN Comtrade官方API拿中国大豆月度进口量。
-    这是真正的官方国际贸易统计数据，不是AI搜索，但有1-2个月的公开滞后。"""
+    这是真正的官方国际贸易统计数据，不是AI搜索。
+    ★ 实测发现：免费层("comtrade - v1"产品)的数据发布滞后比最初预估的2-5个月更长，
+      之前只查2-5个月前导致count=0。现在把窗口拉宽到2-13个月前，
+      同时把尝试过的period列表放进诊断信息里，方便确认到底多久之前的数据才有。"""
     if not UNCOMTRADE_API_KEY:
         return {"available": False, "reason": "缺少 UNCOMTRADE_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    # 官方数据通常有1-2个月滞后，从2个月前开始往前找最近3个月，取能拿到的最新一个月
     periods = []
-    for months_back in range(2, 6):
+    for months_back in range(2, 14):
         y, m = now.year, now.month - months_back
         while m <= 0:
             m += 12
@@ -876,6 +885,7 @@ def fetch_china_soybean_imports_comtrade():
         f"&partnerCode=0&cmdCode={SOYBEAN_HS_CODE}&flowCode=M"
     )
     data, debug = fetch_json_debug(url, headers={"Ocp-Apim-Subscription-Key": UNCOMTRADE_API_KEY})
+    debug["periodsAttempted"] = periods
     if not data:
         return {"available": False, "reason": "UN Comtrade接口无返回数据", "debug": debug}
 
@@ -883,7 +893,8 @@ def fetch_china_soybean_imports_comtrade():
     if not rows:
         return {
             "available": False,
-            "reason": "UN Comtrade返回了空结果（可能所查月份还没发布数据）",
+            "reason": f"UN Comtrade对{periods[0]}~{periods[-1]}这些月份全部返回空结果，"
+                       f"可能免费层数据滞后比预期更久，或者reporterCode/cmdCode组合有问题",
             "debug": {**debug, "sampleResponse": data},
         }
 
@@ -936,11 +947,11 @@ def fetch_arrival_estimate():
     # 拉最近70天的检验数据，足够覆盖两种港口的推算窗口
     end = datetime.now(timezone.utc).date()
     start = end - timedelta(days=70)
-    # ★ 用urllib.parse.quote正确编码，之前直接拼字符串导致空格没转义，
-    #   请求会被拒绝("URL can't contain control characters")
-    import urllib.parse
-    where_clause = f"inspection_date between '{start.isoformat()}' and '{end.isoformat()}'"
-    query_url = f"{GRAIN_INSPECTIONS_URL}?$where={urllib.parse.quote(where_clause)}&$limit=5000"
+    # ★ 已修复：之前猜测的字段名"inspection_date"不存在，实测报错
+    #   "No such column: inspection_date"，报错信息里显示真实字段是"date"开头。
+    #   为避免再猜错其他字段名导致SoQL查询报错，这里不在$where里做日期筛选，
+    #   而是直接按"date"降序拉最近一批数据，日期范围筛选放到Python这边做，更安全。
+    query_url = f"{GRAIN_INSPECTIONS_URL}?$order=date DESC&$limit=3000"
     rows, fetch_debug = fetch_json_debug(query_url)
     debug.update(fetch_debug)
     if not rows:
@@ -950,12 +961,13 @@ def fetch_arrival_estimate():
     debug["sampleRawRow"] = rows[0] if rows else None
 
     def parse_row(r):
-        # 字段名是猜测的（没有拿到过真实原始样本），做多候选兼容
+        # 字段名部分已确认(date)，其余(commodity/destination/port/quantity)仍是猜测，
+        # 做多候选兼容；如果都匹配不上，下面的诊断信息会把完整原始字段列出来
         commodity = (r.get("commodity") or r.get("grain") or "").lower()
-        destination = (r.get("destination") or r.get("country") or "").lower()
-        port_region = (r.get("port_region") or r.get("district") or r.get("customs_district") or "").lower()
-        date_str = r.get("inspection_date") or r.get("week_ending") or r.get("date")
-        qty = r.get("quantity") or r.get("metric_tons") or r.get("weekly_metric_tons")
+        destination = (r.get("destination") or r.get("country") or r.get("destination_region") or "").lower()
+        port_region = (r.get("port_region") or r.get("district") or r.get("customs_district") or r.get("port") or "").lower()
+        date_str = r.get("date") or r.get("week_ending") or r.get("cert_date")
+        qty = r.get("quantity") or r.get("metric_tons") or r.get("weekly_metric_tons") or r.get("kilograms")
         return commodity, destination, port_region, date_str, qty
 
     def is_gulf(port_region):
@@ -969,13 +981,19 @@ def fetch_arrival_estimate():
 
     gulf_total, pnw_total = 0, 0
     matched_rows = 0
+    all_field_names_seen = set()
     for r in rows:
+        all_field_names_seen.update(r.keys())
         commodity, destination, port_region, date_str, qty = parse_row(r)
-        if "soybean" not in commodity or "china" not in destination or qty is None:
+        if not date_str:
             continue
         try:
-            row_date = datetime.fromisoformat(str(date_str).replace("Z", "")).date()
+            row_date = datetime.fromisoformat(str(date_str).replace("Z", "")[:10]).date()
         except (ValueError, TypeError):
+            continue
+        if row_date < start or row_date > end:
+            continue  # 日期筛选放这里做，而不是在SoQL的$where里
+        if "soybean" not in commodity or "china" not in destination or qty is None:
             continue
         matched_rows += 1
         # 落在湾区推算窗口(±3天容差，因为检验不是每天都有)附近 且 确实是湾区港口
@@ -985,8 +1003,9 @@ def fetch_arrival_estimate():
             pnw_total += qty
 
     debug["matchedSoybeanChinaRows"] = matched_rows
+    debug["allFieldNamesSeenInData"] = sorted(all_field_names_seen)
     if matched_rows == 0:
-        debug["warning"] = "没有匹配到'大豆+发往中国'的记录，可能是字段名猜测的不对，需要真实原始数据核对"
+        debug["warning"] = "没有匹配到'大豆+发往中国'的记录，commodity/destination/port_region这几个字段名仍是猜测，可能不对，请核对上面allFieldNamesSeenInData列出的真实字段名"
         return {"available": False, "reason": "未能从检验数据中匹配到大豆发往中国的记录", "debug": debug}
 
     total_metric_tons = gulf_total + pnw_total
