@@ -357,10 +357,10 @@ async function loadSyncedData(){
     renderAiSuggest('ai_crush', data.crushRate, '%');
     renderAiSuggest('ai_stock', data.soymealStock, '万吨');
     renderAiSuggest('ai_basis', data.spotBasis, '元/吨');
-    renderAiSuggest('ai_arrival', null, '万吨'); // 到港预报走推算板块，不用AI搜索
+    renderAiSuggest('ai_arrival', null, '万吨', true); // 到港预报走推算板块，不用AI搜索
     renderAiSuggest('ai_hogratio', data.hogGrainRatio, '');
     renderAiSuggest('ai_sows', data.breedingSows, '万头');
-    renderAiSuggest('ai_import', null, '万吨'); // 进口量走UN Comtrade板块，这里留空不重复渲染
+    renderAiSuggest('ai_import', null, '万吨', true); // 进口量走UN Comtrade板块，这里留空不重复渲染
     window._syncedData = data;
   }catch(e){
     ['esr','psd','cbot','drought','comtrade','arrival'].forEach(k=>{
@@ -372,12 +372,19 @@ async function loadSyncedData(){
   updateOverallAlert();
 }
 
-function renderAiSuggest(elId, data, unit){
+function renderAiSuggest(elId, data, unit, notApplicable){
   const el = document.getElementById(elId);
   if(!el) return;
+  if(notApplicable){
+    // 这个字段本来就不走AI搜索（到港预报/进口量走各自的专用官方数据卡片），
+    // 不应该显示"未配置密钥"这种误导性消息
+    el.className = 'ai-suggest unavailable';
+    el.innerHTML = `💡 此项通过上方专用卡片的官方数据获取，不使用AI搜索`;
+    return;
+  }
   if(!data || !data.available){
     el.className = 'ai-suggest unavailable';
-    el.innerHTML = `🤖 AI搜索：${data?data.reason:'尚未配置GROQ_API_KEY/TAVILY_API_KEY'}`;
+    el.innerHTML = `🤖 AI搜索：${data?data.reason:'尚未配置GROQ_API_KEY/TAVILY_API_KEY'}` + renderDebugInfo(data?data.debug:null);
     return;
   }
   const cls = data.isStale ? 'stale' : 'fresh';
