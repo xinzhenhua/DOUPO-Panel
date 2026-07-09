@@ -1,46 +1,137 @@
 {
-  "generatedAt": "2026-07-08T20:23:41.995027+00:00",
+  "generatedAt": "2026-07-09T02:13:27.072642+00:00",
   "cbotPrice": {
-    "available": false,
-    "reason": "Yahoo Finance接口无返回（可能被限流或接口变更）",
-    "debug": {
-      "url": "https://query1.finance.yahoo.com/v8/finance/chart/ZM=F?interval=1d&range=5d",
-      "httpStatus": 403,
-      "error": "HTTP 403: Forbidden",
-      "rawSnippet": "Host not in allowlist: query1.finance.yahoo.com. Add this host to your network egress settings to allow access."
-    }
+    "available": true,
+    "price": 311.0,
+    "change": -7.4,
+    "changePct": -2.32,
+    "asOf": "2026-07-09T02:03:02+00:00",
+    "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
-    "available": false,
-    "reason": "USDM接口未返回任何州的数据",
-    "debug": {
+    "available": true,
+    "anomalous": false,
+    "byState": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 403,
-        "error": "HTTP 403: Forbidden",
-        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 33.34,
+        "d1": 12.15,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 403,
-        "error": "HTTP 403: Forbidden",
-        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 10.72,
+        "d1": 0.0,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/24/2026&enddate=7/8/2026&statisticsType=1",
-        "httpStatus": 403,
-        "error": "HTTP 403: Forbidden",
-        "rawSnippet": "Host not in allowlist: usdmdataservices.unl.edu. Add this host to your network egress settings to allow access."
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-06-30T00:00:00",
+        "d0": 71.94,
+        "d1": 30.26,
+        "d2": 11.59,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 11.6
+      }
+    },
+    "avgSevereOrWorsePct": 3.9,
+    "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
+    "sourceUrl": "https://droughtmonitor.unl.edu/",
+    "debug": {
+      "IA": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37724.00,\"d0\":18587.50,\"d1\":4659.61,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IA",
+          "none": 37534.63,
+          "d0": 18776.87,
+          "d1": 6840.84,
+          "d2": 1.9,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
+      },
+      "IL": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":44422.41,\"d0\":11960.14,\"d1\":1012.51,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "IL",
+          "none": 50339.32,
+          "d0": 6043.23,
+          "d1": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
+      },
+      "MN": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/25/2026&enddate=7/9/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":19344.88,\"d0\":65036.30,\"d1\":34333.72,\"d2\":11541.83,\"d3\":71.19,\"d4\":0.00,\"validStart\":\"2026-06-23T00:00:00\",\"validEnd\":\"2026-06-29T23:59:59\",\"statisticFormatID\":1}]",
+        "sampleRawRow": {
+          "mapDate": "2026-06-30T00:00:00",
+          "stateAbbreviation": "MN",
+          "none": 23674.66,
+          "d0": 60706.52,
+          "d1": 25537.95,
+          "d2": 9779.32,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-06-30T00:00:00",
+          "validEnd": "2026-07-06T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 2
       }
     }
   },
   "exportSales": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
+    "available": true,
+    "weekEnding": "2026-06-25T00:00:00",
+    "marketYearUsed": 2026,
+    "dataAgeDays": 14,
+    "isStale": false,
+    "latestTotalMT": 436042,
+    "prevTotalMT": 279312,
+    "wowChangePct": 56.1,
+    "chinaLatestMT": 0,
+    "source": "USDA-FAS ESR API",
+    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
   },
   "supplyDemand": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
+    "available": true,
+    "marketYear": 2025,
+    "wasdeVintage": "2026年06月版",
+    "endingStocks": 408.0,
+    "production": 57200.0,
+    "totalSupply": 58309.0,
+    "domesticConsumption": 39757.0,
+    "source": "USDA-FAS PSD API (WASDE同源数据)",
+    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
   },
   "chinaImportsOfficial": {
     "available": false,
@@ -50,8 +141,10 @@
     "available": false,
     "reason": "USDA谷物出口检验接口无返回数据",
     "debug": {
-      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json?$where=inspection_date between '2026-04-29' and '2026-07-08'&$limit=5000",
-      "error": "URL can't contain control characters. \"/resource/sruw-w49i.json?$where=inspection_date between '2026-04-29' and '2026-07-08'&$limit=5000\" (found at least ' ')"
+      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json?$where=inspection_date%20between%20%272026-04-30%27%20and%20%272026-07-09%27&$limit=5000",
+      "httpStatus": 400,
+      "error": "HTTP 400: Bad Request",
+      "rawSnippet": "{\"message\":\"Query coordinator error: query.soql.no-such-column; No such column: inspection_date; position: Map(row -> 1, column -> 558, line -> \\\"SELECT `date`, `cert_date`, `week`, `month`, `quarter`, `year`, `type_shipm`, `type_carrier`, `type_carrier_text`, `carrier_name`, `grain`, `grade`, `class`, `subclass`, `destination`, `port`, `ams_reg`, `fgis_reg`, `state`, `mt`, `pounds`, `field_office` ORDER BY `cert_date` DESC NULL LAST |> SELECT `date`, `cert_date`, `week`, `month`, `quarter`, `ye"
     }
   },
   "soymealStock": {
