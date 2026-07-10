@@ -307,10 +307,16 @@ document.getElementById('setupPanel').innerHTML = SETUP_HTML;
 function toggleSetup(){document.getElementById('setupPanel').classList.toggle('open');}
 
 // ===================== 天气板块：Open-Meteo 实时抓取 =====================
+// ★ 已扩展：查证美国大豆产量排名后，从3州扩展到8州主产区
 const BELT_LOCATIONS = [
   {name:'爱荷华(Iowa)', lat:41.878, lon:-93.097},
   {name:'伊利诺伊(Illinois)', lat:39.798, lon:-89.644},
   {name:'明尼苏达(Minnesota)', lat:44.986, lon:-93.279},
+  {name:'印第安纳(Indiana)', lat:39.768, lon:-86.158},
+  {name:'内布拉斯加(Nebraska)', lat:41.492, lon:-99.901},
+  {name:'俄亥俄(Ohio)', lat:40.417, lon:-82.907},
+  {name:'密苏里(Missouri)', lat:38.573, lon:-92.604},
+  {name:'南达科他(South Dakota)', lat:44.299, lon:-99.438},
 ];
 
 async function loadWeather(){
@@ -355,7 +361,7 @@ async function loadWeather(){
     html += `<div class="ir"><div class="il">平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
     html += `<div class="ir"><div class="il">平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
     html += `<div class="ir"><div class="il">当前时段</div><div class="iv">${isCriticalWindow?'<span class="gold">⭐ 7-8月授粉灌浆关键期，天气影响最大</span>':'非关键炒作期，影响权重较低'}</div></div>`;
-    html += `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于爱荷华/伊利诺伊/明尼苏达三地平均未来7天降雨与气温</div>`;
+    html += `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于爱荷华/伊利诺伊/明尼苏达/印第安纳/内布拉斯加/俄亥俄/密苏里/南达科他八州平均未来7天降雨与气温</div>`;
 
     el.innerHTML = html;
     badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
@@ -600,7 +606,7 @@ function renderDrought(dm, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>` + renderDebugInfo(dm?dm.debug:null);
     return;
   }
-  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他'};
   let rows = '';
   Object.keys(dm.byState).forEach(st=>{
     const s = dm.byState[st];
@@ -627,7 +633,7 @@ function renderDrought(dm, genAt){
   const avg = dm.avgSevereOrWorsePct;
   const avgCls = avg>=20?'bull':avg>=5?'neutral':'bear';
   const avgText = avg>=20?'干旱面积占比高 — 偏多信号':avg>=5?'干旱面积占比中等，持续观察':'基本无严重干旱 — 偏空信号';
-  el.innerHTML = rows + `<div class="alert-box ${avgCls}"><span class="at">三州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>`;
+  el.innerHTML = rows + `<div class="alert-box ${avgCls}"><span class="at">八州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>`;
   window._droughtSignal = avg>=20?1:avg<5?-1:0;
 }
 
@@ -643,7 +649,7 @@ function renderNoaaOutlook(no, genAt){
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
-  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他'};
   let rows = '';
   Object.keys(no.byState).forEach(st=>{
     const s = no.byState[st];
@@ -655,7 +661,7 @@ function renderNoaaOutlook(no, genAt){
   const sig = no.overallSignal;
   const cls = sig===1?'bull':sig===0?'neutral':'bear';
   const text = sig===1?'展望恶化点位占比高 — 偏多信号':sig===0?'展望恶化点位占比中等，持续观察':'展望大多改善/无旱 — 偏空信号';
-  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">三州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>`;
+  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">八州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>`;
   window._noaaOutlookSignal = sig;
 }
 
