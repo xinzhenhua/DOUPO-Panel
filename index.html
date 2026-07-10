@@ -103,10 +103,21 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 
 <div class="card">
   <div class="card-head">
-    <div class="card-title">官方干旱监测（US Drought Monitor）</div>
+    <div class="card-title">官方干旱监测（US Drought Monitor）<span style="font-size:9px;color:var(--t3);font-weight:400">· 现状</span></div>
     <span class="badge" id="droughtBadge">检查中...</span>
   </div>
   <div id="droughtContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">NOAA月度干旱展望<span style="font-size:9px;color:var(--t3);font-weight:400">· 未来1个月</span></div>
+    <span class="badge" id="noaaOutlookBadge">检查中...</span>
+  </div>
+  <div id="noaaOutlookContent" class="loading">正在读取同步数据...</div>
+</div>
+<div style="font-size:10px;color:var(--t3);margin:-4px 0 10px 2px">
+  💡 三层时间尺度：干旱监测=过去到现在的实际状况 · 天气预报=未来7天 · NOAA展望=未来1个月的专家研判(综合ENSO/季节性规律等因素)。三者方向不一致不代表冲突，是在描述不同时间段。
 </div>
 
 <!-- ============ 人民币汇率（真自动，浏览器实时抓取，Frankfurter API） ============ -->
@@ -366,9 +377,10 @@ async function loadSyncedData(){
     renderPsd(data.supplyDemand, data.generatedAt);
     renderCbot(data.cbotPrice, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
+    renderNoaaOutlook(data.noaaOutlook, data.generatedAt);
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought'].forEach(k=>{
+    ['esr','psd','cbot','drought','noaaOutlook'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
@@ -619,6 +631,33 @@ function renderDrought(dm, genAt){
   window._droughtSignal = avg>=20?1:avg<5?-1:0;
 }
 
+function renderNoaaOutlook(no, genAt){
+  const badge = document.getElementById('noaaOutlookBadge');
+  const el = document.getElementById('noaaOutlookContent');
+  if(!no || !no.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${no?no.reason:'未知原因'}</span>官方每月最后一天+每月第三个周四各更新一次(月度/季度两版)</div>` + renderDebugInfo(no?no.debug:null);
+    window._noaaOutlookSignal = 0;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
+  let rows = '';
+  Object.keys(no.byLocation).forEach(st=>{
+    const s = no.byLocation[st];
+    if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
+    const cls = (s.outlook==='Development'||s.outlook==='Persistence')?'r':(s.outlook==='No_Drought')?'':'g';
+    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.outlookLabel}</span>　适用期:${s.targetPeriod||'未知'}</div></div>`;
+  });
+  const sig = no.overallSignal;
+  const cls = sig===1?'bull':'bear';
+  const text = sig===1?'至少一地展望干旱发展/持续 — 偏多信号':'各地展望均为改善/解除/无旱 — 偏空信号';
+  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">${text}</span>来源：${no.source}</div>`;
+  window._noaaOutlookSignal = sig;
+}
+
 // ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
 async function loadFxRate(){
   const badge = document.getElementById('fxBadge');
@@ -858,6 +897,8 @@ function updateOverallAlert(){
   else if(window._weatherRisk==='low'){ score-=1; notes.push('天气预报：降雨充沛 → 偏空'); }
   if(window._droughtSignal===1){ score+=1; notes.push('官方干旱监测：严重干旱面积大 → 偏多'); }
   else if(window._droughtSignal===-1){ score-=1; notes.push('官方干旱监测：基本无干旱 → 偏空'); }
+  if(window._noaaOutlookSignal===1){ score+=1; notes.push('NOAA月度展望：至少一地干旱发展/持续 → 偏多'); }
+  else if(window._noaaOutlookSignal===-1){ score-=1; notes.push('NOAA月度展望：各地展望改善 → 偏空'); }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
