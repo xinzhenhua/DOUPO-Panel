@@ -463,8 +463,14 @@ def fetch_cbot_price():
 # ---------------------------------------------------------------------------
 # 州名用两字母缩写做显示/内部key，但查询接口的aoi参数官方文档明确要求"两位数FIPS代码"
 # （之前的bug就在这里：用了邮政缩写"IA"当aoi值，接口返回200+空数组，因为查无此州）
-DROUGHT_STATES = ["IA", "IL", "MN"]  # 爱荷华/伊利诺伊/明尼苏达，豆粕主产区
-DROUGHT_STATE_FIPS = {"IA": "19", "IL": "17", "MN": "27"}  # 官方文档：droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
+# ★ 已扩展：查证美国大豆产量排名后发现，之前只监测3州漏掉了印第安纳/内布拉斯加/
+#   俄亥俄/密苏里/南达科他这几个重要产区（伊利诺伊+爱荷华+明尼苏达+印第安纳
+#   四州就占全国产量49%，前五还要加俄亥俄）。现在扩展到8州，覆盖中西部主产区。
+DROUGHT_STATES = ["IA", "IL", "MN", "IN", "NE", "OH", "MO", "SD"]
+DROUGHT_STATE_FIPS = {
+    "IA": "19", "IL": "17", "MN": "27", "IN": "18",
+    "NE": "31", "OH": "39", "MO": "29", "SD": "46",
+}  # 官方文档：droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
 
 
 def fetch_drought_monitor():
@@ -603,6 +609,56 @@ OUTLOOK_LOCATIONS = {
         {"lat": 44.0121, "lon": -92.4802},  # Rochester 东南
         {"lat": 43.6478, "lon": -93.3683},  # Albert Lea 最南
     ],
+    "IN": [  # 印第安纳：北-东北-中西-中东-中央-西南-中南-东南偏南，覆盖全州
+        {"lat": 41.6764, "lon": -86.2520},  # South Bend 北
+        {"lat": 41.0793, "lon": -85.1394},  # Fort Wayne 东北
+        {"lat": 39.4667, "lon": -87.4139},  # Terre Haute 中西
+        {"lat": 40.1934, "lon": -85.3863},  # Muncie 中东
+        {"lat": 39.7684, "lon": -86.1581},  # Indianapolis 中央
+        {"lat": 37.9716, "lon": -87.5711},  # Evansville 西南
+        {"lat": 39.1653, "lon": -86.5264},  # Bloomington 中南
+        {"lat": 39.2014, "lon": -85.9214},  # Columbus(IN) 东南偏南
+    ],
+    "NE": [  # 内布拉斯加：最西-西北-中北-东北-中西-东南-东-西南，覆盖全州(大豆集中在东部)
+        {"lat": 41.8666, "lon": -103.6672},  # Scottsbluff 最西
+        {"lat": 42.0977, "lon": -102.8710},  # Alliance 西北
+        {"lat": 42.4547, "lon": -98.6467},   # O'Neill 中北
+        {"lat": 41.9911, "lon": -97.4173},   # Norfolk 东北
+        {"lat": 41.1239, "lon": -100.7654},  # North Platte 中西
+        {"lat": 40.8136, "lon": -96.7026},   # Lincoln 东南
+        {"lat": 41.2565, "lon": -95.9345},   # Omaha 东
+        {"lat": 40.2013, "lon": -100.6254},  # McCook 西南
+    ],
+    "OH": [  # 俄亥俄：西北-东北-中西-中央-西南-东南-远西南-中东，覆盖全州
+        {"lat": 41.6528, "lon": -83.5379},  # Toledo 西北
+        {"lat": 41.4993, "lon": -81.6944},  # Cleveland 东北
+        {"lat": 40.7426, "lon": -84.1052},  # Lima 中西
+        {"lat": 39.9612, "lon": -82.9988},  # Columbus(OH) 中央
+        {"lat": 39.7589, "lon": -84.1916},  # Dayton 西南
+        {"lat": 39.3292, "lon": -82.1013},  # Athens 东南
+        {"lat": 39.1031, "lon": -84.5120},  # Cincinnati 远西南
+        {"lat": 39.9400, "lon": -82.0132},  # Zanesville 中东
+    ],
+    "MO": [  # 密苏里：北-东北-西北-中央-西-东-西南-东南，覆盖全州
+        {"lat": 40.1948, "lon": -92.5832},  # Kirksville 北
+        {"lat": 39.7084, "lon": -91.3585},  # Hannibal 东北
+        {"lat": 39.7674, "lon": -94.8467},  # St. Joseph 西北
+        {"lat": 38.9517, "lon": -92.3341},  # Columbia(MO) 中央
+        {"lat": 39.0997, "lon": -94.5786},  # Kansas City 西
+        {"lat": 38.6270, "lon": -90.1994},  # St. Louis 东
+        {"lat": 37.2090, "lon": -93.2923},  # Springfield(MO) 西南
+        {"lat": 37.3059, "lon": -89.5181},  # Cape Girardeau 东南
+    ],
+    "SD": [  # 南达科他：大豆主要集中在东部，采样点适度偏东覆盖
+        {"lat": 43.5446, "lon": -96.7311},  # Sioux Falls 东南
+        {"lat": 44.3114, "lon": -96.7984},  # Brookings 东
+        {"lat": 45.4647, "lon": -98.4865},  # Aberdeen 东北
+        {"lat": 44.8996, "lon": -97.1152},  # Watertown 东中
+        {"lat": 43.7094, "lon": -98.0298},  # Mitchell 东南中
+        {"lat": 44.3633, "lon": -98.2144},  # Huron 中央偏东
+        {"lat": 42.8711, "lon": -97.3973},  # Yankton 最南
+        {"lat": 44.3683, "lon": -100.3510}, # Pierre 中西(大豆较少，为覆盖全州)
+    ],
 }
 
 # 展望分类 → 对交易而言的方向（Development/Persistence=干旱在发展或持续=偏多信号；
@@ -657,7 +713,7 @@ def fetch_noaa_drought_outlook():
         state_debug = {}
         for i, pt in enumerate(points):
             if i > 0:
-                time.sleep(0.5)  # 8点×3州=24次请求，加个小间隔对官方服务更友好
+                time.sleep(0.5)  # 8点×8州=64次请求，加个小间隔对官方服务更友好
             outlook_data, debug = _query_noaa_outlook_point(pt["lat"], pt["lon"])
             state_debug[f"point{i}"] = {"lat": pt["lat"], "lon": pt["lon"], **debug}
             if outlook_data:
