@@ -566,83 +566,143 @@ def fetch_drought_monitor():
 # ---------------------------------------------------------------------------
 NOAA_OUTLOOK_QUERY_URL = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query"
 
-# 跟天气监测用同一组代表性坐标，方便三层时间尺度互相对照
-OUTLOOK_LOCATIONS = [
-    {"name": "IA", "lat": 41.878, "lon": -93.097},
-    {"name": "IL", "lat": 39.798, "lon": -89.644},
-    {"name": "MN", "lat": 44.986, "lon": -93.279},
-]
-
-# 展望分类 → 对交易而言的方向（Development/Persistence=干旱在发展或持续=偏多；
-# Improvement/Removal=干旱在改善或解除=偏空；No_Drought=预计维持无旱=中性偏空）
-OUTLOOK_DIRECTION = {
-    "Development": 1, "Persistence": 1,
-    "Improvement": -1, "Removal": -1,
-    "No_Drought": 0,
+# ★ 已升级：之前每州只查1个代表性坐标(比如明尼苏达只查双城区)，
+#   实测发现跟"干旱监测"的全州统计口径对不上——旱区可能集中在采样点以外的区域，
+#   导致"全州统计有旱"+"这一个点没旱"同时出现，看起来像矛盾其实是采样粒度不同。
+#   现在改成每州分散取8个点(覆盖东西南北+中，都是确认过在该州境内的真实城镇坐标)，
+#   统计"这8个点里有百分之多少显示干旱在发展/持续"，这样才能跟干旱监测的
+#   "全州百分之多少面积处于XX等级"做有意义的对比。
+OUTLOOK_LOCATIONS = {
+    "IA": [  # 爱荷华：西北-中北-东北-中西-中央-中东-中南-东南，覆盖全州
+        {"lat": 42.4966, "lon": -96.4058},  # Sioux City 西北
+        {"lat": 43.1548, "lon": -93.2010},  # Mason City 中北
+        {"lat": 42.5006, "lon": -90.6646},  # Dubuque 东北
+        {"lat": 41.2619, "lon": -95.8608},  # Council Bluffs 中西
+        {"lat": 41.5868, "lon": -93.6250},  # Des Moines 中央
+        {"lat": 41.9779, "lon": -91.6656},  # Cedar Rapids 中东
+        {"lat": 41.0161, "lon": -92.4113},  # Ottumwa 中南
+        {"lat": 40.8078, "lon": -91.1129},  # Burlington 东南
+    ],
+    "IL": [  # 伊利诺伊：北-东北-中西-中东-中央-西-西南-东南，纵贯全州
+        {"lat": 42.2711, "lon": -89.0940},  # Rockford 北
+        {"lat": 41.8781, "lon": -87.6298},  # Chicago 东北
+        {"lat": 40.6936, "lon": -89.5890},  # Peoria 中西
+        {"lat": 40.1245, "lon": -87.6300},  # Danville 中东
+        {"lat": 39.7817, "lon": -89.6501},  # Springfield 中央
+        {"lat": 39.9356, "lon": -91.4098},  # Quincy 西
+        {"lat": 38.5201, "lon": -89.9840},  # Belleville 西南
+        {"lat": 37.7273, "lon": -88.9331},  # Marion 东南
+    ],
+    "MN": [  # 明尼苏达：最北-西北-东北-中北-中央-西南-东南-最南，覆盖全州(含容易被忽略的西北/南部)
+        {"lat": 48.6011, "lon": -93.4111},  # International Falls 最北
+        {"lat": 46.8739, "lon": -96.7678},  # Moorhead 西北
+        {"lat": 46.7867, "lon": -92.1005},  # Duluth 东北
+        {"lat": 46.3580, "lon": -94.2008},  # Brainerd 中北
+        {"lat": 44.9778, "lon": -93.2650},  # Minneapolis 中央
+        {"lat": 44.4472, "lon": -95.7889},  # Marshall 西南
+        {"lat": 44.0121, "lon": -92.4802},  # Rochester 东南
+        {"lat": 43.6478, "lon": -93.3683},  # Albert Lea 最南
+    ],
 }
+
+# 展望分类 → 对交易而言的方向（Development/Persistence=干旱在发展或持续=偏多信号；
+# Improvement/Removal/No_Drought=干旱在改善/解除/本来没有=偏空方向）
+OUTLOOK_WORSENING = {"Development", "Persistence"}
 OUTLOOK_LABEL_CN = {
     "Development": "干旱发展中", "Persistence": "干旱持续",
     "Improvement": "干旱改善", "Removal": "干旱解除", "No_Drought": "预计无旱",
 }
 
 
+def _query_noaa_outlook_point(lat, lon):
+    """查询单个经纬度点的NOAA月度展望分类，返回 (outlook_dict_or_None, debug)。"""
+    geometry = json.dumps({"x": lon, "y": lat, "spatialReference": {"wkid": 4326}})
+    params = {
+        "geometry": geometry,
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "outlook,fcst_date,target",
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    # ★ 用urllib.parse.urlencode()而不是手动拼字符串——这个项目已经因为
+    #   手动拼URL漏编码空格踩过2次坑了(到港预报那边)，这次直接用标准工具处理。
+    query_string = urllib.parse.urlencode(params)
+    url = f"{NOAA_OUTLOOK_QUERY_URL}?{query_string}"
+    data, debug = fetch_json_debug(url)
+    if not data or "features" not in data or not data["features"]:
+        return None, debug
+    attrs = data["features"][0]["attributes"]
+    outlook = attrs.get("outlook")
+    return {
+        "outlook": outlook,
+        "outlookLabel": OUTLOOK_LABEL_CN.get(outlook, outlook),
+        "targetPeriod": attrs.get("target"),
+        "forecastDate": attrs.get("fcst_date"),
+    }, debug
+
+
 def fetch_noaa_drought_outlook():
-    """查询NOAA/CPC月度干旱展望——用ArcGIS REST的Query接口，
-    给一个经纬度点，返回覆盖这个点的展望区域是什么分类(Development/Persistence/Improvement/Removal/No_Drought)。
+    """查询NOAA/CPC月度干旱展望——每州取8个分散点分别查询，
+    统计"这8个点里有多少百分比展望在发展/持续"，
+    这样才能跟干旱监测的"全州XX%面积处于某等级"做有意义的对比，
+    而不是单点采样容易漏掉旱区集中在采样点以外区域的情况。
     已确认：这个服务坐标系是标准WGS84(4326)，不需要坐标转换。"""
-    results = {}
+    by_state = {}
     debugs = {}
 
-    for loc in OUTLOOK_LOCATIONS:
-        geometry = json.dumps({"x": loc["lon"], "y": loc["lat"], "spatialReference": {"wkid": 4326}})
-        params = {
-            "geometry": geometry,
-            "geometryType": "esriGeometryPoint",
-            "inSR": "4326",
-            "spatialRel": "esriSpatialRelIntersects",
-            "outFields": "outlook,fcst_date,target",
-            "returnGeometry": "false",
-            "f": "json",
-        }
-        # ★ 用urllib.parse.urlencode()而不是手动拼字符串——这个项目已经因为
-        #   手动拼URL漏编码空格踩过2次坑了(到港预报那边)，这次直接用标准工具处理，
-        #   geometry参数本身是一段JSON文本，里面有花括号/引号/冒号，更需要正确编码。
-        query_string = urllib.parse.urlencode(params)
-        url = f"{NOAA_OUTLOOK_QUERY_URL}?{query_string}"
-        data, debug = fetch_json_debug(url)
-        debugs[loc["name"]] = debug
+    for state, points in OUTLOOK_LOCATIONS.items():
+        point_results = []
+        state_debug = {}
+        for i, pt in enumerate(points):
+            if i > 0:
+                time.sleep(0.5)  # 8点×3州=24次请求，加个小间隔对官方服务更友好
+            outlook_data, debug = _query_noaa_outlook_point(pt["lat"], pt["lon"])
+            state_debug[f"point{i}"] = {"lat": pt["lat"], "lon": pt["lon"], **debug}
+            if outlook_data:
+                point_results.append(outlook_data)
+        debugs[state] = state_debug
 
-        if not data or "features" not in data or not data["features"]:
-            results[loc["name"]] = {"available": False}
+        if not point_results:
+            by_state[state] = {"available": False}
             continue
 
-        attrs = data["features"][0]["attributes"]
-        outlook = attrs.get("outlook")
-        results[loc["name"]] = {
+        worsening_count = sum(1 for r in point_results if r["outlook"] in OUTLOOK_WORSENING)
+        total = len(point_results)
+        worsening_pct = round(worsening_count / total * 100, 1)
+
+        # 统计每种分类出现的次数，取出现最多的作为"代表性展望"方便展示
+        category_counts = {}
+        for r in point_results:
+            category_counts[r["outlook"]] = category_counts.get(r["outlook"], 0) + 1
+        dominant = max(category_counts, key=category_counts.get)
+
+        by_state[state] = {
             "available": True,
-            "outlook": outlook,
-            "outlookLabel": OUTLOOK_LABEL_CN.get(outlook, outlook),
-            "targetPeriod": attrs.get("target"),
-            "forecastDate": attrs.get("fcst_date"),
+            "pointResults": point_results,
+            "totalPoints": total,
+            "worseningCount": worsening_count,
+            "worseningPct": worsening_pct,
+            "dominantOutlook": dominant,
+            "dominantOutlookLabel": OUTLOOK_LABEL_CN.get(dominant, dominant),
+            "targetPeriod": point_results[0].get("targetPeriod"),
         }
 
-    available = {k: v for k, v in results.items() if v.get("available")}
+    available = {k: v for k, v in by_state.items() if v.get("available")}
     if not available:
         return {"available": False, "reason": "NOAA月度干旱展望接口未返回任何州的数据", "debug": debugs}
 
-    # 综合信号：任意一州判定"发展中"或"持续"就偏多倾向；全部"改善/解除/无旱"才偏空
-    signals = [OUTLOOK_DIRECTION.get(v["outlook"], 0) for v in available.values()]
-    # 简化判断逻辑：只要有任何一州展望是"发展中/持续"(drought worsening)，整体就偏多；
-    # 否则(没有一个地方在恶化，不管是明确改善还是本来就没旱)，整体就偏空。
-    # 之前用all(s==-1...)要求"全部州都严格是-1"才判偏空，但No_Drought信号是0不是-1，
-    # 导致"两个州改善+一个州本来没旱"这种明显该偏空的组合被误判成中性，已修复。
-    overall_signal = 1 if any(s == 1 for s in signals) else -1
+    avg_worsening_pct = round(sum(v["worseningPct"] for v in available.values()) / len(available), 1)
+    # 跟干旱监测的阈值逻辑保持一致(>=20%明显，>=5%中等)，方便两者直接对比
+    overall_signal = 1 if avg_worsening_pct >= 20 else (0 if avg_worsening_pct >= 5 else -1)
 
     return {
         "available": True,
-        "byLocation": results,
+        "byState": by_state,
+        "avgWorseningPct": avg_worsening_pct,
         "overallSignal": overall_signal,
-        "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素）",
+        "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样）",
         "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
         "debug": debugs,
     }
