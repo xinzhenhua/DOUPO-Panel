@@ -63,6 +63,12 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .ai-suggest b{color:var(--t2)}
 .ai-suggest a{color:var(--b)}
 .ai-use-btn{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);cursor:pointer;margin-left:4px}
+details.tier-details{margin-top:6px}
+details.tier-details summary{cursor:pointer;font-size:11px;color:var(--b);padding:6px 8px;background:var(--bg2);border-radius:6px;list-style:none;user-select:none}
+details.tier-details summary::-webkit-details-marker{display:none}
+details.tier-details summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
+details.tier-details[open] summary::before{transform:rotate(90deg)}
+details.tier-details .tier-body{padding-top:6px}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
@@ -307,8 +313,9 @@ document.getElementById('setupPanel').innerHTML = SETUP_HTML;
 function toggleSetup(){document.getElementById('setupPanel').classList.toggle('open');}
 
 // ===================== 天气板块：Open-Meteo 实时抓取 =====================
-// ★ 已扩展：查证美国大豆产量排名后，从3州扩展到8州主产区
-const BELT_LOCATIONS = [
+// ★ 已扩展：核心8州(占全国种植面积64.0%) + 次要4州(北达科他/堪萨斯/密歇根/威斯康星，
+//   加起来12州共81.8%，数据来源SoyStats官方2024年种植面积统计)
+const BELT_LOCATIONS_CORE = [
   {name:'爱荷华(Iowa)', lat:41.878, lon:-93.097},
   {name:'伊利诺伊(Illinois)', lat:39.798, lon:-89.644},
   {name:'明尼苏达(Minnesota)', lat:44.986, lon:-93.279},
@@ -318,6 +325,32 @@ const BELT_LOCATIONS = [
   {name:'密苏里(Missouri)', lat:38.573, lon:-92.604},
   {name:'南达科他(South Dakota)', lat:44.299, lon:-99.438},
 ];
+const BELT_LOCATIONS_SECONDARY = [
+  {name:'北达科他(North Dakota)', lat:47.551, lon:-101.002},
+  {name:'堪萨斯(Kansas)', lat:38.500, lon:-98.000},
+  {name:'密歇根(Michigan)', lat:44.315, lon:-85.602},
+  {name:'威斯康星(Wisconsin)', lat:44.500, lon:-89.500},
+];
+const BELT_LOCATIONS = [...BELT_LOCATIONS_CORE, ...BELT_LOCATIONS_SECONDARY];
+
+// 核心8州(占全国种植面积64.0%) vs 次要4州(北达科他/堪萨斯/密歇根/威斯康星，加总12州81.8%)
+// 跟fetch_data.py里的CORE_STATES/SECONDARY_STATES保持一致
+const JS_CORE_STATES = ['IA','IL','MN','IN','NE','OH','MO','SD'];
+
+/** 把一组"州→这一行的html"的映射，拆成"核心州always显示 + 次要州收合在details里"。
+ *  这样长内容默认收起来，只有核心8州的摘要一直可见，符合"长数据默认收纳，点开看详情"的要求。 */
+function renderTieredStateRows(stateRowsMap, detailsLabel){
+  let coreHtml = '', secondaryHtml = '';
+  Object.keys(stateRowsMap).forEach(st=>{
+    if(JS_CORE_STATES.includes(st)) coreHtml += stateRowsMap[st];
+    else secondaryHtml += stateRowsMap[st];
+  });
+  let html = coreHtml;
+  if(secondaryHtml){
+    html += `<details class="tier-details"><summary>${detailsLabel||'其他重要产区详情'}</summary><div class="tier-body">${secondaryHtml}</div></details>`;
+  }
+  return html;
+}
 
 async function loadWeather(){
   const el = document.getElementById('weatherContent');
@@ -350,18 +383,22 @@ async function loadWeather(){
       riskLevel='low'; riskColor='g'; riskText='降雨充沛 — 偏空信号';
     }
 
-    let html = `<div class="grid2">`;
-    results.forEach(r=>{
-      html += `<div class="stat">
+    const statCardFor = r => `<div class="stat">
         <span class="sv ${r.precip7d<10?'pos':r.precip7d<20?'warn':'neg'}">${r.precip7d}mm</span>
         <div class="sl">${r.name} · 未来7天降雨</div>
       </div>`;
-    });
-    html += `</div><div class="divider"></div>`;
+    const coreResults = results.filter(r=>BELT_LOCATIONS_CORE.some(c=>c.name===r.name));
+    const secondaryResults = results.filter(r=>BELT_LOCATIONS_SECONDARY.some(c=>c.name===r.name));
+
+    let html = `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于${results.length}州平均未来7天降雨与气温</div>`;
+    html += `<div class="grid2" style="margin-top:8px">` + coreResults.map(statCardFor).join('') + `</div>`;
+    if(secondaryResults.length){
+      html += `<details class="tier-details"><summary>其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸</summary><div class="tier-body grid2">${secondaryResults.map(statCardFor).join('')}</div></details>`;
+    }
+    html += `<div class="divider"></div>`;
     html += `<div class="ir"><div class="il">平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
     html += `<div class="ir"><div class="il">平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
     html += `<div class="ir"><div class="il">当前时段</div><div class="iv">${isCriticalWindow?'<span class="gold">⭐ 7-8月授粉灌浆关键期，天气影响最大</span>':'非关键炒作期，影响权重较低'}</div></div>`;
-    html += `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于爱荷华/伊利诺伊/明尼苏达/印第安纳/内布拉斯加/俄亥俄/密苏里/南达科他八州平均未来7天降雨与气温</div>`;
 
     el.innerHTML = html;
     badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
@@ -606,24 +643,25 @@ function renderDrought(dm, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${dm?dm.reason:'未知原因'}</span>官方数据每周四更新，来源 <a href="https://droughtmonitor.unl.edu/" target="_blank" style="color:var(--b)">droughtmonitor.unl.edu</a></div>` + renderDebugInfo(dm?dm.debug:null);
     return;
   }
-  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他'};
-  let rows = '';
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他', ND:'北达科他', KS:'堪萨斯', MI:'密歇根', WI:'威斯康星'};
+  const stateRows = {};
   Object.keys(dm.byState).forEach(st=>{
     const s = dm.byState[st];
-    if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
+    if(!s.available){ stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
     if(s.anomalous){
-      rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="r">⚠️ 数值异常</span>　D0:${s.d0} D1:${s.d1} D2:${s.d2} D3:${s.d3} D4:${s.d4}（超出0-100正常范围，暂不可信）</div></div>`;
+      stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="r">⚠️ 数值异常</span>　D0:${s.d0} D1:${s.d1} D2:${s.d2} D3:${s.d3} D4:${s.d4}（超出0-100正常范围，暂不可信）</div></div>`;
       return;
     }
     const cls = s.severeOrWorsePct>=20?'r':s.severeOrWorsePct>=5?'gold':'g';
-    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">D2+级别 ${s.severeOrWorsePct}%</span>　D0:${s.d0}% D1:${s.d1}% D2:${s.d2}% D3:${s.d3}% D4:${s.d4}%</div></div>`;
+    stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">D2+级别 ${s.severeOrWorsePct}%</span>　D0:${s.d0}% D1:${s.d1}% D2:${s.d2}% D3:${s.d3}% D4:${s.d4}%</div></div>`;
   });
+  const rows = renderTieredStateRows(stateRows, '其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸');
 
   if(dm.anomalous){
     // 数值超出合理范围，不显示可能误导人的"干旱面积占比"结论，明确提示这是bug还没修完
     badge.textContent = '⚠️ 数据异常';
     badge.className = 'badge badge-offline';
-    el.innerHTML = rows + `<div class="alert-box neutral"><span class="at">⚠️ 检测到数值超出0-100正常范围，可能是接口字段解析有误</span>暂不采用此次数据做判断，已保留原始数据供排查</div>` + renderDebugInfo(dm.debug);
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">⚠️ 检测到数值超出0-100正常范围，可能是接口字段解析有误</span>暂不采用此次数据做判断，已保留原始数据供排查</div>` + rows + renderDebugInfo(dm.debug);
     window._droughtSignal = 0;
     return;
   }
@@ -633,7 +671,8 @@ function renderDrought(dm, genAt){
   const avg = dm.avgSevereOrWorsePct;
   const avgCls = avg>=20?'bull':avg>=5?'neutral':'bear';
   const avgText = avg>=20?'干旱面积占比高 — 偏多信号':avg>=5?'干旱面积占比中等，持续观察':'基本无严重干旱 — 偏空信号';
-  el.innerHTML = rows + `<div class="alert-box ${avgCls}"><span class="at">八州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>`;
+  const stateCount = Object.keys(dm.byState).length;
+  el.innerHTML = `<div class="alert-box ${avgCls}"><span class="at">${stateCount}州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>` + rows;
   window._droughtSignal = avg>=20?1:avg<5?-1:0;
 }
 
@@ -649,19 +688,21 @@ function renderNoaaOutlook(no, genAt){
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
-  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他'};
-  let rows = '';
+  const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达', IN:'印第安纳', NE:'内布拉斯加', OH:'俄亥俄', MO:'密苏里', SD:'南达科他', ND:'北达科他', KS:'堪萨斯', MI:'密歇根', WI:'威斯康星'};
+  const stateRows = {};
   Object.keys(no.byState).forEach(st=>{
     const s = no.byState[st];
-    if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
+    if(!s.available){ stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
     const cls = s.worseningPct>=20?'r':s.worseningPct>=5?'gold':'g';
-    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.worseningCount}/${s.totalPoints}点变差(${s.worseningPct}%)</span>　众数:${s.dominantOutlookLabel}　适用期:${s.targetPeriod||'未知'}</div></div>`;
+    stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.worseningCount}/${s.totalPoints}点变差(${s.worseningPct}%)</span>　众数:${s.dominantOutlookLabel}　适用期:${s.targetPeriod||'未知'}</div></div>`;
   });
+  const rows = renderTieredStateRows(stateRows, '其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸');
   const avg = no.avgWorseningPct;
   const sig = no.overallSignal;
   const cls = sig===1?'bull':sig===0?'neutral':'bear';
   const text = sig===1?'展望恶化点位占比高 — 偏多信号':sig===0?'展望恶化点位占比中等，持续观察':'展望大多改善/无旱 — 偏空信号';
-  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">八州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>`;
+  const stateCount = Object.keys(no.byState).length;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${stateCount}州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>` + rows;
   window._noaaOutlookSignal = sig;
 }
 
@@ -761,7 +802,7 @@ function renderPsd(psd, genAt){
   badge.className = 'badge badge-auto';
 
   // 库存消费比 = 期末库存 / 国内消费 × 100%（沿用之前基本面表格里定的阈值：<10%紧张偏多，10-15%偏紧，>20%宽松偏空）
-  let ratioHtml = '';
+  let ratioHtml = '', alertHtml = '';
   if(psd.endingStocks!=null && psd.domesticConsumption){
     const ratio = psd.endingStocks/psd.domesticConsumption*100;
     const rCls = ratio<10?'r':ratio<15?'gold':ratio>20?'g':'';
@@ -769,8 +810,13 @@ function renderPsd(psd, genAt){
     const rText = ratio<10?'非常紧张 → 偏多':ratio<15?'偏紧 → 偏多倾向':ratio>20?'宽松 → 偏空':'正常区间';
     ratioHtml = `<div class="ir"><div class="il">库存消费比</div><div class="iv"><span class="${rCls}">${ratio.toFixed(1)}%</span> ${rText}</div></div>`;
     window._psdSignal = rSignal;
+    // ★ 已修复：之前这个信号算出来了(_psdSignal参与总评分)，但没有像其他板块一样
+    //   用醒目的alert-box展示结论，容易让人以为这个板块没有做多做空建议。
+    const alertCls = rSignal===1?'bull':rSignal===-1?'bear':'neutral';
+    alertHtml = `<div class="alert-box ${alertCls}"><span class="at">库存消费比${ratio.toFixed(1)}%：${rText}</span>期末库存/国内消费，阈值参考：&lt;10%紧张偏多，10-15%偏紧偏多，&gt;20%宽松偏空</div>`;
   } else {
     window._psdSignal = 0;
+    alertHtml = `<div class="alert-box neutral"><span class="at">数据不足，暂无法计算库存消费比</span></div>`;
   }
 
   // 如果接口连上了、有数据，但四个关键字段一个都没取到值(说明字段名对不上)，
@@ -780,15 +826,18 @@ function renderPsd(psd, genAt){
     mismatchWarning = `<div class="alert-box neutral"><span class="at">⚠️ 已连接上接口，但字段名没匹配上</span>接口返回了数据，但预设的属性名称(Ending Stocks等)在实际返回里找不到，下方诊断信息里的"实际字段名"会显示真实名称</div>` + renderDebugInfo(psd.debug);
   }
 
-  el.innerHTML = `
+  el.innerHTML = alertHtml + `
+    <details class="tier-details" style="margin-top:8px"><summary>详细数据 ▸</summary>
+    <div class="tier-body">
     <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
     <div class="ir"><div class="il">WASDE版本</div><div class="iv"><span class="b">${psd.wasdeVintage||'未知'}</span><span style="color:var(--t3)">（可对照 <a href="https://apps.fas.usda.gov/psdonline/" target="_blank" style="color:var(--b)">PSD Online</a> 核实是否为最新月报）</span></div></div>
     <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks!=null?psd.endingStocks.toLocaleString():'--'}</span></div></div>
     <div class="ir"><div class="il">产量</div><div class="iv">${psd.production!=null?psd.production.toLocaleString():'--'}</div></div>
     <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption!=null?psd.domesticConsumption.toLocaleString():'--'}</div></div>
     ${ratioHtml}
-    ${mismatchWarning}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为USDA标准计量单位，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
+    </div></details>
+    ${mismatchWarning}
   `;
 }
 
@@ -805,14 +854,21 @@ function renderCbot(cbot, genAt){
   badge.className = 'badge badge-auto';
   const chg = cbot.change;
   const chgCls = chg>0?'r':chg<0?'g':'';
+  // ★ 已修复：之前这个信号算出来了但符号方向反了(chg>0却给-1)，而且从没在界面上展示过，
+  //   等于CBOT这块一直没有做多做空结论。现在修正方向并展示：
+  //   CBOT是国际基准价，国内豆粕价格常跟随其方向，上涨→偏多，下跌→偏空。
+  //   但两者相关性没有像其他基本面指标那样经过严格验证，所以只做参考展示，不纳入综合评分。
+  const cbotCls = chg>0?'bull':chg<0?'bear':'neutral';
+  const cbotText = chg>0?'CBOT上涨，国际基准走强 → 偏多参考':chg<0?'CBOT下跌，国际基准走弱 → 偏空参考':'CBOT价格持平';
   el.innerHTML = `
     <div class="grid2">
       <div class="stat"><span class="sv neutral">${cbot.price}</span><div class="sl">最新价（美元/短吨）</div></div>
       <div class="stat"><span class="sv ${chgCls==='r'?'pos':chgCls==='g'?'neg':'neutral'}">${chg>0?'+':''}${chg} (${cbot.changePct>0?'+':''}${cbot.changePct}%)</span><div class="sl">较前一交易日</div></div>
     </div>
+    <div class="alert-box ${cbotCls}" style="margin-top:8px"><span class="at">${cbotText}</span>国际基准与国内价格相关性未经严格验证，仅供参考，不计入下方综合评分</div>
     <div style="font-size:10px;color:var(--t3);margin-top:6px">数据时间：${fmtTime(cbot.asOf)} · 来源：${cbot.source}</div>
   `;
-  window._cbotSignal = chg>0?-1:chg<0?1:0; // CBOT涨→对国内豆粕偏多(-1按我们评分习惯做多=负)... 这里仅展示，不纳入自动打分避免混淆
+  window._cbotSignal = chg>0?1:chg<0?-1:0; // 仅展示参考，不纳入综合评分(见updateOverallAlert)
 }
 
 // ===================== 手动数据 + 综合预警 =====================
