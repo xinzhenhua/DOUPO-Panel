@@ -145,12 +145,48 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
   <div id="cbotContent" class="loading">正在读取同步数据...</div>
 </div>
 
-<!-- ============ AI辅助搜索板块（Groq+DeepSeek蒸馏模型 + Tavily搜索） ============ -->
-<div class="stitle">🤖 AI辅助搜索（每天2次自动同步，仍可手动覆盖）</div>
+<!-- ============ 一键复制提示词 + 一键粘贴填充板块 ============ -->
+<div class="stitle">📋 一键复制提示词 → 粘贴填充（替代AI搜索，纯本地解析不联网）</div>
 <div class="card">
   <div class="card-head">
-    <div class="card-title">国内供需 · 每周更新</div>
-    <span class="badge badge-auto">🤖 AI搜索</span>
+    <div class="card-title">第一步：复制提示词，去问任意AI</div>
+    <span class="badge badge-manual">🟡 你来选AI</span>
+  </div>
+  <div style="font-size:11px;color:var(--t3);line-height:1.6;margin-bottom:8px">
+    点击复制，粘贴到DeepSeek/豆包/通义千问/ChatGPT等任意AI对话框，把AI的回答整个复制回来，粘贴到下面的框里解析
+  </div>
+  <button class="ai-use-btn" style="width:100%;padding:8px;font-size:12px" onclick="copyPromptToClipboard()">📋 复制提示词</button>
+  <div id="copyPromptResult" style="margin-top:6px;font-size:11px;color:var(--g)"></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">第二步：把AI的回答粘贴到这里</div>
+    <span class="badge badge-manual">🟡 本地解析</span>
+  </div>
+  <textarea class="minput" id="pasteInput" rows="8" placeholder="把类似这样的表格粘贴进来：
+油厂开机率(%) 65.73% 2026年7月7日 Mysteel
+豆粕商业库存(万吨) 68万吨 2026年7月3日 国家粮油信息中心
+现货基差(元/吨) -182元/吨 2026年7月9日 文华财经
+本月到港预报(万吨) 约1100万吨 2026年7月 Mysteel
+猪粮比 3.88:1 2026年7月3日 中财网
+能繁母猪存栏(万头) 4043万头 2026年6月末 国家统计局
+中国大豆月度进口量(万吨) 约1073.80万吨 2026年6月 Mysteel" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical"></textarea>
+  <button class="ai-use-btn" style="width:100%;margin-top:8px;padding:8px;font-size:12px" onclick="parseAndFillPastedData()">📥 解析并填充到下方对应字段</button>
+  <div id="parseResult" style="margin-top:8px;font-size:11px;color:var(--t3)"></div>
+  <div style="font-size:10px;color:var(--t3);margin-top:6px">
+    💡 支持识别：开机率/商业库存/基差/到港预报/猪粮比/能繁母猪/进口量，共7个指标<br>
+    💡 每行格式大致为"指标名 数值 日期 来源"，顺序、间距、括号里的补充说明都不影响识别<br>
+    💡 纯本地文本解析，不联网、不调用任何AI，你粘贴什么就严格按什么解析
+  </div>
+</div>
+
+
+<div class="stitle">📦 国内供需 · 每周更新</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">开机率 / 库存 / 基差 / 到港预报</div>
+    <span class="badge badge-manual">🟡 可编辑</span>
   </div>
   <div class="mrow">
     <div class="mfield">
@@ -171,9 +207,9 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
       <input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_basis"></span>
     </div>
     <div class="mfield">
-      <label>本周到港预报(万吨)</label>
+      <label>本月到港预报(万吨)</label>
       <div class="ai-suggest" id="ai_arrival"></div>
-      <input class="minput" id="m_arrival" type="number" placeholder="如220" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
+      <input class="minput" id="m_arrival" type="number" placeholder="如1100" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
     </div>
   </div>
 </div>
@@ -181,7 +217,7 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 <div class="card">
   <div class="card-head">
     <div class="card-title">需求端 · 每月更新</div>
-    <span class="badge badge-auto">🤖 AI搜索</span>
+    <span class="badge badge-manual">🟡 可编辑</span>
   </div>
   <div class="mrow">
     <div class="mfield">
@@ -195,36 +231,14 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
       <input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_sows"></span>
     </div>
   </div>
+  <div class="mrow">
+    <div class="mfield">
+      <label>中国大豆月度进口量(万吨)</label>
+      <div class="ai-suggest" id="ai_import"></div>
+      <input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span>
+    </div>
+  </div>
   <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
-</div>
-
-<!-- ============ 中国大豆进口（官方UN Comtrade + AI搜索对比） ============ -->
-<div class="stitle">🚢 中国大豆进口量（官方数据 + AI搜索对比）</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">UN Comtrade 官方贸易统计</div>
-    <span class="badge" id="comtradeBadge">检查中...</span>
-  </div>
-  <div id="comtradeContent" class="loading">正在读取同步数据...</div>
-</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">手动录入 / AI搜索对比值(万吨)</div>
-    <span class="badge badge-manual">🟡 可编辑</span>
-  </div>
-  <div class="ai-suggest" id="ai_import"></div>
-  <input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span>
-  <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 建议对照上方UN Comtrade官方数据和AI搜索结果，两者不一致时以官方数据为准</div>
-</div>
-
-<!-- ============ 本周到港预报（推算） ============ -->
-<div class="stitle">⚓ 本周到港预报（基于USDA出口检验数据推算）</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">分港口海运时间推算</div>
-    <span class="badge" id="arrivalBadge">检查中...</span>
-  </div>
-  <div id="arrivalContent" class="loading">正在读取同步数据...</div>
 </div>
 
 <!-- ============ 综合预警 ============ -->
@@ -352,18 +366,9 @@ async function loadSyncedData(){
     renderPsd(data.supplyDemand, data.generatedAt);
     renderCbot(data.cbotPrice, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
-    renderComtrade(data.chinaImportsOfficial, data.generatedAt);
-    renderArrivalEstimate(data.arrivalEstimate, data.generatedAt);
-    renderAiSuggest('ai_crush', data.crushRate, '%');
-    renderAiSuggest('ai_stock', data.soymealStock, '万吨');
-    renderAiSuggest('ai_basis', data.spotBasis, '元/吨');
-    renderAiSuggest('ai_arrival', null, '万吨', true); // 到港预报走推算板块，不用AI搜索
-    renderAiSuggest('ai_hogratio', data.hogGrainRatio, '');
-    renderAiSuggest('ai_sows', data.breedingSows, '万头');
-    renderAiSuggest('ai_import', null, '万吨', true); // 进口量走UN Comtrade板块，这里留空不重复渲染
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought','comtrade','arrival'].forEach(k=>{
+    ['esr','psd','cbot','drought'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
@@ -372,36 +377,20 @@ async function loadSyncedData(){
   updateOverallAlert();
 }
 
-function renderAiSuggest(elId, data, unit, notApplicable){
+function renderParsedInfo(elId, parsed, unit){
+  // 显示"粘贴解析"出来的结果（取代原来AI搜索的展示逻辑），数据来源是用户自己粘贴的文本，
+  // 不联网、不调用任何AI，纯本地正则解析。
   const el = document.getElementById(elId);
   if(!el) return;
-  if(notApplicable){
-    // 这个字段本来就不走AI搜索（到港预报/进口量走各自的专用官方数据卡片），
-    // 不应该显示"未配置密钥"这种误导性消息
+  if(!parsed){
     el.className = 'ai-suggest unavailable';
-    el.innerHTML = `💡 此项通过上方专用卡片的官方数据获取，不使用AI搜索`;
+    el.innerHTML = `💡 尚未粘贴数据，或者粘贴的文本里没有识别到这一项`;
     return;
   }
-  if(!data || !data.available){
-    el.className = 'ai-suggest unavailable';
-    el.innerHTML = `🤖 AI搜索：${data?data.reason:'尚未配置GROQ_API_KEY/TAVILY_API_KEY'}` + renderDebugInfo(data?data.debug:null);
-    return;
-  }
-  const cls = data.isStale ? 'stale' : 'fresh';
-  const staleTag = data.isStale ? ' ⚠️数据可能过期，请核实' : ' ✅新鲜';
-  el.className = 'ai-suggest ' + cls;
-  el.innerHTML = `🤖 AI找到：<b>${data.value}${unit}</b>${staleTag}
-    <button class="ai-use-btn" onclick="useAiValue('${elId.replace('ai_','m_')}', ${JSON.stringify(data.value)})">采用</button><br>
-    日期：${data.date||'未知'}（距今${data.ageDays!=null?data.ageDays+'天':'未知'}）
-    ${data.source?` · <a href="${data.source}" target="_blank">来源</a>`:''}
-    ${data.quote?`<br>原文："${data.quote}"`:''}`;
-  // 如果用户之前从没手动填过这个字段(输入框还是空的)，自动帮ta填上AI找到的值，省去手动抄一遍的麻烦
-  // （用户仍可以直接编辑覆盖，覆盖后的值才是最终参与打分的值）
-  const inputEl = document.getElementById(elId.replace('ai_','m_'));
-  if(inputEl && inputEl.value === '' && !data.isStale){
-    inputEl.value = data.value;
-    saveManualAndRefresh();
-  }
+  el.className = 'ai-suggest fresh';
+  el.innerHTML = `📋 解析到：<b>${parsed.value}${unit}</b>
+    <button class="ai-use-btn" onclick="useAiValue('${elId.replace('ai_','m_')}', ${JSON.stringify(parsed.value)})">采用</button><br>
+    日期：${parsed.date||'未识别'}${parsed.source?` · 来源：${parsed.source}`:''}`;
 }
 
 function useAiValue(inputId, value){
@@ -409,42 +398,153 @@ function useAiValue(inputId, value){
   if(el){ el.value = value; saveManualAndRefresh(); }
 }
 
-function renderComtrade(ct, genAt){
-  const badge = document.getElementById('comtradeBadge');
-  const el = document.getElementById('comtradeContent');
-  if(!ct || !ct.available){
-    badge.textContent = '⚪ 暂无数据';
-    badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ct?ct.reason:'未知原因'}</span>官方数据通常有1-2个月发布滞后，属正常现象</div>` + renderDebugInfo(ct?ct.debug:null);
-    return;
+// ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================
+const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析，以下是大豆或者豆粕的一些基本数据，我需要你做一件事。
+
+给我最近日期的每个指标的数据，数据一一对应不要多余，也不要遗漏
+
+油厂开机率(%)
+豆粕商业库存(万吨)
+现货基差(元/吨，正=现货贵)
+本月到港预报(万吨)
+猪粮比
+能繁母猪存栏(万头)
+上月中国大豆月度进口量(万吨)
+
+我要数据+日期+来源，直接给我表格，所有数据必须是最近日期的`;
+
+function copyPromptToClipboard(){
+  const resultEl = document.getElementById('copyPromptResult');
+  const showSuccess = () => {
+    resultEl.textContent = '✅ 已复制！去粘贴到DeepSeek/豆包/通义千问/ChatGPT等任意AI对话框';
+    setTimeout(()=>{ resultEl.textContent=''; }, 4000);
+  };
+  const showFailure = (err) => {
+    resultEl.innerHTML = `<span style="color:var(--gold)">⚠️ 自动复制失败，请手动选中下面的文字复制：</span>
+      <textarea readonly style="width:100%;margin-top:6px;font-size:11px;font-family:monospace" rows="10">${PASTE_PROMPT_TEMPLATE}</textarea>`;
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(PASTE_PROMPT_TEMPLATE).then(showSuccess).catch(showFailure);
+  } else {
+    // 兼容不支持Clipboard API的环境(比如非HTTPS或较老浏览器)，退回传统方案
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = PASTE_PROMPT_TEMPLATE;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showSuccess();
+    }catch(err){ showFailure(err); }
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
-  el.innerHTML = `
-    <div class="ir"><div class="il">数据月份</div><div class="iv">${ct.period}</div></div>
-    <div class="ir"><div class="il">进口量</div><div class="iv"><span class="b">${ct.importsWanTons} 万吨</span></div></div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">来源：${ct.source}</div>
-  `;
 }
 
-function renderArrivalEstimate(ae, genAt){
-  const badge = document.getElementById('arrivalBadge');
-  const el = document.getElementById('arrivalContent');
-  if(!ae || !ae.available){
-    badge.textContent = '⚪ 暂无数据';
-    badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ae?ae.reason:'未知原因'}</span></div>` + renderDebugInfo(ae?ae.debug:null);
+// ===================== 一键粘贴填充：纯本地文本解析，不联网 =====================
+const PASTE_INDICATOR_PATTERNS = [
+  {id: 'm_crush', unit: '%', keywords: ['开机率']},
+  {id: 'm_stock', unit: '万吨', keywords: ['商业库存', '豆粕库存']},
+  {id: 'm_basis', unit: '元/吨', keywords: ['基差']},
+  {id: 'm_arrival', unit: '万吨', keywords: ['到港预报', '到港量']},
+  {id: 'm_hogratio', unit: '', keywords: ['猪粮比']},
+  {id: 'm_sows', unit: '万头', keywords: ['能繁母猪', '母猪存栏']},
+  {id: 'm_import', unit: '万吨', keywords: ['进口量']},
+];
+
+function _pasteExtractValueSection(line, matchedKeyword){
+  const kwIdx = line.indexOf(matchedKeyword);
+  let afterKw = line.slice(kwIdx + matchedKeyword.length).trimStart();
+  if(afterKw[0]==='(' || afterKw[0]==='（'){
+    const closeChar = afterKw[0]==='(' ? ')' : '）';
+    const closeIdx = afterKw.indexOf(closeChar);
+    if(closeIdx!==-1) afterKw = afterKw.slice(closeIdx+1).trimStart();
+  }
+  return afterKw;
+}
+
+function parsePastedData(text){
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  const results = {};
+  for(const line of lines){
+    if(line.includes('指标') && line.includes('数据') && line.includes('日期')) continue; // 跳过表头行
+
+    let matchedId=null, matchedUnit='', matchedKw=null;
+    for(const pattern of PASTE_INDICATOR_PATTERNS){
+      const kw = pattern.keywords.find(k=>line.includes(k));
+      if(kw){ matchedId=pattern.id; matchedUnit=pattern.unit; matchedKw=kw; break; }
+    }
+    if(!matchedId) continue;
+
+    let valueSection = _pasteExtractValueSection(line, matchedKw);
+
+    // 先识别日期(同时从valueSection里挖掉日期文字，避免年份数字被误当成目标数值)
+    let dateStr = null;
+    const dmy = line.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    const monthEnd = line.match(/(\d{4})年(\d{1,2})月末/);
+    const ym = line.match(/(\d{4})年(\d{1,2})月/);
+    if(dmy){
+      dateStr = `${dmy[1]}-${dmy[2].padStart(2,'0')}-${dmy[3].padStart(2,'0')}`;
+      valueSection = valueSection.replace(dmy[0], ' ');
+    } else if(monthEnd){
+      const lastDay = new Date(parseInt(monthEnd[1]), parseInt(monthEnd[2]), 0).getDate();
+      dateStr = `${monthEnd[1]}-${monthEnd[2].padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+      valueSection = valueSection.replace(monthEnd[0], ' ');
+    } else if(ym){
+      dateStr = `${ym[1]}-${ym[2].padStart(2,'0')}-01`;
+      valueSection = valueSection.replace(ym[0], ' ');
+    }
+
+    // 比值格式"3.88:1"优先识别，否则取第一个数字(含负号/小数)
+    let value = null;
+    const ratioMatch = valueSection.match(/(-?\d+\.?\d*)\s*[:：]\s*1/);
+    if(ratioMatch){
+      value = parseFloat(ratioMatch[1]);
+    } else {
+      const numMatch = valueSection.match(/-?\d+\.?\d*/);
+      if(numMatch) value = parseFloat(numMatch[0]);
+    }
+
+    const sourceKeywords = ['Mysteel农产品团队','Mysteel','国家粮油信息中心','文华财经','中财网','国家统计局','汇易','钢联','布瑞克','天下粮仓'];
+    let source = null;
+    for(const sk of sourceKeywords){ if(line.includes(sk)){ source=sk; break; } }
+
+    if(value !== null) results[matchedId] = {value, date: dateStr, source, unit: matchedUnit};
+  }
+  return results;
+}
+
+function parseAndFillPastedData(){
+  const text = document.getElementById('pasteInput').value;
+  if(!text.trim()){
+    document.getElementById('parseResult').innerHTML = '<span style="color:var(--gold)">⚠️ 请先粘贴数据</span>';
     return;
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
-  el.innerHTML = `
-    <div class="ir"><div class="il">推算到港量</div><div class="iv"><span class="b">${ae.estimatedWanTons} 万吨</span></div></div>
-    <div class="ir"><div class="il">湾区部分</div><div class="iv">${(ae.gulfPortionMetricTons/10000).toFixed(1)} 万吨</div></div>
-    <div class="ir"><div class="il">西北太平洋部分</div><div class="iv">${(ae.pnwPortionMetricTons/10000).toFixed(1)} 万吨</div></div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">⚠️ 这是推算值：${ae.methodology}</div>
-    <button class="ai-use-btn" style="margin-top:6px" onclick="useAiValue('m_arrival', ${ae.estimatedWanTons})">采用此推算值到本周到港预报</button>
-  `;
+  const parsed = parsePastedData(text);
+  const idToElId = {m_crush:'ai_crush', m_stock:'ai_stock', m_basis:'ai_basis', m_arrival:'ai_arrival',
+                     m_hogratio:'ai_hogratio', m_sows:'ai_sows', m_import:'ai_import'};
+  const idToLabel = {m_crush:'开机率', m_stock:'商业库存', m_basis:'现货基差', m_arrival:'到港预报',
+                      m_hogratio:'猪粮比', m_sows:'能繁母猪', m_import:'进口量'};
+
+  let recognized = [];
+  for(const [fieldId, elId] of Object.entries(idToElId)){
+    if(parsed[fieldId]){
+      renderParsedInfo(elId, parsed[fieldId], parsed[fieldId].unit);
+      document.getElementById(fieldId).value = parsed[fieldId].value;
+      recognized.push(`${idToLabel[fieldId]}:${parsed[fieldId].value}`);
+    }
+  }
+  saveManualAndRefresh();
+
+  const missing = Object.keys(idToLabel).filter(id => !parsed[id]);
+  let resultHtml = '';
+  if(recognized.length>0){
+    resultHtml += `<span style="color:var(--g)">✅ 已识别并填充${recognized.length}项：${recognized.join('、')}</span>`;
+  }
+  if(missing.length>0){
+    resultHtml += `<br><span style="color:var(--t3)">未识别到：${missing.map(id=>idToLabel[id]).join('、')}（这些字段保持原值，可以手动填写）</span>`;
+  }
+  document.getElementById('parseResult').innerHTML = resultHtml || '<span style="color:var(--gold)">⚠️ 没有识别到任何已知指标，请检查格式</span>';
 }
 
 function renderDebugInfo(debug){
@@ -724,10 +824,12 @@ function updateOverallAlert(){
     else{ setInd('ind_basis',0,'→ 中性'); }
   } else setInd('ind_basis', null);
 
-  // 本周到港预报：到港少=供给收紧=偏多；到港多=供给宽松=偏空（阈值为经验估算，非官方硬性标准）
+  // ★ 已修复：从"本周"改成"本月"到港预报后，阈值忘了跟着从周度改成月度，
+  //   之前180/250是周度量级，月度数字通常是周度的4倍以上，会导致月度数值
+  //   几乎必然被误判成"偏空"。现在改用跟"月度进口量"一致的月度阈值(800/1000)。
   if(!isNaN(arrival)){
-    if(arrival < 180){ score+=1; notes.push('到港'+arrival+'万吨（&lt;180，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); }
-    else if(arrival > 250){ score-=1; notes.push('到港'+arrival+'万吨（&gt;250，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); }
+    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（&lt;800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); }
+    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（&gt;1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); }
     else{ setInd('ind_arrival',0,'→ 中性'); }
   } else setInd('ind_arrival', null);
 
