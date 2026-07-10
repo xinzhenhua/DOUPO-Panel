@@ -1,140 +1,136 @@
 {
-  "generatedAt": "2026-07-09T06:17:57.797049+00:00",
+  "generatedAt": "2026-07-10T03:30:35.292449+00:00",
   "cbotPrice": {
-    "available": false,
-    "reason": "Yahoo Finance接口无返回（可能被限流或接口变更）",
-    "debug": {
-      "httpStatus": 403,
-      "error": "mocked"
-    }
+    "available": true,
+    "price": 315.3,
+    "change": -4.2,
+    "changePct": -1.31,
+    "asOf": "2026-07-10T03:17:06+00:00",
+    "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
-    "available": false,
-    "reason": "USDM接口未返回任何州的数据",
-    "debug": {
+    "available": true,
+    "anomalous": false,
+    "byState": {
       "IA": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 31.41,
+        "d1": 10.05,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "IL": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 10.25,
+        "d1": 1.01,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       },
       "MN": {
-        "httpStatus": 403,
-        "error": "mocked"
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 74.74,
+        "d1": 29.06,
+        "d2": 11.46,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 11.5
+      }
+    },
+    "avgSevereOrWorsePct": 3.8,
+    "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
+    "sourceUrl": "https://droughtmonitor.unl.edu/",
+    "debug": {
+      "IA": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":38621.55,\"d0\":17689.95,\"d1\":5657.09,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":37534.63,\"d0\":18776.87,\"d1\":6840.84,\"d2\":1.90,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"I",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "IA",
+          "none": 38621.55,
+          "d0": 17689.95,
+          "d1": 5657.09,
+          "d2": 1.9,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "IL": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50603.44,\"d0\":5779.10,\"d1\":567.37,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":50339.32,\"d0\":6043.23,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"IL\",\"no",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "IL",
+          "none": 50603.44,
+          "d0": 5779.1,
+          "d1": 567.37,
+          "d2": 0.0,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "MN": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":21314.89,\"d0\":63066.29,\"d1\":24520.07,\"d2\":9672.11,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":23674.66,\"d0\":60706.52,\"d1\":25537.95,\"d2\":9779.32,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbrevia",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "MN",
+          "none": 21314.89,
+          "d0": 63066.29,
+          "d1": 24520.07,
+          "d2": 9672.11,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
       }
     }
   },
   "exportSales": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
+    "available": true,
+    "weekEnding": "2026-07-02T00:00:00",
+    "marketYearUsed": 2026,
+    "dataAgeDays": 8,
+    "isStale": false,
+    "latestTotalMT": 492923,
+    "prevTotalMT": 436042,
+    "wowChangePct": 13.0,
+    "chinaLatestMT": 0,
+    "source": "USDA-FAS ESR API",
+    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
   },
   "supplyDemand": {
-    "available": false,
-    "reason": "缺少 USDA_API_KEY"
-  },
-  "chinaImportsOfficial": {
-    "available": false,
-    "reason": "UN Comtrade对202606~202506这些月份逐个查询都没有数据",
-    "debug": {
-      "periodsAttempted": {
-        "202606": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202605": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202604": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202603": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202602": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202601": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202512": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202511": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202510": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202509": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202508": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202507": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        },
-        "202506": {
-          "httpStatus": 403,
-          "error": "mocked",
-          "rowCount": 0
-        }
-      },
-      "note": "已改为逐月单独查询(preview端点限制一次只能查1个月)"
-    }
-  },
-  "arrivalEstimate": {
-    "available": false,
-    "reason": "USDA谷物出口检验接口无返回数据",
-    "debug": {
-      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json",
-      "httpStatus": 403,
-      "error": "mocked"
-    }
-  },
-  "soymealStock": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
-  },
-  "hogGrainRatio": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
-  },
-  "breedingSows": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
-  },
-  "spotBasis": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
-  },
-  "crushRate": {
-    "available": false,
-    "reason": "缺少 GROQ_API_KEY 或 TAVILY_API_KEY"
+    "available": true,
+    "marketYear": 2025,
+    "wasdeVintage": "2026年06月版",
+    "endingStocks": 408.0,
+    "production": 57200.0,
+    "totalSupply": 58309.0,
+    "domesticConsumption": 39757.0,
+    "source": "USDA-FAS PSD API (WASDE同源数据)",
+    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
   }
 }
