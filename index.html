@@ -645,16 +645,17 @@ function renderNoaaOutlook(no, genAt){
   badge.className = 'badge badge-auto';
   const stateNames = {IA:'爱荷华', IL:'伊利诺伊', MN:'明尼苏达'};
   let rows = '';
-  Object.keys(no.byLocation).forEach(st=>{
-    const s = no.byLocation[st];
+  Object.keys(no.byState).forEach(st=>{
+    const s = no.byState[st];
     if(!s.available){ rows += `<div class="ir"><div class="il">${stateNames[st]}</div><div class="iv">数据缺失</div></div>`; return; }
-    const cls = (s.outlook==='Development'||s.outlook==='Persistence')?'r':(s.outlook==='No_Drought')?'':'g';
-    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.outlookLabel}</span>　适用期:${s.targetPeriod||'未知'}</div></div>`;
+    const cls = s.worseningPct>=20?'r':s.worseningPct>=5?'gold':'g';
+    rows += `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.worseningCount}/${s.totalPoints}点变差(${s.worseningPct}%)</span>　众数:${s.dominantOutlookLabel}　适用期:${s.targetPeriod||'未知'}</div></div>`;
   });
+  const avg = no.avgWorseningPct;
   const sig = no.overallSignal;
-  const cls = sig===1?'bull':'bear';
-  const text = sig===1?'至少一地展望干旱发展/持续 — 偏多信号':'各地展望均为改善/解除/无旱 — 偏空信号';
-  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">${text}</span>来源：${no.source}</div>`;
+  const cls = sig===1?'bull':sig===0?'neutral':'bear';
+  const text = sig===1?'展望恶化点位占比高 — 偏多信号':sig===0?'展望恶化点位占比中等，持续观察':'展望大多改善/无旱 — 偏空信号';
+  el.innerHTML = rows + `<div class="alert-box ${cls}"><span class="at">三州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>`;
   window._noaaOutlookSignal = sig;
 }
 
@@ -897,8 +898,8 @@ function updateOverallAlert(){
   else if(window._weatherRisk==='low'){ score-=1; notes.push('天气预报：降雨充沛 → 偏空'); }
   if(window._droughtSignal===1){ score+=1; notes.push('官方干旱监测：严重干旱面积大 → 偏多'); }
   else if(window._droughtSignal===-1){ score-=1; notes.push('官方干旱监测：基本无干旱 → 偏空'); }
-  if(window._noaaOutlookSignal===1){ score+=1; notes.push('NOAA月度展望：至少一地干旱发展/持续 → 偏多'); }
-  else if(window._noaaOutlookSignal===-1){ score-=1; notes.push('NOAA月度展望：各地展望改善 → 偏空'); }
+  if(window._noaaOutlookSignal===1){ score+=1; notes.push('NOAA月度展望：恶化点位占比≥20% → 偏多'); }
+  else if(window._noaaOutlookSignal===-1){ score-=1; notes.push('NOAA月度展望：恶化点位占比<5% → 偏空'); }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
