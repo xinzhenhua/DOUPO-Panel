@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-10T11:11:39.464353+00:00",
+  "generatedAt": "2026-07-10T13:36:52.547194+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 313.4,
-    "change": -6.1,
-    "changePct": -1.91,
+    "price": 316.0,
+    "change": -3.5,
+    "changePct": -1.1,
     "asOf": "2026-07-10T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -99,9 +99,53 @@
         "d3": 4.63,
         "d4": 0.0,
         "severeOrWorsePct": 22.6
+      },
+      "ND": {
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 32.2,
+        "d1": 8.79,
+        "d2": 0.35,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.3
+      },
+      "KS": {
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 40.51,
+        "d1": 26.76,
+        "d2": 7.04,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 7.0
+      },
+      "MI": {
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 6.48,
+        "d1": 0.0,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
+      },
+      "WI": {
+        "available": true,
+        "anomalous": false,
+        "validDate": "2026-07-07T00:00:00",
+        "d0": 59.86,
+        "d1": 0.97,
+        "d2": 0.0,
+        "d3": 0.0,
+        "d4": 0.0,
+        "severeOrWorsePct": 0.0
       }
     },
-    "avgSevereOrWorsePct": 15.7,
+    "avgSevereOrWorsePct": 11.1,
     "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
@@ -250,6 +294,82 @@
           "d1": 37030.63,
           "d2": 13895.54,
           "d3": 3574.52,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "ND": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":47941.34,\"d0\":22764.95,\"d1\":6217.23,\"d2\":244.58,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":47941.34,\"d0\":22764.95,\"d1\":6217.23,\"d2\":244.58,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "ND",
+          "none": 47941.34,
+          "d0": 22764.95,
+          "d1": 6217.23,
+          "d2": 244.58,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "KS": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":48949.39,\"d0\":33338.01,\"d1\":22021.81,\"d2\":5793.21,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":47089.77,\"d0\":35197.63,\"d1\":22818.87,\"d2\":6733.59,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbrevia",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "KS",
+          "none": 48949.39,
+          "d0": 33338.01,
+          "d1": 22021.81,
+          "d2": 5793.21,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "MI": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":54389.22,\"d0\":3768.31,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":56452.32,\"d0\":1705.22,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"MI\",\"none",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "MI",
+          "none": 54389.22,
+          "d0": 3768.31,
+          "d1": 0.0,
+          "d2": 0.0,
+          "d3": 0.0,
+          "d4": 0.0,
+          "validStart": "2026-07-07T00:00:00",
+          "validEnd": "2026-07-13T23:59:59",
+          "statisticFormatID": 1
+        },
+        "totalRowsReturned": 3
+      },
+      "WI": {
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=6/26/2026&enddate=7/10/2026&statisticsType=1",
+        "httpStatus": 200,
+        "rawSnippet": "[{\"mapDate\":\"2026-07-07T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":22500.27,\"d0\":33548.18,\"d1\":543.14,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-07T00:00:00\",\"validEnd\":\"2026-07-13T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-30T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":21184.02,\"d0\":34864.44,\"d1\":1260.08,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-06-30T00:00:00\",\"validEnd\":\"2026-07-06T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-06-23T00:00:00\",\"stateAbbreviation\":\"WI",
+        "sampleRawRow": {
+          "mapDate": "2026-07-07T00:00:00",
+          "stateAbbreviation": "WI",
+          "none": 22500.27,
+          "d0": 33548.18,
+          "d1": 543.14,
+          "d2": 0.0,
+          "d3": 0.0,
           "d4": 0.0,
           "validStart": "2026-07-07T00:00:00",
           "validEnd": "2026-07-13T23:59:59",
@@ -733,6 +853,242 @@
         "dominantOutlook": "Persistence",
         "dominantOutlookLabel": "干旱持续",
         "targetPeriod": "Jul 2026"
+      },
+      "ND": {
+        "available": true,
+        "pointResults": [
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          }
+        ],
+        "totalPoints": 8,
+        "worseningCount": 2,
+        "worseningPct": 25.0,
+        "dominantOutlook": "No_Drought",
+        "dominantOutlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026"
+      },
+      "KS": {
+        "available": true,
+        "pointResults": [
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Development",
+            "outlookLabel": "干旱发展中",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          }
+        ],
+        "totalPoints": 8,
+        "worseningCount": 3,
+        "worseningPct": 37.5,
+        "dominantOutlook": "No_Drought",
+        "dominantOutlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026"
+      },
+      "MI": {
+        "available": true,
+        "pointResults": [
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          }
+        ],
+        "totalPoints": 8,
+        "worseningCount": 0,
+        "worseningPct": 0.0,
+        "dominantOutlook": "No_Drought",
+        "dominantOutlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026"
+      },
+      "WI": {
+        "available": true,
+        "pointResults": [
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Jul 2026",
+            "forecastDate": "06/30/2026"
+          }
+        ],
+        "totalPoints": 8,
+        "worseningCount": 1,
+        "worseningPct": 12.5,
+        "dominantOutlook": "No_Drought",
+        "dominantOutlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026"
       }
     },
     "avgWorseningPct": 18.8,
@@ -1200,6 +1556,238 @@
           "lat": 44.3683,
           "lon": -100.351,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-100.351%2C+%22y%22%3A+44.3683%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        }
+      },
+      "ND": {
+        "point0": {
+          "lat": 48.233,
+          "lon": -101.2957,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-101.2957%2C+%22y%22%3A+48.233%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point1": {
+          "lat": 47.9253,
+          "lon": -97.0329,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.0329%2C+%22y%22%3A+47.9253%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point2": {
+          "lat": 46.8083,
+          "lon": -100.7837,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-100.7837%2C+%22y%22%3A+46.8083%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point3": {
+          "lat": 46.8772,
+          "lon": -96.7898,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.7898%2C+%22y%22%3A+46.8772%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point4": {
+          "lat": 46.2807,
+          "lon": -98.7031,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-98.7031%2C+%22y%22%3A+46.2807%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point5": {
+          "lat": 48.1128,
+          "lon": -103.621,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-103.621%2C+%22y%22%3A+48.1128%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point6": {
+          "lat": 46.0555,
+          "lon": -102.7813,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-102.7813%2C+%22y%22%3A+46.0555%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point7": {
+          "lat": 47.5515,
+          "lon": -99.2379,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-99.2379%2C+%22y%22%3A+47.5515%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        }
+      },
+      "KS": {
+        "point0": {
+          "lat": 39.8403,
+          "lon": -95.3639,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-95.3639%2C+%22y%22%3A+39.8403%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point1": {
+          "lat": 38.9717,
+          "lon": -95.2353,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-95.2353%2C+%22y%22%3A+38.9717%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point2": {
+          "lat": 37.6922,
+          "lon": -97.3375,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.3375%2C+%22y%22%3A+37.6922%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point3": {
+          "lat": 39.1836,
+          "lon": -96.5717,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.5717%2C+%22y%22%3A+39.1836%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point4": {
+          "lat": 38.0608,
+          "lon": -97.9298,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.9298%2C+%22y%22%3A+38.0608%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point5": {
+          "lat": 37.042,
+          "lon": -95.6161,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-95.6161%2C+%22y%22%3A+37.042%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point6": {
+          "lat": 39.3475,
+          "lon": -101.7104,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-101.7104%2C+%22y%22%3A+39.3475%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Development\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point7": {
+          "lat": 37.7528,
+          "lon": -100.0171,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-100.0171%2C+%22y%22%3A+37.7528%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        }
+      },
+      "MI": {
+        "point0": {
+          "lat": 43.6211,
+          "lon": -84.228,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.228%2C+%22y%22%3A+43.6211%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point1": {
+          "lat": 42.7325,
+          "lon": -84.5555,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.5555%2C+%22y%22%3A+42.7325%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point2": {
+          "lat": 42.2917,
+          "lon": -83.713,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-83.713%2C+%22y%22%3A+42.2917%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point3": {
+          "lat": 41.9163,
+          "lon": -83.3554,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-83.3554%2C+%22y%22%3A+41.9163%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point4": {
+          "lat": 42.097,
+          "lon": -86.4526,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-86.4526%2C+%22y%22%3A+42.097%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point5": {
+          "lat": 43.4195,
+          "lon": -85.3378,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-85.3378%2C+%22y%22%3A+43.4195%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point6": {
+          "lat": 43.0125,
+          "lon": -83.6875,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-83.6875%2C+%22y%22%3A+43.0125%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point7": {
+          "lat": 45.0,
+          "lon": -84.68,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.68%2C+%22y%22%3A+45.0%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        }
+      },
+      "WI": {
+        "point0": {
+          "lat": 42.8666,
+          "lon": -88.0198,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-88.0198%2C+%22y%22%3A+42.8666%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point1": {
+          "lat": 42.7261,
+          "lon": -89.0187,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.0187%2C+%22y%22%3A+42.7261%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point2": {
+          "lat": 43.0731,
+          "lon": -89.4012,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.4012%2C+%22y%22%3A+43.0731%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point3": {
+          "lat": 43.7844,
+          "lon": -88.7879,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-88.7879%2C+%22y%22%3A+43.7844%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point4": {
+          "lat": 43.0389,
+          "lon": -91.1521,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.1521%2C+%22y%22%3A+43.0389%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point5": {
+          "lat": 44.5192,
+          "lon": -88.0198,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-88.0198%2C+%22y%22%3A+44.5192%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point6": {
+          "lat": 44.9591,
+          "lon": -91.6899,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.6899%2C+%22y%22%3A+44.9591%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "httpStatus": 200,
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+        },
+        "point7": {
+          "lat": 45.8666,
+          "lon": -91.2429,
+          "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.2429%2C+%22y%22%3A+45.8666%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         }
