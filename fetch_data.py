@@ -36,6 +36,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 from datetime import datetime, timezone
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
@@ -559,6 +560,95 @@ def fetch_drought_monitor():
 
 
 # ---------------------------------------------------------------------------
+# NOAA/CPC 月度干旱展望 —— 填补"现状(干旱监测)"和"未来7天(天气预报)"之间的空白
+# 这是专家综合研判(不只是降雨量公式)：还会考虑ENSO状态、季节性降雨规律、
+# 热带风暴季等因素，预测未来1个月这个地区干旱会"发展/持续/改善/解除"。
+# ---------------------------------------------------------------------------
+NOAA_OUTLOOK_QUERY_URL = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query"
+
+# 跟天气监测用同一组代表性坐标，方便三层时间尺度互相对照
+OUTLOOK_LOCATIONS = [
+    {"name": "IA", "lat": 41.878, "lon": -93.097},
+    {"name": "IL", "lat": 39.798, "lon": -89.644},
+    {"name": "MN", "lat": 44.986, "lon": -93.279},
+]
+
+# 展望分类 → 对交易而言的方向（Development/Persistence=干旱在发展或持续=偏多；
+# Improvement/Removal=干旱在改善或解除=偏空；No_Drought=预计维持无旱=中性偏空）
+OUTLOOK_DIRECTION = {
+    "Development": 1, "Persistence": 1,
+    "Improvement": -1, "Removal": -1,
+    "No_Drought": 0,
+}
+OUTLOOK_LABEL_CN = {
+    "Development": "干旱发展中", "Persistence": "干旱持续",
+    "Improvement": "干旱改善", "Removal": "干旱解除", "No_Drought": "预计无旱",
+}
+
+
+def fetch_noaa_drought_outlook():
+    """查询NOAA/CPC月度干旱展望——用ArcGIS REST的Query接口，
+    给一个经纬度点，返回覆盖这个点的展望区域是什么分类(Development/Persistence/Improvement/Removal/No_Drought)。
+    已确认：这个服务坐标系是标准WGS84(4326)，不需要坐标转换。"""
+    results = {}
+    debugs = {}
+
+    for loc in OUTLOOK_LOCATIONS:
+        geometry = json.dumps({"x": loc["lon"], "y": loc["lat"], "spatialReference": {"wkid": 4326}})
+        params = {
+            "geometry": geometry,
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "outlook,fcst_date,target",
+            "returnGeometry": "false",
+            "f": "json",
+        }
+        # ★ 用urllib.parse.urlencode()而不是手动拼字符串——这个项目已经因为
+        #   手动拼URL漏编码空格踩过2次坑了(到港预报那边)，这次直接用标准工具处理，
+        #   geometry参数本身是一段JSON文本，里面有花括号/引号/冒号，更需要正确编码。
+        query_string = urllib.parse.urlencode(params)
+        url = f"{NOAA_OUTLOOK_QUERY_URL}?{query_string}"
+        data, debug = fetch_json_debug(url)
+        debugs[loc["name"]] = debug
+
+        if not data or "features" not in data or not data["features"]:
+            results[loc["name"]] = {"available": False}
+            continue
+
+        attrs = data["features"][0]["attributes"]
+        outlook = attrs.get("outlook")
+        results[loc["name"]] = {
+            "available": True,
+            "outlook": outlook,
+            "outlookLabel": OUTLOOK_LABEL_CN.get(outlook, outlook),
+            "targetPeriod": attrs.get("target"),
+            "forecastDate": attrs.get("fcst_date"),
+        }
+
+    available = {k: v for k, v in results.items() if v.get("available")}
+    if not available:
+        return {"available": False, "reason": "NOAA月度干旱展望接口未返回任何州的数据", "debug": debugs}
+
+    # 综合信号：任意一州判定"发展中"或"持续"就偏多倾向；全部"改善/解除/无旱"才偏空
+    signals = [OUTLOOK_DIRECTION.get(v["outlook"], 0) for v in available.values()]
+    # 简化判断逻辑：只要有任何一州展望是"发展中/持续"(drought worsening)，整体就偏多；
+    # 否则(没有一个地方在恶化，不管是明确改善还是本来就没旱)，整体就偏空。
+    # 之前用all(s==-1...)要求"全部州都严格是-1"才判偏空，但No_Drought信号是0不是-1，
+    # 导致"两个州改善+一个州本来没旱"这种明显该偏空的组合被误判成中性，已修复。
+    overall_signal = 1 if any(s == 1 for s in signals) else -1
+
+    return {
+        "available": True,
+        "byLocation": results,
+        "overallSignal": overall_signal,
+        "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素）",
+        "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
+        "debug": debugs,
+    }
+
+
+# ---------------------------------------------------------------------------
 # 主流程
 # ---------------------------------------------------------------------------
 def main():
@@ -580,6 +670,7 @@ def main():
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "droughtMonitor": fetch_drought_monitor(),
+        "noaaOutlook": fetch_noaa_drought_outlook(),
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
