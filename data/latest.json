@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-10T04:56:28.824296+00:00",
+  "generatedAt": "2026-07-10T05:34:38.652474+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 315.5,
-    "change": -4.0,
-    "changePct": -1.25,
+    "price": 315.8,
+    "change": -3.7,
+    "changePct": -1.16,
     "asOf": "2026-07-10T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -106,6 +106,52 @@
           "statisticFormatID": 1
         },
         "totalRowsReturned": 3
+      }
+    }
+  },
+  "noaaOutlook": {
+    "available": true,
+    "byLocation": {
+      "IA": {
+        "available": true,
+        "outlook": "No_Drought",
+        "outlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026",
+        "forecastDate": "06/30/2026"
+      },
+      "IL": {
+        "available": true,
+        "outlook": "No_Drought",
+        "outlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026",
+        "forecastDate": "06/30/2026"
+      },
+      "MN": {
+        "available": true,
+        "outlook": "No_Drought",
+        "outlookLabel": "预计无旱",
+        "targetPeriod": "Jul 2026",
+        "forecastDate": "06/30/2026"
+      }
+    },
+    "overallSignal": -1,
+    "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素）",
+    "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
+    "debug": {
+      "IA": {
+        "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.097%2C+%22y%22%3A+41.878%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+        "httpStatus": 200,
+        "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+      },
+      "IL": {
+        "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.644%2C+%22y%22%3A+39.798%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+        "httpStatus": 200,
+        "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+      },
+      "MN": {
+        "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.279%2C+%22y%22%3A+44.986%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+        "httpStatus": 200,
+        "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
       }
     }
   },
