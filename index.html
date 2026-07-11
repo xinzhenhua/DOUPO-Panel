@@ -335,26 +335,134 @@ function toggleSetup(){document.getElementById('setupPanel').classList.toggle('o
 // ★ 已扩展：核心8州(占全国种植面积64.0%) + 次要4州(北达科他/堪萨斯/密歇根/威斯康星，
 //   加起来12州共81.8%，数据来源SoyStats官方2024年种植面积统计)
 const BELT_LOCATIONS_CORE = [
-  {name:'爱荷华(Iowa)', lat:41.878, lon:-93.097},
-  {name:'伊利诺伊(Illinois)', lat:39.798, lon:-89.644},
-  {name:'明尼苏达(Minnesota)', lat:44.986, lon:-93.279},
-  {name:'印第安纳(Indiana)', lat:39.768, lon:-86.158},
-  {name:'内布拉斯加(Nebraska)', lat:41.492, lon:-99.901},
-  {name:'俄亥俄(Ohio)', lat:40.417, lon:-82.907},
-  {name:'密苏里(Missouri)', lat:38.573, lon:-92.604},
-  {name:'南达科他(South Dakota)', lat:44.299, lon:-99.438},
+  {name:'爱荷华(Iowa)', code:'IA', lat:41.878, lon:-93.097},
+  {name:'伊利诺伊(Illinois)', code:'IL', lat:39.798, lon:-89.644},
+  {name:'明尼苏达(Minnesota)', code:'MN', lat:44.986, lon:-93.279},
+  {name:'印第安纳(Indiana)', code:'IN', lat:39.768, lon:-86.158},
+  {name:'内布拉斯加(Nebraska)', code:'NE', lat:41.492, lon:-99.901},
+  {name:'俄亥俄(Ohio)', code:'OH', lat:40.417, lon:-82.907},
+  {name:'密苏里(Missouri)', code:'MO', lat:38.573, lon:-92.604},
+  {name:'南达科他(South Dakota)', code:'SD', lat:44.299, lon:-99.438},
 ];
 const BELT_LOCATIONS_SECONDARY = [
-  {name:'北达科他(North Dakota)', lat:47.551, lon:-101.002},
-  {name:'堪萨斯(Kansas)', lat:38.500, lon:-98.000},
-  {name:'密歇根(Michigan)', lat:44.315, lon:-85.602},
-  {name:'威斯康星(Wisconsin)', lat:44.500, lon:-89.500},
+  {name:'北达科他(North Dakota)', code:'ND', lat:47.551, lon:-101.002},
+  {name:'堪萨斯(Kansas)', code:'KS', lat:38.500, lon:-98.000},
+  {name:'密歇根(Michigan)', code:'MI', lat:44.315, lon:-85.602},
+  {name:'威斯康星(Wisconsin)', code:'WI', lat:44.500, lon:-89.500},
 ];
 const BELT_LOCATIONS = [...BELT_LOCATIONS_CORE, ...BELT_LOCATIONS_SECONDARY];
 
 // 核心8州(占全国种植面积64.0%) + 次要4州(北达科他/堪萨斯/密歇根/威斯康星，加总12州81.8%)
 // 跟fetch_data.py里的CORE_STATES/SECONDARY_STATES保持一致
 const JS_CORE_STATES = ['IA','IL','MN','IN','NE','OH','MO','SD'];
+
+// ★ 新增：跟fetch_data.py里的STATE_ACREAGE_WEIGHTS完全一致(SoyStats官方2024年种植面积，千英亩)，
+//   天气板块是纯前端JS计算，所以这份权重数据在这里也要有一份，两边保持同步。
+const STATE_ACREAGE_WEIGHTS = {
+  IL:10800, IA:10050, MN:7400, IN:5800, NE:5300, OH:5050, MO:5900, SD:5450,
+  ND:6600, KS:4530, MI:2200, WI:2150,
+};
+
+/** 按种植面积加权平均，而不是简单平均——大产区的天气应该占更大权重。
+ *  values: [{code:'IA', value:12.3}, ...] */
+function weightedAvgJS(items){
+  let totalWeight = 0, weightedSum = 0;
+  items.forEach(it=>{
+    const w = STATE_ACREAGE_WEIGHTS[it.code] || 0;
+    totalWeight += w;
+    weightedSum += it.value * w;
+  });
+  if(totalWeight === 0) return items.reduce((s,it)=>s+it.value,0) / items.length;
+  return weightedSum / totalWeight;
+}
+
+// ===================== 图表：手写SVG，极简风格，不依赖外部库 =====================
+
+/** 12州对比横向条形图：条的"长度"=数值，条的"粗细"=种植面积权重。
+ *  items: [{label, value, code}]，opts: {unit, colorFn(value)->hexColor, maxValue} */
+function renderBarChartSVG(items, opts={}){
+  const unit = opts.unit || '';
+  const rowH = 20, barMaxH = 13, chartW = 300, labelW = 46, valueLabelW = 46;
+  const barAreaW = chartW - labelW - valueLabelW;
+  const sorted = [...items].sort((a,b)=>b.value-a.value);
+  const maxVal = opts.maxValue || Math.max(...sorted.map(i=>Math.abs(i.value)), 0.001);
+  const maxWeight = Math.max(...sorted.map(i=>STATE_ACREAGE_WEIGHTS[i.code]||1), 1);
+  const colorFn = opts.colorFn || (()=>'#e84141');
+
+  let rows = '';
+  sorted.forEach((item,i)=>{
+    const y = i*rowH;
+    const weight = STATE_ACREAGE_WEIGHTS[item.code] || 1;
+    const barW = Math.max((Math.abs(item.value)/maxVal)*barAreaW, 1.5);
+    const barH = Math.max((weight/maxWeight)*barMaxH, 3);
+    const barY = y + (rowH-barH)/2;
+    const color = colorFn(item.value);
+    rows += `<text x="0" y="${y+rowH/2+3.5}" font-size="8.5" fill="#a0a0a0">${item.label}</text>` +
+            `<rect x="${labelW}" y="${barY.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="${color}" rx="2"/>` +
+            `<text x="${(labelW+barW+4).toFixed(1)}" y="${y+rowH/2+3.5}" font-size="8.5" fill="#ebebeb">${item.value}${unit}</text>`;
+  });
+  const svgH = sorted.length*rowH;
+  return `<svg viewBox="0 0 ${chartW} ${svgH}" style="width:100%;height:auto;display:block;margin-top:4px">${rows}</svg>`;
+}
+
+/** 综合评分半圆仪表盘：指针指向当前分数在[minScore,maxScore]区间的位置。
+ *  约定：红色=偏多(bull)，绿色=偏空(bear)，跟全站配色习惯一致。 */
+function renderGaugeSVG(score, minScore, maxScore){
+  const cx=150, cy=95, r=78;
+  const clamped = Math.max(minScore, Math.min(maxScore, score));
+  const pct = (clamped-minScore)/(maxScore-minScore); // 0(最左,偏空)→1(最右,偏多)
+  const angle = Math.PI - pct*Math.PI; // 180°(左)→0°(右)，经过顶部90°
+  const needleLen = r*0.78;
+  const needleX = (cx + needleLen*Math.cos(angle)).toFixed(1);
+  const needleY = (cy - needleLen*Math.sin(angle)).toFixed(1);
+
+  // 三段弧：左1/3偏空(绿)，中1/3中性(灰)，右1/3偏多(红)
+  const arcPoint = (t)=>{ const a=Math.PI-t*Math.PI; return [cx+r*Math.cos(a), cy-r*Math.sin(a)]; };
+  const [x0,y0]=arcPoint(0), [x1,y1]=arcPoint(1/3), [x2,y2]=arcPoint(2/3), [x3,y3]=arcPoint(1);
+  const arc=(sx,sy,ex,ey)=>`M${sx.toFixed(1)},${sy.toFixed(1)} A${r},${r} 0 0 1 ${ex.toFixed(1)},${ey.toFixed(1)}`;
+
+  return `<svg viewBox="0 0 300 130" style="width:100%;max-width:280px;height:auto;display:block;margin:4px auto">
+    <path d="${arc(x0,y0,x1,y1)}" stroke="#00b37a" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="${arc(x1,y1,x2,y2)}" stroke="#333" stroke-width="12" fill="none"/>
+    <path d="${arc(x2,y2,x3,y3)}" stroke="#e84141" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${needleX}" y2="${needleY}" stroke="#ebebeb" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#ebebeb"/>
+    <text x="150" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#ebebeb">${score>0?'+':''}${score}分</text>
+    <text x="30" y="118" font-size="9" fill="#00b37a">偏空</text>
+    <text x="252" y="118" font-size="9" fill="#e84141">偏多</text>
+  </svg>`;
+}
+
+/** 7个手动指标状态点图：一条横线上分布彩色圆点，一眼看出整体倾向。
+ *  indicators: [{label, signal}]，signal为-1/0/1/null(null=尚未填写，不画点) */
+function renderDotPlotSVG(indicators){
+  const valid = indicators.filter(i=>i.signal!==null && i.signal!==undefined && !isNaN(i.signal));
+  if(!valid.length) return '<div style="font-size:10px;color:var(--t3);text-align:center;padding:8px">暂无数据，填写指标后这里会显示状态总览</div>';
+  const w=300, trackY=32, leftX=20, rightX=280;
+  const xFor = (sig)=> leftX + (sig+1)/2*(rightX-leftX); // sig:-1→leftX, 0→中点, 1→rightX
+  // 同一位置(比如都是sig=0)容易重叠，做一点水平错开
+  const grouped = {};
+  valid.forEach(it=>{ (grouped[it.signal]=grouped[it.signal]||[]).push(it); });
+  let dots = '', labels = '';
+  Object.keys(grouped).forEach(sigKey=>{
+    const sig = parseFloat(sigKey);
+    const group = grouped[sigKey];
+    const baseX = xFor(sig);
+    group.forEach((it,idx)=>{
+      const offset = (idx - (group.length-1)/2) * 16;
+      const x = baseX + offset;
+      const color = sig>0?'#e84141':sig<0?'#00b37a':'#666';
+      dots += `<circle cx="${x.toFixed(1)}" cy="${trackY}" r="5" fill="${color}"/>`;
+      labels += `<text x="${x.toFixed(1)}" y="${trackY+18}" font-size="7.5" fill="#a0a0a0" text-anchor="middle">${it.label}</text>`;
+    });
+  });
+  return `<svg viewBox="0 0 ${w} 58" style="width:100%;height:auto;display:block;margin-top:4px">
+    <line x1="${leftX}" y1="${trackY}" x2="${rightX}" y2="${trackY}" stroke="#333" stroke-width="1.5"/>
+    <text x="${leftX}" y="${trackY-8}" font-size="8" fill="#00b37a">偏空</text>
+    <text x="${rightX}" y="${trackY-8}" font-size="8" fill="#e84141" text-anchor="end">偏多</text>
+    ${dots}${labels}
+  </svg>`;
+}
 
 /** 把一组"州→这一行的html"的映射，全部收进一个details里，只留一个"查看详情"入口。
  *  极简模式：卡片本身只常驻显示alert-box结论，逐州明细全部收起来点开才看。 */
@@ -380,8 +488,11 @@ async function loadWeather(){
       return {...loc, precip7d: Math.round(precip7d*10)/10, avgMaxTemp: Math.round(avgMaxTemp*10)/10};
     }));
 
-    const avgPrecip = results.reduce((s,r)=>s+r.precip7d,0)/results.length;
-    const avgTemp = results.reduce((s,r)=>s+r.avgMaxTemp,0)/results.length;
+    // ★ 已改进：从12州简单平均改成按种植面积加权——伊利诺伊/爱荷华这些大产区的天气
+    //   应该比南达科他/威斯康星这些小产区占更大权重，跟fetch_data.py里drought/NOAA的处理一致。
+    const avgPrecip = weightedAvgJS(results.map(r=>({code:r.code, value:r.precip7d})));
+    const avgTemp = weightedAvgJS(results.map(r=>({code:r.code, value:r.avgMaxTemp})));
+    const simpleAvgPrecip = results.reduce((s,r)=>s+r.precip7d,0)/results.length;  // 保留做对比参考
 
     const now = new Date();
     const month = now.getMonth()+1;
@@ -402,12 +513,16 @@ async function loadWeather(){
       </div>`;
 
     // 极简模式：alert-box常驻(带关键数字做简要概况)，12州逐州明细全部收进details
-    let html = `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>${results.length}州平均降雨${Math.round(avgPrecip*10)/10}mm/7天，平均最高温${Math.round(avgTemp*10)/10}°C${isCriticalWindow?'　⭐7-8月授粉灌浆关键期':''}</div>`;
+    let html = `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>${results.length}州按种植面积加权平均降雨${Math.round(avgPrecip*10)/10}mm/7天(简单平均${Math.round(simpleAvgPrecip*10)/10}mm)，平均最高温${Math.round(avgTemp*10)/10}°C${isCriticalWindow?'　⭐7-8月授粉灌浆关键期':''}</div>`;
+    html += renderBarChartSVG(
+      results.map(r=>({label:r.code, value:r.precip7d, code:r.code})),
+      {unit:'mm', colorFn:v=>v<10?'#e84141':v<20?'#d4a017':'#00b37a'}
+    );
     html += `<details class="tier-details"><summary>查看12州详细数据 ▸</summary><div class="tier-body">`;
     html += `<div class="grid2">` + results.map(statCardFor).join('') + `</div>`;
     html += `<div class="divider"></div>`;
-    html += `<div class="ir"><div class="il">平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
-    html += `<div class="ir"><div class="il">平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
+    html += `<div class="ir"><div class="il">加权平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
+    html += `<div class="ir"><div class="il">加权平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
     html += `<div class="ir"><div class="il">当前时段</div><div class="iv">${isCriticalWindow?'<span class="gold">⭐ 7-8月授粉灌浆关键期，天气影响最大</span>':'非关键炒作期，影响权重较低'}</div></div>`;
     html += `</div></details>`;
 
@@ -684,7 +799,12 @@ function renderDrought(dm, genAt){
   const avgCls = avg>=20?'bull':avg>=5?'neutral':'bear';
   const avgText = avg>=20?'干旱面积占比高 — 偏多信号':avg>=5?'干旱面积占比中等，持续观察':'基本无严重干旱 — 偏空信号';
   const stateCount = Object.keys(dm.byState).length;
-  el.innerHTML = `<div class="alert-box ${avgCls}"><span class="at">${stateCount}州平均D2(严重)以上占比 ${avg}%</span>${avgText} · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>` + rows;
+  const barChart = renderBarChartSVG(
+    Object.keys(dm.byState).filter(st=>dm.byState[st].available && !dm.byState[st].anomalous)
+      .map(st=>({label:st, value:dm.byState[st].severeOrWorsePct, code:st})),
+    {unit:'%', colorFn:v=>v>=20?'#e84141':v>=5?'#d4a017':'#00b37a'}
+  );
+  el.innerHTML = `<div class="alert-box ${avgCls}"><span class="at">${stateCount}州加权平均D2(严重)以上占比 ${avg}%</span>${avgText}（按种植面积加权，简单平均为${dm.simpleSevereOrWorsePct}%） · 数据日期 ${dm.byState[Object.keys(dm.byState)[0]].validDate}</div>` + barChart + rows;
   window._droughtSignal = avg>=20?1:avg<5?-1:0;
 }
 
@@ -714,7 +834,12 @@ function renderNoaaOutlook(no, genAt){
   const cls = sig===1?'bull':sig===0?'neutral':'bear';
   const text = sig===1?'展望恶化点位占比高 — 偏多信号':sig===0?'展望恶化点位占比中等，持续观察':'展望大多改善/无旱 — 偏空信号';
   const stateCount = Object.keys(no.byState).length;
-  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${stateCount}州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>` + rows;
+  const barChart = renderBarChartSVG(
+    Object.keys(no.byState).filter(st=>no.byState[st].available)
+      .map(st=>({label:st, value:no.byState[st].worseningPct, code:st})),
+    {unit:'%', colorFn:v=>v>=20?'#e84141':v>=5?'#d4a017':'#00b37a'}
+  );
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${stateCount}州加权平均展望恶化点位占比 ${avg}%</span>${text}（按种植面积加权，简单平均为${no.simpleWorseningPct}%） · 来源：NOAA/CPC(每州8点采样)</div>` + barChart + rows;
   window._noaaOutlookSignal = sig;
 }
 
@@ -953,53 +1078,55 @@ function updateOverallAlert(){
 
   let score = 0;
   const notes = [];
+  // 追踪7个手动指标各自的信号值(1/-1/0/null)，供状态点图使用
+  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null;
 
   if(!isNaN(crush)){
-    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); }
-    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); }
-    else{ setInd('ind_crush',0,'→ 中性'); }
+    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
+    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); sigCrush=-1; }
+    else{ setInd('ind_crush',0,'→ 中性'); sigCrush=0; }
   } else setInd('ind_crush', null);
 
   if(!isNaN(stock)){
-    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); }
-    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); }
-    else{ setInd('ind_stock',0,'→ 中性'); }
+    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); sigStock=1; }
+    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); sigStock=-1; }
+    else{ setInd('ind_stock',0,'→ 中性'); sigStock=0; }
   } else setInd('ind_stock', null);
 
   if(!isNaN(basis)){
-    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); setInd('ind_basis',1,'→ 偏多'); }
-    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); setInd('ind_basis',-1,'→ 偏空'); }
-    else{ setInd('ind_basis',0,'→ 中性'); }
+    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); setInd('ind_basis',1,'→ 偏多'); sigBasis=1; }
+    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); setInd('ind_basis',-1,'→ 偏空'); sigBasis=-1; }
+    else{ setInd('ind_basis',0,'→ 中性'); sigBasis=0; }
   } else setInd('ind_basis', null);
 
   // ★ 已修复：从"本周"改成"本月"到港预报后，阈值忘了跟着从周度改成月度，
   //   之前180/250是周度量级，月度数字通常是周度的4倍以上，会导致月度数值
   //   几乎必然被误判成"偏空"。现在改用跟"月度进口量"一致的月度阈值(800/1000)。
   if(!isNaN(arrival)){
-    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（&lt;800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); }
-    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（&gt;1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); }
-    else{ setInd('ind_arrival',0,'→ 中性'); }
+    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（&lt;800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); sigArrival=1; }
+    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（&gt;1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); sigArrival=-1; }
+    else{ setInd('ind_arrival',0,'→ 中性'); sigArrival=0; }
   } else setInd('ind_arrival', null);
 
   if(!isNaN(hogratio)){
-    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); }
-    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); }
-    else{ setInd('ind_hogratio',0,'→ 中性'); }
+    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); sigHogratio=1; }
+    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); sigHogratio=-1; }
+    else{ setInd('ind_hogratio',0,'→ 中性'); sigHogratio=0; }
   } else setInd('ind_hogratio', null);
 
   // 能繁母猪：低于3750万头目标（产能调控线）=未来供给偏紧=偏多；远超目标=产能过剩=偏空
   if(!isNaN(sows)){
-    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（&lt;3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); }
-    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（&gt;3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); }
-    else{ setInd('ind_sows',0,'→ 中性'); }
+    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（&lt;3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); sigSows=1; }
+    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（&gt;3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); sigSows=-1; }
+    else{ setInd('ind_sows',0,'→ 中性'); sigSows=0; }
   } else setInd('ind_sows', null);
 
   // 中国大豆月度进口量：逻辑与"到港预报"保持一致——进口少=供给收紧=偏多；进口多=供给宽松=偏空
   // （这里做了个修正：之前独立表格里曾把"进口增长"标成偏多，和到港预报的方向矛盾，现在统一为同一套供需逻辑）
   if(!isNaN(cnImport)){
-    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（&lt;800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); }
-    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（&gt;1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); }
-    else{ setInd('ind_import',0,'→ 中性'); }
+    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（&lt;800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); sigImport=1; }
+    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（&gt;1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); sigImport=-1; }
+    else{ setInd('ind_import',0,'→ 中性'); sigImport=0; }
   } else setInd('ind_import', null);
 
   if(window._weatherRisk==='high'){ score+=1; notes.push('天气预报：干旱高温风险 → 偏多'); }
@@ -1028,7 +1155,14 @@ function updateOverallAlert(){
   else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
 
-  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>${notes.join('<br>')}</div>`;
+  const gauge = renderGaugeSVG(score, -14, 14);
+  const dotPlot = renderDotPlotSVG([
+    {label:'开机率', signal:sigCrush}, {label:'库存', signal:sigStock}, {label:'基差', signal:sigBasis},
+    {label:'到港', signal:sigArrival}, {label:'猪粮比', signal:sigHogratio}, {label:'母猪', signal:sigSows},
+    {label:'进口', signal:sigImport},
+  ]);
+  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${notes.join('<br>')}</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:8px 0 2px">手动指标状态总览</div>${dotPlot}`;
 }
 
 // ===================== 初始化 =====================
