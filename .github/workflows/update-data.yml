@@ -29,6 +29,7 @@ jobs:
       - name: 运行数据抓取脚本
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+          NASS_API_KEY: ${{ secrets.NASS_API_KEY }}
         run: python3 fetch_data.py
 
       - name: 提交更新后的数据文件
