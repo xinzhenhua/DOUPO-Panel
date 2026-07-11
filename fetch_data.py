@@ -705,7 +705,10 @@ def weighted_avg_custom(values, weights):
 def fetch_south_america_psd():
     """巴西/阿根廷的大豆(原豆，不是豆粕)供需数据，复用已有的PSD解析逻辑，只是换个国家代码。
     ★ 国家代码(BR/AR)是根据USDA FAS一般命名习惯推断的，没有100%验证过，
-      如果查询失败，debug信息会明确说明，不会静默失败误导判断。"""
+      如果查询失败，debug信息会明确说明，不会静默失败误导判断。
+    ★ 已修复：之前成功时完全不带debug信息，导致查证发现产量数字明显偏低(巴西只有
+      真实数字的7%左右)时完全没法定位原因。现在不管成功失败都带上原始样本行，
+      方便直接核对USDA接口实际返回的是哪个字段、单位是什么。"""
     code, code_debug = get_soybean_psd_code()
     if not code:
         return {"available": False, "reason": "大豆商品代码查找失败", "debug": code_debug}
@@ -716,6 +719,7 @@ def fetch_south_america_psd():
         now_year = datetime.now(timezone.utc).year
         candidate_years = [now_year - 1, now_year, now_year + 1]
         best = None
+        best_rows = None
         all_attempts = {}
         for candidate_year in candidate_years:
             url = f"{USDA_BASE}/psd/commodity/{code}/country/{country_code}/year/{candidate_year}"
@@ -727,8 +731,13 @@ def fetch_south_america_psd():
             candidate = {"year": candidate_year, "out": out, "vintage": vintage}
             if best is None or (bool(out), vintage or ("", "")) > (bool(best["out"]), best["vintage"] or ("", "")):
                 best = candidate
+                best_rows = rows
+        country_debug = {
+            "attemptsPerYear": all_attempts,
+            "sampleRawRows": best_rows[:10] if best_rows else None,  # 带单位就在原始行里，方便直接核对
+        }
         if not best or not best["out"]:
-            results[country_code] = {"available": False, "reason": f"{country_name}PSD数据查询失败或字段未匹配", "debug": all_attempts}
+            results[country_code] = {"available": False, "reason": f"{country_name}PSD数据查询失败或字段未匹配", "debug": country_debug}
             continue
         results[country_code] = {
             "available": True,
@@ -736,6 +745,7 @@ def fetch_south_america_psd():
             "production": best["out"].get("Production"),
             "totalSupply": best["out"].get("Total Supply"),
             "countryName": country_name,
+            "debug": country_debug,  # ★ 成功也带上，方便核对数字是否合理
         }
     return {
         "available": any(v.get("available") for v in results.values()),
