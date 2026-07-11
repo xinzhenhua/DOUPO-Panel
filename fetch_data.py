@@ -40,6 +40,7 @@ import urllib.parse
 from datetime import datetime, timezone
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
+NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
 USDA_BASE = "https://api.fas.usda.gov/api"
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "data", "latest.json")
 
@@ -419,6 +420,92 @@ def fetch_psd_supply_demand():
         }
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# 美豆优良率（USDA/NASS 每周作物生长报告，Crop Progress的"Good+Excellent"评级）
+# 每年4月-11月每周一发布，是美豆生长季最重要的周度指标之一
+# ---------------------------------------------------------------------------
+NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/"
+
+
+def fetch_soybean_condition():
+    """查询USDA/NASS Quick Stats的美豆生长状况评级(优良率=Excellent%+Good%)。
+    这个数据每年只在4月-11月生长季发布，其余月份接口有数据但不会更新(正常现象)。"""
+    if not NASS_API_KEY:
+        return {"available": False, "reason": "缺少 NASS_API_KEY"}
+
+    now = datetime.now(timezone.utc)
+    params = {
+        "key": NASS_API_KEY,
+        "commodity_desc": "SOYBEANS",
+        "statisticcat_desc": "CONDITION",
+        "agg_level_desc": "NATIONAL",
+        "year": str(now.year),
+        "format": "JSON",
+    }
+    url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
+    data, debug = fetch_json_debug(url)
+    if not data or "data" not in data or not data["data"]:
+        return {"available": False, "reason": "NASS接口无返回数据(注意：每年4-11月才有生长季数据)", "debug": debug}
+
+    rows = data["data"]
+    # 找出最新的week_ending日期，只用那一周的数据（避免混进往年/其他周的记录）
+    weeks = sorted(set(r.get("week_ending") for r in rows if r.get("week_ending")))
+    if not weeks:
+        return {"available": False, "reason": "返回数据里没有week_ending字段", "debug": {"sampleRawRow": rows[0] if rows else None}}
+    latest_week = weeks[-1]
+    latest_rows = [r for r in rows if r.get("week_ending") == latest_week]
+
+    # 5个等级分别是独立的行，靠short_desc或unit_desc里的关键词区分，容错匹配大小写
+    excellent_pct, good_pct = None, None
+    for r in latest_rows:
+        desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
+        try:
+            val = float(str(r.get("Value", "")).replace(",", ""))
+        except (ValueError, TypeError):
+            continue
+        if "EXCELLENT" in desc:
+            excellent_pct = val
+        elif "GOOD" in desc and "VERY" not in desc:
+            good_pct = val
+
+    if excellent_pct is None or good_pct is None:
+        return {
+            "available": False,
+            "reason": "拿到数据但没能识别出Excellent/Good这两个等级的字段",
+            "debug": {"sampleRawRows": latest_rows[:5], "actualDescsSeen": [r.get("short_desc") for r in latest_rows]},
+        }
+
+    good_excellent = round(excellent_pct + good_pct, 1)
+
+    # 尝试算环比：找上一个有数据的周
+    prev_change = None
+    if len(weeks) >= 2:
+        prev_week = weeks[-2]
+        prev_rows = [r for r in rows if r.get("week_ending") == prev_week]
+        prev_excellent, prev_good = None, None
+        for r in prev_rows:
+            desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
+            try:
+                val = float(str(r.get("Value", "")).replace(",", ""))
+            except (ValueError, TypeError):
+                continue
+            if "EXCELLENT" in desc:
+                prev_excellent = val
+            elif "GOOD" in desc and "VERY" not in desc:
+                prev_good = val
+        if prev_excellent is not None and prev_good is not None:
+            prev_change = round(good_excellent - (prev_excellent + prev_good), 1)
+
+    return {
+        "available": True,
+        "weekEnding": latest_week,
+        "goodExcellentPct": good_excellent,
+        "wowChangePts": prev_change,
+        "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
+        "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -819,6 +906,13 @@ def main():
             "并在 GitHub 仓库 Settings → Secrets 里添加 USDA_API_KEY。",
             file=sys.stderr,
         )
+    if not NASS_API_KEY:
+        print(
+            "[WARN] 未设置 NASS_API_KEY 环境变量，美豆优良率将标记为不可用。\n"
+            "       请到 https://quickstats.nass.usda.gov/api 免费申请"
+            "（跟USDA_API_KEY是两套不同的密钥系统）。",
+            file=sys.stderr,
+        )
     # 注：开机率/库存/基差/到港预报/猪粮比/能繁母猪/进口量这7项已全部改为"批量粘贴解析"方案
     #     (纯前端JS完成，见index.html)，不再需要UN Comtrade/USDA出口检验/Groq/Tavily
     #     这些后端集成——实测这类数据不管走官方API还是AI搜索都不够稳定/准确，
@@ -831,6 +925,7 @@ def main():
         "cbotPrice": fetch_cbot_price(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
+        "soybeanCondition": fetch_soybean_condition(),
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
