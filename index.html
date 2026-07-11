@@ -72,19 +72,19 @@ details.tier-details .tier-body{padding-top:6px}
 details.big-collapse{margin-bottom:14px}
 details.big-collapse>summary{font-size:13px;font-weight:700;padding:12px 14px;background:var(--bg1);border:1px solid var(--bdr)}
 details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.sd-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
+.sd-table th{color:var(--t3);font-weight:600;text-align:center;padding:4px 2px;font-size:10px;border-bottom:1px solid var(--bdr)}
+.sd-cell{text-align:center;padding:7px 4px;border:1px solid var(--bdr);border-radius:4px;font-weight:600}
+.sd-table td{padding:3px}
+.sd-cell.sd-pos{background:var(--rd);color:var(--r);border-color:var(--rb)}
+.sd-cell.sd-neg{background:var(--gd);color:var(--g);border-color:var(--gb)}
+.sd-cell.sd-neutral{background:var(--bg2);color:var(--t2)}
+.sd-cell.sd-empty{background:var(--bg2);color:var(--t3);opacity:.5}
+.sd-cell.sd-blank{border:none;background:transparent}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
 .field-ind:empty{display:none}
-.setup-toggle{width:100%;padding:10px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}
-.setup-panel{display:none;background:var(--bg2);border-radius:8px;padding:14px;margin-bottom:10px;font-size:12px;color:var(--t2);line-height:1.9}
-.setup-panel.open{display:block}
-.setup-panel h3{font-size:12px;color:var(--t1);margin:10px 0 4px}
-.setup-panel h3:first-child{margin-top:0}
-.setup-panel code{background:var(--bg3);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--gold)}
-.setup-panel pre{background:var(--bg3);padding:10px;border-radius:6px;overflow-x:auto;font-size:10px;color:var(--t2);margin:6px 0}
-.setup-panel a{color:var(--b)}
-.setup-panel ol,.setup-panel ul{padding-left:18px;margin:4px 0}
 .loading{text-align:center;padding:20px;color:var(--t3);font-size:11px}
 .divider{height:1px;background:var(--bdr);margin:10px 0}
 .stars{color:var(--gold);font-size:10px}
@@ -101,9 +101,6 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 <div class="card" id="alertCard" style="border-color:var(--gold)">
   <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
 </div>
-
-<button class="setup-toggle" onclick="toggleSetup()">📖 首次使用？点击查看部署说明</button>
-<div class="setup-panel" id="setupPanel"></div>
 
 <!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
 <div class="stitle">🌦️ 美国主产区天气监测</div>
@@ -285,52 +282,6 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 
 </div><!-- /main -->
 <script>
-// ===================== 设置说明面板 =====================
-const SETUP_HTML = `
-<h3>① 完全自动、无需设置的板块</h3>
-<p>打开这个网页立刻能用，不需要任何操作：</p>
-<ul>
-<li>🌦️ 天气预报（Open-Meteo）</li>
-<li>🏜️ 官方干旱监测数据（US Drought Monitor，通过下方②的GitHub Actions同步）</li>
-<li>💰 人民币汇率（Frankfurter/ECB，浏览器直接实时拉取）</li>
-</ul>
-
-<h3>② 让 USDA/CBOT/干旱监测 也自动更新（一次性设置，约15分钟）</h3>
-<ol>
-<li>注册免费 USDA API 密钥：打开 <code>api.data.gov/signup</code>，填邮箱，几秒钟就能收到密钥</li>
-<li>在 GitHub 新建一个仓库（Public或Private都行），把我给你的这几个文件传上去：
-  <pre>index.html
-fetch_data.py
-.github/workflows/update-data.yml
-data/latest.json（占位文件，首次留空JSON即可）</pre>
-</li>
-<li>仓库 → Settings → Secrets and variables → Actions → New repository secret
-  <br>Name填 <code>USDA_API_KEY</code>，Value填你申请到的密钥</li>
-<li>仓库 → Settings → Pages → Source 选 "Deploy from a branch" → 选 main分支 → Save
-  <br>几分钟后会给你一个 <code>https://你的用户名.github.io/仓库名/</code> 网址</li>
-<li>仓库 → Actions 标签页 → 找到"更新豆粕基本面数据" → 点 "Run workflow" 手动跑一次
-  <br>跑完之后 data/latest.json 会被自动更新并提交</li>
-<li>之后完全自动：每天北京时间9:00和21:30各自动跑一次，不需要你管</li>
-</ol>
-
-<h3>③ 为什么还有6个字段必须手动填？</h3>
-<p>诚实说明，不是我偷懒，是这几类数据背后的机构确实没有公开接口：</p>
-<ul>
-<li><b>开机率 / 商业库存 / 现货基差 / 到港预报</b>：来自汇易咨询、钢联(mysteel)、天下粮仓等<u>商业数据服务商</u>，他们把这类数据当作付费产品卖，没有免费公开接口。如果你愿意付费订阅其中某家的数据API，我可以帮你接进来。</li>
-<li><b>猪粮比 / 能繁母猪存栏</b>：来自农业农村部(moa.gov.cn)，网站上是表格展示，没有设计给第三方调用的接口。理论上可以硬抓网页表格(scraping)，但页面结构一旦改版脚本就会失效，且部分政府网站不欢迎自动抓取，不建议这样做。</li>
-<li><b>中国大豆月度进口量</b>：中国海关总署(customs.gov.cn)同样没有公开API。<u>可尝试的替代方案</u>：联合国贸易统计库(UN Comtrade, comtradeapi.un.org)有官方公开API，包含各国申报的双边贸易数据，可查到中国大豆进口的官方统计，但通常有1-2个月的滞后。如果你想要，告诉我，我可以再做一版接入这个数据源。</li>
-</ul>
-
-<h3>④ 诚实说明</h3>
-<p>USDA/CBOT/干旱监测这三块，我核实了接口文档、格式、参数都正确，并用模拟数据完整测试过解析逻辑。但受限于我自己代码沙盒的网络白名单，无法对 api.fas.usda.gov / query1.finance.yahoo.com / usdmdataservices.unl.edu 做真正的端到端联网测试。GitHub Actions有完整网络权限，理论上能跑通；如果部署后某个字段一直显示"暂无数据"，把 Actions 运行日志截图发我，我根据实际报错调整脚本。</p>
-<p>汇率(Frankfurter)和天气(Open-Meteo)这两个，我查证了官方文档明确支持浏览器直接调用(CORS)，可信度更高。</p>
-
-<h3>⑤ 没设置GitHub Actions之前会怎样？</h3>
-<p>USDA/CBOT/干旱监测板块会显示"⚪ 尚未同步"，天气/汇率/手动录入/预警完全正常使用，不受影响。</p>
-`;
-document.getElementById('setupPanel').innerHTML = SETUP_HTML;
-function toggleSetup(){document.getElementById('setupPanel').classList.toggle('open');}
-
 // ===================== 天气板块：Open-Meteo 实时抓取 =====================
 // ★ 已扩展：核心8州(占全国种植面积64.0%) + 次要4州(北达科他/堪萨斯/密歇根/威斯康星，
 //   加起来12州共81.8%，数据来源SoyStats官方2024年种植面积统计)
@@ -433,35 +384,21 @@ function renderGaugeSVG(score, minScore, maxScore){
   </svg>`;
 }
 
-/** 7个手动指标状态点图：一条横线上分布彩色圆点，一眼看出整体倾向。
- *  indicators: [{label, signal}]，signal为-1/0/1/null(null=尚未填写，不画点) */
-function renderDotPlotSVG(indicators){
-  const valid = indicators.filter(i=>i.signal!==null && i.signal!==undefined && !isNaN(i.signal));
-  if(!valid.length) return '<div style="font-size:10px;color:var(--t3);text-align:center;padding:8px">暂无数据，填写指标后这里会显示状态总览</div>';
-  const w=300, trackY=32, leftX=20, rightX=280;
-  const xFor = (sig)=> leftX + (sig+1)/2*(rightX-leftX); // sig:-1→leftX, 0→中点, 1→rightX
-  // 同一位置(比如都是sig=0)容易重叠，做一点水平错开
-  const grouped = {};
-  valid.forEach(it=>{ (grouped[it.signal]=grouped[it.signal]||[]).push(it); });
-  let dots = '', labels = '';
-  Object.keys(grouped).forEach(sigKey=>{
-    const sig = parseFloat(sigKey);
-    const group = grouped[sigKey];
-    const baseX = xFor(sig);
-    group.forEach((it,idx)=>{
-      const offset = (idx - (group.length-1)/2) * 16;
-      const x = baseX + offset;
-      const color = sig>0?'#e84141':sig<0?'#00b37a':'#666';
-      dots += `<circle cx="${x.toFixed(1)}" cy="${trackY}" r="5" fill="${color}"/>`;
-      labels += `<text x="${x.toFixed(1)}" y="${trackY+18}" font-size="7.5" fill="#a0a0a0" text-anchor="middle">${it.label}</text>`;
-    });
-  });
-  return `<svg viewBox="0 0 ${w} 58" style="width:100%;height:auto;display:block;margin-top:4px">
-    <line x1="${leftX}" y1="${trackY}" x2="${rightX}" y2="${trackY}" stroke="#333" stroke-width="1.5"/>
-    <text x="${leftX}" y="${trackY-8}" font-size="8" fill="#00b37a">偏空</text>
-    <text x="${rightX}" y="${trackY-8}" font-size="8" fill="#e84141" text-anchor="end">偏多</text>
-    ${dots}${labels}
-  </svg>`;
+/** 供需二栏表格：左列供应侧指标，右列需求侧指标，每格根据信号变红(偏多)/绿(偏空)/灰(中性)。
+ *  supplyItems/demandItems: [{label, signal}]，signal为1/-1/0/null(null=尚未有数据，格子显示"--"且为暗色) */
+function renderSupplyDemandTable(supplyItems, demandItems){
+  const cellHtml = (item)=>{
+    const sig = item.signal;
+    const cls = sig===1?'sd-pos':sig===-1?'sd-neg':sig===0?'sd-neutral':'sd-empty';
+    const arrow = sig===1?'▲':sig===-1?'▼':sig===0?'—':'';
+    return `<td class="sd-cell ${cls}">${item.label}${arrow?` ${arrow}`:''}</td>`;
+  };
+  const maxRows = Math.max(supplyItems.length, demandItems.length);
+  let rows = '';
+  for(let i=0;i<maxRows;i++){
+    rows += `<tr>${supplyItems[i]?cellHtml(supplyItems[i]):'<td class="sd-cell sd-blank"></td>'}${demandItems[i]?cellHtml(demandItems[i]):'<td class="sd-cell sd-blank"></td>'}</tr>`;
+  }
+  return `<table class="sd-table"><thead><tr><th>供应</th><th>需求</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /** 把一组"州→这一行的html"的映射，全部收进一个details里，只留一个"查看详情"入口。
@@ -529,6 +466,10 @@ async function loadWeather(){
     el.innerHTML = html;
     badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
     window._weatherRisk = riskLevel;
+    // ★ 已修复：之前设置了信号但从没触发综合预警重新计算，导致天气板块加载完成后
+    //   （init时loadWeather和loadManual是并行跑的，天气数据到达时综合预警早就已经渲染过了）
+    //   天气信号一直没被真正纳入综合评分显示，除非用户之后手动改了某个输入框才会连带触发。
+    updateOverallAlert();
   }catch(e){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">天气数据拉取失败</span>${e.message}，请检查网络后刷新页面重试</div>`;
     badge.textContent = '❌ 拉取失败';
@@ -908,6 +849,7 @@ async function loadFxRate(){
     <div style="font-size:10px;color:var(--t3);margin-top:6px">数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>
     </details>`;
     window._fxSignal = change>0?1:change<0?-1:0;
+    updateOverallAlert(); // ★ 同样修复：之前没触发重新计算，汇率信号一直没被真正纳入综合评分
   }catch(e){
     badge.textContent = '❌ 拉取失败';
     badge.className = 'badge badge-offline';
@@ -1156,13 +1098,22 @@ function updateOverallAlert(){
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
 
   const gauge = renderGaugeSVG(score, -14, 14);
-  const dotPlot = renderDotPlotSVG([
-    {label:'开机率', signal:sigCrush}, {label:'库存', signal:sigStock}, {label:'基差', signal:sigBasis},
-    {label:'到港', signal:sigArrival}, {label:'猪粮比', signal:sigHogratio}, {label:'母猪', signal:sigSows},
-    {label:'进口', signal:sigImport},
-  ]);
-  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${notes.join('<br>')}</div>
-    <div style="font-size:10px;color:var(--t3);margin-top:8px 0 2px">手动指标状态总览</div>${dotPlot}`;
+  const weatherSig = window._weatherRisk==='high'?1:window._weatherRisk==='low'?-1:(window._weatherRisk==='medium'?0:null);
+  // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
+  const supplyItems = [
+    {label:'天气', signal:weatherSig}, {label:'干旱监测', signal:window._droughtSignal},
+    {label:'NOAA展望', signal:window._noaaOutlookSignal}, {label:'美豆优良率', signal:window._soyCondSignal},
+    {label:'库存消费比', signal:window._psdSignal}, {label:'开机率', signal:sigCrush},
+    {label:'商业库存', signal:sigStock}, {label:'到港预报', signal:sigArrival},
+    {label:'进口量', signal:sigImport}, {label:'人民币汇率', signal:window._fxSignal},
+  ];
+  const demandItems = [
+    {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
+    {label:'猪粮比', signal:sigHogratio}, {label:'能繁母猪', signal:sigSows},
+  ];
+  const sdTable = renderSupplyDemandTable(supplyItems, demandItems);
+  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span></div>${sdTable}
+    <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
 }
 
 // ===================== 初始化 =====================
