@@ -262,19 +262,33 @@ def get_soybean_meal_psd_code():
 def get_soybean_psd_code():
     """南美产区关心的是大豆本身(不是豆粕)的产量——中国从南美进口的主要是原豆，
     自己在国内压榨成豆粕。找"Soybeans"这个商品(不带meal)，排除"Soybean Meal"/"Soybean Oil"。
-    ★ 已修复真实bug：之前排除条件是"oil" not in name，但USDA很可能把大豆归类成
-      "Oilseed, Soybean"这种命名(大豆本来就属于油籽类)，"oilseed"这个词本身就包含"oil"，
-      导致真正该匹配的那一条被误伤排除。改成排除"soybean oil"这个更精确的词组，
-      不会误伤"oilseed"这种分类前缀。"""
+    ★ 已修复第二个真实bug：巴西实测产量只有13,260(千吨)，而查证过的真实数字是180,000，
+      只有7.4%。排查后发现Production+BeginningStocks+Imports=TotalSupply在数学上完全自洽
+      (13260+197+100=13557)，说明USDA接口本身返回的数值没问题，问题是抓错了商品——
+      之前用宽松的子字符串匹配("soybean"+不含"meal"+不含"soybean oil")，PSD商品列表里
+      很可能存在不止一个满足这个条件的条目(比如某个大豆的细分子类)，而列表顺序不是
+      按重要性排的，宽松匹配抓到了第一个满足条件但不是主要统计口径的那条。
+      现在改成：优先精确匹配"Oilseed, Soybean"这个官方标准名称(已通过第三方PSD数据站
+      AgroChart交叉验证，全球总产量数量级跟WASDE报告吻合)，找不到才退回宽松匹配兜底。"""
     data, debug = fetch_json_debug(f"{USDA_BASE}/psd/commodities", headers={"X-Api-Key": USDA_API_KEY})
     if not data:
         debug["failureStage"] = "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
         return None, debug
+
+    # 第一优先级：精确匹配官方标准名称"Oilseed, Soybean"(不区分大小写)
+    for item in data:
+        name = (item.get("commodityName") or "").strip().lower()
+        if name == "oilseed, soybean":
+            return item.get("commodityCode"), {"matchedBy": "精确匹配'Oilseed, Soybean'", "matchedName": item.get("commodityName")}
+
+    # 兜底：精确匹配没找到时，退回宽松匹配(排除meal/soybean oil)，并明确标注是兜底路径，
+    # 提醒之后核对这条路径抓到的是不是真的对
     for item in data:
         name = (item.get("commodityName") or "").lower()
         if "soybean" in name and "meal" not in name and "soybean oil" not in name:
-            return item.get("commodityCode"), None
-    debug["failureStage"] = "接口请求成功，但没有一条命中'soybean'且不含'meal'/'soybean oil'的商品"
+            return item.get("commodityCode"), {"matchedBy": "⚠️兜底宽松匹配(精确匹配'Oilseed, Soybean'失败)，请核对是否抓对了商品", "matchedName": item.get("commodityName")}
+
+    debug["failureStage"] = "接口请求成功，但精确匹配和宽松匹配都没有命中"
     # ★ 已改进：之前是"前50个按字母排序的商品"，如果总商品数多，光是A/B/C开头的
     #   条目就可能占满50个名额，真正含"soybean"的那几条反而看不到。
     #   现在专门筛出所有包含"soybean"的条目，不管总列表有多长，都能看到真正相关的部分。
@@ -733,6 +747,7 @@ def fetch_south_america_psd():
                 best = candidate
                 best_rows = rows
         country_debug = {
+            "matchedCommodity": code_debug,  # 显示匹配到的商品名称，方便一眼确认抓对了没有
             "attemptsPerYear": all_attempts,
             "sampleRawRows": best_rows[:10] if best_rows else None,  # 带单位就在原始行里，方便直接核对
         }
