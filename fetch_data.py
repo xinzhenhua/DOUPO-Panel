@@ -563,6 +563,26 @@ DROUGHT_STATE_FIPS = {
     "ND": "38", "KS": "20", "MI": "26", "WI": "55",
 }  # 官方文档：droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
 
+# ★ 新增：按种植面积加权，而不是12州简单平均。
+#   之前简单平均的问题：伊利诺伊(全国最大产区)天气不好 vs 南达科他(产量小得多)天气不好，
+#   在简单平均里权重完全一样，明显不合理——大产区的天气影响应该占更大权重。
+#   数据来源：SoyStats官方2024年种植面积统计(单位：千英亩)，与上面确认12州覆盖率时用的是同一份数据。
+STATE_ACREAGE_WEIGHTS = {
+    "IL": 10800, "IA": 10050, "MN": 7400, "IN": 5800,
+    "NE": 5300, "OH": 5050, "MO": 5900, "SD": 5450,
+    "ND": 6600, "KS": 4530, "MI": 2200, "WI": 2150,
+}
+
+
+def weighted_avg(state_values):
+    """state_values: {"IA": 12.3, "IL": 5.0, ...} → 按STATE_ACREAGE_WEIGHTS加权平均。
+    某州权重查不到时按0处理(不太可能发生，因为这个字典本来就是DROUGHT_STATES的来源)。"""
+    total_weight = sum(STATE_ACREAGE_WEIGHTS.get(st, 0) for st in state_values)
+    if total_weight == 0:
+        return sum(state_values.values()) / len(state_values) if state_values else 0
+    weighted_sum = sum(v * STATE_ACREAGE_WEIGHTS.get(st, 0) for st, v in state_values.items())
+    return weighted_sum / total_weight
+
 
 def fetch_drought_monitor():
     from datetime import timedelta
@@ -641,7 +661,11 @@ def fetch_drought_monitor():
     if not available_states:
         return {"available": False, "reason": "USDM接口未返回任何州的数据", "debug": debugs}
 
-    avg_severe = sum(v["severeOrWorsePct"] for v in available_states.values()) / len(available_states)
+    # ★ 已改进：之前是12州简单平均，现在改成按种植面积加权——
+    #   伊利诺伊(全国最大产区)的干旱情况理应比南达科他(小得多的产区)占更大权重。
+    severe_by_state = {st: v["severeOrWorsePct"] for st, v in available_states.items()}
+    avg_severe = weighted_avg(severe_by_state)
+    simple_avg_severe = sum(severe_by_state.values()) / len(severe_by_state)  # 保留做对比参考
     any_anomalous = any(v.get("anomalous") for v in available_states.values())
 
     return {
@@ -649,6 +673,7 @@ def fetch_drought_monitor():
         "anomalous": any_anomalous,
         "byState": out,
         "avgSevereOrWorsePct": round(avg_severe, 1),
+        "simpleSevereOrWorsePct": round(simple_avg_severe, 1),
         "source": "US Drought Monitor (NDMC/USDA/NOAA联合发布)",
         "sourceUrl": "https://droughtmonitor.unl.edu/",
         # 不管本次是否异常，都附上原始样本方便随时核对，不用等到下次出问题才临时加诊断
@@ -880,7 +905,10 @@ def fetch_noaa_drought_outlook():
     if not available:
         return {"available": False, "reason": "NOAA月度干旱展望接口未返回任何州的数据", "debug": debugs}
 
-    avg_worsening_pct = round(sum(v["worseningPct"] for v in available.values()) / len(available), 1)
+    # ★ 已改进：跟干旱监测一样，从简单平均改成按种植面积加权
+    worsening_by_state = {st: v["worseningPct"] for st, v in available.items()}
+    avg_worsening_pct = round(weighted_avg(worsening_by_state), 1)
+    simple_avg_worsening = round(sum(worsening_by_state.values()) / len(worsening_by_state), 1)
     # 跟干旱监测的阈值逻辑保持一致(>=20%明显，>=5%中等)，方便两者直接对比
     overall_signal = 1 if avg_worsening_pct >= 20 else (0 if avg_worsening_pct >= 5 else -1)
 
@@ -888,8 +916,9 @@ def fetch_noaa_drought_outlook():
         "available": True,
         "byState": by_state,
         "avgWorseningPct": avg_worsening_pct,
+        "simpleWorseningPct": simple_avg_worsening,
         "overallSignal": overall_signal,
-        "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样）",
+        "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
         "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
         "debug": debugs,
     }
