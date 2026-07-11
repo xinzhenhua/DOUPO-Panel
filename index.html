@@ -87,8 +87,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .contract-tab.active{background:var(--bd);border-color:var(--bb);color:var(--b)}
 .contract-tab.active .ctab-sub{color:var(--b)}
 .contract-group{transition:opacity .2s}
-.contract-group.dimmed{opacity:.4}
-.contract-group.emphasized{outline:1px solid var(--gold);border-radius:10px}
+.contract-group.hidden-by-contract{display:none}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
@@ -105,18 +104,18 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </div>
 <div class="main" id="mainContent">
 
-<!-- ============ 综合基本面预警：放最顶端，一打开就看到结论 ============ -->
-<div class="card" id="alertCard" style="border-color:var(--gold)">
-  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
-</div>
-
-<!-- ============ 合约切换：不同月份合约关注重点不同 ============ -->
+<!-- ============ 合约切换：不同月份合约关注重点不同（放最顶端，先选合约再看预警）============ -->
 <div class="contract-tabs">
   <button class="contract-tab active" id="tab-sep" onclick="selectContract('sep')">9月合约<span class="ctab-sub">当前</span></button>
   <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub">南美收获期</span></button>
   <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub">美豆收获期</span></button>
 </div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
+
+<!-- ============ 综合基本面预警：紧跟在合约选择下方，一打开就看到结论 ============ -->
+<div class="card" id="alertCard" style="border-color:var(--gold)">
+  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+</div>
 
 <!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
 <div class="contract-group" id="group-us-weather">
@@ -908,8 +907,17 @@ async function loadSaWeather(){
     const wPrecip = results.reduce((s,r)=>s+r.precip7d*weights[r.code],0)/totalW;
     const wTemp = results.reduce((s,r)=>s+r.avgMaxTemp*weights[r.code],0)/totalW;
 
+    // 南美天气偏多/偏空信号：干旱/高温→未来产量预期下降→全球供给收紧→偏多；反之偏空
+    // ⚠️阈值参考跟美国用同一套(降雨<10mm+高温>30度=风险)，但没有像美国那样单独校准过南美的正常区间，
+    // 置信度低于美国那套，先用同一套逻辑，之后有更多南美天气数据校验经验再调整
+    let saRiskLevel, saRiskColor, saRiskText, saSig;
+    if(wPrecip < 10 && wTemp > 30){ saRiskLevel='high'; saRiskColor='r'; saRiskText='干旱高温风险 — 偏多信号(⚠️阈值置信度低于美国)'; saSig=1; }
+    else if(wPrecip < 20){ saRiskLevel='medium'; saRiskColor='gold'; saRiskText='降雨偏少，持续观察'; saSig=0; }
+    else { saRiskLevel='low'; saRiskColor='g'; saRiskText='降雨充沛 — 偏空信号(⚠️阈值置信度低于美国)'; saSig=-1; }
+    window._saWeatherSignal = saSig;
+
     const statCardFor = r => `<div class="stat"><span class="sv ${r.precip7d<10?'pos':r.precip7d<20?'warn':'neg'}">${r.precip7d}mm</span><div class="sl">${r.name}</div></div>`;
-    let html = `<div class="alert-box neutral"><span class="at">10产区加权平均降雨${Math.round(wPrecip*10)/10}mm/7天</span>平均最高温${Math.round(wTemp*10)/10}°C（南半球生长季，播种约9-12月，收获集中2-4月）</div>`;
+    let html = `<div class="alert-box ${saRiskColor==='r'?'bull':saRiskColor==='g'?'bear':'neutral'}"><span class="at">${saRiskText}</span>10产区加权平均降雨${Math.round(wPrecip*10)/10}mm/7天，平均最高温${Math.round(wTemp*10)/10}°C（南半球生长季，播种约9-12月，收获集中2-4月）</div>`;
     html += renderBarChartSVG(results.map(r=>({label:r.code, value:r.precip7d, code:r.code})), {unit:'mm', colorFn:()=>'#3b82c4'});
     html += `<details class="tier-details"><summary>查看10产区详细数据 ▸</summary><div class="tier-body"><div class="grid2">${results.map(statCardFor).join('')}</div></div></details>`;
     el.innerHTML = html;
@@ -919,6 +927,7 @@ async function loadSaWeather(){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">南美天气数据拉取失败</span>${e.message}</div>`;
     badge.textContent = '❌ 拉取失败';
     badge.className = 'badge badge-offline';
+    window._saWeatherSignal = null;
   }
 }
 
@@ -929,35 +938,44 @@ function renderSaPsd(sa, genAt){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${sa?sa.reason:'未知原因'}</span>国家代码(BR/AR)是推断的，未100%验证过</div>` + renderDebugInfo(sa?sa.debug:null);
+    window._saPsdSignal = null;
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
   let rows = '';
+  let debugParts = '';
   Object.keys(sa.byCountry).forEach(cc=>{
     const c = sa.byCountry[cc];
     if(!c.available){ rows += `<div class="ir"><div class="il">${cc}</div><div class="iv">数据缺失：${c.reason||''}</div></div>`; return; }
     rows += `<div class="ir"><div class="il">${c.countryName}(${c.marketYear})</div><div class="iv"><span class="b">产量${c.production!=null?c.production.toLocaleString():'--'}</span>　总供给${c.totalSupply!=null?c.totalSupply.toLocaleString():'--'}</div></div>`;
+    if(c.debug) debugParts += renderDebugInfo(c.debug);
   });
-  el.innerHTML = `<div class="alert-box neutral"><span class="at">巴西/阿根廷大豆产量(USDA-FAS PSD)</span>单位为USDA标准计量单位</div>${rows}`;
+  // ★ 已确认真实数据问题：查证过巴西2025/26真实产量约180,000(千吨)，之前实测显示13,260，
+  //   明显不对(只有真实数字的7%左右)，具体原因还在排查中(已加了原始数据diagnostic)。
+  //   数字本身可能不准，所以这里暂时不基于绝对阈值给出偏多/偏空结论，避免把疑似错误的
+  //   数字包装成看起来有把握的判断，误导决策。等确认数字准确后再补上真正的信号判断。
+  window._saPsdSignal = null;
+  el.innerHTML = `<div class="alert-box neutral"><span class="at">⚠️ 数据疑似有误，暂不提供偏多/偏空判断</span>已查证巴西2025/26真实产量约180,000(千吨)，与本卡片实测数据存在明显偏差，正在排查具体原因，请谨慎参考下方数字</div>${rows}
+    <details class="tier-details"><summary>查看原始数据诊断 ▸</summary><div class="tier-body">${debugParts||'（暂无诊断信息）'}</div></details>`;
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
 const CONTRACT_CONTEXT = {
   sep: {
     label: '9月合约',
-    text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。',
-    highlight: ['group-us-weather'], dim: ['group-sa'],
+    text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
+    show: ['group-us-weather'], hide: ['group-sa'],
   },
   may: {
     label: '5月合约',
-    text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，这块权重应该更高。',
-    highlight: ['group-sa'], dim: ['group-us-weather'],
+    text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，仪表盘已切换成按南美天气信号计算。',
+    show: ['group-sa'], hide: ['group-us-weather'],
   },
   jan: {
     label: '1月合约',
-    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割)，重点转向"最终收成有多少"和"到港节奏"。',
-    highlight: [], dim: [],
+    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割，南美刚播种没多久)，仪表盘暂不计入天气类信号，重点转向"最终收成有多少"和"到港节奏"这些非天气指标。',
+    show: [], hide: ['group-us-weather', 'group-sa'],
   },
 };
 function selectContract(month){
@@ -968,10 +986,10 @@ function selectContract(month){
   document.getElementById('contractContext').innerHTML = ctx.text;
   ['group-us-weather','group-sa'].forEach(gid=>{
     const el = document.getElementById(gid);
-    el.classList.toggle('dimmed', ctx.dim.includes(gid));
-    el.classList.toggle('emphasized', ctx.highlight.includes(gid));
+    el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
   });
   window._selectedContract = month;
+  updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
 }
 
 // ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
@@ -1258,17 +1276,28 @@ function updateOverallAlert(){
   //   如果真的发生干旱，这4个很可能同时转向同一方向，等于同一件事被计了4次票。
   //   现在改成：先算出这4个子信号的"平均态度"，合成1个"作物生长状况"综合信号，只投1票，
   //   而不是最多4票——避免高度相关的信息在总分里被重复放大。
+  // ★ 已改进：现在按选中的合约月份决定用哪个天气类信号——
+  //   9月合约看美国天气类综合(生长关键期)；5月合约看南美天气(收获期核心)；
+  //   1月合约天气不确定性已消失(美豆已收割)，不计入天气类信号。
+  const contract = window._selectedContract || 'sep';
   const weatherSigNum = window._weatherRisk==='high'?1:window._weatherRisk==='low'?-1:(window._weatherRisk==='medium'?0:null);
-  const cropSubSignals = [weatherSigNum, window._droughtSignal, window._noaaOutlookSignal, window._soyCondSignal]
-    .filter(s=>s!==null && s!==undefined && !isNaN(s));
-  let cropComposite = null;
-  if(cropSubSignals.length){
-    const avg = cropSubSignals.reduce((a,b)=>a+b,0)/cropSubSignals.length;
-    cropComposite = avg>=0.5?1:avg<=-0.5?-1:0;
+  let cropComposite = null, cropLabel = '';
+  if(contract === 'sep'){
+    const cropSubSignals = [weatherSigNum, window._droughtSignal, window._noaaOutlookSignal, window._soyCondSignal]
+      .filter(s=>s!==null && s!==undefined && !isNaN(s));
+    if(cropSubSignals.length){
+      const avg = cropSubSignals.reduce((a,b)=>a+b,0)/cropSubSignals.length;
+      cropComposite = avg>=0.5?1:avg<=-0.5?-1:0;
+    }
+    cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率)`;
+  } else if(contract === 'may'){
+    cropComposite = (window._saWeatherSignal!==null && window._saWeatherSignal!==undefined) ? window._saWeatherSignal : null;
+    cropLabel = `南美(巴西/阿根廷)天气状况`;
   }
-  if(cropComposite===1){ score+=1; notes.push(`作物生长状况综合(天气+干旱监测+NOAA展望+美豆优良率，共${cropSubSignals.length}项子信号平均) → 偏多`); }
-  else if(cropComposite===-1){ score-=1; notes.push(`作物生长状况综合(天气+干旱监测+NOAA展望+美豆优良率，共${cropSubSignals.length}项子信号平均) → 偏空`); }
-  else if(cropComposite===0){ notes.push(`作物生长状况综合：子信号方向不一致或均为中性 → 中性`); }
+  // contract === 'jan'时cropComposite保持null，天气类信号不计入(美豆已收割，南美刚播种没多久)
+  if(cropComposite===1){ score+=1; notes.push(`${cropLabel} → 偏多`); }
+  else if(cropComposite===-1){ score-=1; notes.push(`${cropLabel} → 偏空`); }
+  else if(cropComposite===0){ notes.push(`${cropLabel}：子信号方向不一致或均为中性 → 中性`); }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
@@ -1287,22 +1316,29 @@ function updateOverallAlert(){
   else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
 
-  const gauge = renderGaugeSVG(score, -13, 13); // ★ 已更新：新增豆菜粕价差指标，总票数从12变成13
+  const maxVotes = contract === 'jan' ? 12 : 13; // 1月合约不计入天气类信号，上限少1票
+  const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
   // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
-  const supplyItems = [
-    {label:'作物生长状况(综合)', signal:cropComposite},
+  const supplyItems = [];
+  if(cropLabel) supplyItems.push({label:cropLabel, signal:cropComposite});
+  supplyItems.push(
     {label:'库存消费比', signal:window._psdSignal}, {label:'开机率', signal:sigCrush},
     {label:'商业库存', signal:sigStock}, {label:'到港预报', signal:sigArrival},
     {label:'进口量', signal:sigImport}, {label:'人民币汇率', signal:window._fxSignal},
-  ];
+  );
   const demandItems = [
     {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
     {label:'猪粮比', signal:sigHogratio}, {label:'能繁母猪', signal:sigSows},
     {label:'肉鸡养殖利润', signal:sigPoultry}, {label:'豆菜粕价差', signal:sigRmSpread},
   ];
   const sdTable = renderSupplyDemandTable(supplyItems, demandItems);
+  const footerNote = contract === 'sep'
+    ? '💡 "作物生长状况综合"是美国天气/干旱监测/NOAA展望/美豆优良率这4项子信号的综合结果，避免同一件事被重复计票'
+    : contract === 'may'
+    ? '💡 5月合约窗口期，天气类信号改用南美(巴西/阿根廷)天气代替美国天气'
+    : '💡 1月合约窗口期，美豆已收割、南美刚播种没多久，天气不确定性低，暂不计入天气类信号';
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span></div>${sdTable}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">💡"作物生长状况"是天气/干旱监测/NOAA展望/美豆优良率这4项子信号的综合结果，避免同一件事被重复计票，展开下方详情可看各子信号具体数值</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
 }
 
