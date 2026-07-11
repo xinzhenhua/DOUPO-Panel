@@ -261,17 +261,26 @@ def get_soybean_meal_psd_code():
 
 def get_soybean_psd_code():
     """南美产区关心的是大豆本身(不是豆粕)的产量——中国从南美进口的主要是原豆，
-    自己在国内压榨成豆粕。找"Soybeans"这个商品(不带meal)，排除"Soybean Meal"/"Soybean Oil"。"""
+    自己在国内压榨成豆粕。找"Soybeans"这个商品(不带meal)，排除"Soybean Meal"/"Soybean Oil"。
+    ★ 已修复真实bug：之前排除条件是"oil" not in name，但USDA很可能把大豆归类成
+      "Oilseed, Soybean"这种命名(大豆本来就属于油籽类)，"oilseed"这个词本身就包含"oil"，
+      导致真正该匹配的那一条被误伤排除。改成排除"soybean oil"这个更精确的词组，
+      不会误伤"oilseed"这种分类前缀。"""
     data, debug = fetch_json_debug(f"{USDA_BASE}/psd/commodities", headers={"X-Api-Key": USDA_API_KEY})
     if not data:
         debug["failureStage"] = "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
         return None, debug
     for item in data:
         name = (item.get("commodityName") or "").lower()
-        if "soybean" in name and "meal" not in name and "oil" not in name:
+        if "soybean" in name and "meal" not in name and "soybean oil" not in name:
             return item.get("commodityCode"), None
-    debug["failureStage"] = "接口请求成功，但没有一条命中'soybean'且不含'meal'/'oil'的商品"
-    debug["actualCommodityNamesSeen"] = sorted(set((item.get("commodityName") or "") for item in data))[:50]
+    debug["failureStage"] = "接口请求成功，但没有一条命中'soybean'且不含'meal'/'soybean oil'的商品"
+    # ★ 已改进：之前是"前50个按字母排序的商品"，如果总商品数多，光是A/B/C开头的
+    #   条目就可能占满50个名额，真正含"soybean"的那几条反而看不到。
+    #   现在专门筛出所有包含"soybean"的条目，不管总列表有多长，都能看到真正相关的部分。
+    soybean_related = sorted(set((item.get("commodityName") or "") for item in data if "soybean" in (item.get("commodityName") or "").lower()))
+    debug["allSoybeanRelatedEntries"] = soybean_related
+    debug["totalCommoditiesReturned"] = len(data)
     return None, debug
 
 
