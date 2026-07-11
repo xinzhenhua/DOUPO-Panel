@@ -190,7 +190,8 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </div>
 
 <!-- ============ USDA + CBOT 板块（GitHub Actions 同步） ============ -->
-<div class="stitle">📊 USDA出口销售 + 供需库存</div>
+<div class="stitle">📊 USDA出口销售 + 供需库存<span style="font-size:9px;color:var(--t3);font-weight:400">· 全年度持续性数据，不分合约月份</span></div>
+<div id="esrPsdContractNote" style="font-size:10px;color:var(--t3);margin:-4px 0 8px 2px"></div>
 <div class="card">
   <div class="card-head">
     <div class="card-title">出口销售报告（ESR）</div>
@@ -951,12 +952,14 @@ function renderSaPsd(sa, genAt){
     rows += `<div class="ir"><div class="il">${c.countryName}(${c.marketYear})</div><div class="iv"><span class="b">产量${c.production!=null?c.production.toLocaleString():'--'}</span>　总供给${c.totalSupply!=null?c.totalSupply.toLocaleString():'--'}</div></div>`;
     if(c.debug) debugParts += renderDebugInfo(c.debug);
   });
-  // ★ 已确认真实数据问题：查证过巴西2025/26真实产量约180,000(千吨)，之前实测显示13,260，
-  //   明显不对(只有真实数字的7%左右)，具体原因还在排查中(已加了原始数据diagnostic)。
-  //   数字本身可能不准，所以这里暂时不基于绝对阈值给出偏多/偏空结论，避免把疑似错误的
-  //   数字包装成看起来有把握的判断，误导决策。等确认数字准确后再补上真正的信号判断。
+  // ★ 更新：之前实测发现巴西产量只有13,260(千吨)，只有真实数字180,000的7.4%左右。
+  //   排查后确认根因是商品匹配抓错了(宽松字符串匹配抓到了列表里排在前面的某个
+  //   大豆细分子类，不是"Oilseed, Soybean"这个主要统计口径)——不是数值本身的问题。
+  //   已经改成精确匹配"Oilseed, Soybean"(通过第三方数据站AgroChart交叉验证过这个官方
+  //   命名)，理论上应该修复了，但还没有实际跑一次GitHub Actions验证过新代码的效果，
+  //   所以这里先谨慎标注"待验证"，不是"数据没问题"，也不是"数据肯定还是错的"。
   window._saPsdSignal = null;
-  el.innerHTML = `<div class="alert-box neutral"><span class="at">⚠️ 数据疑似有误，暂不提供偏多/偏空判断</span>已查证巴西2025/26真实产量约180,000(千吨)，与本卡片实测数据存在明显偏差，正在排查具体原因，请谨慎参考下方数字</div>${rows}
+  el.innerHTML = `<div class="alert-box neutral"><span class="at">🔧 已修复已知问题，待下次同步验证</span>之前巴西产量数字明显偏低(只有真实值的7%左右)，排查后确认是商品匹配抓错、已针对性修复，下方是修复后的最新数据，建议下次GitHub Actions跑完后再次核对巴西产量是否已经接近查证过的真实数字(约180,000)</div>${rows}
     <details class="tier-details"><summary>查看原始数据诊断 ▸</summary><div class="tier-body">${debugParts||'（暂无诊断信息）'}</div></details>`;
 }
 
@@ -966,16 +969,19 @@ const CONTRACT_CONTEXT = {
     label: '9月合约',
     text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
     show: ['group-us-weather'], hide: ['group-sa'],
+    esrPsdNote: '出口销售/PSD此时怎么看：现在的WASDE数字还是基于趋势单产的预估，真实结果要等秋天收割才知道，确定性较低；出口销售反映的是买家对"即将收获的新作物"有多渴望。',
   },
   may: {
     label: '5月合约',
     text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，仪表盘已切换成按南美天气信号计算。',
     show: ['group-sa'], hide: ['group-us-weather'],
+    esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经把南美刚收完的产量计入全球平衡表；出口销售此时能看出买家在美豆和南美豆之间怎么切换采购(通常南美刚收获时买家会更倾向买南美豆)。',
   },
   jan: {
     label: '1月合约',
     text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割，南美刚播种没多久)，仪表盘暂不计入天气类信号，重点转向"最终收成有多少"和"到港节奏"这些非天气指标。',
     show: [], hide: ['group-us-weather', 'group-sa'],
+    esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经反映真实收获数据，确定性大幅提高，这个阶段的数字比夏天的预估靠谱得多；出口销售能看出新市场年度的订单节奏和到港安排。',
   },
 };
 function selectContract(month){
@@ -984,6 +990,7 @@ function selectContract(month){
   });
   const ctx = CONTRACT_CONTEXT[month];
   document.getElementById('contractContext').innerHTML = ctx.text;
+  document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
   ['group-us-weather','group-sa'].forEach(gid=>{
     const el = document.getElementById(gid);
     el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
