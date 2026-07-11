@@ -259,6 +259,22 @@ def get_soybean_meal_psd_code():
     return None, debug
 
 
+def get_soybean_psd_code():
+    """南美产区关心的是大豆本身(不是豆粕)的产量——中国从南美进口的主要是原豆，
+    自己在国内压榨成豆粕。找"Soybeans"这个商品(不带meal)，排除"Soybean Meal"/"Soybean Oil"。"""
+    data, debug = fetch_json_debug(f"{USDA_BASE}/psd/commodities", headers={"X-Api-Key": USDA_API_KEY})
+    if not data:
+        debug["failureStage"] = "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+        return None, debug
+    for item in data:
+        name = (item.get("commodityName") or "").lower()
+        if "soybean" in name and "meal" not in name and "oil" not in name:
+            return item.get("commodityCode"), None
+    debug["failureStage"] = "接口请求成功，但没有一条命中'soybean'且不含'meal'/'oil'的商品"
+    debug["actualCommodityNamesSeen"] = sorted(set((item.get("commodityName") or "") for item in data))[:50]
+    return None, debug
+
+
 def get_psd_attribute_names():
     """
     获取 attributeId → 属性名称 的对照表。
@@ -582,6 +598,141 @@ def weighted_avg(state_values):
         return sum(state_values.values()) / len(state_values) if state_values else 0
     weighted_sum = sum(v * STATE_ACREAGE_WEIGHTS.get(st, 0) for st, v in state_values.items())
     return weighted_sum / total_weight
+    return weighted_sum / total_weight
+
+
+# ---------------------------------------------------------------------------
+# 南美产区(巴西/阿根廷)天气监测 —— 服务5月合约窗口期(南美收获期是主要行情驱动)
+# ★ 已确认：巴西现在是全球最大大豆产区(超过美国)，2025/26年度总产量约174百万吨，
+#   数据来源：巴西IBGE官方统计+USDA FAS交叉验证。这6州覆盖巴西全国产量约80%。
+# ---------------------------------------------------------------------------
+BRAZIL_STATE_WEIGHTS = {
+    "MT": 30,  # 马托格罗索州，全国最大产区
+    "PR": 13,  # 巴拉那州
+    "RS": 11,  # 南里奥格朗德州
+    "GO": 11,  # 戈亚斯州
+    "MS": 8,   # 南马托格罗索州
+    "MG": 5,   # 米纳斯吉拉斯州
+}
+BRAZIL_LOCATIONS = {
+    "MT": {"lat": -12.5, "lon": -55.7, "name_cn": "马托格罗索"},   # Sorriso地区，主产带
+    "PR": {"lat": -24.95, "lon": -53.46, "name_cn": "巴拉那"},     # Cascavel地区
+    "RS": {"lat": -28.26, "lon": -52.4, "name_cn": "南里奥格朗德"}, # Passo Fundo地区
+    "GO": {"lat": -16.68, "lon": -49.25, "name_cn": "戈亚斯"},     # Goiânia附近
+    "MS": {"lat": -20.44, "lon": -54.65, "name_cn": "南马托格罗索"}, # Campo Grande附近
+    "MG": {"lat": -18.9, "lon": -48.28, "name_cn": "米纳斯吉拉斯"}, # Uberlândia地区(西部大豆带)
+}
+
+# ★ 已查证：圣菲/科尔多瓦/布宜诺斯艾利斯/恩特雷里奥斯这4省合计占阿根廷全国产量89%，
+#   但没查到4省之间的精确细分占比(不像巴西那样有清晰的独立数字来源)，
+#   诚实起见，这4省先按相等权重处理，不编造没有可靠依据的具体百分比。
+ARGENTINA_LOCATIONS = {
+    "SantaFe": {"lat": -31.63, "lon": -60.7, "name_cn": "圣菲"},
+    "Cordoba": {"lat": -31.42, "lon": -64.18, "name_cn": "科尔多瓦"},
+    "BuenosAires": {"lat": -34.92, "lon": -59.95, "name_cn": "布宜诺斯艾利斯"},
+    "EntreRios": {"lat": -31.73, "lon": -60.53, "name_cn": "恩特雷里奥斯"},
+}
+ARGENTINA_STATE_WEIGHTS = {k: 1 for k in ARGENTINA_LOCATIONS}  # 权重相等，见上方说明
+
+SOUTH_AMERICA_LOCATIONS = {**BRAZIL_LOCATIONS, **ARGENTINA_LOCATIONS}
+SOUTH_AMERICA_WEIGHTS = {**BRAZIL_STATE_WEIGHTS, **ARGENTINA_STATE_WEIGHTS}
+
+
+def fetch_south_america_weather():
+    """南美(巴西+阿根廷)产区天气监测，用Open-Meteo(全球性API，跟美国那边用的是同一个服务)。
+    南美是南半球，生长季节跟北美相反：南美播种期约9-12月，收获期约1-6月(集中在2-4月)。"""
+    results = {}
+    debugs = {}
+    for code, loc in SOUTH_AMERICA_LOCATIONS.items():
+        url = (
+            f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}"
+            f"&daily=precipitation_sum,temperature_2m_max&forecast_days=7&timezone=America%2FSao_Paulo"
+        )
+        data, debug = fetch_json_debug(url)
+        debugs[code] = debug
+        if not data or "daily" not in data:
+            results[code] = {"available": False}
+            continue
+        precip_list = data["daily"].get("precipitation_sum") or []
+        temp_list = data["daily"].get("temperature_2m_max") or []
+        precip7d = round(sum(v for v in precip_list if v is not None), 1)
+        valid_temps = [v for v in temp_list if v is not None]
+        avg_temp = round(sum(valid_temps) / len(valid_temps), 1) if valid_temps else None
+        results[code] = {
+            "available": True,
+            "nameCn": loc["name_cn"],
+            "country": "BR" if code in BRAZIL_LOCATIONS else "AR",
+            "precip7d": precip7d,
+            "avgMaxTemp": avg_temp,
+        }
+
+    available = {k: v for k, v in results.items() if v.get("available")}
+    if not available:
+        return {"available": False, "reason": "南美天气接口未返回任何产区数据", "debug": debugs}
+
+    precip_weighted = weighted_avg_custom({k: v["precip7d"] for k, v in available.items()}, SOUTH_AMERICA_WEIGHTS)
+    temp_valid = {k: v["avgMaxTemp"] for k, v in available.items() if v["avgMaxTemp"] is not None}
+    temp_weighted = weighted_avg_custom(temp_valid, SOUTH_AMERICA_WEIGHTS) if temp_valid else None
+
+    return {
+        "available": True,
+        "byRegion": results,
+        "avgPrecip7d": precip_weighted,
+        "avgMaxTemp": temp_weighted,
+        "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
+        "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月",
+    }
+
+
+def weighted_avg_custom(values, weights):
+    """跟weighted_avg()逻辑一样，但权重表可以自定义传入(南美用的是单独的权重表，不是STATE_ACREAGE_WEIGHTS)。"""
+    total_weight = sum(weights.get(k, 0) for k in values)
+    if total_weight == 0:
+        return round(sum(values.values()) / len(values), 1) if values else 0
+    weighted_sum = sum(v * weights.get(k, 0) for k, v in values.items())
+    return round(weighted_sum / total_weight, 1)
+
+
+def fetch_south_america_psd():
+    """巴西/阿根廷的大豆(原豆，不是豆粕)供需数据，复用已有的PSD解析逻辑，只是换个国家代码。
+    ★ 国家代码(BR/AR)是根据USDA FAS一般命名习惯推断的，没有100%验证过，
+      如果查询失败，debug信息会明确说明，不会静默失败误导判断。"""
+    code, code_debug = get_soybean_psd_code()
+    if not code:
+        return {"available": False, "reason": "大豆商品代码查找失败", "debug": code_debug}
+
+    results = {}
+    attr_map, _ = get_psd_attribute_names()
+    for country_code, country_name in [("BR", "巴西"), ("AR", "阿根廷")]:
+        now_year = datetime.now(timezone.utc).year
+        candidate_years = [now_year - 1, now_year, now_year + 1]
+        best = None
+        all_attempts = {}
+        for candidate_year in candidate_years:
+            url = f"{USDA_BASE}/psd/commodity/{code}/country/{country_code}/year/{candidate_year}"
+            rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
+            all_attempts[str(candidate_year)] = {"httpStatus": debug.get("httpStatus"), "rowCount": len(rows) if rows else 0}
+            if not rows:
+                continue
+            out, seen_attrs, has_string_names, vintage = _parse_psd_rows(rows, attr_map)
+            candidate = {"year": candidate_year, "out": out, "vintage": vintage}
+            if best is None or (bool(out), vintage or ("", "")) > (bool(best["out"]), best["vintage"] or ("", "")):
+                best = candidate
+        if not best or not best["out"]:
+            results[country_code] = {"available": False, "reason": f"{country_name}PSD数据查询失败或字段未匹配", "debug": all_attempts}
+            continue
+        results[country_code] = {
+            "available": True,
+            "marketYear": best["year"],
+            "production": best["out"].get("Production"),
+            "totalSupply": best["out"].get("Total Supply"),
+            "countryName": country_name,
+        }
+    return {
+        "available": any(v.get("available") for v in results.values()),
+        "byCountry": results,
+        "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）",
+    }
 
 
 def fetch_drought_monitor():
@@ -955,6 +1106,8 @@ def main():
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),
+        "southAmericaWeather": fetch_south_america_weather(),
+        "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
