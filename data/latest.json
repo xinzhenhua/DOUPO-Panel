@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-11T11:37:19.880199+00:00",
+  "generatedAt": "2026-07-11T12:29:23.891176+00:00",
   "cbotPrice": {
     "available": true,
     "price": 323.1,
@@ -1811,139 +1811,97 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 6.0,
-        "avgMaxTemp": 32.3
+        "precip7d": 5.4,
+        "avgMaxTemp": 32.2
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 18.8,
-        "avgMaxTemp": 19.3
+        "precip7d": 28.0,
+        "avgMaxTemp": 19.1
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 28.4,
+        "precip7d": 46.4,
         "avgMaxTemp": 18.2
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 0.5,
-        "avgMaxTemp": 29.9
+        "precip7d": 0.4,
+        "avgMaxTemp": 29.8
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 13.7,
-        "avgMaxTemp": 27.4
+        "precip7d": 12.8,
+        "avgMaxTemp": 26.9
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 2.1,
-        "avgMaxTemp": 26.4
+        "precip7d": 0.9,
+        "avgMaxTemp": 26.3
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 23.7,
-        "avgMaxTemp": 18.8
+        "precip7d": 24.9,
+        "avgMaxTemp": 18.6
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
         "precip7d": 0.6,
-        "avgMaxTemp": 19.8
+        "avgMaxTemp": 19.1
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 16.0,
-        "avgMaxTemp": 15.7
+        "precip7d": 14.9,
+        "avgMaxTemp": 15.6
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 9.0,
-        "avgMaxTemp": 18.8
+        "precip7d": 10.2,
+        "avgMaxTemp": 18.4
       }
     },
-    "avgPrecip7d": 11.1,
-    "avgMaxTemp": 26.5,
+    "avgPrecip7d": 14.6,
+    "avgMaxTemp": 26.3,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
   "southAmericaPsd": {
-    "available": false,
-    "reason": "大豆商品代码查找失败",
-    "debug": {
-      "url": "https://api.fas.usda.gov/api/psd/commodities",
-      "httpStatus": 200,
-      "rawSnippet": "[{\"commodityCode\":\"0577400\",\"commodityName\":\"Almonds, Shelled Basis\"},{\"commodityCode\":\"0011000\",\"commodityName\":\"Animal Numbers, Cattle\"},{\"commodityCode\":\"0013000\",\"commodityName\":\"Animal Numbers, Swine\"},{\"commodityCode\":\"0574000\",\"commodityName\":\"Apples, Fresh\"},{\"commodityCode\":\"0430000\",\"commodityName\":\"Barley\"},{\"commodityCode\":\"0579305\",\"commodityName\":\"Cherries (Sweet&Sour), Fresh\"},{\"commodityCode\":\"0711100\",\"commodityName\":\"Coffee, Green\"},{\"commodityCode\":\"0440000\",\"commodityName\":\"C",
-      "failureStage": "接口请求成功，但没有一条命中'soybean'且不含'meal'/'oil'的商品",
-      "actualCommodityNamesSeen": [
-        "Almonds, Shelled Basis",
-        "Animal Numbers, Cattle",
-        "Animal Numbers, Swine",
-        "Apples, Fresh",
-        "Barley",
-        "Cherries (Sweet&Sour), Fresh",
-        "Coffee, Green",
-        "Corn",
-        "Cotton",
-        "Dairy, Butter",
-        "Dairy, Cheese",
-        "Dairy, Dry Whole Milk Powder",
-        "Dairy, Milk, Fluid",
-        "Dairy, Milk, Nonfat Dry",
-        "Grapefruit, Fresh",
-        "Grapes, Fresh Table",
-        "Lemons/Limes, Fresh",
-        "Meal, Copra",
-        "Meal, Cottonseed",
-        "Meal, Fish",
-        "Meal, Palm Kernel",
-        "Meal, Peanut",
-        "Meal, Rapeseed",
-        "Meal, Soybean",
-        "Meal, Soybean (Local)",
-        "Meal, Sunflowerseed",
-        "Meat, Beef and Veal",
-        "Meat, Chicken",
-        "Meat, Swine",
-        "Millet",
-        "Mixed Grain",
-        "Oats",
-        "Oil, Coconut",
-        "Oil, Cottonseed",
-        "Oil, Olive",
-        "Oil, Palm",
-        "Oil, Palm Kernel",
-        "Oil, Peanut",
-        "Oil, Rapeseed",
-        "Oil, Soybean",
-        "Oil, Soybean (Local)",
-        "Oil, Sunflowerseed",
-        "Oilseed, Copra",
-        "Oilseed, Cottonseed",
-        "Oilseed, Palm Kernel",
-        "Oilseed, Peanut",
-        "Oilseed, Rapeseed",
-        "Oilseed, Soybean",
-        "Oilseed, Soybean (Local)",
-        "Oilseed, Sunflowerseed"
-      ]
-    }
+    "available": true,
+    "byCountry": {
+      "BR": {
+        "available": true,
+        "marketYear": 2026,
+        "production": 13260.0,
+        "totalSupply": 13557.0,
+        "countryName": "巴西"
+      },
+      "AR": {
+        "available": true,
+        "marketYear": 2026,
+        "production": 8579.0,
+        "totalSupply": 9091.0,
+        "countryName": "阿根廷"
+      }
+    },
+    "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）"
   },
   "exportSales": {
     "available": true,
