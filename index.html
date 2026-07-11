@@ -69,6 +69,9 @@ details.tier-details summary::-webkit-details-marker{display:none}
 details.tier-details summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
 details.tier-details[open] summary::before{transform:rotate(90deg)}
 details.tier-details .tier-body{padding-top:6px}
+details.big-collapse{margin-bottom:14px}
+details.big-collapse>summary{font-size:13px;font-weight:700;padding:12px 14px;background:var(--bg1);border:1px solid var(--bdr)}
+details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
@@ -93,6 +96,11 @@ details.tier-details .tier-body{padding-top:6px}
   <div class="sub">天气自动实时更新 · USDA/CBOT数据每日两次同步 · 其余数据手动录入</div>
 </div>
 <div class="main" id="mainContent">
+
+<!-- ============ 综合基本面预警：放最顶端，一打开就看到结论 ============ -->
+<div class="card" id="alertCard" style="border-color:var(--gold)">
+  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+</div>
 
 <button class="setup-toggle" onclick="toggleSetup()">📖 首次使用？点击查看部署说明</button>
 <div class="setup-panel" id="setupPanel"></div>
@@ -124,6 +132,14 @@ details.tier-details .tier-body{padding-top:6px}
 </div>
 <div style="font-size:10px;color:var(--t3);margin:-4px 0 10px 2px">
   💡 三层时间尺度：干旱监测=过去到现在的实际状况 · 天气预报=未来7天 · NOAA展望=未来1个月的专家研判(综合ENSO/季节性规律等因素)。三者方向不一致不代表冲突，是在描述不同时间段。
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">美豆优良率<span style="font-size:9px;color:var(--t3);font-weight:400">· USDA周度作物生长报告</span></div>
+    <span class="badge" id="soyCondBadge">检查中...</span>
+  </div>
+  <div id="soyCondContent" class="loading">正在读取同步数据...</div>
 </div>
 
 <!-- ============ 人民币汇率（真自动，浏览器实时抓取，Frankfurter API） ============ -->
@@ -164,6 +180,9 @@ details.tier-details .tier-body{padding-top:6px}
 
 <!-- ============ 一键复制提示词 + 一键粘贴填充板块 ============ -->
 <div class="stitle">📋 一键复制提示词 → 粘贴填充（替代AI搜索，纯本地解析不联网）</div>
+<details class="tier-details big-collapse">
+<summary>📋 第一步+第二步：复制提示词 → 粘贴解析 ▸</summary>
+<div class="tier-body">
 <div class="card">
   <div class="card-head">
     <div class="card-title">第一步：复制提示词，去问任意AI</div>
@@ -197,8 +216,12 @@ details.tier-details .tier-body{padding-top:6px}
     💡 纯本地文本解析，不联网、不调用任何AI，你粘贴什么就严格按什么解析
   </div>
 </div>
+</div>
+</details>
 
-
+<details class="tier-details big-collapse">
+<summary>📦 手动指标字段（开机率/库存/基差/到港预报/猪粮比/能繁母猪/进口量）▸</summary>
+<div class="tier-body">
 <div class="stitle">📦 国内供需 · 每周更新</div>
 <div class="card">
   <div class="card-head">
@@ -257,12 +280,8 @@ details.tier-details .tier-body{padding-top:6px}
   </div>
   <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
 </div>
-
-<!-- ============ 综合预警 ============ -->
-<div class="stitle">🚨 综合基本面预警</div>
-<div class="card" id="alertCard">
-  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
 </div>
+</details>
 
 </div><!-- /main -->
 <script>
@@ -333,23 +352,17 @@ const BELT_LOCATIONS_SECONDARY = [
 ];
 const BELT_LOCATIONS = [...BELT_LOCATIONS_CORE, ...BELT_LOCATIONS_SECONDARY];
 
-// 核心8州(占全国种植面积64.0%) vs 次要4州(北达科他/堪萨斯/密歇根/威斯康星，加总12州81.8%)
+// 核心8州(占全国种植面积64.0%) + 次要4州(北达科他/堪萨斯/密歇根/威斯康星，加总12州81.8%)
 // 跟fetch_data.py里的CORE_STATES/SECONDARY_STATES保持一致
 const JS_CORE_STATES = ['IA','IL','MN','IN','NE','OH','MO','SD'];
 
-/** 把一组"州→这一行的html"的映射，拆成"核心州always显示 + 次要州收合在details里"。
- *  这样长内容默认收起来，只有核心8州的摘要一直可见，符合"长数据默认收纳，点开看详情"的要求。 */
+/** 把一组"州→这一行的html"的映射，全部收进一个details里，只留一个"查看详情"入口。
+ *  极简模式：卡片本身只常驻显示alert-box结论，逐州明细全部收起来点开才看。 */
 function renderTieredStateRows(stateRowsMap, detailsLabel){
-  let coreHtml = '', secondaryHtml = '';
-  Object.keys(stateRowsMap).forEach(st=>{
-    if(JS_CORE_STATES.includes(st)) coreHtml += stateRowsMap[st];
-    else secondaryHtml += stateRowsMap[st];
-  });
-  let html = coreHtml;
-  if(secondaryHtml){
-    html += `<details class="tier-details"><summary>${detailsLabel||'其他重要产区详情'}</summary><div class="tier-body">${secondaryHtml}</div></details>`;
-  }
-  return html;
+  let allHtml = '';
+  Object.keys(stateRowsMap).forEach(st=>{ allHtml += stateRowsMap[st]; });
+  if(!allHtml) return '';
+  return `<details class="tier-details"><summary>${detailsLabel||'查看12州详细数据 ▸'}</summary><div class="tier-body">${allHtml}</div></details>`;
 }
 
 async function loadWeather(){
@@ -387,18 +400,16 @@ async function loadWeather(){
         <span class="sv ${r.precip7d<10?'pos':r.precip7d<20?'warn':'neg'}">${r.precip7d}mm</span>
         <div class="sl">${r.name} · 未来7天降雨</div>
       </div>`;
-    const coreResults = results.filter(r=>BELT_LOCATIONS_CORE.some(c=>c.name===r.name));
-    const secondaryResults = results.filter(r=>BELT_LOCATIONS_SECONDARY.some(c=>c.name===r.name));
 
-    let html = `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>基于${results.length}州平均未来7天降雨与气温</div>`;
-    html += `<div class="grid2" style="margin-top:8px">` + coreResults.map(statCardFor).join('') + `</div>`;
-    if(secondaryResults.length){
-      html += `<details class="tier-details"><summary>其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸</summary><div class="tier-body grid2">${secondaryResults.map(statCardFor).join('')}</div></details>`;
-    }
+    // 极简模式：alert-box常驻(带关键数字做简要概况)，12州逐州明细全部收进details
+    let html = `<div class="alert-box ${riskColor==='r'?'bull':riskColor==='g'?'bear':'neutral'}"><span class="at">${riskText}</span>${results.length}州平均降雨${Math.round(avgPrecip*10)/10}mm/7天，平均最高温${Math.round(avgTemp*10)/10}°C${isCriticalWindow?'　⭐7-8月授粉灌浆关键期':''}</div>`;
+    html += `<details class="tier-details"><summary>查看12州详细数据 ▸</summary><div class="tier-body">`;
+    html += `<div class="grid2">` + results.map(statCardFor).join('') + `</div>`;
     html += `<div class="divider"></div>`;
     html += `<div class="ir"><div class="il">平均降雨量</div><div class="iv"><span class="${riskColor}">${Math.round(avgPrecip*10)/10}mm / 7天</span></div></div>`;
     html += `<div class="ir"><div class="il">平均最高温</div><div class="iv"><span class="${avgTemp>30?'r':'g'}">${Math.round(avgTemp*10)/10}°C</span></div></div>`;
     html += `<div class="ir"><div class="il">当前时段</div><div class="iv">${isCriticalWindow?'<span class="gold">⭐ 7-8月授粉灌浆关键期，天气影响最大</span>':'非关键炒作期，影响权重较低'}</div></div>`;
+    html += `</div></details>`;
 
     el.innerHTML = html;
     badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
@@ -421,9 +432,10 @@ async function loadSyncedData(){
     renderCbot(data.cbotPrice, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
     renderNoaaOutlook(data.noaaOutlook, data.generatedAt);
+    renderSoyCond(data.soybeanCondition, data.generatedAt);
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought','noaaOutlook'].forEach(k=>{
+    ['esr','psd','cbot','drought','noaaOutlook','soyCond'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
@@ -655,7 +667,7 @@ function renderDrought(dm, genAt){
     const cls = s.severeOrWorsePct>=20?'r':s.severeOrWorsePct>=5?'gold':'g';
     stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">D2+级别 ${s.severeOrWorsePct}%</span>　D0:${s.d0}% D1:${s.d1}% D2:${s.d2}% D3:${s.d3}% D4:${s.d4}%</div></div>`;
   });
-  const rows = renderTieredStateRows(stateRows, '其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸');
+  const rows = renderTieredStateRows(stateRows, '查看12州详细数据 ▸');
 
   if(dm.anomalous){
     // 数值超出合理范围，不显示可能误导人的"干旱面积占比"结论，明确提示这是bug还没修完
@@ -696,7 +708,7 @@ function renderNoaaOutlook(no, genAt){
     const cls = s.worseningPct>=20?'r':s.worseningPct>=5?'gold':'g';
     stateRows[st] = `<div class="ir"><div class="il">${stateNames[st]}(${st})</div><div class="iv"><span class="${cls}">${s.worseningCount}/${s.totalPoints}点变差(${s.worseningPct}%)</span>　众数:${s.dominantOutlookLabel}　适用期:${s.targetPeriod||'未知'}</div></div>`;
   });
-  const rows = renderTieredStateRows(stateRows, '其他重要产区(北达科他/堪萨斯/密歇根/威斯康星)详情 ▸');
+  const rows = renderTieredStateRows(stateRows, '查看12州详细数据 ▸');
   const avg = no.avgWorseningPct;
   const sig = no.overallSignal;
   const cls = sig===1?'bull':sig===0?'neutral':'bear';
@@ -704,6 +716,34 @@ function renderNoaaOutlook(no, genAt){
   const stateCount = Object.keys(no.byState).length;
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${stateCount}州平均展望恶化点位占比 ${avg}%</span>${text} · 来源：NOAA/CPC(每州8点采样)</div>` + rows;
   window._noaaOutlookSignal = sig;
+}
+
+function renderSoyCond(sc, genAt){
+  const badge = document.getElementById('soyCondBadge');
+  const el = document.getElementById('soyCondContent');
+  if(!sc || !sc.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${sc?sc.reason:'未知原因'}</span>USDA每年4-11月生长季每周一发布，其余月份无新数据属正常</div>` + renderDebugInfo(sc?sc.debug:null);
+    window._soyCondSignal = 0;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const pct = sc.goodExcellentPct;
+  const chg = sc.wowChangePts;
+  // 优良率越高=作物长势越好=供给越充足=偏空；越低=偏多。跟环比变化方向结合判断
+  const sig = chg!=null ? (chg<=-2?1:chg>=2?-1:0) : (pct<60?1:pct>70?-1:0);
+  const cls = sig===1?'bull':sig===-1?'bear':'neutral';
+  const text = sig===1?'优良率下滑/偏低 — 偏多信号':sig===-1?'优良率上升/偏高 — 偏空信号':'优良率变化不大，持续观察';
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>优良率${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div class="ir"><div class="il">数据周次</div><div class="iv">${sc.weekEnding}</div></div>
+    <div class="ir"><div class="il">优良率(Good+Excellent)</div><div class="iv"><span class="b">${pct}%</span></div></div>
+    <div class="ir"><div class="il">环比变化</div><div class="iv">${chg!=null?(chg>0?'+':'')+chg+'个百分点':'--'}</div></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">来源：${sc.source}</div>
+    </div></details>`;
+  window._soyCondSignal = sig;
 }
 
 // ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
@@ -735,11 +775,13 @@ async function loadFxRate(){
     badge.textContent = '🟢 '+data.date;
     const chgHtml = change!=null ? `<div class="stat"><span class="sv ${change>0?'pos':change<0?'neg':'neutral'}">${change>0?'+':''}${change} (${changePct>0?'+':''}${changePct}%)</span><div class="sl">较${prevDateUsed||'前一交易日'}</div></div>` : '';
     const fxAlertCls = change>0?'bull':change<0?'bear':'neutral';
-    el.innerHTML = `<div class="grid2">
+    el.innerHTML = `<div class="alert-box ${fxAlertCls}"><span class="at">${change>0?'人民币贬值 → 进口成本上升，偏多':change<0?'人民币升值 → 进口成本下降，偏空':'汇率变化不大'}</span>1美元=${rate.toFixed(4)}人民币${change!=null?`，${change>0?'+':''}${change}(${changePct>0?'+':''}${changePct}%)`:''}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body grid2">
       <div class="stat"><span class="sv neutral">${rate.toFixed(4)}</span><div class="sl">1美元 = ? 人民币</div></div>
       ${chgHtml}
     </div>
-    <div class="alert-box ${fxAlertCls}" style="margin-top:8px"><span class="at">${change>0?'人民币贬值 → 进口成本上升，偏多':change<0?'人民币升值 → 进口成本下降，偏空':'汇率变化不大'}</span>数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>`;
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">数据来源：欧洲央行(ECB)参考汇率，工作日约北京时间0点更新</div>
+    </details>`;
     window._fxSignal = change>0?1:change<0?-1:0;
   }catch(e){
     badge.textContent = '❌ 拉取失败';
@@ -776,13 +818,15 @@ function renderEsr(esr, genAt){
   const alertText = wow>30?'净销售环比大增，偏多信号':wow<-30?'净销售环比大减，偏空信号':'环比变化在正常区间';
   const esrMismatchWarning = esr.debug ? `<div class="alert-box neutral"><span class="at">⚠️ ${esr.isStale?'数据可能过期':'数值可能不准确'}</span>${esr.debug.warning||'已连接上接口，但净销售量汇总为0，可能是字段名候选没匹配上'}</div>` + renderDebugInfo(esr.debug) : '';
   el.innerHTML = `
+    <div class="alert-box ${wowCls==='r'?'bull':wowCls==='g'?'bear':'neutral'}"><span class="at">${alertText}</span>本周净销售${esr.latestTotalMT?.toLocaleString()}吨，环比${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}${esr.dataAgeDays!=null?` <span style="color:var(--t3)">(距今${esr.dataAgeDays}天)</span>`:''}</div></div>
     <div class="ir"><div class="il">使用的市场年度</div><div class="iv">${esr.marketYearUsed}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
     <div class="ir"><div class="il">本周净销售</div><div class="iv"><span class="b">${esr.latestTotalMT?.toLocaleString()} 吨</span></div></div>
     <div class="ir"><div class="il">上周净销售</div><div class="iv">${esr.prevTotalMT?.toLocaleString()} 吨</div></div>
     <div class="ir"><div class="il">环比变化</div><div class="iv"><span class="${wowCls==='r'?'r':wowCls==='g'?'g':''}">${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</span></div></div>
     <div class="ir"><div class="il">中国采购量</div><div class="iv"><span class="gold">${esr.chinaLatestMT?.toLocaleString()} 吨</span></div></div>
-    <div class="alert-box ${wowCls==='r'?'bull':wowCls==='g'?'bear':'neutral'}"><span class="at">${alertText}</span></div>
+    </div></details>
     ${esrMismatchWarning}
   `;
   window._esrSignal = wow>30?1:wow<-30?-1:0;
@@ -861,12 +905,14 @@ function renderCbot(cbot, genAt){
   const cbotCls = chg>0?'bull':chg<0?'bear':'neutral';
   const cbotText = chg>0?'CBOT上涨，国际基准走强 → 偏多参考':chg<0?'CBOT下跌，国际基准走弱 → 偏空参考':'CBOT价格持平';
   el.innerHTML = `
+    <div class="alert-box ${cbotCls}"><span class="at">${cbotText}</span>${cbot.price}美元/短吨，${chg>0?'+':''}${chg}(${cbot.changePct>0?'+':''}${cbot.changePct}%)　仅供参考不计入综合评分</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="grid2">
       <div class="stat"><span class="sv neutral">${cbot.price}</span><div class="sl">最新价（美元/短吨）</div></div>
       <div class="stat"><span class="sv ${chgCls==='r'?'pos':chgCls==='g'?'neg':'neutral'}">${chg>0?'+':''}${chg} (${cbot.changePct>0?'+':''}${cbot.changePct}%)</span><div class="sl">较前一交易日</div></div>
     </div>
-    <div class="alert-box ${cbotCls}" style="margin-top:8px"><span class="at">${cbotText}</span>国际基准与国内价格相关性未经严格验证，仅供参考，不计入下方综合评分</div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">数据时间：${fmtTime(cbot.asOf)} · 来源：${cbot.source}</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">数据时间：${fmtTime(cbot.asOf)} · 来源：${cbot.source}<br>国际基准与国内价格相关性未经严格验证</div>
+    </div></details>
   `;
   window._cbotSignal = chg>0?1:chg<0?-1:0; // 仅展示参考，不纳入综合评分(见updateOverallAlert)
 }
@@ -962,6 +1008,8 @@ function updateOverallAlert(){
   else if(window._droughtSignal===-1){ score-=1; notes.push('官方干旱监测：基本无干旱 → 偏空'); }
   if(window._noaaOutlookSignal===1){ score+=1; notes.push('NOAA月度展望：恶化点位占比≥20% → 偏多'); }
   else if(window._noaaOutlookSignal===-1){ score-=1; notes.push('NOAA月度展望：恶化点位占比<5% → 偏空'); }
+  if(window._soyCondSignal===1){ score+=1; notes.push('美豆优良率：下滑/偏低 → 偏多'); }
+  else if(window._soyCondSignal===-1){ score-=1; notes.push('美豆优良率：上升/偏高 → 偏空'); }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
