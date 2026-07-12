@@ -88,6 +88,11 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .contract-tab.active .ctab-sub{color:var(--b)}
 .contract-group{transition:opacity .2s}
 .contract-group.hidden-by-contract{display:none}
+.trading-window{background:var(--bg2);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:10.5px;line-height:1.8}
+.trading-window .tw-row{color:var(--t2)}
+.tw-ok{color:var(--g);font-weight:700}
+.tw-caution{color:var(--gold);font-weight:700}
+.tw-avoid{color:var(--r);font-weight:700}
 .field-ind.pos{background:var(--rd);color:var(--r);border:1px solid var(--rb)}
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
@@ -110,6 +115,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub">南美收获期</span></button>
   <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub">美豆收获期</span></button>
 </div>
+<div id="tradingWindowInfo"></div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
 
 <!-- ============ 综合基本面预警：紧跟在合约选择下方，一打开就看到结论 ============ -->
@@ -974,26 +980,53 @@ const CONTRACT_CONTEXT = {
     text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
     show: ['group-us-weather'], hide: ['group-sa'],
     esrPsdNote: '出口销售/PSD此时怎么看：现在的WASDE数字还是基于趋势单产的预估，真实结果要等秋天收割才知道，确定性较低；出口销售反映的是买家对"即将收获的新作物"有多渴望。',
+    // ★ 新增：建议/不建议交易月份。依据查证过的DCE规则——一般提前2个月开始移仓，
+    //   交割月前一个月中旬完成换月，交割月本身个人投资者会被强制平仓，务必避开。
+    recommendedMonths: [4,5,6,7], cautionMonths: [8], avoidMonths: [9],
   },
   may: {
     label: '5月合约',
     text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，仪表盘已切换成按南美天气信号计算。',
     show: ['group-sa'], hide: ['group-us-weather'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经把南美刚收完的产量计入全球平衡表；出口销售此时能看出买家在美豆和南美豆之间怎么切换采购(通常南美刚收获时买家会更倾向买南美豆)。',
+    recommendedMonths: [12,1,2,3], cautionMonths: [4], avoidMonths: [5],
   },
   jan: {
     label: '1月合约',
     text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割，南美刚播种没多久)，仪表盘暂不计入天气类信号，重点转向"最终收成有多少"和"到港节奏"这些非天气指标。',
     show: [], hide: ['group-us-weather', 'group-sa'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经反映真实收获数据，确定性大幅提高，这个阶段的数字比夏天的预估靠谱得多；出口销售能看出新市场年度的订单节奏和到港安排。',
+    recommendedMonths: [8,9,10,11], cautionMonths: [12], avoidMonths: [1],
   },
 };
+const MONTH_CN = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+function renderTradingWindow(ctx){
+  const nowMonth = new Date().getMonth()+1;
+  const fmt = (arr)=>arr.map(m=>MONTH_CN[m]).join('、');
+  let statusLine;
+  if(ctx.avoidMonths.includes(nowMonth)){
+    statusLine = `<span class="tw-avoid">⛔ 当前${MONTH_CN[nowMonth]}正处于交割月，个人投资者持仓会被强制平仓，不该还持有这个合约</span>`;
+  } else if(ctx.cautionMonths.includes(nowMonth)){
+    statusLine = `<span class="tw-caution">⚠️ 当前${MONTH_CN[nowMonth]}已进入移仓期，流动性开始转移，新开仓需谨慎</span>`;
+  } else if(ctx.recommendedMonths.includes(nowMonth)){
+    statusLine = `<span class="tw-ok">✅ 当前${MONTH_CN[nowMonth]}正处于建议交易窗口内</span>`;
+  } else {
+    statusLine = `<span class="tw-caution">现在不在这个合约的活跃窗口内，仅供参考</span>`;
+  }
+  return `<div class="trading-window">
+    <div>${statusLine}</div>
+    <div class="tw-row"><span class="tw-ok">建议交易：</span>${fmt(ctx.recommendedMonths)}</div>
+    <div class="tw-row"><span class="tw-caution">开始移仓(谨慎)：</span>${fmt(ctx.cautionMonths)}</div>
+    <div class="tw-row"><span class="tw-avoid">务必避开(交割月)：</span>${fmt(ctx.avoidMonths)}</div>
+  </div>`;
+}
 function selectContract(month){
   ['sep','may','jan'].forEach(m=>{
     document.getElementById('tab-'+m).classList.toggle('active', m===month);
   });
   const ctx = CONTRACT_CONTEXT[month];
   document.getElementById('contractContext').innerHTML = ctx.text;
+  document.getElementById('tradingWindowInfo').innerHTML = renderTradingWindow(ctx);
   document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
   ['group-us-weather','group-sa'].forEach(gid=>{
     const el = document.getElementById(gid);
@@ -1217,14 +1250,14 @@ function updateOverallAlert(){
   let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null;
 
   if(!isNaN(crush)){
-    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（<40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
-    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（>60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); sigCrush=-1; }
+    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
+    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); sigCrush=-1; }
     else{ setInd('ind_crush',0,'→ 中性'); sigCrush=0; notes.push('开机率'+crush+'%（中性区间）'); }
   } else setInd('ind_crush', null);
 
   if(!isNaN(stock)){
-    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（<50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); sigStock=1; }
-    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（>100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); sigStock=-1; }
+    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); sigStock=1; }
+    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); sigStock=-1; }
     else{ setInd('ind_stock',0,'→ 中性'); sigStock=0; notes.push('库存'+stock+'万吨（中性区间）'); }
   } else setInd('ind_stock', null);
 
@@ -1238,37 +1271,37 @@ function updateOverallAlert(){
   //   之前180/250是周度量级，月度数字通常是周度的4倍以上，会导致月度数值
   //   几乎必然被误判成"偏空"。现在改用跟"月度进口量"一致的月度阈值(800/1000)。
   if(!isNaN(arrival)){
-    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（<800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); sigArrival=1; }
-    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（>1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); sigArrival=-1; }
+    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（&lt;800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); sigArrival=1; }
+    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（&gt;1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); sigArrival=-1; }
     else{ setInd('ind_arrival',0,'→ 中性'); sigArrival=0; notes.push('到港'+arrival+'万吨（中性区间）'); }
   } else setInd('ind_arrival', null);
 
   if(!isNaN(hogratio)){
-    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（>7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); sigHogratio=1; }
-    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（<5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); sigHogratio=-1; }
+    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); sigHogratio=1; }
+    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); sigHogratio=-1; }
     else{ setInd('ind_hogratio',0,'→ 中性'); sigHogratio=0; notes.push('猪粮比'+hogratio+'（中性区间）'); }
   } else setInd('ind_hogratio', null);
 
   // 能繁母猪：低于3750万头目标（产能调控线）=未来供给偏紧=偏多；远超目标=产能过剩=偏空
   if(!isNaN(sows)){
-    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（<3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); sigSows=1; }
-    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（>3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); sigSows=-1; }
+    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（&lt;3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); sigSows=1; }
+    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（&gt;3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); sigSows=-1; }
     else{ setInd('ind_sows',0,'→ 中性'); sigSows=0; notes.push('能繁母猪'+sows+'万头（中性区间）'); }
   } else setInd('ind_sows', null);
 
   // 中国大豆月度进口量：逻辑与"到港预报"保持一致——进口少=供给收紧=偏多；进口多=供给宽松=偏空
   // （这里做了个修正：之前独立表格里曾把"进口增长"标成偏多，和到港预报的方向矛盾，现在统一为同一套供需逻辑）
   if(!isNaN(cnImport)){
-    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（<800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); sigImport=1; }
-    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（>1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); sigImport=-1; }
+    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（&lt;800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); sigImport=1; }
+    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（&gt;1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); sigImport=-1; }
     else{ setInd('ind_import',0,'→ 中性'); sigImport=0; notes.push('进口'+cnImport+'万吨（中性区间）'); }
   } else setInd('ind_import', null);
 
   // 白羽肉鸡养殖利润：跟猪粮比逻辑一样，利润驱动养殖户扩产/减产决策，从而影响饲料(豆粕)需求
   // 阈值参考查证过的真实数据：正常盈利年份约0.7-1.7元/只，严重亏损年份为负值(比如"一只鸡跌去4块钱")
   if(!isNaN(poultryProfit)){
-    if(poultryProfit > 1.5){ score+=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（>1.5，盈利较好）→ 扩产意愿强，偏多'); setInd('ind_poultry',1,'→ 偏多'); sigPoultry=1; }
-    else if(poultryProfit < 0){ score-=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（<0，亏损）→ 减产退出，偏空'); setInd('ind_poultry',-1,'→ 偏空'); sigPoultry=-1; }
+    if(poultryProfit > 1.5){ score+=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（&gt;1.5，盈利较好）→ 扩产意愿强，偏多'); setInd('ind_poultry',1,'→ 偏多'); sigPoultry=1; }
+    else if(poultryProfit < 0){ score-=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（&lt;0，亏损）→ 减产退出，偏空'); setInd('ind_poultry',-1,'→ 偏空'); sigPoultry=-1; }
     else{ setInd('ind_poultry',0,'→ 中性'); sigPoultry=0; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（中性区间）'); }
   } else setInd('ind_poultry', null);
 
@@ -1277,40 +1310,67 @@ function updateOverallAlert(){
   // 阈值参考查证过的多个独立来源+2026年实际数据(4月国内现货价差470-780元/吨)：
   // 正常/合理价差区间约350-650，低于600饲料厂会考虑减少菜粕转向豆粕
   if(!isNaN(rmSpread)){
-    if(rmSpread < 400){ score+=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（<400，菜粕不够便宜）→ 豆粕需求锁定，偏多'); setInd('ind_rmspread',1,'→ 偏多'); sigRmSpread=1; }
-    else if(rmSpread > 700){ score-=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（>700，菜粕明显划算）→ 替代风险上升，偏空'); setInd('ind_rmspread',-1,'→ 偏空'); sigRmSpread=-1; }
+    if(rmSpread < 400){ score+=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（&lt;400，菜粕不够便宜）→ 豆粕需求锁定，偏多'); setInd('ind_rmspread',1,'→ 偏多'); sigRmSpread=1; }
+    else if(rmSpread > 700){ score-=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空'); setInd('ind_rmspread',-1,'→ 偏空'); sigRmSpread=-1; }
     else{ setInd('ind_rmspread',0,'→ 中性'); sigRmSpread=0; notes.push('豆菜粕价差'+rmSpread+'元/吨（中性区间）'); }
   } else setInd('ind_rmspread', null);
 
   // ★ 已改进：之前天气/干旱监测/NOAA展望/美豆优良率这4个指标各自独立投票(最多±4分)，
   //   但这4个本质上都在测"这个生长季天气好不好"，只是时间尺度不同(7天/现在/1个月/本周报告)。
   //   如果真的发生干旱，这4个很可能同时转向同一方向，等于同一件事被计了4次票。
-  //   现在改成：先算出这4个子信号的"平均态度"，合成1个"作物生长状况"综合信号，只投1票，
+  //   现在改成：先算出这4个子信号的"加权态度"，合成1个"作物生长状况"综合信号，只投1票，
   //   而不是最多4票——避免高度相关的信息在总分里被重复放大。
   // ★ 已改进：现在按选中的合约月份决定用哪个天气类信号——
   //   9月合约看美国天气类综合(生长关键期)；5月合约看南美天气(收获期核心)；
   //   1月合约天气不确定性已消失(美豆已收割)，不计入天气类信号。
+  // ★ 已改进(时间感知加权)：之前4个子信号是简单平均，但干旱监测是"现状快照"，
+  //   NOAA展望/天气预报是"前瞻预测"，这两类信息在生长季不同阶段的价值不一样：
+  //   6-7月伤害还在累积、后续变数大，前瞻信号更值钱；8月起关键窗口(R1-R5授粉结荚)基本走完，
+  //   干旱监测测的是"已经造成的、很可能不可逆的伤害"，比"预测接下来会怎样"更接近最终结果，
+  //   NOAA展望这时候覆盖的9月天气对单产边际影响也变小了。南美同理，但用的是南美自己的
+  //   生长周期(播种9-12月，关键期12-2月，收获2-5月)，不是美国那套6-7月/8月起的分法。
   const contract = window._selectedContract || 'sep';
   const weatherSigNum = window._weatherRisk==='high'?1:window._weatherRisk==='low'?-1:(window._weatherRisk==='medium'?0:null);
+  const nowMonth = new Date().getMonth()+1; // 1-12
   let cropComposite = null, cropLabel = '';
+
+  function weightedComposite(signalsWithWeights){
+    // signalsWithWeights: [{val, weight}, ...]，跳过val为null/undefined/NaN的
+    const avail = signalsWithWeights.filter(s=>s.val!==null && s.val!==undefined && !isNaN(s.val));
+    if(!avail.length) return null;
+    const totalWeight = avail.reduce((sum,s)=>sum+s.weight,0);
+    const weightedSum = avail.reduce((sum,s)=>sum+s.val*s.weight,0);
+    const avg = weightedSum/totalWeight;
+    return avg>=0.5?1:avg<=-0.5?-1:0;
+  }
+
   if(contract === 'sep'){
-    const cropSubSignals = [weatherSigNum, window._droughtSignal, window._noaaOutlookSignal, window._soyCondSignal]
-      .filter(s=>s!==null && s!==undefined && !isNaN(s));
-    if(cropSubSignals.length){
-      const avg = cropSubSignals.reduce((a,b)=>a+b,0)/cropSubSignals.length;
-      cropComposite = avg>=0.5?1:avg<=-0.5?-1:0;
-    }
-    cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率)`;
+    const isLateSeasonUS = nowMonth >= 8;
+    const usW = isLateSeasonUS
+      ? {weather:25, noaa:15, drought:30, soycond:30}   // 8月起：干旱监测/优良率权重升高，NOAA展望降低
+      : {weather:35, noaa:30, drought:10, soycond:25};  // 6-7月：天气预报/NOAA展望权重更高
+    cropComposite = weightedComposite([
+      {val:weatherSigNum, weight:usW.weather},
+      {val:window._noaaOutlookSignal, weight:usW.noaa},
+      {val:window._droughtSignal, weight:usW.drought},
+      {val:window._soyCondSignal, weight:usW.soycond},
+    ]);
+    cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率，${isLateSeasonUS?'8月起':'6-7月'}权重)`;
   } else if(contract === 'may'){
     // 南美天气+南美产量(PSD)也是相关信号(天气不好→产量预期下降是同一件事的两个角度)，
     // 跟9月合约那边"美国天气类4合1"用同样的原则合成，不各自独立投票
-    const saSubSignals = [window._saWeatherSignal, window._saPsdSignal]
-      .filter(s=>s!==null && s!==undefined && !isNaN(s));
-    if(saSubSignals.length){
-      const avg = saSubSignals.reduce((a,b)=>a+b,0)/saSubSignals.length;
-      cropComposite = avg>=0.5?1:avg<=-0.5?-1:0;
-    }
-    cropLabel = `南美(巴西/阿根廷)天气+产量综合`;
+    const isOffSeasonSA = nowMonth>=6 && nowMonth<=9;      // 休耕期(6-9月)：地里没有作物，天气信号参考价值低
+    const isPlantingSA = nowMonth>=10 || nowMonth===1;      // 播种+生长期(10-次年1月)
+    // 关键期+收获(2-5月)是剩下的情况
+    const saW = isOffSeasonSA ? {weather:10, psd:90}
+               : isPlantingSA ? {weather:55, psd:45}
+               : {weather:20, psd:80};
+    cropComposite = weightedComposite([
+      {val:window._saWeatherSignal, weight:saW.weather},
+      {val:window._saPsdSignal, weight:saW.psd},
+    ]);
+    const seasonLabel = isOffSeasonSA?'休耕期':isPlantingSA?'播种生长期':'关键期收获期';
+    cropLabel = `南美(巴西/阿根廷)天气+产量综合(${seasonLabel}权重)`;
   }
   // contract === 'jan'时cropComposite保持null，天气类信号不计入(美豆已收割，南美刚播种没多久)
   if(cropComposite===1){ score+=1; notes.push(`${cropLabel} → 偏多`); }
