@@ -186,6 +186,30 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </div>
 </div><!-- /group-sa -->
 
+<!-- ============ 5月合约相关：美豆播种进度 + 巴西雷亚尔汇率 ============ -->
+<div class="contract-group" id="group-may-extra">
+<div class="stitle">🌱 5月合约相关：美豆播种 + 南美货币</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">美豆播种进度<span style="font-size:9px;color:var(--t3);font-weight:400">· USDA周度播种进度报告</span></div>
+    <span class="badge" id="plantingBadge">检查中...</span>
+  </div>
+  <div id="plantingContent" class="loading">正在读取同步数据...</div>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">巴西雷亚尔汇率 USD/BRL<span style="font-size:9px;color:var(--t3);font-weight:400">· 真自动实时抓取</span></div>
+    <span class="badge badge-auto" id="brlBadge">🟢 实时自动</span>
+  </div>
+  <div id="brlContent" class="loading">正在拉取实时汇率...</div>
+</div>
+<div style="font-size:10px;color:var(--t3);margin:-4px 0 10px 2px">
+  💡 播种进度只在每年4-6月播种季有意义。巴西雷亚尔汇率反映农户售粮意愿：本币贬值→
+  换算成本币收入更划算→农户加快卖粮→出口供给增加(偏空)；本币升值→农户惜售(偏多)。
+  阿根廷比索因汇率波动过大，Frankfurter(欧洲央行数据源)未收录，暂无法覆盖。
+</div>
+</div><!-- /group-may-extra -->
+
 <!-- ============ 人民币汇率（真自动，浏览器实时抓取，Frankfurter API） ============ -->
 <div class="card">
   <div class="card-head">
@@ -552,9 +576,10 @@ async function loadSyncedData(){
     renderNoaaOutlook(data.noaaOutlook, data.generatedAt);
     renderSoyCond(data.soybeanCondition, data.generatedAt);
     renderSaPsd(data.southAmericaPsd, data.generatedAt);
+    renderPlanting(data.usPlantingProgress, data.generatedAt);
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd'].forEach(k=>{
+    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
@@ -973,12 +998,39 @@ function renderSaPsd(sa, genAt){
     <details class="tier-details"><summary>查看原始数据诊断 ▸</summary><div class="tier-body">${debugParts||'（暂无诊断信息）'}</div></details>`;
 }
 
+function renderPlanting(pp, genAt){
+  const badge = document.getElementById('plantingBadge');
+  const el = document.getElementById('plantingContent');
+  if(!pp || !pp.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${pp?pp.reason:'未知原因'}</span>播种进度只在每年4-6月播种季有数据，其余月份属正常现象</div>` + renderDebugInfo(pp?pp.debug:null);
+    window._plantingSignal = null;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const pct = pp.pctPlanted;
+  const chg = pp.wowChangePts;
+  // ⚠️没有历史同期均值做对比基准(比如"5年同期平均进度")，只能用周环比推速度做粗略参考，
+  // 置信度明显低于其他有明确阈值依据的指标：周进度明显停滞(播种季却几乎不推进，
+  // 可能是持续降雨导致农机下不了地)→偏多；进度推进较快(天气配合，播种顺利)→偏空
+  let sig = null, cls = 'neutral', text = `播种进度${pct}%，暂无法判断快慢(信息不足)`;
+  if(chg!=null){
+    if(chg < 5){ sig=1; cls='bull'; text='本周播种推进缓慢 — 弱偏多信号(⚠️无历史同期基准，置信度低)'; }
+    else if(chg >= 15){ sig=-1; cls='bear'; text='本周播种推进较快 — 弱偏空信号(⚠️无历史同期基准，置信度低)'; }
+    else { sig=0; cls='neutral'; text='本周播种推进正常，持续观察'; }
+  }
+  window._plantingSignal = sig;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>播种进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${pp.weekEnding}</div>`;
+}
+
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
 const CONTRACT_CONTEXT = {
   sep: {
     label: '9月合约',
     text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
-    show: ['group-us-weather'], hide: ['group-sa'],
+    show: ['group-us-weather'], hide: ['group-sa', 'group-may-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：现在的WASDE数字还是基于趋势单产的预估，真实结果要等秋天收割才知道，确定性较低；出口销售反映的是买家对"即将收获的新作物"有多渴望。',
     // ★ 新增：建议/不建议交易月份。依据查证过的DCE规则——一般提前2个月开始移仓，
     //   交割月前一个月中旬完成换月，交割月本身个人投资者会被强制平仓，务必避开。
@@ -987,14 +1039,14 @@ const CONTRACT_CONTEXT = {
   may: {
     label: '5月合约',
     text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，仪表盘已切换成按南美天气信号计算。',
-    show: ['group-sa'], hide: ['group-us-weather'],
+    show: ['group-sa', 'group-may-extra'], hide: ['group-us-weather'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经把南美刚收完的产量计入全球平衡表；出口销售此时能看出买家在美豆和南美豆之间怎么切换采购(通常南美刚收获时买家会更倾向买南美豆)。',
     recommendedMonths: [12,1,2,3], cautionMonths: [4], avoidMonths: [5],
   },
   jan: {
     label: '1月合约',
     text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割，南美刚播种没多久)，仪表盘暂不计入天气类信号，重点转向"最终收成有多少"和"到港节奏"这些非天气指标。',
-    show: [], hide: ['group-us-weather', 'group-sa'],
+    show: [], hide: ['group-us-weather', 'group-sa', 'group-may-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经反映真实收获数据，确定性大幅提高，这个阶段的数字比夏天的预估靠谱得多；出口销售能看出新市场年度的订单节奏和到港安排。',
     recommendedMonths: [8,9,10,11], cautionMonths: [12], avoidMonths: [1],
   },
@@ -1028,7 +1080,7 @@ function selectContract(month){
   document.getElementById('contractContext').innerHTML = ctx.text;
   document.getElementById('tradingWindowInfo').innerHTML = renderTradingWindow(ctx);
   document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
-  ['group-us-weather','group-sa'].forEach(gid=>{
+  ['group-us-weather','group-sa','group-may-extra'].forEach(gid=>{
     const el = document.getElementById(gid);
     el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
   });
@@ -1078,6 +1130,53 @@ async function loadFxRate(){
     badge.textContent = '❌ 拉取失败';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">汇率拉取失败</span>${e.message}</div>`;
+  }
+  updateOverallAlert();
+}
+
+async function loadBrlRate(){
+  const badge = document.getElementById('brlBadge');
+  const el = document.getElementById('brlContent');
+  try{
+    const res = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=BRL');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const rate = data.rates.BRL;
+    const d = new Date(data.date);
+    d.setDate(d.getDate()-3);
+    const prevDateStr = d.toISOString().slice(0,10);
+    let change = null, changePct = null, prevDateUsed = null;
+    try{
+      const res2 = await fetch(`https://api.frankfurter.dev/v1/${prevDateStr}..${data.date}?base=USD&symbols=BRL`);
+      const series = await res2.json();
+      const dates = Object.keys(series.rates||{}).sort();
+      if(dates.length>=2){
+        const prevRate = series.rates[dates[0]].BRL;
+        change = Math.round((rate-prevRate)*10000)/10000;
+        changePct = Math.round((rate-prevRate)/prevRate*10000)/100;
+        prevDateUsed = dates[0];
+      }
+    }catch(e2){ /* 涨跌算不出来就只显示当前值 */ }
+
+    badge.textContent = '🟢 '+data.date;
+    const chgHtml = change!=null ? `<div class="stat"><span class="sv ${change>0?'pos':change<0?'neg':'neutral'}">${change>0?'+':''}${change} (${changePct>0?'+':''}${changePct}%)</span><div class="sl">较${prevDateUsed||'前一交易日'}</div></div>` : '';
+    // 雷亚尔贬值(change>0，1美元换更多雷亚尔)→农户换算成本币收入更划算→加快卖粮→供给增加→偏空
+    // 雷亚尔升值(change<0)→农户惜售，等更好汇率→供给放缓→偏多
+    const brlAlertCls = change>0?'bear':change<0?'bull':'neutral';
+    el.innerHTML = `<div class="alert-box ${brlAlertCls}"><span class="at">${change>0?'雷亚尔贬值 → 巴西农户加快卖粮，偏空':change<0?'雷亚尔升值 → 巴西农户惜售，偏多':'汇率变化不大'}</span>1美元=${rate.toFixed(4)}雷亚尔${change!=null?`，${change>0?'+':''}${change}(${changePct>0?'+':''}${changePct}%)`:''}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body grid2">
+      <div class="stat"><span class="sv neutral">${rate.toFixed(4)}</span><div class="sl">1美元 = ? 雷亚尔</div></div>
+      ${chgHtml}
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">数据来源：欧洲央行(ECB)参考汇率。阿根廷比索因汇率波动过大未被此数据源收录，暂无法覆盖</div>
+    </details>`;
+    window._brlSignal = change>0?-1:change<0?1:0;
+    updateOverallAlert();
+  }catch(e){
+    badge.textContent = '❌ 拉取失败';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">汇率拉取失败</span>${e.message}</div>`;
+    window._brlSignal = null;
   }
   updateOverallAlert();
 }
@@ -1376,6 +1475,16 @@ function updateOverallAlert(){
   if(cropComposite===1){ score+=1; notes.push(`${cropLabel} → 偏多`); }
   else if(cropComposite===-1){ score-=1; notes.push(`${cropLabel} → 偏空`); }
   else if(cropComposite===0){ notes.push(`${cropLabel}：子信号方向不一致或均为中性 → 中性`); }
+  // 美豆播种进度+巴西雷亚尔汇率：这2项测的是跟"南美天气+产量"不同的东西
+  // (播种进度测的是"美国下一季刚起步"，雷亚尔测的是"已产出的南美豆卖得快不快")，
+  // 不是同一件事的不同角度，所以不合并进crop composite，各自独立投票，
+  // 但只在5月合约时才计入(这2项只跟这个窗口期相关)
+  if(contract === 'may'){
+    if(window._plantingSignal===1){ score+=1; notes.push('美豆播种推进缓慢 → 偏多'); }
+    else if(window._plantingSignal===-1){ score-=1; notes.push('美豆播种推进较快 → 偏空'); }
+    if(window._brlSignal===1){ score+=1; notes.push('雷亚尔升值，巴西农户惜售 → 偏多'); }
+    else if(window._brlSignal===-1){ score-=1; notes.push('雷亚尔贬值，巴西农户加快卖粮 → 偏空'); }
+  }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
   if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
@@ -1394,7 +1503,8 @@ function updateOverallAlert(){
   else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
 
-  const maxVotes = contract === 'jan' ? 12 : 13; // 1月合约不计入天气类信号，上限少1票
+  // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
+  const maxVotes = contract === 'jan' ? 12 : contract === 'may' ? 15 : 13;
   const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
   // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
   const supplyItems = [];
@@ -1404,6 +1514,12 @@ function updateOverallAlert(){
     {label:'商业库存', signal:sigStock}, {label:'到港预报', signal:sigArrival},
     {label:'进口量', signal:sigImport}, {label:'人民币汇率', signal:window._fxSignal},
   );
+  if(contract === 'may'){
+    supplyItems.push(
+      {label:'美豆播种进度', signal:window._plantingSignal},
+      {label:'巴西雷亚尔汇率', signal:window._brlSignal},
+    );
+  }
   const demandItems = [
     {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
     {label:'猪粮比', signal:sigHogratio}, {label:'能繁母猪', signal:sigSows},
@@ -1424,6 +1540,7 @@ function updateOverallAlert(){
 loadManual();
 loadWeather();
 loadFxRate();
+loadBrlRate();
 loadSyncedData();
 loadSaWeather();
 selectContract('sep'); // 默认选中9月合约(当前窗口期)
