@@ -24,7 +24,6 @@
 
 运行方式：
     export USDA_API_KEY=你的api.data.gov密钥
-    export NASS_API_KEY=你的nass密钥
     python3 fetch_data.py
 
 输出：
@@ -716,6 +715,109 @@ def fetch_cbot_price():
 
 
 # ---------------------------------------------------------------------------
+# 技术面：DCE豆粕期货K线数据（日线+小时线），用akshare库(免密钥，抓新浪财经公开数据)
+# ★ 第一阶段范围：先只做当前主力(9月合约M09)验证可行，跑通后再加5月/1月合约。
+# ★ 诚实说明：akshare底层是抓取新浪财经公开页面，不是官方付费实时数据源，
+#   实际数据大概率有几秒到几分钟延迟，不是真正的逐笔实时行情。
+# ---------------------------------------------------------------------------
+def get_current_contract_code(contract_month, now=None):
+    """算出"现在"该关注的是哪个具体合约代码，比如7月看9月合约，应该是M2609
+    （不能写死，因为合约到期后，同一个"9月合约"概念下个周期就该指向M2709了）。
+    简化规则：如果当前月份<=合约月份，用今年；否则用明年。"""
+    if now is None:
+        now = datetime.now(timezone.utc)
+    year = now.year if now.month <= contract_month else now.year + 1
+    yy = str(year)[-2:]
+    return f"M{yy}{contract_month:02d}"
+
+
+def fetch_dce_daily_kline(symbol, max_rows=260):
+    """DCE豆粕日K线，默认取最近约260个交易日(约1年，覆盖MA250等常用中长期指标)。
+    ★ 用akshare的futures_zh_daily_sina接口，免密钥，但依赖新浪财经这个第三方数据源。"""
+    try:
+        import akshare as ak
+    except ImportError:
+        return {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
+
+    try:
+        df = ak.futures_zh_daily_sina(symbol=symbol)
+    except Exception as e:
+        return {"available": False, "reason": f"akshare日K线接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
+
+    if df is None or len(df) == 0:
+        return {"available": False, "reason": f"接口调用成功但返回空数据(合约代码{symbol}可能已过期或尚未上市)", "debug": {"symbol": symbol}}
+
+    df_recent = df.tail(max_rows)
+    try:
+        bars = []
+        for _, row in df_recent.iterrows():
+            bars.append({
+                "date": str(row["date"]),
+                "open": float(row["open"]), "high": float(row["high"]),
+                "low": float(row["low"]), "close": float(row["close"]),
+                "volume": float(row["volume"]) if row.get("volume") is not None else None,
+                "hold": float(row["hold"]) if row.get("hold") is not None else None,
+            })
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}",
+            "debug": {"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")},
+        }
+
+    return {
+        "available": True,
+        "symbol": symbol,
+        "totalBarsReturned": len(bars),
+        "bars": bars,
+        "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟",
+    }
+
+
+def fetch_dce_hourly_kline(symbol, max_bars=180):
+    """DCE豆粕小时K线，默认取最近约180根(按日盘+夜盘大约6根/天算，约30天)。
+    ★ 用akshare的futures_zh_minute_sina接口，period=60表示60分钟(小时)线。"""
+    try:
+        import akshare as ak
+    except ImportError:
+        return {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
+
+    try:
+        df = ak.futures_zh_minute_sina(symbol=symbol, period="60")
+    except Exception as e:
+        return {"available": False, "reason": f"akshare小时K线接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
+
+    if df is None or len(df) == 0:
+        return {"available": False, "reason": f"接口调用成功但返回空数据(合约代码{symbol}可能已过期或尚未上市)", "debug": {"symbol": symbol}}
+
+    df_recent = df.tail(max_bars)
+    try:
+        bars = []
+        for _, row in df_recent.iterrows():
+            bars.append({
+                "datetime": str(row["date"]),  # 这个接口的时间字段名就叫date，但实际含时分秒
+                "open": float(row["open"]), "high": float(row["high"]),
+                "low": float(row["low"]), "close": float(row["close"]),
+                "volume": float(row["volume"]) if row.get("volume") is not None else None,
+                "hold": float(row["hold"]) if row.get("hold") is not None else None,
+            })
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}",
+            "debug": {"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")},
+        }
+
+    return {
+        "available": True,
+        "symbol": symbol,
+        "totalBarsReturned": len(bars),
+        "bars": bars,
+        "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
+    }
+
+
+# ---------------------------------------------------------------------------
 # 4. 美国干旱监测 (US Drought Monitor) —— 真正的官方干旱等级数据
 #    区别于天气预报推算的"风险"，这是 NDMC/USDA/NOAA 每周四联合发布的
 #    实测干旱分级 (D0-D4)，网页端(index.html)里天气板块用降雨预报算的是
@@ -754,6 +856,7 @@ def weighted_avg(state_values):
     if total_weight == 0:
         return sum(state_values.values()) / len(state_values) if state_values else 0
     weighted_sum = sum(v * STATE_ACREAGE_WEIGHTS.get(st, 0) for st, v in state_values.items())
+    return weighted_sum / total_weight
     return weighted_sum / total_weight
 
 
@@ -1275,6 +1378,9 @@ def main():
         "soybeanCondition": fetch_soybean_condition(),
         "usPlantingProgress": fetch_us_planting_progress(),
         "usHarvestProgress": fetch_us_harvest_progress(),
+        # ★ 技术面第一阶段：先只做当前主力9月合约(M09)验证可行，跑通后再加5月/1月合约
+        "dceM09Daily": fetch_dce_daily_kline(get_current_contract_code(9)),
+        "dceM09Hourly": fetch_dce_hourly_kline(get_current_contract_code(9)),
         "southAmericaWeather": fetch_south_america_weather(),
         "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
