@@ -26,6 +26,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: 安装依赖(akshare，用于抓取DCE豆粕期货K线数据)
+        run: pip install akshare
+
       - name: 运行数据抓取脚本
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
