@@ -1152,7 +1152,10 @@ function renderKline(dailyData, hourlyData, genAt){
     //   因为LightweightCharts只在创建那一刻读取容器尺寸，不会持续监听details元素的开合状态)。
     //   改成：等用户真正点开这个details元素的时候才创建图表(这时候容器已经是正常尺寸了)。
     if(hourlyData && hourlyData.available){
-      const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
+      const hourlyBars = hourlyData.bars.map(b=>({
+        date: beijingDatetimeToUnixSeconds(b.datetime),
+        open:b.open, high:b.high, low:b.low, close:b.close,
+      }));
       const detailsEl = document.getElementById('klineHourlyDetails');
       if(detailsEl){
         let hourlyInitialized = false;
@@ -1181,7 +1184,7 @@ function renderCandlestickChart(containerId, bars){
     height: container.clientHeight || 320,
     layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
     grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
-    timeScale: { borderColor: '#222' },
+    timeScale: { borderColor: '#222', timeVisible: true }, // timeVisible对日线数据是无害的(没有时间部分可显示)，但小时线需要它才能显示时分
     rightPriceScale: { borderColor: '#222' },
   });
 
@@ -1273,6 +1276,16 @@ function renderMacdChart(containerId, bars, dif, dea, histogram, mainChart){
 
 /** 计算简单移动平均线，返回Lightweight Charts的LineSeries.setData()需要的格式：
  *  [{time, value}, ...]，跳过数据不够period长度的前几根(不强行返回0或null进去)。*/
+/** ★已修复真实bug：小时线的datetime是"2026-07-13 14:15:00"这种带时分秒的字符串，
+ *  Lightweight Charts对于日线这种"只有日期"的K线，接受"2026-07-13"这种纯日期字符串没问题，
+ *  但小时线带时间部分，必须转成UNIX时间戳(数字)才能正确渲染——之前直接把这个字符串传进去，
+ *  图表框架/网格线正常显示(因为那部分跟数据无关)，但蜡烛本身解析失败、完全不显示。
+ *  ⚠️这个datetime是北京时间(DCE数据源)，不能直接当UTC解析(会有8小时误差)，
+ *  要显式指定+08:00时区偏移，让JS正确换算出底层UTC时间戳(单位：秒，Lightweight Charts要的格式)。*/
+function beijingDatetimeToUnixSeconds(datetimeStr){
+  return Math.floor(new Date(datetimeStr.replace(' ', 'T') + '+08:00').getTime() / 1000);
+}
+
 function computeMASeriesData(bars, period){
   const out = [];
   for(let i=period-1; i<bars.length; i++){
