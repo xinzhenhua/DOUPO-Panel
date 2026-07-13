@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-13T04:33:43.384596+00:00",
+  "generatedAt": "2026-07-13T08:19:47.993363+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 319.4,
-    "change": -3.7,
-    "changePct": -1.15,
+    "price": 319.0,
+    "change": -4.1,
+    "changePct": -1.27,
     "asOf": "2026-07-13T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -1806,318 +1806,22 @@
   },
   "usPlantingProgress": {
     "available": false,
-    "reason": "拿到数据但没能识别出PCT PLANTED这个字段",
+    "reason": "NASS接口无返回数据(注意：每年4-6月播种季才有进度数据)",
     "debug": {
-      "sampleRawRows": [
-        {
-          "group_desc": "FIELD CROPS",
-          "week_ending": "",
-          "zip_5": "",
-          "year": 2026,
-          "begin_code": "00",
-          "congr_district_code": "",
-          "location_desc": "US TOTAL",
-          "statisticcat_desc": "AREA PLANTED",
-          "country_code": "9000",
-          "class_desc": "ALL CLASSES",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "freq_desc": "ANNUAL",
-          "watershed_desc": "",
-          "state_ansi": "",
-          "short_desc": "SOYBEANS - ACRES PLANTED",
-          "end_code": "00",
-          "unit_desc": "ACRES",
-          "watershed_code": "00000000",
-          "state_alpha": "US",
-          "commodity_desc": "SOYBEANS",
-          "asd_code": "",
-          "domain_desc": "TOTAL",
-          "state_name": "US TOTAL",
-          "prodn_practice_desc": "ALL PRODUCTION PRACTICES",
-          "reference_period_desc": "YEAR",
-          "asd_desc": "",
-          "domaincat_desc": "NOT SPECIFIED",
-          "Value": "85,365,000",
-          "county_name": "",
-          "agg_level_desc": "NATIONAL",
-          "load_time": "2026-06-30 12:00:00.000",
-          "region_desc": "",
-          "source_desc": "SURVEY",
-          "CV (%)": "",
-          "county_ansi": "",
-          "state_fips_code": "99",
-          "sector_desc": "CROPS",
-          "country_name": "UNITED STATES",
-          "county_code": ""
-        },
-        {
-          "sector_desc": "CROPS",
-          "county_code": "",
-          "country_name": "UNITED STATES",
-          "county_ansi": "",
-          "state_fips_code": "99",
-          "region_desc": "",
-          "CV (%)": "",
-          "source_desc": "SURVEY",
-          "agg_level_desc": "NATIONAL",
-          "load_time": "2026-06-30 12:00:00.000",
-          "Value": "85,365,000",
-          "county_name": "",
-          "reference_period_desc": "YEAR - JUN ACREAGE",
-          "asd_desc": "",
-          "domaincat_desc": "NOT SPECIFIED",
-          "state_name": "US TOTAL",
-          "prodn_practice_desc": "ALL PRODUCTION PRACTICES",
-          "commodity_desc": "SOYBEANS",
-          "state_alpha": "US",
-          "asd_code": "",
-          "domain_desc": "TOTAL",
-          "short_desc": "SOYBEANS - ACRES PLANTED",
-          "end_code": "00",
-          "unit_desc": "ACRES",
-          "watershed_code": "00000000",
-          "watershed_desc": "",
-          "state_ansi": "",
-          "freq_desc": "ANNUAL",
-          "class_desc": "ALL CLASSES",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "country_code": "9000",
-          "statisticcat_desc": "AREA PLANTED",
-          "congr_district_code": "",
-          "location_desc": "US TOTAL",
-          "zip_5": "",
-          "year": 2026,
-          "begin_code": "00",
-          "group_desc": "FIELD CROPS",
-          "week_ending": ""
-        },
-        {
-          "state_name": "US TOTAL",
-          "prodn_practice_desc": "ALL PRODUCTION PRACTICES",
-          "domain_desc": "TOTAL",
-          "asd_code": "",
-          "commodity_desc": "SOYBEANS",
-          "state_alpha": "US",
-          "county_name": "",
-          "Value": "84,700,000",
-          "domaincat_desc": "NOT SPECIFIED",
-          "asd_desc": "",
-          "reference_period_desc": "YEAR - MAR ACREAGE",
-          "CV (%)": "",
-          "source_desc": "SURVEY",
-          "region_desc": "",
-          "load_time": "2026-03-31 12:00:00.000",
-          "agg_level_desc": "NATIONAL",
-          "country_name": "UNITED STATES",
-          "county_code": "",
-          "sector_desc": "CROPS",
-          "state_fips_code": "99",
-          "county_ansi": "",
-          "begin_code": "00",
-          "year": 2026,
-          "zip_5": "",
-          "week_ending": "",
-          "group_desc": "FIELD CROPS",
-          "statisticcat_desc": "AREA PLANTED",
-          "location_desc": "US TOTAL",
-          "congr_district_code": "",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "class_desc": "ALL CLASSES",
-          "country_code": "9000",
-          "watershed_code": "00000000",
-          "unit_desc": "ACRES",
-          "end_code": "00",
-          "short_desc": "SOYBEANS - ACRES PLANTED",
-          "watershed_desc": "",
-          "state_ansi": "",
-          "freq_desc": "ANNUAL"
-        },
-        {
-          "agg_level_desc": "NATIONAL",
-          "load_time": "2026-06-30 12:00:00.000",
-          "region_desc": "",
-          "source_desc": "SURVEY",
-          "CV (%)": "",
-          "county_ansi": "",
-          "state_fips_code": "99",
-          "sector_desc": "CROPS",
-          "country_name": "UNITED STATES",
-          "county_code": "",
-          "commodity_desc": "SOYBEANS",
-          "state_alpha": "US",
-          "asd_code": "",
-          "domain_desc": "TOTAL",
-          "state_name": "US TOTAL",
-          "prodn_practice_desc": "BIOTECH, HERBICIDE RESISTANT",
-          "reference_period_desc": "YEAR",
-          "asd_desc": "",
-          "domaincat_desc": "NOT SPECIFIED",
-          "Value": "95",
-          "county_name": "",
-          "country_code": "9000",
-          "class_desc": "ALL CLASSES",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "state_ansi": "",
-          "watershed_desc": "",
-          "freq_desc": "ANNUAL",
-          "short_desc": "SOYBEANS, BIOTECH, HERBICIDE RESISTANT - AREA PLANTED, MEASURED IN PCT BY TYPE",
-          "end_code": "00",
-          "watershed_code": "00000000",
-          "unit_desc": "PCT BY TYPE",
-          "group_desc": "FIELD CROPS",
-          "week_ending": "",
-          "zip_5": "",
-          "year": 2026,
-          "begin_code": "00",
-          "congr_district_code": "",
-          "location_desc": "US TOTAL",
-          "statisticcat_desc": "AREA PLANTED"
-        },
-        {
-          "statisticcat_desc": "AREA PLANTED",
-          "congr_district_code": "",
-          "location_desc": "US TOTAL",
-          "year": 2026,
-          "zip_5": "",
-          "begin_code": "00",
-          "week_ending": "",
-          "group_desc": "FIELD CROPS",
-          "unit_desc": "PCT BY TYPE",
-          "watershed_code": "00000000",
-          "end_code": "00",
-          "short_desc": "SOYBEANS, BIOTECH, HERBICIDE RESISTANT - AREA PLANTED, MEASURED IN PCT BY TYPE",
-          "state_ansi": "",
-          "freq_desc": "ANNUAL",
-          "watershed_desc": "",
-          "class_desc": "ALL CLASSES",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "country_code": "9000",
-          "Value": "95",
-          "county_name": "",
-          "reference_period_desc": "YEAR - JUN ACREAGE",
-          "domaincat_desc": "NOT SPECIFIED",
-          "asd_desc": "",
-          "state_name": "US TOTAL",
-          "prodn_practice_desc": "BIOTECH, HERBICIDE RESISTANT",
-          "commodity_desc": "SOYBEANS",
-          "state_alpha": "US",
-          "domain_desc": "TOTAL",
-          "asd_code": "",
-          "sector_desc": "CROPS",
-          "county_code": "",
-          "country_name": "UNITED STATES",
-          "county_ansi": "",
-          "state_fips_code": "99",
-          "source_desc": "SURVEY",
-          "CV (%)": "",
-          "region_desc": "",
-          "agg_level_desc": "NATIONAL",
-          "load_time": "2026-06-30 12:00:00.000"
-        }
-      ],
-      "actualDescsSeen": [
-        "SOYBEANS - ACRES PLANTED",
-        "SOYBEANS - ACRES PLANTED",
-        "SOYBEANS - ACRES PLANTED",
-        "SOYBEANS, BIOTECH, HERBICIDE RESISTANT - AREA PLANTED, MEASURED IN PCT BY TYPE",
-        "SOYBEANS, BIOTECH, HERBICIDE RESISTANT - AREA PLANTED, MEASURED IN PCT BY TYPE",
-        "SOYBEANS, FOLLOWING ANOTHER CROP (DOUBLE CROPPED) - AREA PLANTED, MEASURED IN PCT",
-        "SOYBEANS, FOLLOWING ANOTHER CROP (DOUBLE CROPPED) - AREA PLANTED, MEASURED IN PCT"
-      ]
+      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=AREA+PLANTED&agg_level_desc=NATIONAL&freq_desc=WEEKLY&year=2026&format=JSON",
+      "httpStatus": 400,
+      "error": "HTTP 400: Bad Request",
+      "rawSnippet": "{\"error\":[\"bad request - invalid query\"]}"
     }
   },
   "usHarvestProgress": {
     "available": false,
-    "reason": "拿到数据但没能识别出PCT HARVESTED这个字段",
+    "reason": "NASS接口无返回数据(注意：每年9-11月收获季才有进度数据)",
     "debug": {
-      "sampleRawRows": [
-        {
-          "region_desc": "",
-          "class_desc": "ALL CLASSES",
-          "state_ansi": "",
-          "country_name": "UNITED STATES",
-          "county_name": "",
-          "CV (%)": "",
-          "asd_desc": "",
-          "load_time": "2026-06-30 12:00:00.000",
-          "end_code": "00",
-          "state_fips_code": "99",
-          "statisticcat_desc": "AREA HARVESTED",
-          "source_desc": "SURVEY",
-          "reference_period_desc": "YEAR",
-          "week_ending": "",
-          "zip_5": "",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "domaincat_desc": "NOT SPECIFIED",
-          "short_desc": "SOYBEANS - ACRES HARVESTED",
-          "group_desc": "FIELD CROPS",
-          "begin_code": "00",
-          "domain_desc": "TOTAL",
-          "year": 2026,
-          "commodity_desc": "SOYBEANS",
-          "agg_level_desc": "NATIONAL",
-          "country_code": "9000",
-          "congr_district_code": "",
-          "sector_desc": "CROPS",
-          "county_ansi": "",
-          "watershed_desc": "",
-          "state_alpha": "US",
-          "watershed_code": "00000000",
-          "state_name": "US TOTAL",
-          "asd_code": "",
-          "county_code": "",
-          "prodn_practice_desc": "ALL PRODUCTION PRACTICES",
-          "location_desc": "US TOTAL",
-          "freq_desc": "ANNUAL",
-          "Value": "84,401,000",
-          "unit_desc": "ACRES"
-        },
-        {
-          "class_desc": "ALL CLASSES",
-          "region_desc": "",
-          "state_ansi": "",
-          "country_name": "UNITED STATES",
-          "load_time": "2026-06-30 12:00:00.000",
-          "asd_desc": "",
-          "CV (%)": "",
-          "county_name": "",
-          "statisticcat_desc": "AREA HARVESTED",
-          "state_fips_code": "99",
-          "source_desc": "SURVEY",
-          "end_code": "00",
-          "reference_period_desc": "YEAR - JUN ACREAGE",
-          "week_ending": "",
-          "domaincat_desc": "NOT SPECIFIED",
-          "zip_5": "",
-          "util_practice_desc": "ALL UTILIZATION PRACTICES",
-          "short_desc": "SOYBEANS - ACRES HARVESTED",
-          "domain_desc": "TOTAL",
-          "begin_code": "00",
-          "group_desc": "FIELD CROPS",
-          "commodity_desc": "SOYBEANS",
-          "year": 2026,
-          "agg_level_desc": "NATIONAL",
-          "country_code": "9000",
-          "congr_district_code": "",
-          "state_alpha": "US",
-          "sector_desc": "CROPS",
-          "watershed_desc": "",
-          "county_ansi": "",
-          "watershed_code": "00000000",
-          "state_name": "US TOTAL",
-          "asd_code": "",
-          "county_code": "",
-          "freq_desc": "ANNUAL",
-          "unit_desc": "ACRES",
-          "Value": "84,401,000",
-          "prodn_practice_desc": "ALL PRODUCTION PRACTICES",
-          "location_desc": "US TOTAL"
-        }
-      ],
-      "actualDescsSeen": [
-        "SOYBEANS - ACRES HARVESTED",
-        "SOYBEANS - ACRES HARVESTED"
-      ]
+      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=AREA+HARVESTED&agg_level_desc=NATIONAL&freq_desc=WEEKLY&year=2026&format=JSON",
+      "httpStatus": 400,
+      "error": "HTTP 400: Bad Request",
+      "rawSnippet": "{\"error\":[\"bad request - invalid query\"]}"
     }
   },
   "dceM09Daily": {
@@ -3893,31 +3597,1632 @@
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
   },
   "dceM09Hourly": {
-    "available": false,
-    "reason": "字段解析失败: 'date'",
-    "debug": {
-      "symbol": "M2609",
-      "actualColumns": [
-        "datetime",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "hold"
-      ],
-      "sampleRawRow": [
-        {
-          "datetime": "2026-07-13 14:15:00",
-          "open": 3054.0,
-          "high": 3057.0,
-          "low": 3051.0,
-          "close": 3056.0,
-          "volume": 33103,
-          "hold": 1943272
-        }
-      ]
-    }
+    "available": true,
+    "symbol": "M2609",
+    "totalBarsReturned": 180,
+    "bars": [
+      {
+        "datetime": "2026-05-29 14:15:00",
+        "open": 3000.0,
+        "high": 3002.0,
+        "low": 2991.0,
+        "close": 2994.0,
+        "volume": 104089.0,
+        "hold": 2440500.0
+      },
+      {
+        "datetime": "2026-05-29 15:00:00",
+        "open": 2994.0,
+        "high": 2995.0,
+        "low": 2988.0,
+        "close": 2991.0,
+        "volume": 88248.0,
+        "hold": 2428886.0
+      },
+      {
+        "datetime": "2026-05-29 22:00:00",
+        "open": 2989.0,
+        "high": 2993.0,
+        "low": 2980.0,
+        "close": 2983.0,
+        "volume": 198329.0,
+        "hold": 2429924.0
+      },
+      {
+        "datetime": "2026-05-29 23:00:00",
+        "open": 2982.0,
+        "high": 2986.0,
+        "low": 2979.0,
+        "close": 2982.0,
+        "volume": 876.0,
+        "hold": 2429082.0
+      },
+      {
+        "datetime": "2026-06-01 10:00:00",
+        "open": 2983.0,
+        "high": 2989.0,
+        "low": 2974.0,
+        "close": 2978.0,
+        "volume": 184.0,
+        "hold": 2410066.0
+      },
+      {
+        "datetime": "2026-06-01 11:15:00",
+        "open": 2978.0,
+        "high": 2984.0,
+        "low": 2978.0,
+        "close": 2983.0,
+        "volume": 178.0,
+        "hold": 2408401.0
+      },
+      {
+        "datetime": "2026-06-01 14:15:00",
+        "open": 2983.0,
+        "high": 2990.0,
+        "low": 2979.0,
+        "close": 2988.0,
+        "volume": 868.0,
+        "hold": 2401980.0
+      },
+      {
+        "datetime": "2026-06-01 15:00:00",
+        "open": 2988.0,
+        "high": 2997.0,
+        "low": 2988.0,
+        "close": 2993.0,
+        "volume": 7894.0,
+        "hold": 2388953.0
+      },
+      {
+        "datetime": "2026-06-01 22:00:00",
+        "open": 2992.0,
+        "high": 2998.0,
+        "low": 2985.0,
+        "close": 2987.0,
+        "volume": 8.0,
+        "hold": 2392046.0
+      },
+      {
+        "datetime": "2026-06-01 23:00:00",
+        "open": 2988.0,
+        "high": 2988.0,
+        "low": 2981.0,
+        "close": 2984.0,
+        "volume": 356.0,
+        "hold": 2389270.0
+      },
+      {
+        "datetime": "2026-06-02 10:00:00",
+        "open": 2979.0,
+        "high": 2980.0,
+        "low": 2965.0,
+        "close": 2967.0,
+        "volume": 2284.0,
+        "hold": 2420051.0
+      },
+      {
+        "datetime": "2026-06-02 11:15:00",
+        "open": 2967.0,
+        "high": 2977.0,
+        "low": 2967.0,
+        "close": 2974.0,
+        "volume": 56.0,
+        "hold": 2409664.0
+      },
+      {
+        "datetime": "2026-06-02 14:15:00",
+        "open": 2974.0,
+        "high": 2978.0,
+        "low": 2970.0,
+        "close": 2971.0,
+        "volume": 23.0,
+        "hold": 2408241.0
+      },
+      {
+        "datetime": "2026-06-02 15:00:00",
+        "open": 2972.0,
+        "high": 2973.0,
+        "low": 2970.0,
+        "close": 2973.0,
+        "volume": 25690.0,
+        "hold": 2403259.0
+      },
+      {
+        "datetime": "2026-06-02 22:00:00",
+        "open": 2969.0,
+        "high": 2976.0,
+        "low": 2962.0,
+        "close": 2965.0,
+        "volume": 222102.0,
+        "hold": 2412583.0
+      },
+      {
+        "datetime": "2026-06-02 23:00:00",
+        "open": 2966.0,
+        "high": 2968.0,
+        "low": 2959.0,
+        "close": 2963.0,
+        "volume": 104294.0,
+        "hold": 2419333.0
+      },
+      {
+        "datetime": "2026-06-03 10:00:00",
+        "open": 2957.0,
+        "high": 2964.0,
+        "low": 2949.0,
+        "close": 2961.0,
+        "volume": 312248.0,
+        "hold": 2431243.0
+      },
+      {
+        "datetime": "2026-06-03 11:15:00",
+        "open": 2961.0,
+        "high": 2995.0,
+        "low": 2958.0,
+        "close": 2983.0,
+        "volume": 260593.0,
+        "hold": 2405593.0
+      },
+      {
+        "datetime": "2026-06-03 14:15:00",
+        "open": 2983.0,
+        "high": 2985.0,
+        "low": 2977.0,
+        "close": 2979.0,
+        "volume": 147709.0,
+        "hold": 2389712.0
+      },
+      {
+        "datetime": "2026-06-03 15:00:00",
+        "open": 2979.0,
+        "high": 2981.0,
+        "low": 2974.0,
+        "close": 2976.0,
+        "volume": 10966.0,
+        "hold": 2385479.0
+      },
+      {
+        "datetime": "2026-06-03 22:00:00",
+        "open": 2982.0,
+        "high": 2983.0,
+        "low": 2970.0,
+        "close": 2971.0,
+        "volume": 180208.0,
+        "hold": 2395679.0
+      },
+      {
+        "datetime": "2026-06-03 23:00:00",
+        "open": 2972.0,
+        "high": 2976.0,
+        "low": 2967.0,
+        "close": 2975.0,
+        "volume": 44679.0,
+        "hold": 2391848.0
+      },
+      {
+        "datetime": "2026-06-04 10:00:00",
+        "open": 2966.0,
+        "high": 2975.0,
+        "low": 2944.0,
+        "close": 2951.0,
+        "volume": 5087.0,
+        "hold": 2449928.0
+      },
+      {
+        "datetime": "2026-06-04 11:15:00",
+        "open": 2951.0,
+        "high": 2954.0,
+        "low": 2941.0,
+        "close": 2943.0,
+        "volume": 141662.0,
+        "hold": 2455531.0
+      },
+      {
+        "datetime": "2026-06-04 14:15:00",
+        "open": 2944.0,
+        "high": 2950.0,
+        "low": 2941.0,
+        "close": 2942.0,
+        "volume": 5194.0,
+        "hold": 2458164.0
+      },
+      {
+        "datetime": "2026-06-04 15:00:00",
+        "open": 2945.0,
+        "high": 2946.0,
+        "low": 2940.0,
+        "close": 2943.0,
+        "volume": 10962.0,
+        "hold": 2447993.0
+      },
+      {
+        "datetime": "2026-06-04 22:00:00",
+        "open": 2942.0,
+        "high": 2947.0,
+        "low": 2933.0,
+        "close": 2933.0,
+        "volume": 14.0,
+        "hold": 2466020.0
+      },
+      {
+        "datetime": "2026-06-04 23:00:00",
+        "open": 2933.0,
+        "high": 2934.0,
+        "low": 2912.0,
+        "close": 2914.0,
+        "volume": 605.0,
+        "hold": 2464961.0
+      },
+      {
+        "datetime": "2026-06-05 10:00:00",
+        "open": 2919.0,
+        "high": 2926.0,
+        "low": 2910.0,
+        "close": 2922.0,
+        "volume": 31.0,
+        "hold": 2459134.0
+      },
+      {
+        "datetime": "2026-06-05 11:15:00",
+        "open": 2922.0,
+        "high": 2924.0,
+        "low": 2919.0,
+        "close": 2919.0,
+        "volume": 102.0,
+        "hold": 2458096.0
+      },
+      {
+        "datetime": "2026-06-05 14:15:00",
+        "open": 2920.0,
+        "high": 2921.0,
+        "low": 2910.0,
+        "close": 2911.0,
+        "volume": 17499.0,
+        "hold": 2455973.0
+      },
+      {
+        "datetime": "2026-06-05 15:00:00",
+        "open": 2911.0,
+        "high": 2922.0,
+        "low": 2909.0,
+        "close": 2918.0,
+        "volume": 242.0,
+        "hold": 2432421.0
+      },
+      {
+        "datetime": "2026-06-05 22:00:00",
+        "open": 2919.0,
+        "high": 2921.0,
+        "low": 2906.0,
+        "close": 2910.0,
+        "volume": 189692.0,
+        "hold": 2442526.0
+      },
+      {
+        "datetime": "2026-06-05 23:00:00",
+        "open": 2910.0,
+        "high": 2916.0,
+        "low": 2908.0,
+        "close": 2911.0,
+        "volume": 5659.0,
+        "hold": 2439467.0
+      },
+      {
+        "datetime": "2026-06-08 10:00:00",
+        "open": 2904.0,
+        "high": 2914.0,
+        "low": 2898.0,
+        "close": 2906.0,
+        "volume": 309751.0,
+        "hold": 2439137.0
+      },
+      {
+        "datetime": "2026-06-08 11:15:00",
+        "open": 2906.0,
+        "high": 2910.0,
+        "low": 2900.0,
+        "close": 2902.0,
+        "volume": 1187.0,
+        "hold": 2439467.0
+      },
+      {
+        "datetime": "2026-06-08 14:15:00",
+        "open": 2902.0,
+        "high": 2910.0,
+        "low": 2900.0,
+        "close": 2900.0,
+        "volume": 153978.0,
+        "hold": 2429925.0
+      },
+      {
+        "datetime": "2026-06-08 15:00:00",
+        "open": 2900.0,
+        "high": 2905.0,
+        "low": 2896.0,
+        "close": 2905.0,
+        "volume": 131710.0,
+        "hold": 2422806.0
+      },
+      {
+        "datetime": "2026-06-08 22:00:00",
+        "open": 2905.0,
+        "high": 2913.0,
+        "low": 2899.0,
+        "close": 2903.0,
+        "volume": 255407.0,
+        "hold": 2435677.0
+      },
+      {
+        "datetime": "2026-06-08 23:00:00",
+        "open": 2903.0,
+        "high": 2918.0,
+        "low": 2902.0,
+        "close": 2913.0,
+        "volume": 47589.0,
+        "hold": 2430128.0
+      },
+      {
+        "datetime": "2026-06-09 10:00:00",
+        "open": 2910.0,
+        "high": 2912.0,
+        "low": 2903.0,
+        "close": 2908.0,
+        "volume": 13687.0,
+        "hold": 2426513.0
+      },
+      {
+        "datetime": "2026-06-09 11:15:00",
+        "open": 2908.0,
+        "high": 2908.0,
+        "low": 2897.0,
+        "close": 2899.0,
+        "volume": 106948.0,
+        "hold": 2419719.0
+      },
+      {
+        "datetime": "2026-06-09 14:15:00",
+        "open": 2900.0,
+        "high": 2901.0,
+        "low": 2891.0,
+        "close": 2892.0,
+        "volume": 138680.0,
+        "hold": 2407300.0
+      },
+      {
+        "datetime": "2026-06-09 15:00:00",
+        "open": 2892.0,
+        "high": 2899.0,
+        "low": 2889.0,
+        "close": 2895.0,
+        "volume": 95198.0,
+        "hold": 2394518.0
+      },
+      {
+        "datetime": "2026-06-09 22:00:00",
+        "open": 2897.0,
+        "high": 2899.0,
+        "low": 2887.0,
+        "close": 2899.0,
+        "volume": 191159.0,
+        "hold": 2417728.0
+      },
+      {
+        "datetime": "2026-06-09 23:00:00",
+        "open": 2898.0,
+        "high": 2902.0,
+        "low": 2892.0,
+        "close": 2892.0,
+        "volume": 41109.0,
+        "hold": 2414762.0
+      },
+      {
+        "datetime": "2026-06-10 10:00:00",
+        "open": 2893.0,
+        "high": 2903.0,
+        "low": 2892.0,
+        "close": 2899.0,
+        "volume": 160663.0,
+        "hold": 2416568.0
+      },
+      {
+        "datetime": "2026-06-10 11:15:00",
+        "open": 2899.0,
+        "high": 2910.0,
+        "low": 2899.0,
+        "close": 2908.0,
+        "volume": 28201.0,
+        "hold": 2407487.0
+      },
+      {
+        "datetime": "2026-06-10 14:15:00",
+        "open": 2909.0,
+        "high": 2914.0,
+        "low": 2907.0,
+        "close": 2909.0,
+        "volume": 135720.0,
+        "hold": 2401744.0
+      },
+      {
+        "datetime": "2026-06-10 15:00:00",
+        "open": 2909.0,
+        "high": 2920.0,
+        "low": 2909.0,
+        "close": 2918.0,
+        "volume": 107641.0,
+        "hold": 2399646.0
+      },
+      {
+        "datetime": "2026-06-10 22:00:00",
+        "open": 2924.0,
+        "high": 2932.0,
+        "low": 2921.0,
+        "close": 2928.0,
+        "volume": 224784.0,
+        "hold": 2373715.0
+      },
+      {
+        "datetime": "2026-06-10 23:00:00",
+        "open": 2927.0,
+        "high": 2933.0,
+        "low": 2925.0,
+        "close": 2929.0,
+        "volume": 68050.0,
+        "hold": 2360684.0
+      },
+      {
+        "datetime": "2026-06-11 10:00:00",
+        "open": 2927.0,
+        "high": 2929.0,
+        "low": 2918.0,
+        "close": 2921.0,
+        "volume": 26895.0,
+        "hold": 2340339.0
+      },
+      {
+        "datetime": "2026-06-11 11:15:00",
+        "open": 2921.0,
+        "high": 2941.0,
+        "low": 2920.0,
+        "close": 2937.0,
+        "volume": 230232.0,
+        "hold": 2310393.0
+      },
+      {
+        "datetime": "2026-06-11 14:15:00",
+        "open": 2936.0,
+        "high": 2941.0,
+        "low": 2935.0,
+        "close": 2938.0,
+        "volume": 70781.0,
+        "hold": 2291591.0
+      },
+      {
+        "datetime": "2026-06-11 15:00:00",
+        "open": 2937.0,
+        "high": 2941.0,
+        "low": 2936.0,
+        "close": 2939.0,
+        "volume": 694.0,
+        "hold": 2274270.0
+      },
+      {
+        "datetime": "2026-06-11 22:00:00",
+        "open": 2939.0,
+        "high": 2944.0,
+        "low": 2933.0,
+        "close": 2935.0,
+        "volume": 161575.0,
+        "hold": 2267008.0
+      },
+      {
+        "datetime": "2026-06-11 23:00:00",
+        "open": 2935.0,
+        "high": 2939.0,
+        "low": 2931.0,
+        "close": 2936.0,
+        "volume": 45113.0,
+        "hold": 2264246.0
+      },
+      {
+        "datetime": "2026-06-12 10:00:00",
+        "open": 2930.0,
+        "high": 2936.0,
+        "low": 2924.0,
+        "close": 2930.0,
+        "volume": 4164.0,
+        "hold": 2260477.0
+      },
+      {
+        "datetime": "2026-06-12 11:15:00",
+        "open": 2931.0,
+        "high": 2938.0,
+        "low": 2928.0,
+        "close": 2936.0,
+        "volume": 72631.0,
+        "hold": 2248662.0
+      },
+      {
+        "datetime": "2026-06-12 14:15:00",
+        "open": 2935.0,
+        "high": 2937.0,
+        "low": 2926.0,
+        "close": 2934.0,
+        "volume": 53239.0,
+        "hold": 2243711.0
+      },
+      {
+        "datetime": "2026-06-12 15:00:00",
+        "open": 2934.0,
+        "high": 2941.0,
+        "low": 2932.0,
+        "close": 2941.0,
+        "volume": 44.0,
+        "hold": 2240014.0
+      },
+      {
+        "datetime": "2026-06-12 22:00:00",
+        "open": 2935.0,
+        "high": 2941.0,
+        "low": 2929.0,
+        "close": 2938.0,
+        "volume": 155422.0,
+        "hold": 2236165.0
+      },
+      {
+        "datetime": "2026-06-12 23:00:00",
+        "open": 2938.0,
+        "high": 2941.0,
+        "low": 2933.0,
+        "close": 2934.0,
+        "volume": 23015.0,
+        "hold": 2231552.0
+      },
+      {
+        "datetime": "2026-06-15 10:00:00",
+        "open": 2932.0,
+        "high": 2950.0,
+        "low": 2924.0,
+        "close": 2949.0,
+        "volume": 10575.0,
+        "hold": 2213784.0
+      },
+      {
+        "datetime": "2026-06-15 11:15:00",
+        "open": 2948.0,
+        "high": 2951.0,
+        "low": 2936.0,
+        "close": 2937.0,
+        "volume": 131347.0,
+        "hold": 2198547.0
+      },
+      {
+        "datetime": "2026-06-15 14:15:00",
+        "open": 2937.0,
+        "high": 2946.0,
+        "low": 2936.0,
+        "close": 2944.0,
+        "volume": 50993.0,
+        "hold": 2198176.0
+      },
+      {
+        "datetime": "2026-06-15 15:00:00",
+        "open": 2943.0,
+        "high": 2944.0,
+        "low": 2937.0,
+        "close": 2941.0,
+        "volume": 35.0,
+        "hold": 2189992.0
+      },
+      {
+        "datetime": "2026-06-15 22:00:00",
+        "open": 2934.0,
+        "high": 2937.0,
+        "low": 2929.0,
+        "close": 2936.0,
+        "volume": 165725.0,
+        "hold": 2188818.0
+      },
+      {
+        "datetime": "2026-06-15 23:00:00",
+        "open": 2935.0,
+        "high": 2948.0,
+        "low": 2934.0,
+        "close": 2948.0,
+        "volume": 66777.0,
+        "hold": 2184562.0
+      },
+      {
+        "datetime": "2026-06-16 10:00:00",
+        "open": 2948.0,
+        "high": 2948.0,
+        "low": 2937.0,
+        "close": 2937.0,
+        "volume": 2601.0,
+        "hold": 2173250.0
+      },
+      {
+        "datetime": "2026-06-16 11:15:00",
+        "open": 2938.0,
+        "high": 2945.0,
+        "low": 2936.0,
+        "close": 2941.0,
+        "volume": 72402.0,
+        "hold": 2172180.0
+      },
+      {
+        "datetime": "2026-06-16 14:15:00",
+        "open": 2942.0,
+        "high": 2945.0,
+        "low": 2934.0,
+        "close": 2937.0,
+        "volume": 44834.0,
+        "hold": 2161915.0
+      },
+      {
+        "datetime": "2026-06-16 15:00:00",
+        "open": 2937.0,
+        "high": 2946.0,
+        "low": 2934.0,
+        "close": 2945.0,
+        "volume": 104617.0,
+        "hold": 2147901.0
+      },
+      {
+        "datetime": "2026-06-16 22:00:00",
+        "open": 2941.0,
+        "high": 2966.0,
+        "low": 2940.0,
+        "close": 2964.0,
+        "volume": 371900.0,
+        "hold": 2126545.0
+      },
+      {
+        "datetime": "2026-06-16 23:00:00",
+        "open": 2963.0,
+        "high": 2967.0,
+        "low": 2951.0,
+        "close": 2956.0,
+        "volume": 78401.0,
+        "hold": 2108611.0
+      },
+      {
+        "datetime": "2026-06-17 10:00:00",
+        "open": 2961.0,
+        "high": 2966.0,
+        "low": 2957.0,
+        "close": 2961.0,
+        "volume": 16188.0,
+        "hold": 2099863.0
+      },
+      {
+        "datetime": "2026-06-17 11:15:00",
+        "open": 2960.0,
+        "high": 2967.0,
+        "low": 2957.0,
+        "close": 2965.0,
+        "volume": 88102.0,
+        "hold": 2102532.0
+      },
+      {
+        "datetime": "2026-06-17 14:15:00",
+        "open": 2965.0,
+        "high": 2967.0,
+        "low": 2962.0,
+        "close": 2964.0,
+        "volume": 63542.0,
+        "hold": 2099146.0
+      },
+      {
+        "datetime": "2026-06-17 15:00:00",
+        "open": 2965.0,
+        "high": 2965.0,
+        "low": 2955.0,
+        "close": 2957.0,
+        "volume": 1699.0,
+        "hold": 2090232.0
+      },
+      {
+        "datetime": "2026-06-17 22:00:00",
+        "open": 2962.0,
+        "high": 2965.0,
+        "low": 2951.0,
+        "close": 2952.0,
+        "volume": 335.0,
+        "hold": 2081861.0
+      },
+      {
+        "datetime": "2026-06-17 23:00:00",
+        "open": 2952.0,
+        "high": 2956.0,
+        "low": 2950.0,
+        "close": 2952.0,
+        "volume": 3125.0,
+        "hold": 2072291.0
+      },
+      {
+        "datetime": "2026-06-18 10:00:00",
+        "open": 2950.0,
+        "high": 2955.0,
+        "low": 2945.0,
+        "close": 2945.0,
+        "volume": 2710.0,
+        "hold": 2063222.0
+      },
+      {
+        "datetime": "2026-06-18 11:15:00",
+        "open": 2946.0,
+        "high": 2946.0,
+        "low": 2938.0,
+        "close": 2939.0,
+        "volume": 15799.0,
+        "hold": 2049249.0
+      },
+      {
+        "datetime": "2026-06-18 14:15:00",
+        "open": 2938.0,
+        "high": 2943.0,
+        "low": 2936.0,
+        "close": 2937.0,
+        "volume": 116.0,
+        "hold": 2042381.0
+      },
+      {
+        "datetime": "2026-06-18 15:00:00",
+        "open": 2937.0,
+        "high": 2944.0,
+        "low": 2933.0,
+        "close": 2942.0,
+        "volume": 246.0,
+        "hold": 2038975.0
+      },
+      {
+        "datetime": "2026-06-22 10:00:00",
+        "open": 2938.0,
+        "high": 2942.0,
+        "low": 2923.0,
+        "close": 2930.0,
+        "volume": 254667.0,
+        "hold": 2046396.0
+      },
+      {
+        "datetime": "2026-06-22 11:15:00",
+        "open": 2931.0,
+        "high": 2932.0,
+        "low": 2923.0,
+        "close": 2926.0,
+        "volume": 30955.0,
+        "hold": 2045972.0
+      },
+      {
+        "datetime": "2026-06-22 14:15:00",
+        "open": 2926.0,
+        "high": 2939.0,
+        "low": 2925.0,
+        "close": 2936.0,
+        "volume": 123567.0,
+        "hold": 2037860.0
+      },
+      {
+        "datetime": "2026-06-22 15:00:00",
+        "open": 2933.0,
+        "high": 2936.0,
+        "low": 2931.0,
+        "close": 2934.0,
+        "volume": 9252.0,
+        "hold": 2031743.0
+      },
+      {
+        "datetime": "2026-06-22 22:00:00",
+        "open": 2934.0,
+        "high": 2936.0,
+        "low": 2920.0,
+        "close": 2926.0,
+        "volume": 177511.0,
+        "hold": 2040541.0
+      },
+      {
+        "datetime": "2026-06-22 23:00:00",
+        "open": 2926.0,
+        "high": 2927.0,
+        "low": 2922.0,
+        "close": 2923.0,
+        "volume": 22965.0,
+        "hold": 2037084.0
+      },
+      {
+        "datetime": "2026-06-23 10:00:00",
+        "open": 2921.0,
+        "high": 2932.0,
+        "low": 2919.0,
+        "close": 2929.0,
+        "volume": 151900.0,
+        "hold": 2035485.0
+      },
+      {
+        "datetime": "2026-06-23 11:15:00",
+        "open": 2929.0,
+        "high": 2936.0,
+        "low": 2928.0,
+        "close": 2932.0,
+        "volume": 22859.0,
+        "hold": 2026614.0
+      },
+      {
+        "datetime": "2026-06-23 14:15:00",
+        "open": 2932.0,
+        "high": 2939.0,
+        "low": 2927.0,
+        "close": 2939.0,
+        "volume": 161510.0,
+        "hold": 2022414.0
+      },
+      {
+        "datetime": "2026-06-23 15:00:00",
+        "open": 2939.0,
+        "high": 2948.0,
+        "low": 2935.0,
+        "close": 2947.0,
+        "volume": 151554.0,
+        "hold": 2015355.0
+      },
+      {
+        "datetime": "2026-06-23 22:00:00",
+        "open": 2951.0,
+        "high": 2952.0,
+        "low": 2944.0,
+        "close": 2946.0,
+        "volume": 193532.0,
+        "hold": 2012056.0
+      },
+      {
+        "datetime": "2026-06-23 23:00:00",
+        "open": 2946.0,
+        "high": 2948.0,
+        "low": 2941.0,
+        "close": 2945.0,
+        "volume": 28245.0,
+        "hold": 2005525.0
+      },
+      {
+        "datetime": "2026-06-24 10:00:00",
+        "open": 2945.0,
+        "high": 2955.0,
+        "low": 2941.0,
+        "close": 2951.0,
+        "volume": 130338.0,
+        "hold": 2006903.0
+      },
+      {
+        "datetime": "2026-06-24 11:15:00",
+        "open": 2952.0,
+        "high": 2954.0,
+        "low": 2945.0,
+        "close": 2946.0,
+        "volume": 15193.0,
+        "hold": 2003314.0
+      },
+      {
+        "datetime": "2026-06-24 14:15:00",
+        "open": 2946.0,
+        "high": 2952.0,
+        "low": 2944.0,
+        "close": 2952.0,
+        "volume": 83343.0,
+        "hold": 1998326.0
+      },
+      {
+        "datetime": "2026-06-24 15:00:00",
+        "open": 2952.0,
+        "high": 2953.0,
+        "low": 2945.0,
+        "close": 2952.0,
+        "volume": 68189.0,
+        "hold": 1994456.0
+      },
+      {
+        "datetime": "2026-06-24 22:00:00",
+        "open": 2953.0,
+        "high": 2958.0,
+        "low": 2938.0,
+        "close": 2948.0,
+        "volume": 274956.0,
+        "hold": 1999692.0
+      },
+      {
+        "datetime": "2026-06-24 23:00:00",
+        "open": 2948.0,
+        "high": 2964.0,
+        "low": 2944.0,
+        "close": 2956.0,
+        "volume": 141845.0,
+        "hold": 1989172.0
+      },
+      {
+        "datetime": "2026-06-25 10:00:00",
+        "open": 2946.0,
+        "high": 2956.0,
+        "low": 2924.0,
+        "close": 2927.0,
+        "volume": 31732.0,
+        "hold": 1991138.0
+      },
+      {
+        "datetime": "2026-06-25 11:15:00",
+        "open": 2926.0,
+        "high": 2943.0,
+        "low": 2919.0,
+        "close": 2943.0,
+        "volume": 210898.0,
+        "hold": 1981063.0
+      },
+      {
+        "datetime": "2026-06-25 14:15:00",
+        "open": 2943.0,
+        "high": 2954.0,
+        "low": 2941.0,
+        "close": 2950.0,
+        "volume": 150056.0,
+        "hold": 1981961.0
+      },
+      {
+        "datetime": "2026-06-25 15:00:00",
+        "open": 2950.0,
+        "high": 2960.0,
+        "low": 2950.0,
+        "close": 2958.0,
+        "volume": 122278.0,
+        "hold": 1978617.0
+      },
+      {
+        "datetime": "2026-06-25 22:00:00",
+        "open": 2959.0,
+        "high": 2977.0,
+        "low": 2959.0,
+        "close": 2964.0,
+        "volume": 343034.0,
+        "hold": 1980185.0
+      },
+      {
+        "datetime": "2026-06-25 23:00:00",
+        "open": 2963.0,
+        "high": 2973.0,
+        "low": 2961.0,
+        "close": 2967.0,
+        "volume": 75815.0,
+        "hold": 1972248.0
+      },
+      {
+        "datetime": "2026-06-26 10:00:00",
+        "open": 2973.0,
+        "high": 2976.0,
+        "low": 2966.0,
+        "close": 2969.0,
+        "volume": 160515.0,
+        "hold": 1976298.0
+      },
+      {
+        "datetime": "2026-06-26 11:15:00",
+        "open": 2969.0,
+        "high": 2973.0,
+        "low": 2965.0,
+        "close": 2969.0,
+        "volume": 23802.0,
+        "hold": 1964603.0
+      },
+      {
+        "datetime": "2026-06-26 14:15:00",
+        "open": 2969.0,
+        "high": 2984.0,
+        "low": 2966.0,
+        "close": 2976.0,
+        "volume": 193011.0,
+        "hold": 1975837.0
+      },
+      {
+        "datetime": "2026-06-26 15:00:00",
+        "open": 2977.0,
+        "high": 2981.0,
+        "low": 2974.0,
+        "close": 2974.0,
+        "volume": 344.0,
+        "hold": 1977448.0
+      },
+      {
+        "datetime": "2026-06-26 22:00:00",
+        "open": 2972.0,
+        "high": 2980.0,
+        "low": 2972.0,
+        "close": 2977.0,
+        "volume": 132264.0,
+        "hold": 1982735.0
+      },
+      {
+        "datetime": "2026-06-26 23:00:00",
+        "open": 2977.0,
+        "high": 2986.0,
+        "low": 2975.0,
+        "close": 2982.0,
+        "volume": 103.0,
+        "hold": 1983077.0
+      },
+      {
+        "datetime": "2026-06-29 10:00:00",
+        "open": 2979.0,
+        "high": 2983.0,
+        "low": 2966.0,
+        "close": 2967.0,
+        "volume": 2378.0,
+        "hold": 1970495.0
+      },
+      {
+        "datetime": "2026-06-29 11:15:00",
+        "open": 2967.0,
+        "high": 2974.0,
+        "low": 2966.0,
+        "close": 2974.0,
+        "volume": 3.0,
+        "hold": 1969223.0
+      },
+      {
+        "datetime": "2026-06-29 14:15:00",
+        "open": 2974.0,
+        "high": 2974.0,
+        "low": 2954.0,
+        "close": 2965.0,
+        "volume": 2.0,
+        "hold": 1946226.0
+      },
+      {
+        "datetime": "2026-06-29 15:00:00",
+        "open": 2964.0,
+        "high": 2970.0,
+        "low": 2961.0,
+        "close": 2967.0,
+        "volume": 235.0,
+        "hold": 1935044.0
+      },
+      {
+        "datetime": "2026-06-29 22:00:00",
+        "open": 2963.0,
+        "high": 2966.0,
+        "low": 2956.0,
+        "close": 2957.0,
+        "volume": 151159.0,
+        "hold": 1943032.0
+      },
+      {
+        "datetime": "2026-06-29 23:00:00",
+        "open": 2957.0,
+        "high": 2959.0,
+        "low": 2951.0,
+        "close": 2953.0,
+        "volume": 52219.0,
+        "hold": 1932444.0
+      },
+      {
+        "datetime": "2026-06-30 10:00:00",
+        "open": 2950.0,
+        "high": 2958.0,
+        "low": 2942.0,
+        "close": 2945.0,
+        "volume": 209074.0,
+        "hold": 1923471.0
+      },
+      {
+        "datetime": "2026-06-30 11:15:00",
+        "open": 2945.0,
+        "high": 2949.0,
+        "low": 2943.0,
+        "close": 2947.0,
+        "volume": 34021.0,
+        "hold": 1913882.0
+      },
+      {
+        "datetime": "2026-06-30 14:15:00",
+        "open": 2947.0,
+        "high": 2949.0,
+        "low": 2940.0,
+        "close": 2943.0,
+        "volume": 905.0,
+        "hold": 1896287.0
+      },
+      {
+        "datetime": "2026-06-30 15:00:00",
+        "open": 2944.0,
+        "high": 2945.0,
+        "low": 2935.0,
+        "close": 2943.0,
+        "volume": 2475.0,
+        "hold": 1892354.0
+      },
+      {
+        "datetime": "2026-06-30 22:00:00",
+        "open": 2938.0,
+        "high": 2945.0,
+        "low": 2935.0,
+        "close": 2936.0,
+        "volume": 140459.0,
+        "hold": 1887174.0
+      },
+      {
+        "datetime": "2026-06-30 23:00:00",
+        "open": 2936.0,
+        "high": 2937.0,
+        "low": 2921.0,
+        "close": 2923.0,
+        "volume": 95191.0,
+        "hold": 1894470.0
+      },
+      {
+        "datetime": "2026-07-01 10:00:00",
+        "open": 2944.0,
+        "high": 2946.0,
+        "low": 2924.0,
+        "close": 2933.0,
+        "volume": 22128.0,
+        "hold": 1892933.0
+      },
+      {
+        "datetime": "2026-07-01 11:15:00",
+        "open": 2933.0,
+        "high": 2969.0,
+        "low": 2931.0,
+        "close": 2968.0,
+        "volume": 312215.0,
+        "hold": 1871814.0
+      },
+      {
+        "datetime": "2026-07-01 14:15:00",
+        "open": 2972.0,
+        "high": 2979.0,
+        "low": 2968.0,
+        "close": 2970.0,
+        "volume": 142572.0,
+        "hold": 1858754.0
+      },
+      {
+        "datetime": "2026-07-01 15:00:00",
+        "open": 2970.0,
+        "high": 2971.0,
+        "low": 2964.0,
+        "close": 2965.0,
+        "volume": 1827.0,
+        "hold": 1846867.0
+      },
+      {
+        "datetime": "2026-07-01 22:00:00",
+        "open": 2976.0,
+        "high": 2981.0,
+        "low": 2969.0,
+        "close": 2979.0,
+        "volume": 24.0,
+        "hold": 1864725.0
+      },
+      {
+        "datetime": "2026-07-01 23:00:00",
+        "open": 2979.0,
+        "high": 2981.0,
+        "low": 2971.0,
+        "close": 2974.0,
+        "volume": 3061.0,
+        "hold": 1857399.0
+      },
+      {
+        "datetime": "2026-07-02 10:00:00",
+        "open": 2977.0,
+        "high": 2988.0,
+        "low": 2973.0,
+        "close": 2987.0,
+        "volume": 507.0,
+        "hold": 1862284.0
+      },
+      {
+        "datetime": "2026-07-02 11:15:00",
+        "open": 2986.0,
+        "high": 2988.0,
+        "low": 2981.0,
+        "close": 2984.0,
+        "volume": 534.0,
+        "hold": 1858247.0
+      },
+      {
+        "datetime": "2026-07-02 14:15:00",
+        "open": 2984.0,
+        "high": 2985.0,
+        "low": 2972.0,
+        "close": 2974.0,
+        "volume": 97.0,
+        "hold": 1846606.0
+      },
+      {
+        "datetime": "2026-07-02 15:00:00",
+        "open": 2972.0,
+        "high": 2978.0,
+        "low": 2972.0,
+        "close": 2977.0,
+        "volume": 19424.0,
+        "hold": 1836338.0
+      },
+      {
+        "datetime": "2026-07-02 22:00:00",
+        "open": 2979.0,
+        "high": 2986.0,
+        "low": 2974.0,
+        "close": 2982.0,
+        "volume": 143091.0,
+        "hold": 1850439.0
+      },
+      {
+        "datetime": "2026-07-02 23:00:00",
+        "open": 2982.0,
+        "high": 2983.0,
+        "low": 2976.0,
+        "close": 2980.0,
+        "volume": 31492.0,
+        "hold": 1846162.0
+      },
+      {
+        "datetime": "2026-07-03 10:00:00",
+        "open": 2973.0,
+        "high": 2980.0,
+        "low": 2966.0,
+        "close": 2969.0,
+        "volume": 145627.0,
+        "hold": 1836912.0
+      },
+      {
+        "datetime": "2026-07-03 11:15:00",
+        "open": 2968.0,
+        "high": 2972.0,
+        "low": 2962.0,
+        "close": 2963.0,
+        "volume": 100667.0,
+        "hold": 1834838.0
+      },
+      {
+        "datetime": "2026-07-03 14:15:00",
+        "open": 2963.0,
+        "high": 2968.0,
+        "low": 2958.0,
+        "close": 2959.0,
+        "volume": 5905.0,
+        "hold": 1831742.0
+      },
+      {
+        "datetime": "2026-07-03 15:00:00",
+        "open": 2960.0,
+        "high": 2963.0,
+        "low": 2957.0,
+        "close": 2962.0,
+        "volume": 420.0,
+        "hold": 1832097.0
+      },
+      {
+        "datetime": "2026-07-03 22:00:00",
+        "open": 2963.0,
+        "high": 2972.0,
+        "low": 2961.0,
+        "close": 2972.0,
+        "volume": 1367.0,
+        "hold": 1825945.0
+      },
+      {
+        "datetime": "2026-07-03 23:00:00",
+        "open": 2972.0,
+        "high": 2974.0,
+        "low": 2964.0,
+        "close": 2971.0,
+        "volume": 77.0,
+        "hold": 1824894.0
+      },
+      {
+        "datetime": "2026-07-06 10:00:00",
+        "open": 2986.0,
+        "high": 3015.0,
+        "low": 2986.0,
+        "close": 3013.0,
+        "volume": 6366.0,
+        "hold": 1831890.0
+      },
+      {
+        "datetime": "2026-07-06 11:15:00",
+        "open": 3013.0,
+        "high": 3025.0,
+        "low": 3012.0,
+        "close": 3022.0,
+        "volume": 245518.0,
+        "hold": 1836281.0
+      },
+      {
+        "datetime": "2026-07-06 14:15:00",
+        "open": 3022.0,
+        "high": 3024.0,
+        "low": 3017.0,
+        "close": 3022.0,
+        "volume": 3868.0,
+        "hold": 1847303.0
+      },
+      {
+        "datetime": "2026-07-06 15:00:00",
+        "open": 3023.0,
+        "high": 3026.0,
+        "low": 3020.0,
+        "close": 3026.0,
+        "volume": 25960.0,
+        "hold": 1852650.0
+      },
+      {
+        "datetime": "2026-07-06 22:00:00",
+        "open": 3039.0,
+        "high": 3042.0,
+        "low": 3030.0,
+        "close": 3039.0,
+        "volume": 303333.0,
+        "hold": 1887368.0
+      },
+      {
+        "datetime": "2026-07-06 23:00:00",
+        "open": 3039.0,
+        "high": 3045.0,
+        "low": 3036.0,
+        "close": 3044.0,
+        "volume": 64142.0,
+        "hold": 1887239.0
+      },
+      {
+        "datetime": "2026-07-07 10:00:00",
+        "open": 3040.0,
+        "high": 3044.0,
+        "low": 3031.0,
+        "close": 3037.0,
+        "volume": 233931.0,
+        "hold": 1884051.0
+      },
+      {
+        "datetime": "2026-07-07 11:15:00",
+        "open": 3037.0,
+        "high": 3045.0,
+        "low": 3035.0,
+        "close": 3039.0,
+        "volume": 100310.0,
+        "hold": 1883886.0
+      },
+      {
+        "datetime": "2026-07-07 14:15:00",
+        "open": 3039.0,
+        "high": 3040.0,
+        "low": 3035.0,
+        "close": 3037.0,
+        "volume": 106031.0,
+        "hold": 1881785.0
+      },
+      {
+        "datetime": "2026-07-07 15:00:00",
+        "open": 3037.0,
+        "high": 3046.0,
+        "low": 3036.0,
+        "close": 3045.0,
+        "volume": 8683.0,
+        "hold": 1893447.0
+      },
+      {
+        "datetime": "2026-07-07 22:00:00",
+        "open": 3045.0,
+        "high": 3053.0,
+        "low": 3035.0,
+        "close": 3039.0,
+        "volume": 311745.0,
+        "hold": 1907172.0
+      },
+      {
+        "datetime": "2026-07-07 23:00:00",
+        "open": 3038.0,
+        "high": 3040.0,
+        "low": 3027.0,
+        "close": 3032.0,
+        "volume": 78014.0,
+        "hold": 1905290.0
+      },
+      {
+        "datetime": "2026-07-08 10:00:00",
+        "open": 3039.0,
+        "high": 3050.0,
+        "low": 3032.0,
+        "close": 3048.0,
+        "volume": 2499.0,
+        "hold": 1905871.0
+      },
+      {
+        "datetime": "2026-07-08 11:15:00",
+        "open": 3049.0,
+        "high": 3055.0,
+        "low": 3047.0,
+        "close": 3052.0,
+        "volume": 132251.0,
+        "hold": 1908861.0
+      },
+      {
+        "datetime": "2026-07-08 14:15:00",
+        "open": 3052.0,
+        "high": 3059.0,
+        "low": 3050.0,
+        "close": 3053.0,
+        "volume": 53426.0,
+        "hold": 1909663.0
+      },
+      {
+        "datetime": "2026-07-08 15:00:00",
+        "open": 3055.0,
+        "high": 3056.0,
+        "low": 3047.0,
+        "close": 3051.0,
+        "volume": 1484.0,
+        "hold": 1915914.0
+      },
+      {
+        "datetime": "2026-07-08 22:00:00",
+        "open": 3057.0,
+        "high": 3061.0,
+        "low": 3046.0,
+        "close": 3059.0,
+        "volume": 234258.0,
+        "hold": 1926247.0
+      },
+      {
+        "datetime": "2026-07-08 23:00:00",
+        "open": 3058.0,
+        "high": 3062.0,
+        "low": 3053.0,
+        "close": 3057.0,
+        "volume": 66716.0,
+        "hold": 1927574.0
+      },
+      {
+        "datetime": "2026-07-09 10:00:00",
+        "open": 3045.0,
+        "high": 3058.0,
+        "low": 3043.0,
+        "close": 3055.0,
+        "volume": 149999.0,
+        "hold": 1925413.0
+      },
+      {
+        "datetime": "2026-07-09 11:15:00",
+        "open": 3055.0,
+        "high": 3057.0,
+        "low": 3036.0,
+        "close": 3037.0,
+        "volume": 145613.0,
+        "hold": 1910092.0
+      },
+      {
+        "datetime": "2026-07-09 14:15:00",
+        "open": 3037.0,
+        "high": 3054.0,
+        "low": 3034.0,
+        "close": 3050.0,
+        "volume": 174674.0,
+        "hold": 1911321.0
+      },
+      {
+        "datetime": "2026-07-09 15:00:00",
+        "open": 3051.0,
+        "high": 3054.0,
+        "low": 3048.0,
+        "close": 3052.0,
+        "volume": 1590.0,
+        "hold": 1908560.0
+      },
+      {
+        "datetime": "2026-07-09 22:00:00",
+        "open": 3045.0,
+        "high": 3058.0,
+        "low": 3042.0,
+        "close": 3045.0,
+        "volume": 221496.0,
+        "hold": 1922923.0
+      },
+      {
+        "datetime": "2026-07-09 23:00:00",
+        "open": 3045.0,
+        "high": 3051.0,
+        "low": 3040.0,
+        "close": 3051.0,
+        "volume": 52026.0,
+        "hold": 1921331.0
+      },
+      {
+        "datetime": "2026-07-10 10:00:00",
+        "open": 3045.0,
+        "high": 3052.0,
+        "low": 3040.0,
+        "close": 3044.0,
+        "volume": 14502.0,
+        "hold": 1925969.0
+      },
+      {
+        "datetime": "2026-07-10 11:15:00",
+        "open": 3044.0,
+        "high": 3058.0,
+        "low": 3044.0,
+        "close": 3056.0,
+        "volume": 122822.0,
+        "hold": 1947931.0
+      },
+      {
+        "datetime": "2026-07-10 14:15:00",
+        "open": 3055.0,
+        "high": 3056.0,
+        "low": 3046.0,
+        "close": 3049.0,
+        "volume": 57315.0,
+        "hold": 1946391.0
+      },
+      {
+        "datetime": "2026-07-10 15:00:00",
+        "open": 3052.0,
+        "high": 3054.0,
+        "low": 3047.0,
+        "close": 3049.0,
+        "volume": 77599.0,
+        "hold": 1946929.0
+      },
+      {
+        "datetime": "2026-07-10 22:00:00",
+        "open": 3056.0,
+        "high": 3066.0,
+        "low": 3049.0,
+        "close": 3054.0,
+        "volume": 231918.0,
+        "hold": 1949931.0
+      },
+      {
+        "datetime": "2026-07-10 23:00:00",
+        "open": 3054.0,
+        "high": 3071.0,
+        "low": 3054.0,
+        "close": 3071.0,
+        "volume": 833.0,
+        "hold": 1966647.0
+      },
+      {
+        "datetime": "2026-07-13 10:00:00",
+        "open": 3089.0,
+        "high": 3098.0,
+        "low": 3060.0,
+        "close": 3063.0,
+        "volume": 499158.0,
+        "hold": 1966366.0
+      },
+      {
+        "datetime": "2026-07-13 11:15:00",
+        "open": 3063.0,
+        "high": 3066.0,
+        "low": 3052.0,
+        "close": 3055.0,
+        "volume": 33221.0,
+        "hold": 1951133.0
+      },
+      {
+        "datetime": "2026-07-13 14:15:00",
+        "open": 3054.0,
+        "high": 3057.0,
+        "low": 3050.0,
+        "close": 3053.0,
+        "volume": 152949.0,
+        "hold": 1936009.0
+      },
+      {
+        "datetime": "2026-07-13 15:00:00",
+        "open": 3054.0,
+        "high": 3055.0,
+        "low": 3046.0,
+        "close": 3050.0,
+        "volume": 131.0,
+        "hold": 1928775.0
+      }
+    ],
+    "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
   },
   "southAmericaWeather": {
     "available": true,
@@ -3926,74 +5231,74 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 2.7,
+        "precip7d": 3.5,
         "avgMaxTemp": 33.4
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 0.0,
-        "avgMaxTemp": 21.5
+        "precip7d": 1.2,
+        "avgMaxTemp": 21.4
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 74.2,
-        "avgMaxTemp": 20.1
+        "precip7d": 49.4,
+        "avgMaxTemp": 20.2
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 0.0,
-        "avgMaxTemp": 30.0
+        "precip7d": 0.4,
+        "avgMaxTemp": 29.8
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 0.3,
-        "avgMaxTemp": 28.3
+        "precip7d": 0.9,
+        "avgMaxTemp": 28.2
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 0.1,
-        "avgMaxTemp": 25.8
+        "precip7d": 0.0,
+        "avgMaxTemp": 25.9
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 5.3,
-        "avgMaxTemp": 19.5
+        "precip7d": 12.5,
+        "avgMaxTemp": 19.9
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 4.8,
-        "avgMaxTemp": 19.4
+        "precip7d": 3.2,
+        "avgMaxTemp": 19.6
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 11.0,
-        "avgMaxTemp": 15.9
+        "precip7d": 9.9,
+        "avgMaxTemp": 16.0
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 10.4,
-        "avgMaxTemp": 19.0
+        "precip7d": 16.0,
+        "avgMaxTemp": 19.8
       }
     },
-    "avgPrecip7d": 11.4,
+    "avgPrecip7d": 8.7,
     "avgMaxTemp": 27.6,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
