@@ -51,7 +51,7 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}
 .mfield{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .mfield label{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase}
-.minput{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:8px 10px;color:var(--t1);font-size:13px;outline:none;width:100%;transition:border .2s}
+.minput{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:10px 10px;color:var(--t1);font-size:14px;outline:none;width:100%;transition:border .2s;min-height:20px}
 .minput:focus{border-color:var(--b)}
 .mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:420px){.mrow{grid-template-columns:1fr}}
@@ -62,9 +62,9 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .ai-suggest.unavailable{border-left:2px solid var(--bdr)}
 .ai-suggest b{color:var(--t2)}
 .ai-suggest a{color:var(--b)}
-.ai-use-btn{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);cursor:pointer;margin-left:4px}
+.ai-use-btn{font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bb);background:var(--bd);color:var(--b);cursor:pointer;margin-left:4px;min-height:32px}
 details.tier-details{margin-top:6px}
-details.tier-details summary{cursor:pointer;font-size:11px;color:var(--b);padding:6px 8px;background:var(--bg2);border-radius:6px;list-style:none;user-select:none}
+details.tier-details summary{cursor:pointer;font-size:11.5px;color:var(--b);padding:9px 10px;background:var(--bg2);border-radius:6px;list-style:none;user-select:none;min-height:20px}
 details.tier-details summary::-webkit-details-marker{display:none}
 details.tier-details summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
 details.tier-details[open] summary::before{transform:rotate(90deg)}
@@ -82,7 +82,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .sd-cell.sd-empty{background:var(--bg2);color:var(--t3);opacity:.5}
 .sd-cell.sd-blank{border:none;background:transparent}
 .contract-tabs{display:flex;gap:6px;margin-bottom:8px}
-.contract-tab{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--bdr);background:var(--bg2);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.contract-tab{flex:1;padding:11px 4px;border-radius:8px;border:1px solid var(--bdr);background:var(--bg2);color:var(--t2);font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:44px}
 .contract-tab .ctab-sub{font-size:9px;font-weight:400;color:var(--t3)}
 .contract-tab.active{background:var(--bd);border-color:var(--bb);color:var(--b)}
 .contract-tab.active .ctab-sub{color:var(--b)}
@@ -209,6 +209,22 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   阿根廷比索因汇率波动过大，Frankfurter(欧洲央行数据源)未收录，暂无法覆盖。
 </div>
 </div><!-- /group-may-extra -->
+
+<!-- ============ 1月合约相关：美豆收获进度 ============ -->
+<div class="contract-group" id="group-jan-extra">
+<div class="stitle">🌾 1月合约相关：美豆收获进度</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">美豆收获进度<span style="font-size:9px;color:var(--t3);font-weight:400">· USDA周度收获进度报告</span></div>
+    <span class="badge" id="harvestBadge">检查中...</span>
+  </div>
+  <div id="harvestContent" class="loading">正在读取同步数据...</div>
+</div>
+<div style="font-size:10px;color:var(--t3);margin:-4px 0 10px 2px">
+  💡 收获进度只在每年9-11月收获季有意义。收获快→新豆快速流入市场→偏空；
+  收获慢(比如秋雨连绵导致收割延误)→供给流入受阻→偏多。
+</div>
+</div><!-- /group-jan-extra -->
 
 <!-- ============ 人民币汇率（真自动，浏览器实时抓取，Frankfurter API） ============ -->
 <div class="card">
@@ -577,9 +593,10 @@ async function loadSyncedData(){
     renderSoyCond(data.soybeanCondition, data.generatedAt);
     renderSaPsd(data.southAmericaPsd, data.generatedAt);
     renderPlanting(data.usPlantingProgress, data.generatedAt);
+    renderHarvest(data.usHarvestProgress, data.generatedAt);
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting'].forEach(k=>{
+    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
       document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
@@ -1025,12 +1042,38 @@ function renderPlanting(pp, genAt){
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>播种进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${pp.weekEnding}</div>`;
 }
 
+function renderHarvest(hp, genAt){
+  const badge = document.getElementById('harvestBadge');
+  const el = document.getElementById('harvestContent');
+  if(!hp || !hp.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${hp?hp.reason:'未知原因'}</span>收获进度只在每年9-11月收获季有数据，其余月份属正常现象</div>` + renderDebugInfo(hp?hp.debug:null);
+    window._harvestSignal = null;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const pct = hp.pctHarvested;
+  const chg = hp.wowChangePts;
+  // ⚠️同样没有历史同期均值做基准，置信度低：收获快(新豆快速流入市场)→偏空；
+  // 收获慢(比如秋雨连绵导致收割延误，供给流入受阻)→偏多
+  let sig = null, cls = 'neutral', text = `收获进度${pct}%，暂无法判断快慢(信息不足)`;
+  if(chg!=null){
+    if(chg < 5){ sig=1; cls='bull'; text='本周收获推进缓慢 — 弱偏多信号(⚠️无历史同期基准，置信度低)'; }
+    else if(chg >= 15){ sig=-1; cls='bear'; text='本周收获推进较快 — 弱偏空信号(⚠️无历史同期基准，置信度低)'; }
+    else { sig=0; cls='neutral'; text='本周收获推进正常，持续观察'; }
+  }
+  window._harvestSignal = sig;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>收获进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${hp.weekEnding}</div>`;
+}
+
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
 const CONTRACT_CONTEXT = {
   sep: {
     label: '9月合约',
     text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
-    show: ['group-us-weather'], hide: ['group-sa', 'group-may-extra'],
+    show: ['group-us-weather'], hide: ['group-sa', 'group-may-extra', 'group-jan-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：现在的WASDE数字还是基于趋势单产的预估，真实结果要等秋天收割才知道，确定性较低；出口销售反映的是买家对"即将收获的新作物"有多渴望。',
     // ★ 新增：建议/不建议交易月份。依据查证过的DCE规则——一般提前2个月开始移仓，
     //   交割月前一个月中旬完成换月，交割月本身个人投资者会被强制平仓，务必避开。
@@ -1039,14 +1082,14 @@ const CONTRACT_CONTEXT = {
   may: {
     label: '5月合约',
     text: '💡 <b>5月合约</b>对应南美(巴西/阿根廷)收获期(2-4月)+美豆播种意向/早期播种(3-4月)。这个阶段美豆天气不确定性较低(还没开始生长关键期)，南美天气/产量才是核心。巴西现在是全球最大产区，仪表盘已切换成按南美天气信号计算。',
-    show: ['group-sa', 'group-may-extra'], hide: ['group-us-weather'],
+    show: ['group-sa', 'group-may-extra'], hide: ['group-us-weather', 'group-jan-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经把南美刚收完的产量计入全球平衡表；出口销售此时能看出买家在美豆和南美豆之间怎么切换采购(通常南美刚收获时买家会更倾向买南美豆)。',
     recommendedMonths: [12,1,2,3], cautionMonths: [4], avoidMonths: [5],
   },
   jan: {
     label: '1月合约',
-    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+中国进口到港节奏+南美早期播种。天气不确定性已经消失(美豆已收割，南美刚播种没多久)，仪表盘暂不计入天气类信号，重点转向"最终收成有多少"和"到港节奏"这些非天气指标。',
-    show: [], hide: ['group-us-weather', 'group-sa', 'group-may-extra'],
+    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+美豆收获进度+南美早期播种。美豆生长期天气不确定性已经消失(已收割)，仪表盘不计入美国天气类信号，但收获进度(新豆多快流入市场)和南美早期播种(下一季怎么样的早期信号)会计入评分。',
+    show: ['group-sa', 'group-jan-extra'], hide: ['group-us-weather', 'group-may-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经反映真实收获数据，确定性大幅提高，这个阶段的数字比夏天的预估靠谱得多；出口销售能看出新市场年度的订单节奏和到港安排。',
     recommendedMonths: [8,9,10,11], cautionMonths: [12], avoidMonths: [1],
   },
@@ -1080,7 +1123,7 @@ function selectContract(month){
   document.getElementById('contractContext').innerHTML = ctx.text;
   document.getElementById('tradingWindowInfo').innerHTML = renderTradingWindow(ctx);
   document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
-  ['group-us-weather','group-sa','group-may-extra'].forEach(gid=>{
+  ['group-us-weather','group-sa','group-may-extra','group-jan-extra'].forEach(gid=>{
     const el = document.getElementById(gid);
     el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
   });
@@ -1455,9 +1498,12 @@ function updateOverallAlert(){
       {val:window._soyCondSignal, weight:usW.soycond},
     ]);
     cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率，${isLateSeasonUS?'8月起':'6-7月'}权重)`;
-  } else if(contract === 'may'){
+  } else if(contract === 'may' || contract === 'jan'){
     // 南美天气+南美产量(PSD)也是相关信号(天气不好→产量预期下降是同一件事的两个角度)，
     // 跟9月合约那边"美国天气类4合1"用同样的原则合成，不各自独立投票
+    // ★ 已修复：之前1月合约完全不看南美数据，但1月合约的说明文字里明明写着
+    //   "南美早期播种"值得关注，而且南美"播种生长期(10-次年1月)"跟1月合约建议
+    //   交易窗口(8-11月)高度重叠——加权用的是南美自己的日历，不因合约不同而改变
     const isOffSeasonSA = nowMonth>=6 && nowMonth<=9;      // 休耕期(6-9月)：地里没有作物，天气信号参考价值低
     const isPlantingSA = nowMonth>=10 || nowMonth===1;      // 播种+生长期(10-次年1月)
     // 关键期+收获(2-5月)是剩下的情况
@@ -1471,7 +1517,6 @@ function updateOverallAlert(){
     const seasonLabel = isOffSeasonSA?'休耕期':isPlantingSA?'播种生长期':'关键期收获期';
     cropLabel = `南美(巴西/阿根廷)天气+产量综合(${seasonLabel}权重)`;
   }
-  // contract === 'jan'时cropComposite保持null，天气类信号不计入(美豆已收割，南美刚播种没多久)
   if(cropComposite===1){ score+=1; notes.push(`${cropLabel} → 偏多`); }
   else if(cropComposite===-1){ score-=1; notes.push(`${cropLabel} → 偏空`); }
   else if(cropComposite===0){ notes.push(`${cropLabel}：子信号方向不一致或均为中性 → 中性`); }
@@ -1484,6 +1529,12 @@ function updateOverallAlert(){
     else if(window._plantingSignal===-1){ score-=1; notes.push('美豆播种推进较快 → 偏空'); }
     if(window._brlSignal===1){ score+=1; notes.push('雷亚尔升值，巴西农户惜售 → 偏多'); }
     else if(window._brlSignal===-1){ score-=1; notes.push('雷亚尔贬值，巴西农户加快卖粮 → 偏空'); }
+  }
+  // 美豆收获进度：测的是"新豆多快流入市场"，跟"最终产量数据"(PSD/WASDE)不是一回事，
+  // 只在1月合约时才计入(这项只跟这个窗口期相关)
+  if(contract === 'jan'){
+    if(window._harvestSignal===1){ score+=1; notes.push('美豆收获推进缓慢 → 偏多'); }
+    else if(window._harvestSignal===-1){ score-=1; notes.push('美豆收获推进较快 → 偏空'); }
   }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
@@ -1504,7 +1555,9 @@ function updateOverallAlert(){
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
 
   // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
-  const maxVotes = contract === 'jan' ? 12 : contract === 'may' ? 15 : 13;
+  // 1月合约现在有南美综合信号(之前没有)+收获进度(新增)，上限从12变成14(13基础+1)
+  // 5月合约多了播种进度+雷亚尔汇率这2项，上限15
+  const maxVotes = contract === 'jan' ? 14 : contract === 'may' ? 15 : 13;
   const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
   // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
   const supplyItems = [];
@@ -1519,6 +1572,9 @@ function updateOverallAlert(){
       {label:'美豆播种进度', signal:window._plantingSignal},
       {label:'巴西雷亚尔汇率', signal:window._brlSignal},
     );
+  }
+  if(contract === 'jan'){
+    supplyItems.push({label:'美豆收获进度', signal:window._harvestSignal});
   }
   const demandItems = [
     {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
