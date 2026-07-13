@@ -1102,6 +1102,18 @@ function renderKline(dailyData, hourlyData, genAt){
   const periodHigh = Math.max(...bars.map(b=>b.high));
   const periodLow = Math.min(...bars.map(b=>b.low));
 
+  // MACD：金叉(DIF上穿DEA)=偏多信号，死叉(DIF下穿DEA)=偏空信号
+  const {dif, dea, histogram} = computeMACD(bars);
+  const latestCross = findLatestMacdCross(dif, dea, bars);
+  let macdCrossText;
+  if(!latestCross){
+    macdCrossText = `<span class="neutral">数据不足以判断金叉/死叉(MACD需要至少26+9=35根数据才能算出DEA)</span>`;
+  } else {
+    const crossLabel = latestCross.type==='golden' ? '金叉(偏多)' : '死叉(偏空)';
+    const crossCls = latestCross.type==='golden' ? 'pos' : 'neg';
+    macdCrossText = `最近一次<span class="${crossCls}">${crossLabel}</span>：${latestCross.date}（${latestCross.daysAgo===0?'今天':latestCross.daysAgo+'个交易日前'}）`;
+  }
+
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
     hourlyHtml = `<details class="tier-details"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
@@ -1118,6 +1130,9 @@ function renderKline(dailyData, hourlyData, genAt){
     </div>
     <div id="klineChartContainer" style="height:320px"></div>
     <div style="font-size:9px;color:var(--t3);text-align:right;margin-top:2px">💡 可双指缩放/拖动查看细节，点击K线看具体开高低收数值</div>
+    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">MACD(12,26,9)<span style="font-size:9px;color:var(--t3)">· DIF白 DEA橙</span></div>
+    <div id="klineMacdContainer" style="height:130px;margin-top:2px"></div>
+    <div style="font-size:11px;margin-top:4px">${macdCrossText}</div>
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       ⚠️ ${dailyData.source}。5月/1月合约K线暂未接入，只做了9月合约(当前主力)。
@@ -1130,7 +1145,8 @@ function renderKline(dailyData, hourlyData, genAt){
       if(c) c.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:20px">图表库加载失败(可能是网络问题)，请刷新页面重试</div>';
       return;
     }
-    renderCandlestickChart('klineChartContainer', bars);
+    const mainChart = renderCandlestickChart('klineChartContainer', bars);
+    renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
     if(hourlyData && hourlyData.available){
       const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
       renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
@@ -1191,6 +1207,55 @@ function renderCandlestickChart(containerId, bars){
     });
     ro.observe(container);
   }
+  return chart;
+}
+
+/** MACD副图：柱状图(红涨绿跌，跟主图K线同一套配色习惯) + DIF/DEA两条线。
+ *  跟主K线图的时间轴同步缩放/平移(双向同步，拖动/缩放任意一个图，另一个跟着动)。*/
+function renderMacdChart(containerId, bars, dif, dea, histogram, mainChart){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 130,
+    layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
+    grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+    timeScale: { borderColor: '#222' },
+    rightPriceScale: { borderColor: '#222' },
+  });
+
+  const histSeries = chart.addSeries(LightweightCharts.HistogramSeries, { priceLineVisible: false });
+  const histData = bars.map((b, i)=> histogram[i]!==null ? {time:b.date, value:histogram[i], color: histogram[i]>=0?'#e84141':'#00b37a'} : null).filter(v=>v!==null);
+  histSeries.setData(histData);
+
+  const difSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#ebebeb', lineWidth:1, title:'DIF', priceLineVisible:false, crosshairMarkerVisible:false});
+  difSeries.setData(bars.map((b,i)=>dif[i]!==null?{time:b.date, value:dif[i]}:null).filter(v=>v!==null));
+
+  const deaSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#ff9f40', lineWidth:1, title:'DEA', priceLineVisible:false, crosshairMarkerVisible:false});
+  deaSeries.setData(bars.map((b,i)=>dea[i]!==null?{time:b.date, value:dea[i]}:null).filter(v=>v!==null));
+
+  chart.timeScale().fitContent();
+
+  // 双向同步：主图K线的时间范围变化时，MACD图跟着变；反过来也一样
+  if(mainChart){
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
+      if(range) chart.timeScale().setVisibleLogicalRange(range);
+    });
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{
+      if(range) mainChart.timeScale().setVisibleLogicalRange(range);
+    });
+  }
+
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(entries=>{
+      if(!entries.length || !entries[0].contentRect) return;
+      chart.applyOptions({width: entries[0].contentRect.width});
+    });
+    ro.observe(container);
+  }
+  return chart;
 }
 
 /** 计算简单移动平均线，返回Lightweight Charts的LineSeries.setData()需要的格式：
@@ -1203,6 +1268,59 @@ function computeMASeriesData(bars, period){
     out.push({time: bars[i].date, value: sum/period});
   }
   return out;
+}
+
+/** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
+ *  values: 纯数字数组。返回同长度数组，前period-1个是null(数据不够，还算不出来)。
+ *  种子值用前period个值的简单平均(常见做法，不是唯一做法，但是最通行的)。*/
+function computeEMA(values, period){
+  const ema = new Array(values.length).fill(null);
+  if(values.length < period) return ema;
+  const k = 2/(period+1);
+  let seedSum = 0;
+  for(let i=0; i<period; i++) seedSum += values[i];
+  let prev = seedSum / period;
+  ema[period-1] = prev;
+  for(let i=period; i<values.length; i++){
+    const cur = values[i]*k + prev*(1-k);
+    ema[i] = cur;
+    prev = cur;
+  }
+  return ema;
+}
+
+/** MACD三件套：DIF(差离值,EMA12-EMA26)、DEA(讯号线,DIF的9日EMA)、
+ *  柱状图(=(DIF-DEA)×2，按中国习惯乘以2，不是国际通行的×1)。
+ *  返回{dif, dea, histogram}，每项都是跟bars等长的数组，前面数据不够的地方是null。*/
+function computeMACD(bars){
+  const closes = bars.map(b=>b.close);
+  const ema12 = computeEMA(closes, 12);
+  const ema26 = computeEMA(closes, 26);
+  const dif = closes.map((_, i) => (ema12[i]!==null && ema26[i]!==null) ? ema12[i]-ema26[i] : null);
+
+  // DEA是DIF的9日EMA，但DIF前面一截是null，要先抽出非null的部分单独算EMA，再放回原位置
+  const validIdx = [];
+  const validDif = [];
+  dif.forEach((v, i)=>{ if(v!==null){ validIdx.push(i); validDif.push(v); } });
+  const deaValid = computeEMA(validDif, 9);
+  const dea = new Array(bars.length).fill(null);
+  validIdx.forEach((origIdx, j)=>{ dea[origIdx] = deaValid[j]; });
+
+  const histogram = bars.map((_, i)=> (dif[i]!==null && dea[i]!==null) ? (dif[i]-dea[i])*2 : null);
+  return {dif, dea, histogram};
+}
+
+/** 找最近一次金叉(DIF上穿DEA，偏多信号)或死叉(DIF下穿DEA，偏空信号)。
+ *  从最新一天往回找，返回{type:'golden'|'death', date, daysAgo}，找不到就返回null。*/
+function findLatestMacdCross(dif, dea, bars){
+  for(let i=bars.length-1; i>0; i--){
+    if(dif[i]===null || dea[i]===null || dif[i-1]===null || dea[i-1]===null) continue;
+    const prevDiff = dif[i-1] - dea[i-1];
+    const curDiff = dif[i] - dea[i];
+    if(prevDiff<=0 && curDiff>0) return {type:'golden', date:bars[i].date, daysAgo: bars.length-1-i};
+    if(prevDiff>=0 && curDiff<0) return {type:'death', date:bars[i].date, daysAgo: bars.length-1-i};
+  }
+  return null;
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
