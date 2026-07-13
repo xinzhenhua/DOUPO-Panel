@@ -101,6 +101,9 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .divider{height:1px;background:var(--bdr);margin:10px 0}
 .stars{color:var(--gold);font-size:10px}
 </style>
+<!-- TradingView Lightweight Charts：专门为K线图设计的免费开源库(Apache 2.0)，35KB，
+     内置缩放/平移/十字光标数据提示，比手写SVG更适合K线这种需要交互的场景 -->
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -496,107 +499,6 @@ function renderGaugeSVG(score, minScore, maxScore){
   </svg>`;
 }
 
-/** K线图(蜡烛图) + MA20/MA60均线，中国习惯配色(红涨绿跌，跟西方相反)。
- *  bars: 全部可用的K线数据(用于计算均线，均线需要更早的历史才能算准)
- *  displayCount: 图上实际显示多少根蜡烛(默认显示最近的一部分，不是全部，避免太挤)
- *  返回：{svg, latestClose, prevClose, periodHigh, periodLow} */
-function renderKlineChartSVG(bars, displayCount=90){
-  if(!bars || bars.length < 2) return {svg:'<div style="font-size:11px;color:var(--t3);text-align:center;padding:20px">K线数据不足</div>', latestClose:null, prevClose:null, periodHigh:null, periodLow:null};
-
-  // 均线用全部历史算(这样均线从图表左边缘开始就是准的)，蜡烛只显示最近displayCount根
-  function computeMA(period){
-    return bars.map((_, i)=>{
-      if(i < period-1) return null;
-      let sum = 0;
-      for(let j=i-period+1; j<=i; j++) sum += bars[j].close;
-      return sum/period;
-    });
-  }
-  const ma20Full = computeMA(20);
-  const ma60Full = computeMA(60);
-
-  const startIdx = Math.max(0, bars.length - displayCount);
-  const displayBars = bars.slice(startIdx);
-  const ma20 = ma20Full.slice(startIdx);
-  const ma60 = ma60Full.slice(startIdx);
-  const n = displayBars.length;
-
-  const w = 700, h = 300;
-  const marginTop = 10, marginBottom = 20, marginLeft = 48, marginRight = 8;
-  const plotW = w - marginLeft - marginRight;
-  const plotH = h - marginTop - marginBottom;
-  const slotW = plotW / n;
-  const candleW = Math.max(1, slotW * 0.62);
-
-  const highs = displayBars.map(b=>b.high), lows = displayBars.map(b=>b.low);
-  const validMa = [...ma20, ...ma60].filter(v=>v!==null);
-  const priceMax = Math.max(...highs, ...(validMa.length?validMa:[0]));
-  const priceMin = Math.min(...lows, ...(validMa.length?validMa:[Infinity]));
-  const pad = (priceMax - priceMin) * 0.06 || 1;
-  const yMax = priceMax + pad, yMin = priceMin - pad;
-
-  const xFor = (i) => marginLeft + slotW*i + slotW/2;
-  const yFor = (price) => marginTop + plotH * (1 - (price - yMin)/(yMax - yMin));
-
-  let candles = '';
-  displayBars.forEach((b, i)=>{
-    const x = xFor(i);
-    const isUp = b.close >= b.open;
-    const color = isUp ? '#e84141' : '#00b37a'; // 中国习惯：红涨绿跌
-    const yHigh = yFor(b.high), yLow = yFor(b.low);
-    const yOpen = yFor(b.open), yClose = yFor(b.close);
-    const bodyTop = Math.min(yOpen, yClose);
-    const bodyH = Math.max(0.8, Math.abs(yClose - yOpen));
-    candles += `<line x1="${x.toFixed(1)}" y1="${yHigh.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yLow.toFixed(1)}" stroke="${color}" stroke-width="1"/>`;
-    candles += `<rect x="${(x-candleW/2).toFixed(1)}" y="${bodyTop.toFixed(1)}" width="${candleW.toFixed(1)}" height="${bodyH.toFixed(1)}" fill="${color}"/>`;
-  });
-
-  function maPath(ma){
-    let d = '';
-    ma.forEach((v, i)=>{
-      if(v===null) return;
-      const x = xFor(i), y = yFor(v);
-      d += (d===''?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
-    });
-    return d;
-  }
-
-  // Y轴刻度：最高/中间/最低3条参考线
-  const yTicks = [yMax-pad, (yMax+yMin)/2, yMin+pad];
-  const yAxisLines = yTicks.map(p=>{
-    const y = yFor(p);
-    return `<line x1="${marginLeft}" y1="${y.toFixed(1)}" x2="${w-marginRight}" y2="${y.toFixed(1)}" stroke="#2a2a2a" stroke-width="0.5"/>
-      <text x="${marginLeft-4}" y="${(y+3).toFixed(1)}" font-size="8" fill="#808080" text-anchor="end">${p.toFixed(0)}</text>`;
-  }).join('');
-
-  // X轴：每隔一段标一个日期
-  const xLabelStep = Math.max(1, Math.floor(n/5));
-  let xLabels = '';
-  for(let i=0; i<n; i+=xLabelStep){
-    const x = xFor(i);
-    xLabels += `<text x="${x.toFixed(1)}" y="${h-4}" font-size="7.5" fill="#808080" text-anchor="middle">${displayBars[i].date.slice(5)}</text>`;
-  }
-
-  const svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block">
-    ${yAxisLines}
-    ${candles}
-    <path d="${maPath(ma20)}" fill="none" stroke="#d4a017" stroke-width="1.3"/>
-    <path d="${maPath(ma60)}" fill="none" stroke="#3b82c4" stroke-width="1.3"/>
-    ${xLabels}
-    <text x="${w-marginRight}" y="10" font-size="8" fill="#d4a017" text-anchor="end">MA20</text>
-    <text x="${w-marginRight-38}" y="10" font-size="8" fill="#3b82c4" text-anchor="end">MA60</text>
-  </svg>`;
-
-  const latest = bars[bars.length-1], prev = bars[bars.length-2];
-  return {
-    svg,
-    latestClose: latest.close, prevClose: prev.close,
-    periodHigh: Math.max(...bars.map(b=>b.high)), periodLow: Math.min(...bars.map(b=>b.low)),
-  };
-}
-
-/** 供需二栏表格：左列供应侧指标，右列需求侧指标，每格根据信号变红(偏多)/绿(偏空)/灰(中性)。
- *  supplyItems/demandItems: [{label, signal}]，signal为1/-1/0/null(null=尚未有数据，格子显示"--"且为暗色) */
 function renderSupplyDemandTable(supplyItems, demandItems){
   const cellHtml = (item)=>{
     const sig = item.signal;
@@ -1192,31 +1094,115 @@ function renderKline(dailyData, hourlyData, genAt){
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
 
-  const {svg, latestClose, prevClose, periodHigh, periodLow} = renderKlineChartSVG(dailyData.bars, 90);
-  const chg = latestClose - prevClose;
-  const chgPct = (chg/prevClose*100).toFixed(2);
+  const bars = dailyData.bars;
+  const latest = bars[bars.length-1], prev = bars[bars.length-2];
+  const chg = latest.close - prev.close;
+  const chgPct = (chg/prev.close*100).toFixed(2);
   const chgCls = chg>0?'pos':chg<0?'neg':'neutral';
+  const periodHigh = Math.max(...bars.map(b=>b.high));
+  const periodLow = Math.min(...bars.map(b=>b.low));
 
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
-    const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
-    const hourlyResult = renderKlineChartSVG(hourlyBars, hourlyBars.length);
-    hourlyHtml = `<details class="tier-details"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary><div class="tier-body">${hourlyResult.svg}</div></details>`;
+    hourlyHtml = `<details class="tier-details"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
+      <div class="tier-body"><div id="klineHourlyChartContainer" style="height:280px;margin-top:8px"></div></div></details>`;
   } else {
     hourlyHtml = `<div style="font-size:10px;color:var(--t3);margin-top:6px">💡 小时线暂无数据：${hourlyData?hourlyData.reason:'未知原因'}</div>`;
   }
 
   el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData.symbol}日K线</span>
-    <span class="${chgCls}">${latestClose} (${chg>0?'+':''}${chg.toFixed(0)}，${chg>0?'+':''}${chgPct}%)</span></div>
+    <span class="${chgCls}">${latest.close} (${chg>0?'+':''}${chg.toFixed(0)}，${chg>0?'+':''}${chgPct}%)</span></div>
     <div class="grid2" style="margin-bottom:8px">
       <div class="stat"><span class="sv neutral">${periodHigh}</span><div class="sl">区间最高(约${dailyData.totalBarsReturned}日)</div></div>
       <div class="stat"><span class="sv neutral">${periodLow}</span><div class="sl">区间最低</div></div>
     </div>
-    ${svg}
+    <div id="klineChartContainer" style="height:320px"></div>
+    <div style="font-size:9px;color:var(--t3);text-align:right;margin-top:2px">💡 可双指缩放/拖动查看细节，点击K线看具体开高低收数值</div>
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       ⚠️ ${dailyData.source}。5月/1月合约K线暂未接入，只做了9月合约(当前主力)。
     </div>`;
+
+  // 图表容器要等上面这段innerHTML真正插入DOM后才存在，用setTimeout(0)让浏览器先完成这一步
+  setTimeout(()=>{
+    if(typeof LightweightCharts === 'undefined'){
+      const c = document.getElementById('klineChartContainer');
+      if(c) c.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:20px">图表库加载失败(可能是网络问题)，请刷新页面重试</div>';
+      return;
+    }
+    renderCandlestickChart('klineChartContainer', bars);
+    if(hourlyData && hourlyData.available){
+      const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
+      renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
+    }
+  }, 0);
+}
+
+/** 用TradingView Lightweight Charts(免费开源，35KB)画蜡烛图+MA5/10/20/60均线。
+ *  比手写SVG的优势：内置双指缩放、拖动平移、点击/悬停显示具体OHLC数值——
+ *  这些手写SVG做不到(或者要花大量功夫重新发明轮子)，用专门的图表库更合理。
+ *  中国习惯配色：红涨绿跌(跟西方红跌绿涨相反)。*/
+function renderCandlestickChart(containerId, bars){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = ''; // 清空，避免details重复展开时图表叠加残留
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 320,
+    layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
+    grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+    timeScale: { borderColor: '#222' },
+    rightPriceScale: { borderColor: '#222' },
+  });
+
+  const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+    upColor: '#e84141', downColor: '#00b37a',
+    borderUpColor: '#e84141', borderDownColor: '#00b37a',
+    wickUpColor: '#e84141', wickDownColor: '#00b37a',
+  });
+  candleSeries.setData(bars.map(b=>({time:b.date, open:b.open, high:b.high, low:b.low, close:b.close})));
+
+  // MA5/10/20/40/60：只在数据量够长时才画(比如只有40根数据时，MA60就不画了，避免全是null的空线)
+  const maConfigs = [
+    {period:5, color:'#c77dff', label:'MA5'},
+    {period:10, color:'#ff9f40', label:'MA10'},
+    {period:20, color:'#d4a017', label:'MA20'},
+    {period:40, color:'#22d3d3', label:'MA40'},
+    {period:60, color:'#3b82c4', label:'MA60'},
+  ];
+  maConfigs.forEach(cfg=>{
+    if(bars.length < cfg.period) return;
+    const maData = computeMASeriesData(bars, cfg.period);
+    const series = chart.addSeries(LightweightCharts.LineSeries, {
+      color: cfg.color, lineWidth: 1, title: cfg.label,
+      priceLineVisible: false, crosshairMarkerVisible: false,
+    });
+    series.setData(maData);
+  });
+
+  chart.timeScale().fitContent();
+
+  // 响应式：容器宽度变化时(比如旋转手机屏幕)图表跟着调整，不会被拉伸变形
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(entries=>{
+      if(!entries.length || !entries[0].contentRect) return;
+      chart.applyOptions({width: entries[0].contentRect.width});
+    });
+    ro.observe(container);
+  }
+}
+
+/** 计算简单移动平均线，返回Lightweight Charts的LineSeries.setData()需要的格式：
+ *  [{time, value}, ...]，跳过数据不够period长度的前几根(不强行返回0或null进去)。*/
+function computeMASeriesData(bars, period){
+  const out = [];
+  for(let i=period-1; i<bars.length; i++){
+    let sum = 0;
+    for(let j=i-period+1; j<=i; j++) sum += bars[j].close;
+    out.push({time: bars[i].date, value: sum/period});
+  }
+  return out;
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
