@@ -254,6 +254,16 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="psdContent" class="loading">正在读取同步数据...</div>
 </div>
 
+<!-- ============ 技术面：DCE豆粕K线（第一阶段，只做9月合约M09） ============ -->
+<div class="stitle">📈 技术面：DCE豆粕K线<span style="font-size:9px;color:var(--t3);font-weight:400">· 日线+小时线，仅供参考</span></div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">M09(9月合约)日K线 + MA20/MA60</div>
+    <span class="badge" id="klineBadge">检查中...</span>
+  </div>
+  <div id="klineContent" class="loading">正在读取同步数据...</div>
+</div>
+
 <div class="stitle">💰 CBOT豆粕期货价格</div>
 <div class="card">
   <div class="card-head">
@@ -486,6 +496,105 @@ function renderGaugeSVG(score, minScore, maxScore){
   </svg>`;
 }
 
+/** K线图(蜡烛图) + MA20/MA60均线，中国习惯配色(红涨绿跌，跟西方相反)。
+ *  bars: 全部可用的K线数据(用于计算均线，均线需要更早的历史才能算准)
+ *  displayCount: 图上实际显示多少根蜡烛(默认显示最近的一部分，不是全部，避免太挤)
+ *  返回：{svg, latestClose, prevClose, periodHigh, periodLow} */
+function renderKlineChartSVG(bars, displayCount=90){
+  if(!bars || bars.length < 2) return {svg:'<div style="font-size:11px;color:var(--t3);text-align:center;padding:20px">K线数据不足</div>', latestClose:null, prevClose:null, periodHigh:null, periodLow:null};
+
+  // 均线用全部历史算(这样均线从图表左边缘开始就是准的)，蜡烛只显示最近displayCount根
+  function computeMA(period){
+    return bars.map((_, i)=>{
+      if(i < period-1) return null;
+      let sum = 0;
+      for(let j=i-period+1; j<=i; j++) sum += bars[j].close;
+      return sum/period;
+    });
+  }
+  const ma20Full = computeMA(20);
+  const ma60Full = computeMA(60);
+
+  const startIdx = Math.max(0, bars.length - displayCount);
+  const displayBars = bars.slice(startIdx);
+  const ma20 = ma20Full.slice(startIdx);
+  const ma60 = ma60Full.slice(startIdx);
+  const n = displayBars.length;
+
+  const w = 700, h = 300;
+  const marginTop = 10, marginBottom = 20, marginLeft = 48, marginRight = 8;
+  const plotW = w - marginLeft - marginRight;
+  const plotH = h - marginTop - marginBottom;
+  const slotW = plotW / n;
+  const candleW = Math.max(1, slotW * 0.62);
+
+  const highs = displayBars.map(b=>b.high), lows = displayBars.map(b=>b.low);
+  const validMa = [...ma20, ...ma60].filter(v=>v!==null);
+  const priceMax = Math.max(...highs, ...(validMa.length?validMa:[0]));
+  const priceMin = Math.min(...lows, ...(validMa.length?validMa:[Infinity]));
+  const pad = (priceMax - priceMin) * 0.06 || 1;
+  const yMax = priceMax + pad, yMin = priceMin - pad;
+
+  const xFor = (i) => marginLeft + slotW*i + slotW/2;
+  const yFor = (price) => marginTop + plotH * (1 - (price - yMin)/(yMax - yMin));
+
+  let candles = '';
+  displayBars.forEach((b, i)=>{
+    const x = xFor(i);
+    const isUp = b.close >= b.open;
+    const color = isUp ? '#e84141' : '#00b37a'; // 中国习惯：红涨绿跌
+    const yHigh = yFor(b.high), yLow = yFor(b.low);
+    const yOpen = yFor(b.open), yClose = yFor(b.close);
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyH = Math.max(0.8, Math.abs(yClose - yOpen));
+    candles += `<line x1="${x.toFixed(1)}" y1="${yHigh.toFixed(1)}" x2="${x.toFixed(1)}" y2="${yLow.toFixed(1)}" stroke="${color}" stroke-width="1"/>`;
+    candles += `<rect x="${(x-candleW/2).toFixed(1)}" y="${bodyTop.toFixed(1)}" width="${candleW.toFixed(1)}" height="${bodyH.toFixed(1)}" fill="${color}"/>`;
+  });
+
+  function maPath(ma){
+    let d = '';
+    ma.forEach((v, i)=>{
+      if(v===null) return;
+      const x = xFor(i), y = yFor(v);
+      d += (d===''?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    });
+    return d;
+  }
+
+  // Y轴刻度：最高/中间/最低3条参考线
+  const yTicks = [yMax-pad, (yMax+yMin)/2, yMin+pad];
+  const yAxisLines = yTicks.map(p=>{
+    const y = yFor(p);
+    return `<line x1="${marginLeft}" y1="${y.toFixed(1)}" x2="${w-marginRight}" y2="${y.toFixed(1)}" stroke="#2a2a2a" stroke-width="0.5"/>
+      <text x="${marginLeft-4}" y="${(y+3).toFixed(1)}" font-size="8" fill="#808080" text-anchor="end">${p.toFixed(0)}</text>`;
+  }).join('');
+
+  // X轴：每隔一段标一个日期
+  const xLabelStep = Math.max(1, Math.floor(n/5));
+  let xLabels = '';
+  for(let i=0; i<n; i+=xLabelStep){
+    const x = xFor(i);
+    xLabels += `<text x="${x.toFixed(1)}" y="${h-4}" font-size="7.5" fill="#808080" text-anchor="middle">${displayBars[i].date.slice(5)}</text>`;
+  }
+
+  const svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block">
+    ${yAxisLines}
+    ${candles}
+    <path d="${maPath(ma20)}" fill="none" stroke="#d4a017" stroke-width="1.3"/>
+    <path d="${maPath(ma60)}" fill="none" stroke="#3b82c4" stroke-width="1.3"/>
+    ${xLabels}
+    <text x="${w-marginRight}" y="10" font-size="8" fill="#d4a017" text-anchor="end">MA20</text>
+    <text x="${w-marginRight-38}" y="10" font-size="8" fill="#3b82c4" text-anchor="end">MA60</text>
+  </svg>`;
+
+  const latest = bars[bars.length-1], prev = bars[bars.length-2];
+  return {
+    svg,
+    latestClose: latest.close, prevClose: prev.close,
+    periodHigh: Math.max(...bars.map(b=>b.high)), periodLow: Math.min(...bars.map(b=>b.low)),
+  };
+}
+
 /** 供需二栏表格：左列供应侧指标，右列需求侧指标，每格根据信号变红(偏多)/绿(偏空)/灰(中性)。
  *  supplyItems/demandItems: [{label, signal}]，signal为1/-1/0/null(null=尚未有数据，格子显示"--"且为暗色) */
 function renderSupplyDemandTable(supplyItems, demandItems){
@@ -594,12 +703,13 @@ async function loadSyncedData(){
     renderSaPsd(data.southAmericaPsd, data.generatedAt);
     renderPlanting(data.usPlantingProgress, data.generatedAt);
     renderHarvest(data.usHarvestProgress, data.generatedAt);
+    renderKline(data.dceM09Daily, data.dceM09Hourly, data.generatedAt);
     window._syncedData = data;
   }catch(e){
-    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest'].forEach(k=>{
+    ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
       document.getElementById(k+'Badge').className = 'badge badge-offline';
-      document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>点击上方"首次使用"说明，完成 GitHub Actions 一次性设置后，这里会自动显示最新数据</div>';
+      document.getElementById(k+'Content').innerHTML = '<div class="alert-box neutral"><span class="at">还没有同步数据</span>完成 GitHub Actions 一次性设置后(详见README)，这里会自动显示最新数据</div>';
     });
   }
   updateOverallAlert();
@@ -1066,6 +1176,47 @@ function renderHarvest(hp, genAt){
   }
   window._harvestSignal = sig;
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>收获进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${hp.weekEnding}</div>`;
+}
+
+/** 技术面K线卡片：日K线(蜡烛图+MA20/MA60) + 关键统计。
+ * ★ 第一阶段：只做9月合约(M09)。5月/1月合约的K线还没接，暂时留空并诚实标注。 */
+function renderKline(dailyData, hourlyData, genAt){
+  const badge = document.getElementById('klineBadge');
+  const el = document.getElementById('klineContent');
+  if(!dailyData || !dailyData.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData?dailyData.reason:'未知原因'}</span></div>` + renderDebugInfo(dailyData?dailyData.debug:null);
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+
+  const {svg, latestClose, prevClose, periodHigh, periodLow} = renderKlineChartSVG(dailyData.bars, 90);
+  const chg = latestClose - prevClose;
+  const chgPct = (chg/prevClose*100).toFixed(2);
+  const chgCls = chg>0?'pos':chg<0?'neg':'neutral';
+
+  let hourlyHtml = '';
+  if(hourlyData && hourlyData.available){
+    const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
+    const hourlyResult = renderKlineChartSVG(hourlyBars, hourlyBars.length);
+    hourlyHtml = `<details class="tier-details"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary><div class="tier-body">${hourlyResult.svg}</div></details>`;
+  } else {
+    hourlyHtml = `<div style="font-size:10px;color:var(--t3);margin-top:6px">💡 小时线暂无数据：${hourlyData?hourlyData.reason:'未知原因'}</div>`;
+  }
+
+  el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData.symbol}日K线</span>
+    <span class="${chgCls}">${latestClose} (${chg>0?'+':''}${chg.toFixed(0)}，${chg>0?'+':''}${chgPct}%)</span></div>
+    <div class="grid2" style="margin-bottom:8px">
+      <div class="stat"><span class="sv neutral">${periodHigh}</span><div class="sl">区间最高(约${dailyData.totalBarsReturned}日)</div></div>
+      <div class="stat"><span class="sv neutral">${periodLow}</span><div class="sl">区间最低</div></div>
+    </div>
+    ${svg}
+    ${hourlyHtml}
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">
+      ⚠️ ${dailyData.source}。5月/1月合约K线暂未接入，只做了9月合约(当前主力)。
+    </div>`;
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
