@@ -565,6 +565,8 @@ def fetch_us_planting_progress():
         "commodity_desc": "SOYBEANS",
         "statisticcat_desc": "AREA PLANTED",
         "agg_level_desc": "NATIONAL",
+        "freq_desc": "WEEKLY",  # ★已修复：AREA PLANTED底下混了ANNUAL(年度调查)和WEEKLY(周度进度)两种频率的报告，
+                                  #   之前没指定，接口默认返回了ANNUAL那批(比如"种了多少英亩")，不是周度进度%
         "year": str(now.year),
         "format": "JSON",
     }
@@ -632,6 +634,7 @@ def fetch_us_harvest_progress():
         "commodity_desc": "SOYBEANS",
         "statisticcat_desc": "AREA HARVESTED",
         "agg_level_desc": "NATIONAL",
+        "freq_desc": "WEEKLY",  # ★已修复：跟播种进度同样的问题，AREA HARVESTED也混了ANNUAL和WEEKLY两种频率
         "year": str(now.year),
         "format": "JSON",
     }
@@ -795,7 +798,7 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         bars = []
         for _, row in df_recent.iterrows():
             bars.append({
-                "datetime": str(row["date"]),  # 这个接口的时间字段名就叫date，但实际含时分秒
+                "datetime": str(row["datetime"]),  # ★已修复：实测发现akshare 1.18.64版本这个字段叫datetime，不是date(旧版本文档示例是date，版本间不一致)
                 "open": float(row["open"]), "high": float(row["high"]),
                 "low": float(row["low"]), "close": float(row["close"]),
                 "volume": float(row["volume"]) if row.get("volume") is not None else None,
