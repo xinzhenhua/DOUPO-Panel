@@ -1116,7 +1116,7 @@ function renderKline(dailyData, hourlyData, genAt){
 
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
-    hourlyHtml = `<details class="tier-details"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
+    hourlyHtml = `<details class="tier-details" id="klineHourlyDetails"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
       <div class="tier-body"><div id="klineHourlyChartContainer" style="height:280px;margin-top:8px"></div></div></details>`;
   } else {
     hourlyHtml = `<div style="font-size:10px;color:var(--t3);margin-top:6px">💡 小时线暂无数据：${hourlyData?hourlyData.reason:'未知原因'}</div>`;
@@ -1147,9 +1147,22 @@ function renderKline(dailyData, hourlyData, genAt){
     }
     const mainChart = renderCandlestickChart('klineChartContainer', bars);
     renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
+    // ★ 已修复真实bug：小时线图表容器包在默认收起的details元素里，之前在这里立刻创建图表，
+    //   但收起状态下容器宽高是0，图表建出来了但完全看不见(而且之后展开也不会自动修复，
+    //   因为LightweightCharts只在创建那一刻读取容器尺寸，不会持续监听details元素的开合状态)。
+    //   改成：等用户真正点开这个details元素的时候才创建图表(这时候容器已经是正常尺寸了)。
     if(hourlyData && hourlyData.available){
       const hourlyBars = hourlyData.bars.map(b=>({date:b.datetime, open:b.open, high:b.high, low:b.low, close:b.close}));
-      renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
+      const detailsEl = document.getElementById('klineHourlyDetails');
+      if(detailsEl){
+        let hourlyInitialized = false;
+        detailsEl.ontoggle = function(){
+          if(detailsEl.open && !hourlyInitialized){
+            hourlyInitialized = true;
+            renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
+          }
+        };
+      }
     }
   }, 0);
 }
