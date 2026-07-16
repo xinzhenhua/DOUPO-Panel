@@ -37,7 +37,7 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
@@ -563,10 +563,16 @@ def fetch_us_planting_progress():
     params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
-        "statisticcat_desc": "AREA PLANTED",
+        # ★已修复(第三次修复，找到确切根因)：之前先后用过"AREA PLANTED"(年度英亩数调查，
+        #   不是周度进度)，然后误以为要加freq_desc=WEEKLY(这个参数会导致NASS API直接
+        #   报错"bad request - invalid query")。真正的问题是：周度进度百分比根本不在
+        #   "AREA PLANTED"这个分类底下，而是单独的"PROGRESS"这个statisticcat_desc，
+        #   还需要额外指定unit_desc="PCT PLANTED"才能从PROGRESS大类里(还包含emerged/
+        #   blooming等其他生长阶段)筛出播种进度这一项。这个参数组合是从真实的第三方
+        #   NASS API使用案例反推确认的，不是猜测。
+        "statisticcat_desc": "PROGRESS",
+        "unit_desc": "PCT PLANTED",
         "agg_level_desc": "NATIONAL",
-        "freq_desc": "WEEKLY",  # ★已修复：AREA PLANTED底下混了ANNUAL(年度调查)和WEEKLY(周度进度)两种频率的报告，
-                                  #   之前没指定，接口默认返回了ANNUAL那批(比如"种了多少英亩")，不是周度进度%
         "year": str(now.year),
         "format": "JSON",
     }
@@ -619,8 +625,8 @@ def fetch_us_planting_progress():
 
 # ---------------------------------------------------------------------------
 # 美豆收获进度 —— 服务1月合约窗口期(收获进度反映新豆能多快流入市场)
-# 复用同一个NASS Quick Stats API，statisticcat_desc换成"AREA HARVESTED"(已查证是
-# NASS标准分类，收获进度和播种进度是同一套报告体系里的两个不同阶段指标)。
+# 复用同一个NASS Quick Stats API，statisticcat_desc用"PROGRESS"+unit_desc="PCT HARVESTED"
+# (不是"AREA HARVESTED"，那是年度英亩数调查，不是周度进度百分比)。
 # ---------------------------------------------------------------------------
 def fetch_us_harvest_progress():
     """查询美豆收获进度(占预期收获面积的百分比)。
@@ -632,9 +638,12 @@ def fetch_us_harvest_progress():
     params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
-        "statisticcat_desc": "AREA HARVESTED",
+        # ★已修复(第三次修复，找到确切根因，跟播种进度同样的问题)：周度收获进度
+        #   百分比在"PROGRESS"这个statisticcat_desc底下，配合unit_desc="PCT HARVESTED"
+        #   筛出具体阶段，不是"AREA HARVESTED"(那是年度英亩数调查)。
+        "statisticcat_desc": "PROGRESS",
+        "unit_desc": "PCT HARVESTED",
         "agg_level_desc": "NATIONAL",
-        "freq_desc": "WEEKLY",  # ★已修复：跟播种进度同样的问题，AREA HARVESTED也混了ANNUAL和WEEKLY两种频率
         "year": str(now.year),
         "format": "JSON",
     }
@@ -760,12 +769,13 @@ def fetch_dce_daily_kline(symbol, max_rows=260):
                 "low": float(row["low"]), "close": float(row["close"]),
                 "volume": float(row["volume"]) if row.get("volume") is not None else None,
                 "hold": float(row["hold"]) if row.get("hold") is not None else None,
+                "settle": float(row["settle"]) if row.get("settle") is not None else None,  # ★补上：之前查过akshare日线接口本来就有这个字段(结算价)，但一直没提取出来
             })
     except (KeyError, ValueError, TypeError) as e:
         return {
             "available": False,
             "reason": f"字段解析失败: {e}",
-            "debug": {"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")},
+            "debug": _json_safe({"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")}),
         }
 
     return {
@@ -774,6 +784,99 @@ def fetch_dce_daily_kline(symbol, max_rows=260):
         "totalBarsReturned": len(bars),
         "bars": bars,
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟",
+    }
+
+
+def _get_col(row, *possible_names):
+    """尝试多个可能的字段名，返回第一个存在且非空的值。用于兼容akshare不同接口
+    可能返回英文字段名(date/open/close)或中文字段名(日期/开盘价/收盘价)的情况——
+    宁可写得啰嗦一点兼容两种可能，也不要直接猜一种、猜错了才发现。"""
+    for name in possible_names:
+        if name in row and row[name] is not None:
+            return row[name]
+    raise KeyError(f"以下候选字段名都没找到或都是空值: {possible_names}")
+
+
+def _json_safe(obj):
+    """把可能含有date/Timestamp等json.dumps不认识的物件，转成字符串，
+    确保debug信息本身能被正常序列化——不能让\"显示诊断信息\"这一步自己先崩溃，
+    那样反而看不到真正有用的诊断内容。"""
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    return str(obj)
+
+
+def fetch_dce_continuous_kline(symbol="M0", years=3):
+    """DCE豆粕主力连续合约(M0)，用于回测——单个具体合约(如M2609)存续时间不到1年，
+    没法支撑多年回测，连续合约是把历次主力合约"接续"起来的合成序列，能给足够长的历史。
+    ★诚实说明：这是"简单拼接"未做平滑处理的版本——每次主力合约切换时(比如从M2601
+    切到M2605)，新旧合约收盘价不一定完全相等，拼接点可能出现"价格跳空"，这不是真实
+    市场波动，是数据拼接的artifact。这个函数会顺便标记出疑似换月的日期(单日涨跌幅
+    异常大)，供回测时排查用，不会假装这个问题不存在。"""
+    try:
+        import akshare as ak
+    except ImportError:
+        return {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
+
+    start_date = (datetime.now(timezone.utc) - timedelta(days=int(years*365.25)+30)).strftime("%Y%m%d")
+    try:
+        df = ak.futures_main_sina(symbol=symbol, start_date=start_date)
+    except Exception as e:
+        return {"available": False, "reason": f"akshare连续合约接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
+
+    if df is None or len(df) == 0:
+        return {"available": False, "reason": f"接口调用成功但返回空数据(连续合约代码{symbol}可能不存在)", "debug": {"symbol": symbol}}
+
+    try:
+        bars = []
+        prev_close = None
+        suspected_rollovers = []
+        for _, row in df.iterrows():
+            # ★已修复：之前直接假设字段名是英文(date/open/close等)，实测报错发现futures_main_sina()
+            #   很可能用的是不同的字段命名(比如中文"日期/开盘价/收盘价")。现在用_get_col()
+            #   同时尝试英文和中文两种可能，不管这个接口实际用哪种命名都能兼容。
+            date_val = _get_col(row, "date", "日期")
+            close_val = float(_get_col(row, "close", "收盘价"))
+            bar = {
+                "date": str(date_val),
+                "open": float(_get_col(row, "open", "开盘价")),
+                "high": float(_get_col(row, "high", "最高价")),
+                "low": float(_get_col(row, "low", "最低价")),
+                "close": close_val,
+            }
+            try:
+                bar["volume"] = float(_get_col(row, "volume", "成交量"))
+            except KeyError:
+                bar["volume"] = None
+            try:
+                bar["hold"] = float(_get_col(row, "hold", "持仓量"))
+            except KeyError:
+                bar["hold"] = None
+
+            if prev_close is not None and prev_close != 0:
+                pct_change = abs(close_val - prev_close) / prev_close
+                if pct_change > 0.06:  # 单日涨跌幅超过6%，DCE豆粕正常涨跌停板通常在4-5%左右，超过这个很可能是换月拼接的跳空
+                    suspected_rollovers.append({"date": bar["date"], "pctChange": round(pct_change*100, 2)})
+            bars.append(bar)
+            prev_close = close_val
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}",
+            "debug": _json_safe({"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")}),
+        }
+
+    return {
+        "available": True,
+        "symbol": symbol,
+        "totalBarsReturned": len(bars),
+        "bars": bars,
+        "suspectedRolloverDates": suspected_rollovers,  # ⚠️疑似换月跳空日，回测时应该排查这些日期附近的信号是否可靠
+        "source": "新浪财经(经akshare库获取)，主力连续合约(简单拼接未平滑)，非官方实时数据",
     }
 
 
@@ -808,7 +911,7 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         return {
             "available": False,
             "reason": f"字段解析失败: {e}",
-            "debug": {"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")},
+            "debug": _json_safe({"symbol": symbol, "actualColumns": list(df.columns), "sampleRawRow": df.tail(1).to_dict("records")}),
         }
 
     return {
