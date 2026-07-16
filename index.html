@@ -1101,6 +1101,7 @@ function renderKline(dailyData, hourlyData, genAt){
   const chgCls = chg>0?'pos':chg<0?'neg':'neutral';
   const periodHigh = Math.max(...bars.map(b=>b.high));
   const periodLow = Math.min(...bars.map(b=>b.low));
+  const dayOiChange = (latest.hold!=null && prev.hold!=null) ? latest.hold-prev.hold : null;
 
   // MACD：金叉(DIF上穿DEA)=偏多信号，死叉(DIF下穿DEA)=偏空信号
   const {dif, dea, histogram} = computeMACD(bars);
@@ -1114,10 +1115,27 @@ function renderKline(dailyData, hourlyData, genAt){
     macdCrossText = `最近一次<span class="${crossCls}">${crossLabel}</span>：${latestCross.date}（${latestCross.daysAgo===0?'今天':latestCross.daysAgo+'个交易日前'}）`;
   }
 
+  // RSI(14)：>70通常视为超买(偏空信号，可能回调)；<30通常视为超卖(偏多信号，可能反弹)
+  const rsi = computeRSI(bars, 14);
+  const latestRsi = rsi[rsi.length-1];
+  let rsiText;
+  if(latestRsi===null){
+    rsiText = `<span class="neutral">数据不足(RSI需要至少15根数据)</span>`;
+  } else {
+    const rsiCls = latestRsi>=70?'neg':latestRsi<=30?'pos':'neutral';
+    const rsiLabel = latestRsi>=70?'超买区间':latestRsi<=30?'超卖区间':'中性区间';
+    rsiText = `<span class="${rsiCls}">${latestRsi.toFixed(1)}(${rsiLabel})</span>`;
+  }
+
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
     hourlyHtml = `<details class="tier-details" id="klineHourlyDetails"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
-      <div class="tier-body"><div id="klineHourlyChartContainer" style="height:280px;margin-top:8px"></div></div></details>`;
+      <div class="tier-body">
+        <div id="klineHourlyChartContainer" style="height:280px;margin-top:8px"></div>
+        <div style="font-size:9px;color:var(--t2);margin-top:6px 0 2px">MACD(12,26,9)</div>
+        <div id="klineHourlyMacdContainer" style="height:110px;margin-top:2px"></div>
+        <div id="klineHourlyMacdCross" style="font-size:11px;margin-top:4px"></div>
+      </div></details>`;
   } else {
     hourlyHtml = `<div style="font-size:10px;color:var(--t3);margin-top:6px">💡 小时线暂无数据：${hourlyData?hourlyData.reason:'未知原因'}</div>`;
   }
@@ -1125,14 +1143,30 @@ function renderKline(dailyData, hourlyData, genAt){
   el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData.symbol}日K线</span>
     <span class="${chgCls}">${latest.close} (${chg>0?'+':''}${chg.toFixed(0)}，${chg>0?'+':''}${chgPct}%)</span></div>
     <div class="grid2" style="margin-bottom:8px">
+      <div class="stat"><span class="sv neutral">${latest.open}</span><div class="sl">今开</div></div>
+      <div class="stat"><span class="sv pos">${latest.high}</span><div class="sl">今高</div></div>
+      <div class="stat"><span class="sv neg">${latest.low}</span><div class="sl">今低</div></div>
+      <div class="stat"><span class="sv neutral">${prev.close}</span><div class="sl">昨收</div></div>
+      <div class="stat"><span class="sv neutral">${latest.settle!=null?latest.settle:'--'}</span><div class="sl">昨结(前一日结算价)</div></div>
+      <div class="stat"><span class="sv neutral">${latest.hold!=null?latest.hold.toLocaleString():'--'}</span><div class="sl">持仓量</div></div>
+      <div class="stat"><span class="sv ${dayOiChange>0?'pos':dayOiChange<0?'neg':'neutral'}">${dayOiChange!=null?(dayOiChange>0?'+':'')+dayOiChange.toLocaleString():'--'}</span><div class="sl">日增仓</div></div>
       <div class="stat"><span class="sv neutral">${periodHigh}</span><div class="sl">区间最高(约${dailyData.totalBarsReturned}日)</div></div>
       <div class="stat"><span class="sv neutral">${periodLow}</span><div class="sl">区间最低</div></div>
     </div>
     <div id="klineChartContainer" style="height:320px"></div>
     <div style="font-size:9px;color:var(--t3);text-align:right;margin-top:2px">💡 可双指缩放/拖动查看细节，点击K线看具体开高低收数值</div>
+
+    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">成交量<span style="font-size:9px;color:var(--t3)">· MA10金 MA20蓝</span></div>
+    <div id="klineVolumeContainer" style="height:100px;margin-top:2px"></div>
+
     <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">MACD(12,26,9)<span style="font-size:9px;color:var(--t3)">· DIF白 DEA橙</span></div>
     <div id="klineMacdContainer" style="height:130px;margin-top:2px"></div>
     <div style="font-size:11px;margin-top:4px">${macdCrossText}</div>
+
+    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">RSI(14)<span style="font-size:9px;color:var(--t3)">· >70超买 <30超卖</span></div>
+    <div id="klineRsiContainer" style="height:100px;margin-top:2px"></div>
+    <div style="font-size:11px;margin-top:4px">当前RSI：${rsiText}</div>
+
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       ⚠️ ${dailyData.source}。5月/1月合约K线暂未接入，只做了9月合约(当前主力)。
@@ -1146,7 +1180,9 @@ function renderKline(dailyData, hourlyData, genAt){
       return;
     }
     const mainChart = renderCandlestickChart('klineChartContainer', bars);
+    renderVolumeChart('klineVolumeContainer', bars, mainChart);
     renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
+    renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
     // ★ 已修复真实bug：小时线图表容器包在默认收起的details元素里，之前在这里立刻创建图表，
     //   但收起状态下容器宽高是0，图表建出来了但完全看不见(而且之后展开也不会自动修复，
     //   因为LightweightCharts只在创建那一刻读取容器尺寸，不会持续监听details元素的开合状态)。
@@ -1156,13 +1192,26 @@ function renderKline(dailyData, hourlyData, genAt){
         date: beijingDatetimeToUnixSeconds(b.datetime),
         open:b.open, high:b.high, low:b.low, close:b.close,
       }));
+      const {dif:hDif, dea:hDea, histogram:hHist} = computeMACD(hourlyBars);
+      const hourlyCross = findLatestMacdCross(hDif, hDea, hourlyBars);
+      const hourlyCrossEl = document.getElementById('klineHourlyMacdCross');
+      if(hourlyCrossEl){
+        if(!hourlyCross){
+          hourlyCrossEl.innerHTML = `<span class="neutral">数据不足以判断金叉/死叉</span>`;
+        } else {
+          const label = hourlyCross.type==='golden' ? '金叉(偏多)' : '死叉(偏空)';
+          const cls = hourlyCross.type==='golden' ? 'pos' : 'neg';
+          hourlyCrossEl.innerHTML = `最近一次<span class="${cls}">${label}</span>：${hourlyCross.daysAgo===0?'最新这根':hourlyCross.daysAgo+'根之前'}`;
+        }
+      }
       const detailsEl = document.getElementById('klineHourlyDetails');
       if(detailsEl){
         let hourlyInitialized = false;
         detailsEl.ontoggle = function(){
           if(detailsEl.open && !hourlyInitialized){
             hourlyInitialized = true;
-            renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
+            const hMainChart = renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
+            renderMacdChart('klineHourlyMacdContainer', hourlyBars, hDif, hDea, hHist, hMainChart);
           }
         };
       }
@@ -1274,8 +1323,84 @@ function renderMacdChart(containerId, bars, dif, dea, histogram, mainChart){
   return chart;
 }
 
-/** 计算简单移动平均线，返回Lightweight Charts的LineSeries.setData()需要的格式：
- *  [{time, value}, ...]，跳过数据不够period长度的前几根(不强行返回0或null进去)。*/
+/** 成交量副图：柱状图(红涨绿跌，同一套配色习惯) + MA10(金)/MA20(蓝)均量线。
+ *  跟主K线图时间轴同步缩放/平移。*/
+function renderVolumeChart(containerId, bars, mainChart){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 100,
+    layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
+    grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+    timeScale: { borderColor: '#222', timeVisible: true },
+    rightPriceScale: { borderColor: '#222' },
+  });
+
+  const volSeries = chart.addSeries(LightweightCharts.HistogramSeries, { priceLineVisible: false });
+  volSeries.setData(bars.filter(b=>b.volume!=null).map(b=>({time:b.date, value:b.volume, color: b.close>=b.open?'#e84141':'#00b37a'})));
+
+  if(bars.length >= 10){
+    const ma10 = chart.addSeries(LightweightCharts.LineSeries, {color:'#d4a017', lineWidth:1, title:'MA10', priceLineVisible:false, crosshairMarkerVisible:false});
+    ma10.setData(computeMASeriesData(bars, 10, b=>b.volume||0));
+  }
+  if(bars.length >= 20){
+    const ma20 = chart.addSeries(LightweightCharts.LineSeries, {color:'#3b82c4', lineWidth:1, title:'MA20', priceLineVisible:false, crosshairMarkerVisible:false});
+    ma20.setData(computeMASeriesData(bars, 20, b=>b.volume||0));
+  }
+
+  chart.timeScale().fitContent();
+  if(mainChart){
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) chart.timeScale().setVisibleLogicalRange(range); });
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) mainChart.timeScale().setVisibleLogicalRange(range); });
+  }
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(entries=>{ if(entries.length && entries[0].contentRect) chart.applyOptions({width: entries[0].contentRect.width}); });
+    ro.observe(container);
+  }
+  return chart;
+}
+
+/** RSI副图：单条线，70/30两条参考虚线标出超买/超卖区间。跟主K线图时间轴同步。*/
+function renderRsiChart(containerId, bars, rsi, mainChart){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 100,
+    layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
+    grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+    timeScale: { borderColor: '#222', timeVisible: true },
+    rightPriceScale: { borderColor: '#222' },
+  });
+
+  const rsiSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#c77dff', lineWidth:1.3, priceLineVisible:false});
+  rsiSeries.setData(bars.map((b,i)=>rsi[i]!==null?{time:b.date, value:rsi[i]}:null).filter(v=>v!==null));
+
+  // 70/30参考线：用两条极简的水平线画出来(取数据首尾两点连线)
+  if(bars.length>0){
+    const overbought = chart.addSeries(LightweightCharts.LineSeries, {color:'#e8414166', lineWidth:1, lineStyle:2, priceLineVisible:false, crosshairMarkerVisible:false});
+    overbought.setData([{time:bars[0].date, value:70},{time:bars[bars.length-1].date, value:70}]);
+    const oversold = chart.addSeries(LightweightCharts.LineSeries, {color:'#00b37a66', lineWidth:1, lineStyle:2, priceLineVisible:false, crosshairMarkerVisible:false});
+    oversold.setData([{time:bars[0].date, value:30},{time:bars[bars.length-1].date, value:30}]);
+  }
+
+  chart.timeScale().fitContent();
+  if(mainChart){
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) chart.timeScale().setVisibleLogicalRange(range); });
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) mainChart.timeScale().setVisibleLogicalRange(range); });
+  }
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(entries=>{ if(entries.length && entries[0].contentRect) chart.applyOptions({width: entries[0].contentRect.width}); });
+    ro.observe(container);
+  }
+  return chart;
+}
+
 /** ★已修复真实bug：小时线的datetime是"2026-07-13 14:15:00"这种带时分秒的字符串，
  *  Lightweight Charts对于日线这种"只有日期"的K线，接受"2026-07-13"这种纯日期字符串没问题，
  *  但小时线带时间部分，必须转成UNIX时间戳(数字)才能正确渲染——之前直接把这个字符串传进去，
@@ -1286,14 +1411,43 @@ function beijingDatetimeToUnixSeconds(datetimeStr){
   return Math.floor(new Date(datetimeStr.replace(' ', 'T') + '+08:00').getTime() / 1000);
 }
 
-function computeMASeriesData(bars, period){
+/** 简单移动平均，valueFn决定对bar的哪个字段算(默认close，方便复用同一套逻辑给成交量算均量线)。*/
+function computeMASeriesData(bars, period, valueFn){
+  valueFn = valueFn || (b=>b.close);
   const out = [];
   for(let i=period-1; i<bars.length; i++){
     let sum = 0;
-    for(let j=i-period+1; j<=i; j++) sum += bars[j].close;
+    for(let j=i-period+1; j<=i; j++) sum += valueFn(bars[j]);
     out.push({time: bars[i].date, value: sum/period});
   }
   return out;
+}
+
+/** RSI(相对强弱指标)，标准的Wilder平滑法(不是简单移动平均)。
+ *  返回跟bars等长的数组，前period个是null(数据不够)。*/
+function computeRSI(bars, period=14){
+  const n = bars.length;
+  const rsi = new Array(n).fill(null);
+  if(n < period+1) return rsi;
+
+  const changes = new Array(n).fill(0);
+  for(let i=1; i<n; i++) changes[i] = bars[i].close - bars[i-1].close;
+
+  let avgGain=0, avgLoss=0;
+  for(let i=1; i<=period; i++){
+    avgGain += Math.max(changes[i], 0);
+    avgLoss += Math.max(-changes[i], 0);
+  }
+  avgGain/=period; avgLoss/=period;
+  rsi[period] = avgLoss===0 ? 100 : 100 - 100/(1+avgGain/avgLoss);
+
+  for(let i=period+1; i<n; i++){
+    const gain = Math.max(changes[i],0), loss = Math.max(-changes[i],0);
+    avgGain = (avgGain*(period-1)+gain)/period;
+    avgLoss = (avgLoss*(period-1)+loss)/period;
+    rsi[i] = avgLoss===0 ? 100 : 100 - 100/(1+avgGain/avgLoss);
+  }
+  return rsi;
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
