@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-26T04:30:24.383727+00:00",
+  "generatedAt": "2026-07-26T14:47:00.355462+00:00",
   "cbotPrice": {
     "available": true,
     "price": 335.2,
@@ -647,18 +647,6 @@
             "forecastDate": "06/30/2026"
           },
           {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Jul 2026",
-            "forecastDate": "06/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Jul 2026",
-            "forecastDate": "06/30/2026"
-          },
-          {
             "outlook": "No_Drought",
             "outlookLabel": "预计无旱",
             "targetPeriod": "Jul 2026",
@@ -671,9 +659,9 @@
             "forecastDate": "06/30/2026"
           }
         ],
-        "totalPoints": 8,
-        "worseningCount": 5,
-        "worseningPct": 62.5,
+        "totalPoints": 6,
+        "worseningCount": 4,
+        "worseningPct": 66.7,
         "dominantOutlook": "Persistence",
         "dominantOutlookLabel": "干旱持续",
         "targetPeriod": "Jul 2026"
@@ -722,15 +710,9 @@
             "outlookLabel": "预计无旱",
             "targetPeriod": "Jul 2026",
             "forecastDate": "06/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Jul 2026",
-            "forecastDate": "06/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 7,
         "worseningCount": 0,
         "worseningPct": 0.0,
         "dominantOutlook": "No_Drought",
@@ -1092,8 +1074,8 @@
         "targetPeriod": "Jul 2026"
       }
     },
-    "avgWorseningPct": 17.4,
-    "simpleWorseningPct": 18.8,
+    "avgWorseningPct": 17.8,
+    "simpleWorseningPct": 19.1,
     "overallSignal": 0,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
@@ -1327,7 +1309,6 @@
           "lon": -85.9214,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-85.9214%2C+%22y%22%3A+39.2014%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         }
       },
@@ -1351,15 +1332,14 @@
           "lon": -98.6467,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-98.6467%2C+%22y%22%3A+42.4547%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 502: Bad Gateway",
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point3": {
           "lat": 41.9911,
           "lon": -97.4173,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.4173%2C+%22y%22%3A+41.9911%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point4": {
           "lat": 41.1239,
@@ -1395,8 +1375,9 @@
           "lat": 41.6528,
           "lon": -83.5379,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-83.5379%2C+%22y%22%3A+41.6528%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
+          "httpStatus": 504,
+          "error": "HTTP 504: Gateway Time-out",
+          "rawSnippet": "<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE an"
         },
         "point1": {
           "lat": 41.4993,
@@ -1461,6 +1442,7 @@
           "lon": -91.3585,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.3585%2C+%22y%22%3A+39.7084%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
         "point2": {
@@ -1482,6 +1464,7 @@
           "lon": -94.5786,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-94.5786%2C+%22y%22%3A+39.0997%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
         "point5": {
@@ -1532,6 +1515,7 @@
           "lat": 44.8996,
           "lon": -97.1152,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.1152%2C+%22y%22%3A+44.8996%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
@@ -1649,6 +1633,7 @@
           "lon": -96.5717,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.5717%2C+%22y%22%3A+39.1836%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
         "point4": {
@@ -5527,364 +5512,109 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 0.3,
-        "avgMaxTemp": 35.5
+        "precip7d": 0.4,
+        "avgMaxTemp": 35.4
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 25.5,
-        "avgMaxTemp": 23.9
+        "precip7d": 10.3,
+        "avgMaxTemp": 24.0
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 62.8,
-        "avgMaxTemp": 22.4
+        "precip7d": 46.7,
+        "avgMaxTemp": 22.7
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
         "precip7d": 0.0,
-        "avgMaxTemp": 32.8
+        "avgMaxTemp": 32.4
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 3.9,
-        "avgMaxTemp": 32.1
+        "precip7d": 18.4,
+        "avgMaxTemp": 31.5
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 0.8,
-        "avgMaxTemp": 29.5
+        "precip7d": 0.0,
+        "avgMaxTemp": 29.2
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 14.3,
-        "avgMaxTemp": 21.0
+        "precip7d": 17.0,
+        "avgMaxTemp": 21.4
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 5.6,
-        "avgMaxTemp": 19.1
+        "precip7d": 0.5,
+        "avgMaxTemp": 19.6
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 21.4,
-        "avgMaxTemp": 18.7
+        "precip7d": 16.2,
+        "avgMaxTemp": 18.5
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 9.8,
-        "avgMaxTemp": 21.1
+        "precip7d": 28.3,
+        "avgMaxTemp": 21.4
       }
     },
-    "avgPrecip7d": 13.6,
-    "avgMaxTemp": 30.1,
+    "avgPrecip7d": 10.6,
+    "avgMaxTemp": 30.0,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
   "southAmericaPsd": {
-    "available": true,
-    "byCountry": {
-      "BR": {
-        "available": true,
-        "marketYear": 2026,
-        "production": 186000.0,
-        "totalSupply": 224488.0,
-        "countryName": "巴西",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 50000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 37688.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 186000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 800.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 224488.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 118000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 65000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 4600.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 69600.0
-            }
-          ]
-        }
-      },
-      "AR": {
-        "available": true,
-        "marketYear": 2026,
-        "production": 50000.0,
-        "totalSupply": 80321.0,
-        "countryName": "阿根廷",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 17100.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 23821.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 50000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 6500.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 80321.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 6200.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 43000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 6900.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 49900.0
-            }
-          ]
-        }
-      }
-    },
-    "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）"
+    "available": false,
+    "reason": "大豆商品代码查找失败",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/psd/commodities",
+      "httpStatus": 404,
+      "error": "HTTP 404: Not Found",
+      "rawSnippet": "404 Not Found: Requested route ('api.fas.usda.gov') does not exist.\n",
+      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   },
   "exportSales": {
-    "available": true,
-    "weekEnding": "2026-07-16T00:00:00",
-    "marketYearUsed": 2026,
-    "dataAgeDays": 10,
-    "isStale": false,
-    "latestTotalMT": 176928,
-    "prevTotalMT": 245107,
-    "wowChangePct": -27.8,
-    "chinaLatestMT": 0,
-    "source": "USDA-FAS ESR API",
-    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
+    "available": false,
+    "reason": "未能找到豆粕的ESR商品编码",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/esr/commodities",
+      "httpStatus": 404,
+      "error": "HTTP 404: Not Found",
+      "rawSnippet": "404 Not Found: Requested route ('api.fas.usda.gov') does not exist.\n",
+      "failureStage": "请求/esr/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   },
   "supplyDemand": {
-    "available": true,
-    "marketYear": 2025,
-    "wasdeVintage": "2026年07月版",
-    "endingStocks": 408.0,
-    "production": 57186.0,
-    "totalSupply": 58309.0,
-    "domesticConsumption": 39485.0,
-    "source": "USDA-FAS PSD API (WASDE同源数据)",
-    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
+    "available": false,
+    "reason": "未能找到豆粕的PSD商品编码",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/psd/commodities",
+      "httpStatus": 404,
+      "error": "HTTP 404: Not Found",
+      "rawSnippet": "404 Not Found: Requested route ('api.fas.usda.gov') does not exist.\n",
+      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   }
 }
