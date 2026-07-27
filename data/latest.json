@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-27T04:40:23.348063+00:00",
+  "generatedAt": "2026-07-27T15:57:26.270398+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 331.8,
-    "change": 0.5,
-    "changePct": 0.15,
+    "price": 322.7,
+    "change": -8.6,
+    "changePct": -2.6,
     "asOf": "2026-07-27T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -1654,7 +1654,6 @@
           "lon": -97.9298,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.9298%2C+%22y%22%3A+38.0608%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
         "point5": {
@@ -1720,7 +1719,6 @@
           "lon": -85.3378,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-85.3378%2C+%22y%22%3A+43.4195%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         },
         "point6": {
@@ -1735,7 +1733,6 @@
           "lon": -84.68,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.68%2C+%22y%22%3A+45.0%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"06/30/2026\",\"target\":\"Jul 2026\"}}]}"
         }
       },
@@ -1828,7 +1825,7 @@
   "dceM09Daily": {
     "available": true,
     "symbol": "M2609",
-    "totalBarsReturned": 206,
+    "totalBarsReturned": 207,
     "bars": [
       {
         "date": "2025-09-15",
@@ -3889,6 +3886,16 @@
         "volume": 1421398.0,
         "hold": 2095793.0,
         "settle": 3189.0
+      },
+      {
+        "date": "2026-07-27",
+        "open": 3203.0,
+        "high": 3209.0,
+        "low": 3155.0,
+        "close": 3164.0,
+        "volume": 1809390.0,
+        "hold": 1989086.0,
+        "settle": 3176.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -3898,33 +3905,6 @@
     "symbol": "M2609",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-06-12 11:15:00",
-        "open": 2931.0,
-        "high": 2938.0,
-        "low": 2928.0,
-        "close": 2936.0,
-        "volume": 72631.0,
-        "hold": 2248662.0
-      },
-      {
-        "datetime": "2026-06-12 14:15:00",
-        "open": 2935.0,
-        "high": 2937.0,
-        "low": 2926.0,
-        "close": 2934.0,
-        "volume": 53239.0,
-        "hold": 2243711.0
-      },
-      {
-        "datetime": "2026-06-12 15:00:00",
-        "open": 2934.0,
-        "high": 2941.0,
-        "low": 2932.0,
-        "close": 2941.0,
-        "volume": 44.0,
-        "hold": 2240014.0
-      },
       {
         "datetime": "2026-06-12 22:00:00",
         "open": 2935.0,
@@ -5513,10 +5493,37 @@
         "datetime": "2026-07-27 14:15:00",
         "open": 3177.0,
         "high": 3183.0,
-        "low": 3175.0,
-        "close": 3181.0,
-        "volume": 19947.0,
-        "hold": 2017492.0
+        "low": 3159.0,
+        "close": 3173.0,
+        "volume": 197566.0,
+        "hold": 2011383.0
+      },
+      {
+        "datetime": "2026-07-27 15:00:00",
+        "open": 3172.0,
+        "high": 3180.0,
+        "low": 3164.0,
+        "close": 3164.0,
+        "volume": 16510.0,
+        "hold": 1989105.0
+      },
+      {
+        "datetime": "2026-07-27 22:00:00",
+        "open": 3146.0,
+        "high": 3147.0,
+        "low": 3117.0,
+        "close": 3122.0,
+        "volume": 562395.0,
+        "hold": 1928917.0
+      },
+      {
+        "datetime": "2026-07-27 23:00:00",
+        "open": 3122.0,
+        "high": 3134.0,
+        "low": 3112.0,
+        "close": 3128.0,
+        "volume": 30.0,
+        "hold": 1891204.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5528,21 +5535,21 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 0.4,
-        "avgMaxTemp": 35.3
+        "precip7d": 0.8,
+        "avgMaxTemp": 35.2
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 26.5,
-        "avgMaxTemp": 24.2
+        "precip7d": 14.4,
+        "avgMaxTemp": 24.8
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 68.3,
+        "precip7d": 51.5,
         "avgMaxTemp": 23.1
       },
       "GO": {
@@ -5550,53 +5557,53 @@
         "nameCn": "戈亚斯",
         "country": "BR",
         "precip7d": 0.0,
-        "avgMaxTemp": 32.3
+        "avgMaxTemp": 32.1
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 5.3,
-        "avgMaxTemp": 32.0
+        "precip7d": 14.1,
+        "avgMaxTemp": 30.8
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
         "precip7d": 0.3,
-        "avgMaxTemp": 29.8
+        "avgMaxTemp": 28.8
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 14.2,
-        "avgMaxTemp": 20.0
+        "precip7d": 51.7,
+        "avgMaxTemp": 20.8
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 2.0,
-        "avgMaxTemp": 19.3
+        "precip7d": 3.1,
+        "avgMaxTemp": 20.0
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 20.1,
-        "avgMaxTemp": 17.4
+        "precip7d": 30.5,
+        "avgMaxTemp": 18.2
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 15.2,
-        "avgMaxTemp": 20.1
+        "precip7d": 49.7,
+        "avgMaxTemp": 20.6
       }
     },
-    "avgPrecip7d": 14.7,
-    "avgMaxTemp": 30.1,
+    "avgPrecip7d": 12.5,
+    "avgMaxTemp": 29.9,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
