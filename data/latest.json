@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-10T14:33:59.176814+00:00",
+  "generatedAt": "2026-08-11T03:06:05.014279+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 312.4,
-    "change": 4.3,
-    "changePct": 1.4,
-    "asOf": "2026-08-10T04:00:00+00:00",
+    "price": 311.2,
+    "change": 7.5,
+    "changePct": 2.47,
+    "asOf": "2026-08-11T02:55:10+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
@@ -151,9 +151,9 @@
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":31099.72,\"d0\":25211.78,\"d1\":14866.62,\"d2\":47.60,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":30157.28,\"d0\":26154.22,\"d1\":12662.38,\"d2\":47.60,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":31099.72,\"d0\":25211.78,\"d1\":14866.62,\"d2\":47.60,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":30157.28,\"d0\":26154.22,\"d1\":12662.38,\"d2\":47.60,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "IA",
@@ -167,12 +167,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":41479.75,\"d0\":14902.79,\"d1\":981.27,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":41251.35,\"d0\":15131.20,\"d1\":1816.62,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation\":\"IL",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":41479.75,\"d0\":14902.79,\"d1\":981.27,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":41251.35,\"d0\":15131.20,\"d1\":1816.62,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "IL",
@@ -186,12 +186,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":9325.39,\"d0\":75055.79,\"d1\":59023.12,\"d2\":28929.37,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":4003.75,\"d0\":80377.43,\"d1\":64126.19,\"d2\":29503.39,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbrevia",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":9325.39,\"d0\":75055.79,\"d1\":59023.12,\"d2\":28929.37,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":4003.75,\"d0\":80377.43,\"d1\":64126.19,\"d2\":29503.39,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "MN",
@@ -205,12 +205,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "IN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":35176.11,\"d0\":1022.99,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32856.73,\"d0\":3342.37,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation\":\"IN\",\"none",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":35176.11,\"d0\":1022.99,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32856.73,\"d0\":3342.37,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "IN",
@@ -224,12 +224,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "NE": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":5536.11,\"d0\":71763.89,\"d1\":63502.24,\"d2\":41202.50,\"d3\":13290.36,\"d4\":2278.53,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":2636.37,\"d0\":74663.63,\"d1\":64844.43,\"d2\":47741.35,\"d3\":17427.27,\"d4\":2259.71,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":5536.11,\"d0\":71763.89,\"d1\":63502.24,\"d2\":41202.50,\"d3\":13290.36,\"d4\":2278.53,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":2636.37,\"d0\":74663.63,\"d1\":64844.43,\"d2\":47741.35,\"d3\":17427.27,\"d4\":2259.71,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "NE",
@@ -243,12 +243,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "OH": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39327.50,\"d0\":1982.05,\"d1\":430.55,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39205.00,\"d0\":2104.55,\"d1\":285.69,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation\":\"OH\",\"",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39327.50,\"d0\":1982.05,\"d1\":430.55,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39205.00,\"d0\":2104.55,\"d1\":285.69,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "OH",
@@ -262,12 +262,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MO": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":41218.57,\"d0\":28499.49,\"d1\":2398.49,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":58455.45,\"d0\":11262.61,\"d1\":1962.36,\"d2\":300.40,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation\":",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":41218.57,\"d0\":28499.49,\"d1\":2398.49,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":58455.45,\"d0\":11262.61,\"d1\":1962.36,\"d2\":300.40,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "MO",
@@ -281,12 +281,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "SD": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":9381.83,\"d0\":67745.24,\"d1\":58821.72,\"d2\":27694.22,\"d3\":7823.28,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":8355.45,\"d0\":68771.61,\"d1\":56353.25,\"d2\":25401.68,\"d3\":6619.32,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAb",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":9381.83,\"d0\":67745.24,\"d1\":58821.72,\"d2\":27694.22,\"d3\":7823.28,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":8355.45,\"d0\":68771.61,\"d1\":56353.25,\"d2\":25401.68,\"d3\":6619.32,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "SD",
@@ -300,12 +300,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "ND": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5131.03,\"d0\":65575.27,\"d1\":39892.17,\"d2\":16366.44,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":15503.56,\"d0\":55202.74,\"d1\":20068.23,\"d2\":6026.20,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbrevia",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5131.03,\"d0\":65575.27,\"d1\":39892.17,\"d2\":16366.44,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":15503.56,\"d0\":55202.74,\"d1\":20068.23,\"d2\":6026.20,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "ND",
@@ -319,12 +319,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "KS": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":38312.48,\"d0\":43974.92,\"d1\":26152.44,\"d2\":4441.08,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":42967.54,\"d0\":39319.86,\"d1\":22571.31,\"d2\":5121.78,\"d3\":1.11,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbrevia",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":38312.48,\"d0\":43974.92,\"d1\":26152.44,\"d2\":4441.08,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":42967.54,\"d0\":39319.86,\"d1\":22571.31,\"d2\":5121.78,\"d3\":1.11,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "KS",
@@ -338,12 +338,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":38659.57,\"d0\":19497.96,\"d1\":1492.89,\"d2\":672.86,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":44879.96,\"d0\":13277.57,\"d1\":1492.89,\"d2\":736.52,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviation",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":38659.57,\"d0\":19497.96,\"d1\":1492.89,\"d2\":672.86,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":44879.96,\"d0\":13277.57,\"d1\":1492.89,\"d2\":736.52,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "MI",
@@ -357,12 +357,12 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "WI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=7/27/2026&enddate=8/10/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=7/28/2026&enddate=8/11/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4616.52,\"d0\":51431.94,\"d1\":19130.25,\"d2\":7213.34,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4458.57,\"d0\":51589.88,\"d1\":22719.64,\"d2\":2675.42,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-21T00:00:00\",\"stateAbbreviati",
+        "rawSnippet": "[{\"mapDate\":\"2026-08-04T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4616.52,\"d0\":51431.94,\"d1\":19130.25,\"d2\":7213.34,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-08-04T00:00:00\",\"validEnd\":\"2026-08-10T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-07-28T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4458.57,\"d0\":51589.88,\"d1\":22719.64,\"d2\":2675.42,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-07-28T00:00:00\",\"validEnd\":\"2026-08-03T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-08-04T00:00:00",
           "stateAbbreviation": "WI",
@@ -376,7 +376,7 @@
           "validEnd": "2026-08-10T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       }
     }
   },
@@ -1798,9 +1798,9 @@
   },
   "soybeanCondition": {
     "available": true,
-    "weekEnding": "2026-08-02",
-    "goodExcellentPct": 63.0,
-    "wowChangePts": 0.0,
+    "weekEnding": "2026-08-09",
+    "goodExcellentPct": 62.0,
+    "wowChangePts": -1.0,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -4006,24 +4006,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-06-30 10:00:00",
-        "open": 2950.0,
-        "high": 2958.0,
-        "low": 2942.0,
-        "close": 2945.0,
-        "volume": 209074.0,
-        "hold": 1923471.0
-      },
-      {
-        "datetime": "2026-06-30 11:15:00",
-        "open": 2945.0,
-        "high": 2949.0,
-        "low": 2943.0,
-        "close": 2947.0,
-        "volume": 34021.0,
-        "hold": 1913882.0
-      },
-      {
         "datetime": "2026-06-30 14:15:00",
         "open": 2947.0,
         "high": 2949.0,
@@ -5621,9 +5603,27 @@
         "open": 3090.0,
         "high": 3094.0,
         "low": 3088.0,
+        "close": 3090.0,
+        "volume": 17131.0,
+        "hold": 948305.0
+      },
+      {
+        "datetime": "2026-08-11 10:00:00",
+        "open": 3094.0,
+        "high": 3096.0,
+        "low": 3088.0,
         "close": 3092.0,
-        "volume": 25.0,
-        "hold": 951762.0
+        "volume": 61587.0,
+        "hold": 929149.0
+      },
+      {
+        "datetime": "2026-08-11 11:15:00",
+        "open": 3092.0,
+        "high": 3092.0,
+        "low": 3079.0,
+        "close": 3086.0,
+        "volume": 6.0,
+        "hold": 907559.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5642,15 +5642,15 @@
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 25.6,
-        "avgMaxTemp": 24.8
+        "precip7d": 30.6,
+        "avgMaxTemp": 25.2
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 104.8,
-        "avgMaxTemp": 18.8
+        "precip7d": 65.4,
+        "avgMaxTemp": 21.1
       },
       "GO": {
         "available": true,
@@ -5663,319 +5663,66 @@
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 1.4,
-        "avgMaxTemp": 33.3
+        "precip7d": 0.3,
+        "avgMaxTemp": 33.2
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
         "precip7d": 0.0,
-        "avgMaxTemp": 32.5
+        "avgMaxTemp": 32.3
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 21.1,
-        "avgMaxTemp": 14.1
+        "precip7d": 9.7,
+        "avgMaxTemp": 14.7
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 2.1,
-        "avgMaxTemp": 13.5
+        "precip7d": 2.3,
+        "avgMaxTemp": 14.4
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 3.0,
-        "avgMaxTemp": 13.1
+        "precip7d": 1.9,
+        "avgMaxTemp": 13.7
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 14.6,
-        "avgMaxTemp": 14.0
+        "precip7d": 7.6,
+        "avgMaxTemp": 14.9
       }
     },
-    "avgPrecip7d": 18.8,
-    "avgMaxTemp": 30.4,
+    "avgPrecip7d": 13.9,
+    "avgMaxTemp": 30.8,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
   "southAmericaPsd": {
-    "available": true,
-    "byCountry": {
-      "BR": {
-        "available": true,
-        "marketYear": 2026,
-        "production": 186000.0,
-        "totalSupply": 224488.0,
-        "countryName": "巴西",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 50000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 37688.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 186000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 800.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 224488.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 118000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 65000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 4600.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 69600.0
-            }
-          ]
-        }
-      },
-      "AR": {
-        "available": true,
-        "marketYear": 2026,
-        "production": 50000.0,
-        "totalSupply": 80321.0,
-        "countryName": "阿根廷",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 17100.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 23821.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 50000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 6500.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 80321.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 6200.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 43000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 6900.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2026",
-              "calendarYear": "2026",
-              "month": "07",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 49900.0
-            }
-          ]
-        }
-      }
-    },
-    "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）"
+    "available": false,
+    "reason": "大豆商品代码查找失败",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/psd/commodities",
+      "httpStatus": 500,
+      "error": "HTTP 500: Internal Server Error",
+      "rawSnippet": "<HTML><HEAD><TITLE>500: Server Error []</TITLE></HEAD><BODY>\n<H1>500: Server Error</H1>\n</BODY></HTML>",
+      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   },
   "exportSales": {
     "available": true,
     "weekEnding": "2026-07-30T00:00:00",
     "marketYearUsed": 2026,
-    "dataAgeDays": 11,
+    "dataAgeDays": 12,
     "isStale": false,
     "latestTotalMT": 359639,
     "prevTotalMT": 367347,
@@ -5986,13 +5733,60 @@
   },
   "supplyDemand": {
     "available": true,
-    "marketYear": 2025,
+    "marketYear": 2026,
     "wasdeVintage": "2026年07月版",
-    "endingStocks": 408.0,
-    "production": 57186.0,
-    "totalSupply": 58309.0,
-    "domesticConsumption": 39485.0,
+    "endingStocks": null,
+    "production": null,
+    "totalSupply": null,
+    "domesticConsumption": null,
     "source": "USDA-FAS PSD API (WASDE同源数据)",
-    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
+    "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
+    "debug": {
+      "warning": "接口返回的是数字attributeId而不是字符串名称，且未能成功获取attributeId对照表（这个对照表接口的确切路径尚未100%确认）",
+      "actualAttributeNamesSeen": [
+        "attributeId=125",
+        "attributeId=140",
+        "attributeId=149",
+        "attributeId=161",
+        "attributeId=176",
+        "attributeId=178",
+        "attributeId=181",
+        "attributeId=194",
+        "attributeId=20",
+        "attributeId=28",
+        "attributeId=57",
+        "attributeId=7",
+        "attributeId=86",
+        "attributeId=88"
+      ],
+      "sampleRawRow": {
+        "commodityCode": "0813100",
+        "countryCode": "US",
+        "marketYear": "2026",
+        "calendarYear": "2026",
+        "month": "07",
+        "attributeId": 7,
+        "unitId": 8,
+        "value": 74843.0
+      },
+      "allCandidateYearsAttempted": {
+        "2025": {
+          "httpStatus": 500,
+          "rowCount": 0
+        },
+        "2026": {
+          "httpStatus": 200,
+          "rowCount": 14,
+          "latestVintage": [
+            "2026",
+            "07"
+          ]
+        },
+        "2027": {
+          "httpStatus": 200,
+          "rowCount": 0
+        }
+      }
+    }
   }
 }
