@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-24T02:23:59.196434+00:00",
+  "generatedAt": "2026-08-24T14:08:02.046114+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 327.8,
-    "change": 10.1,
-    "changePct": 3.18,
-    "asOf": "2026-08-24T02:13:38+00:00",
+    "price": 326.5,
+    "change": 8.8,
+    "changePct": 2.77,
+    "asOf": "2026-08-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "droughtMonitor": {
@@ -1825,7 +1825,7 @@
   "dceM09Daily": {
     "available": true,
     "symbol": "M2609",
-    "totalBarsReturned": 226,
+    "totalBarsReturned": 227,
     "bars": [
       {
         "date": "2025-09-15",
@@ -4086,6 +4086,16 @@
         "volume": 201677.0,
         "hold": 411714.0,
         "settle": 3212.0
+      },
+      {
+        "date": "2026-08-24",
+        "open": 3198.0,
+        "high": 3211.0,
+        "low": 3182.0,
+        "close": 3184.0,
+        "volume": 150008.0,
+        "hold": 339933.0,
+        "settle": 3194.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -4095,42 +4105,6 @@
     "symbol": "M2609",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-07-13 14:15:00",
-        "open": 3054.0,
-        "high": 3057.0,
-        "low": 3050.0,
-        "close": 3053.0,
-        "volume": 152949.0,
-        "hold": 1936009.0
-      },
-      {
-        "datetime": "2026-07-13 15:00:00",
-        "open": 3054.0,
-        "high": 3055.0,
-        "low": 3046.0,
-        "close": 3050.0,
-        "volume": 131.0,
-        "hold": 1928775.0
-      },
-      {
-        "datetime": "2026-07-13 22:00:00",
-        "open": 3048.0,
-        "high": 3061.0,
-        "low": 3046.0,
-        "close": 3056.0,
-        "volume": 204938.0,
-        "hold": 1939068.0
-      },
-      {
-        "datetime": "2026-07-13 23:00:00",
-        "open": 3055.0,
-        "high": 3065.0,
-        "low": 3053.0,
-        "close": 3064.0,
-        "volume": 51243.0,
-        "hold": 1936211.0
-      },
       {
         "datetime": "2026-07-14 10:00:00",
         "open": 3055.0,
@@ -5694,13 +5668,13 @@
         "high": 3211.0,
         "low": 3202.0,
         "close": 3204.0,
-        "volume": 783.0,
+        "volume": 8918.0,
         "hold": 390303.0
       },
       {
         "datetime": "2026-08-24 10:00:00",
         "open": 3197.0,
-        "high": 3199.0,
+        "high": 3204.0,
         "low": 3185.0,
         "close": 3196.0,
         "volume": 16483.0,
@@ -5709,11 +5683,47 @@
       {
         "datetime": "2026-08-24 11:15:00",
         "open": 3196.0,
-        "high": 3201.0,
-        "low": 3193.0,
-        "close": 3199.0,
-        "volume": 38.0,
-        "hold": 373586.0
+        "high": 3202.0,
+        "low": 3192.0,
+        "close": 3200.0,
+        "volume": 16006.0,
+        "hold": 369503.0
+      },
+      {
+        "datetime": "2026-08-24 14:15:00",
+        "open": 3200.0,
+        "high": 3202.0,
+        "low": 3186.0,
+        "close": 3193.0,
+        "volume": 31570.0,
+        "hold": 352375.0
+      },
+      {
+        "datetime": "2026-08-24 15:00:00",
+        "open": 3193.0,
+        "high": 3194.0,
+        "low": 3183.0,
+        "close": 3184.0,
+        "volume": 22.0,
+        "hold": 340997.0
+      },
+      {
+        "datetime": "2026-08-24 22:00:00",
+        "open": 3182.0,
+        "high": 3187.0,
+        "low": 3177.0,
+        "close": 3183.0,
+        "volume": 24016.0,
+        "hold": 328465.0
+      },
+      {
+        "datetime": "2026-08-24 23:00:00",
+        "open": 3182.0,
+        "high": 3184.0,
+        "low": 3174.0,
+        "close": 3174.0,
+        "volume": 39.0,
+        "hold": 326419.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5725,75 +5735,75 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 0.0,
-        "avgMaxTemp": 37.1
+        "precip7d": 0.4,
+        "avgMaxTemp": 37.2
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 7.5,
-        "avgMaxTemp": 24.6
+        "precip7d": 3.6,
+        "avgMaxTemp": 25.8
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 65.3,
-        "avgMaxTemp": 21.2
+        "precip7d": 127.4,
+        "avgMaxTemp": 22.5
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 0.1,
-        "avgMaxTemp": 34.8
+        "precip7d": 0.2,
+        "avgMaxTemp": 35.1
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 1.5,
-        "avgMaxTemp": 32.2
+        "precip7d": 10.2,
+        "avgMaxTemp": 32.0
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 15.7,
-        "avgMaxTemp": 31.5
+        "precip7d": 13.4,
+        "avgMaxTemp": 31.7
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 2.6,
-        "avgMaxTemp": 19.3
+        "precip7d": 2.8,
+        "avgMaxTemp": 19.4
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 1.8,
-        "avgMaxTemp": 20.4
+        "precip7d": 2.2,
+        "avgMaxTemp": 21.2
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 10.0,
-        "avgMaxTemp": 16.7
+        "precip7d": 17.7,
+        "avgMaxTemp": 17.4
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 4.3,
-        "avgMaxTemp": 19.3
+        "precip7d": 5.7,
+        "avgMaxTemp": 19.4
       }
     },
-    "avgPrecip7d": 11.3,
-    "avgMaxTemp": 31.0,
+    "avgPrecip7d": 20.0,
+    "avgMaxTemp": 31.4,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
