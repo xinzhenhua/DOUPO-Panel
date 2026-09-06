@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-06T05:42:26.045224+00:00",
+  "generatedAt": "2026-09-06T16:20:33.841997+00:00",
   "cbotPrice": {
     "available": true,
     "price": 355.1,
@@ -5825,364 +5825,103 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 5.9,
-        "avgMaxTemp": 33.7
+        "precip7d": 11.9,
+        "avgMaxTemp": 34.1
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 111.5,
-        "avgMaxTemp": 20.3
+        "precip7d": 109.1,
+        "avgMaxTemp": 20.5
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 83.1,
-        "avgMaxTemp": 19.1
+        "precip7d": 66.1,
+        "avgMaxTemp": 17.9
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 30.9,
+        "precip7d": 29.7,
         "avgMaxTemp": 31.0
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 33.3,
-        "avgMaxTemp": 27.5
+        "precip7d": 33.7,
+        "avgMaxTemp": 27.9
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 50.2,
-        "avgMaxTemp": 28.5
+        "precip7d": 31.7,
+        "avgMaxTemp": 28.7
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 20.7,
-        "avgMaxTemp": 17.2
+        "precip7d": 4.1,
+        "avgMaxTemp": 17.3
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 8.9,
-        "avgMaxTemp": 17.9
+        "precip7d": 10.5,
+        "avgMaxTemp": 17.8
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 3.6,
-        "avgMaxTemp": 15.4
+        "precip7d": 3.0,
+        "avgMaxTemp": 14.9
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 16.2,
+        "precip7d": 2.1,
         "avgMaxTemp": 17.1
       }
     },
-    "avgPrecip7d": 42.0,
-    "avgMaxTemp": 27.5,
+    "avgPrecip7d": 40.0,
+    "avgMaxTemp": 27.6,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
   "southAmericaPsd": {
-    "available": true,
-    "byCountry": {
-      "BR": {
-        "available": true,
-        "marketYear": 2025,
-        "production": 180500.0,
-        "totalSupply": 219088.0,
-        "countryName": "巴西",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 48500.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 37688.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 180500.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 900.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 219088.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 115000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 62000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 4400.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "BR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 66400.0
-            }
-          ]
-        }
-      },
-      "AR": {
-        "available": true,
-        "marketYear": 2025,
-        "production": 49500.0,
-        "totalSupply": 81221.0,
-        "countryName": "阿根廷",
-        "debug": {
-          "matchedCommodity": {
-            "matchedBy": "精确匹配'Oilseed, Soybean'",
-            "matchedName": "Oilseed, Soybean"
-          },
-          "attemptsPerYear": {
-            "2025": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2026": {
-              "httpStatus": 200,
-              "rowCount": 13
-            },
-            "2027": {
-              "httpStatus": 200,
-              "rowCount": 0
-            }
-          },
-          "sampleRawRows": [
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 4,
-              "unitId": 4,
-              "value": 16200.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 20,
-              "unitId": 8,
-              "value": 24671.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 28,
-              "unitId": 8,
-              "value": 49500.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 57,
-              "unitId": 8,
-              "value": 7050.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 86,
-              "unitId": 8,
-              "value": 81221.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 88,
-              "unitId": 8,
-              "value": 9000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 7,
-              "unitId": 8,
-              "value": 42000.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 149,
-              "unitId": 8,
-              "value": 0.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 161,
-              "unitId": 8,
-              "value": 6400.0
-            },
-            {
-              "commodityCode": "2222000",
-              "countryCode": "AR",
-              "marketYear": "2025",
-              "calendarYear": "2026",
-              "month": "08",
-              "attributeId": 125,
-              "unitId": 8,
-              "value": 48400.0
-            }
-          ]
-        }
-      }
-    },
-    "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）"
+    "available": false,
+    "reason": "大豆商品代码查找失败",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/psd/commodities",
+      "error": "The read operation timed out",
+      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   },
   "exportSales": {
-    "available": true,
-    "weekEnding": "2026-08-27T00:00:00",
-    "marketYearUsed": 2026,
-    "dataAgeDays": 10,
-    "isStale": false,
-    "latestTotalMT": 197808,
-    "prevTotalMT": 321935,
-    "wowChangePct": -38.6,
-    "chinaLatestMT": 0,
-    "source": "USDA-FAS ESR API",
-    "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
+    "available": false,
+    "reason": "未能找到豆粕的ESR商品编码",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/esr/commodities",
+      "error": "The read operation timed out",
+      "failureStage": "请求/esr/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   },
   "supplyDemand": {
-    "available": true,
-    "marketYear": 2025,
-    "wasdeVintage": "2026年08月版",
-    "endingStocks": 408.0,
-    "production": 57427.0,
-    "totalSupply": 58604.0,
-    "domesticConsumption": 39599.0,
-    "source": "USDA-FAS PSD API (WASDE同源数据)",
-    "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
+    "available": false,
+    "reason": "未能找到豆粕的PSD商品编码",
+    "debug": {
+      "url": "https://api.fas.usda.gov/api/psd/commodities",
+      "error": "The read operation timed out",
+      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    }
   }
 }
