@@ -49,8 +49,10 @@ renderKline(dailyData, hourlyData, new Date().toISOString());
 setTimeout(()=>{
   check2('★核心验证：details收起状态下，页面加载完成时不应该立刻创建小时线图表(避免0宽高bug)',
     !lastCreatedContainerIds.includes('klineHourlyChartContainer'));
-  check2('但主K线图和MACD图应该正常创建(它们不在collapsed容器里，应该立刻初始化)',
-    lastCreatedContainerIds.includes('klineChartContainer') && lastCreatedContainerIds.includes('klineMacdContainer'));
+  check2('主K线图和成交量图应该正常创建(它们不在collapsed容器里，应该立刻初始化)',
+    lastCreatedContainerIds.includes('klineChartContainer') && lastCreatedContainerIds.includes('klineVolumeContainer'));
+  check2('★这次UI精简后，日线MACD也改成收起状态延迟加载了，不应该立刻创建',
+    !lastCreatedContainerIds.includes('klineMacdContainer'));
   check2('details元素应该被绑定了ontoggle处理函数', typeof hourlyDetails.ontoggle === 'function');
 
   const countBeforeToggle = createChartCallCount;

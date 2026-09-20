@@ -65,16 +65,16 @@ setTimeout(()=>{
 
   setTimeout(()=>{
     check('★统计列应该包含"今开"标签', makeEl('klineContent').innerHTML.includes('今开'));
-    check('★统计列应该包含"今高"/"今低"标签', makeEl('klineContent').innerHTML.includes('今高') && makeEl('klineContent').innerHTML.includes('今低'));
+    check('★统计列(今开/最高/最低合并成一行后)应该包含"最高"/"最低"标签', makeEl('klineContent').innerHTML.includes('最高') && makeEl('klineContent').innerHTML.includes('最低'));
     check('★统计列应该包含"昨收"标签', makeEl('klineContent').innerHTML.includes('昨收'));
     check('★统计列应该包含"昨结"标签(之前查过akshare有这个字段但没提取，这次补上了)', makeEl('klineContent').innerHTML.includes('昨结'));
     check('★统计列应该包含"持仓量"标签', makeEl('klineContent').innerHTML.includes('持仓量'));
     check('★统计列应该包含"日增仓"标签', makeEl('klineContent').innerHTML.includes('日增仓'));
     check('日增仓数值应该正确计算(最新持仓-前一日持仓)', makeEl('klineContent').innerHTML.includes('+500'));
 
-    check('★应该包含成交量图表容器', lastCreatedContainerIds.includes('klineVolumeContainer'));
-    check('★应该包含RSI图表容器', lastCreatedContainerIds.includes('klineRsiContainer'));
-    check('内容应包含当前RSI数值文字总结', makeEl('klineContent').innerHTML.includes('当前RSI'));
+    check('★应该包含成交量图表容器(立刻创建，不在details里)', lastCreatedContainerIds.includes('klineVolumeContainer'));
+    check('★RSI这次UI精简后改成收起状态延迟加载了，不应该立刻创建图表', !lastCreatedContainerIds.includes('klineRsiContainer'));
+    check('RSI(14)详情的展开摘要里应包含当前RSI数值', makeEl('klineContent').innerHTML.includes('RSI(14)详情'));
 
     H.printSummary();
   }, 10);

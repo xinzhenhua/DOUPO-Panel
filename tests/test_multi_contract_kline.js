@@ -80,9 +80,11 @@ setTimeout(()=>{
       const removeCountBeforeSwitch = removeCallCount;
       refreshKlineForContract('sep');
       // renderKline内部会同步调用destroyKlineCharts()（在setTimeout排队图表创建之前），
-      // 所以不需要等下一个setTimeout，此刻就该已经调用了remove()清理上一轮(jan)的4个图表实例
-      check('★切换合约前应该销毁上一次的图表实例(main+volume+macd+rsi共4个)，避免内存泄漏堆积',
-        removeCallCount === removeCountBeforeSwitch + 4);
+      // 所以不需要等下一个setTimeout，此刻就该已经调用了remove()清理上一轮(jan)的图表实例。
+      // ★这次UI精简后MACD/RSI改成收起状态延迟加载了，这个测试流程里从没打开过它们的details，
+      //   所以只有main+volume这2个会被创建/清理(不再是4个)。
+      check('★切换合约前应该销毁上一次的图表实例(main+volume共2个，MACD/RSI这次测试流程里没打开过)，避免内存泄漏堆积',
+        removeCallCount === removeCountBeforeSwitch + 2);
 
       setTimeout(()=>{
         check('切到sep合约后标题正确显示M2609', makeEl('klineCardTitle').textContent.includes('M2609'));
@@ -92,7 +94,7 @@ setTimeout(()=>{
         window._syncedData.dceM05Daily = {available:false, reason:'测试：模拟这个合约暂时没数据'};
         refreshKlineForContract('may');
         check('★切到没数据的合约，也应该先销毁上一个合约(sep)的图表实例，不留孤儿对象',
-          removeCallCount === removeCountBeforeNoData + 4);
+          removeCallCount === removeCountBeforeNoData + 2);
         check('切到没数据的合约，标题应该重置为通用文案，不残留上一个合约的symbol',
           makeEl('klineCardTitle').textContent === '日K线');
 

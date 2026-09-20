@@ -1140,6 +1140,9 @@ function renderKline(dailyData, hourlyData, genAt){
     rsiText = `<span class="${rsiCls}">${latestRsi.toFixed(1)}(${rsiLabel})</span>`;
   }
 
+  const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi);
+  const confluenceHtml = renderConfluenceSummaryHtml(confluenceSummary);
+
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
     hourlyHtml = `<details class="tier-details" id="klineHourlyDetails"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
@@ -1155,10 +1158,10 @@ function renderKline(dailyData, hourlyData, genAt){
 
   el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData.symbol}日K线</span>
     <span class="${chgCls}">${latest.close} (${chg>0?'+':''}${chg.toFixed(0)}，${chg>0?'+':''}${chgPct}%)</span></div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:6px">
+      今开<span class="neutral" style="font-weight:700"> ${latest.open}</span>　最高<span class="pos" style="font-weight:700"> ${latest.high}</span>　最低<span class="neg" style="font-weight:700"> ${latest.low}</span>
+    </div>
     <div class="grid2" style="margin-bottom:8px">
-      <div class="stat"><span class="sv neutral">${latest.open}</span><div class="sl">今开</div></div>
-      <div class="stat"><span class="sv pos">${latest.high}</span><div class="sl">今高</div></div>
-      <div class="stat"><span class="sv neg">${latest.low}</span><div class="sl">今低</div></div>
       <div class="stat"><span class="sv neutral">${prev.close}</span><div class="sl">昨收</div></div>
       <div class="stat"><span class="sv neutral">${latest.settle!=null?latest.settle:'--'}</span><div class="sl">昨结(前一日结算价)</div></div>
       <div class="stat"><span class="sv neutral">${latest.hold!=null?latest.hold.toLocaleString():'--'}</span><div class="sl">持仓量</div></div>
@@ -1176,16 +1179,23 @@ function renderKline(dailyData, hourlyData, genAt){
     <div id="klineChartContainer" style="height:320px"></div>
     <div style="font-size:9px;color:var(--t3);text-align:right;margin-top:2px">💡 可双指缩放/拖动查看细节，点击K线看具体开高低收数值</div>
 
+    <div class="card" style="margin-top:10px;padding:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:6px">📊 技术面共振摘要<span style="font-size:9px;font-weight:400;color:var(--t3)">· 透明列出各项指标方向，不代替你做买卖判断</span></div>
+      ${confluenceHtml}
+    </div>
+
     <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">成交量/持仓量<span style="font-size:9px;color:var(--t3)">· 柱=成交量(MA10金 MA20蓝) 白线=持仓量(左轴)</span></div>
     <div id="klineVolumeContainer" style="height:100px;margin-top:2px"></div>
 
-    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">MACD(12,26,9)<span style="font-size:9px;color:var(--t3)">· DIF白 DEA橙</span></div>
-    <div id="klineMacdContainer" style="height:130px;margin-top:2px"></div>
-    <div style="font-size:11px;margin-top:4px">${macdCrossText}</div>
+    <details class="tier-details" id="klineMacdDetails"><summary>MACD(12,26,9)详情 ▸<span style="font-size:9px;color:var(--t3);font-weight:400">· ${macdCrossText}</span></summary>
+      <div class="tier-body">
+        <div id="klineMacdContainer" style="height:130px;margin-top:8px"></div>
+      </div></details>
 
-    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">RSI(14)<span style="font-size:9px;color:var(--t3)">· >70超买 <30超卖</span></div>
-    <div id="klineRsiContainer" style="height:100px;margin-top:2px"></div>
-    <div style="font-size:11px;margin-top:4px">当前RSI：${rsiText}</div>
+    <details class="tier-details" id="klineRsiDetails"><summary>RSI(14)详情 ▸<span style="font-size:9px;color:var(--t3);font-weight:400">· 当前${rsiText}</span></summary>
+      <div class="tier-body">
+        <div id="klineRsiContainer" style="height:100px;margin-top:8px"></div>
+      </div></details>
 
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
@@ -1204,9 +1214,33 @@ function renderKline(dailyData, hourlyData, genAt){
     }
     const mainChart = renderCandlestickChart('klineChartContainer', bars, window._klineOverlayMode);
     const volChart = renderVolumeChart('klineVolumeContainer', bars, mainChart);
-    const macdChart = renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
-    const rsiChart = renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
-    window._klineChartInstances.push(mainChart, volChart, macdChart, rsiChart);
+    window._klineChartInstances.push(mainChart, volChart);
+
+    // ★MACD/RSI现在包在默认收起的details里(这次UI精简的一部分)，用跟小时线
+    //   完全一样的延迟初始化模式：等用户点开才建图表，避免收起状态下容器宽高是0
+    //   导致图表建出来但看不见的问题(这个坑之前小时线那次已经踩过一次了)。
+    const macdDetailsEl = document.getElementById('klineMacdDetails');
+    if(macdDetailsEl){
+      let macdInitialized = false;
+      macdDetailsEl.ontoggle = function(){
+        if(macdDetailsEl.open && !macdInitialized){
+          macdInitialized = true;
+          const macdChart = renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
+          window._klineChartInstances.push(macdChart);
+        }
+      };
+    }
+    const rsiDetailsEl = document.getElementById('klineRsiDetails');
+    if(rsiDetailsEl){
+      let rsiInitialized = false;
+      rsiDetailsEl.ontoggle = function(){
+        if(rsiDetailsEl.open && !rsiInitialized){
+          rsiInitialized = true;
+          const rsiChart = renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
+          window._klineChartInstances.push(rsiChart);
+        }
+      };
+    }
     // ★ 已修复真实bug：小时线图表容器包在默认收起的details元素里，之前在这里立刻创建图表，
     //   但收起状态下容器宽高是0，图表建出来了但完全看不见(而且之后展开也不会自动修复，
     //   因为LightweightCharts只在创建那一刻读取容器尺寸，不会持续监听details元素的开合状态)。
@@ -1535,6 +1569,91 @@ function computeBollingerBands(bars, period=20, k=2){
     middle[i]=mean; upper[i]=mean+k*stddev; lower[i]=mean-k*stddev;
   }
   return {middle, upper, lower};
+}
+
+/** 支撑/压力位：近N日(默认20)最低点=支撑，最高点=压力。这是最简单直接的算法，
+ *  不做复杂的多次测试/成交量加权之类的判断——透明、容易验证，是它的优点。*/
+function computeSupportResistance(bars, period=20){
+  if(bars.length === 0) return {support:null, resistance:null};
+  const window = bars.slice(-Math.min(period, bars.length));
+  return {
+    support: Math.min(...window.map(b=>b.low)),
+    resistance: Math.max(...window.map(b=>b.high)),
+  };
+}
+
+/** 趋势信号：看MA5/10/20/40/60是不是按顺序排列(多头排列=5>10>20>40>60，
+ *  空头排列=反过来)。只用数据量足够、算得出来的那些均线比较，均线不够时
+ *  用能拿到的最长那组。*/
+function computeTrendSignal(bars){
+  const periods = [5,10,20,40,60].filter(p=>bars.length>=p);
+  if(periods.length < 2) return {direction:'neutral', label:'数据不足，无法判断趋势'};
+  const maValues = periods.map(p=>{
+    const series = computeMASeriesData(bars, p);
+    return series[series.length-1].value;
+  });
+  const isAscending = maValues.every((v,i)=>i===0 || v <= maValues[i-1]); // 短期在上：5>10>20...
+  const isDescending = maValues.every((v,i)=>i===0 || v >= maValues[i-1]);
+  if(isAscending) return {direction:'bullish', label:'多头排列(短期均线在上)'};
+  if(isDescending) return {direction:'bearish', label:'空头排列(短期均线在下)'};
+  return {direction:'neutral', label:'震荡/排列不明确'};
+}
+
+/** 技术面共振摘要：把趋势/RSI/MACD柱状图方向/金叉死叉/价格相对支撑压力位的位置，
+ *  各自独立判断偏多还是偏空，然后单纯计数汇总——不合成一个"买/卖"结论，
+ *  只是把"现在有几项指标指向哪个方向"这个事实透明地摆出来，具体怎么判断交给用户自己。*/
+function computeConfluenceSummary(bars, dif, dea, histogram, rsi){
+  const factors = [];
+
+  const trend = computeTrendSignal(bars);
+  factors.push({name:'趋势(均线排列)', direction:trend.direction, detail:trend.label});
+
+  const latestRsi = rsi[rsi.length-1];
+  if(latestRsi!==null){
+    const dir = latestRsi>55?'bullish':latestRsi<45?'bearish':'neutral';
+    factors.push({name:'RSI(14)', direction:dir, detail:`${latestRsi.toFixed(1)}`});
+  }
+
+  const latestHist = histogram[histogram.length-1], prevHist = histogram[histogram.length-2];
+  if(latestHist!==null && prevHist!==null){
+    const dir = latestHist>prevHist ? 'bullish' : latestHist<prevHist ? 'bearish' : 'neutral';
+    factors.push({name:'MACD柱状图方向', direction:dir, detail: dir==='bullish'?'动能增强':dir==='bearish'?'动能减弱':'持平'});
+  }
+
+  const cross = findLatestMacdCross(dif, dea, bars);
+  if(cross){
+    factors.push({name:'MACD金叉/死叉', direction: cross.type==='golden'?'bullish':'bearish', detail:`${cross.type==='golden'?'金叉':'死叉'}(${cross.daysAgo===0?'今天':cross.daysAgo+'日前'})`});
+  }
+
+  const {support, resistance} = computeSupportResistance(bars, 20);
+  if(support!==null && resistance!==null && bars.length>0){
+    const latestClose = bars[bars.length-1].close;
+    const rangePos = (latestClose-support)/(resistance-support||1); // 0=贴近支撑，1=贴近压力
+    const dir = rangePos>0.7?'bearish':rangePos<0.3?'bullish':'neutral'; // 贴近压力位=上方空间有限，贴近支撑=下方空间有限，都是相对该关注的方向；这里用"离压力太近偏空/离支撑太近偏多"表示离边界的风险，不是趋势方向本身
+    factors.push({name:'价格相对支撑/压力位', direction:dir, detail:`支撑${support} / 压力${resistance}`});
+  }
+
+  const bullCount = factors.filter(f=>f.direction==='bullish').length;
+  const bearCount = factors.filter(f=>f.direction==='bearish').length;
+  const neutralCount = factors.filter(f=>f.direction==='neutral').length;
+
+  return {factors, bullCount, bearCount, neutralCount};
+}
+
+/** 把computeConfluenceSummary()的结果渲染成紧凑的HTML——每个因子一行，
+ *  顶部是"N项偏多/M项偏空/K项中性"的计数总览，不合成买卖结论。*/
+function renderConfluenceSummaryHtml(summary){
+  const {factors, bullCount, bearCount, neutralCount} = summary;
+  const dirCls = d => d==='bullish'?'pos':d==='bearish'?'neg':'neutral';
+  const dirLabel = d => d==='bullish'?'偏多':d==='bearish'?'偏空':'中性';
+  const countLine = `<span class="pos">${bullCount}项偏多</span> · <span class="neg">${bearCount}项偏空</span> · <span class="neutral">${neutralCount}项中性</span>`;
+  const rows = factors.map(f=>
+    `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-top:1px solid var(--bdr)">
+      <span style="color:var(--t2)">${f.name}</span>
+      <span class="${dirCls(f.direction)}">${dirLabel(f.direction)} · ${f.detail}</span>
+    </div>`
+  ).join('');
+  return `<div style="font-size:12px;font-weight:700;margin-bottom:4px">${countLine}</div>${rows}`;
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
