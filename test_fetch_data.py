@@ -788,9 +788,9 @@ def test_contract_code_computation(monkeypatch_fetch):
 
 def test_main_fetches_all_three_contracts(monkeypatch_fetch):
     """★验证多合约接入：main()应该对9月/5月/1月三个合约都分别调用日线+小时线抓取，
-    用get_current_contract_code()算出的具体合约代码去请求，存进以月份命名(不含具体年份)
-    的key里。用手动monkeypatch记录fetch_dce_daily_kline/fetch_dce_hourly_kline实际被
-    调用时传入了什么symbol，而不是真的跑akshare请求。"""
+    以及持仓排名(龙虎榜)，用get_current_contract_code()算出的具体合约代码去请求，
+    存进以月份命名(不含具体年份)的key里。用手动monkeypatch记录实际被调用时传入了
+    什么symbol，而不是真的跑akshare请求。"""
     import json as json_module
     import tempfile
 
@@ -798,18 +798,24 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
 
     daily_calls = []
     hourly_calls = []
+    position_rank_calls = []
     def fake_daily(symbol, max_rows=260):
         daily_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"date": "2026-01-01", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
     def fake_hourly(symbol, max_bars=180):
         hourly_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"datetime": "2026-01-01 10:00:00", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
+    def fake_position_rank(symbols, max_attempts=6):
+        position_rank_calls.append(list(symbols))
+        return {s: {"available": True, "symbol": s, "date": "20260712", "rows": [], "source": "测试"} for s in symbols}
 
     old_daily, old_hourly = fd.fetch_dce_daily_kline, fd.fetch_dce_hourly_kline
+    old_position_rank = fd.fetch_dce_position_rank_multi
     old_output_path = fd.OUTPUT_PATH
     old_key = fd.USDA_API_KEY
     fd.fetch_dce_daily_kline = fake_daily
     fd.fetch_dce_hourly_kline = fake_hourly
+    fd.fetch_dce_position_rank_multi = fake_position_rank
     fd.USDA_API_KEY = ""  # 避免main()真的去跑USDA相关的网络请求路径
 
     tmp_dir = tempfile.mkdtemp()
@@ -826,14 +832,18 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
 
         assert set(daily_calls) == expected_codes, f"main()应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
         assert set(hourly_calls) == expected_codes, f"main()应该对这3个小时线合约代码发起请求: {expected_codes}，实际请求了: {hourly_calls}"
+        assert len(position_rank_calls) == 1, f"★持仓排名应该只调用1次(批量传入3个合约，不是分别调用3次)，实际调用了{len(position_rank_calls)}次"
+        assert set(position_rank_calls[0]) == expected_codes, f"持仓排名批量调用时传入的合约代码应该是这3个: {expected_codes}，实际传入: {position_rank_calls[0]}"
 
         with open(fd.OUTPUT_PATH, "r", encoding="utf-8") as f:
             written = json_module.load(f)
-        for key in ["dceM09Daily", "dceM09Hourly", "dceM05Daily", "dceM05Hourly", "dceM01Daily", "dceM01Hourly"]:
+        for key in ["dceM09Daily", "dceM09Hourly", "dceM05Daily", "dceM05Hourly", "dceM01Daily", "dceM01Hourly",
+                    "dceM09PositionRank", "dceM05PositionRank", "dceM01PositionRank"]:
             assert key in written, f"输出JSON里应该有{key}这个字段(用月份命名，不含具体年份，这样合约年份滚动时key不用改)"
-        print(f"✅ main()正确对三个合约(9/5/1月)都发起了日线+小时线请求，实际请求代码: {sorted(daily_calls)}；输出JSON的6个key(dceM09/05/01Daily/Hourly)都存在")
+        print(f"✅ main()正确对三个合约(9/5/1月)都发起了日线+小时线+持仓排名请求(持仓排名批量1次调用而非3次)，输出JSON的9个key都存在")
     finally:
         fd.fetch_dce_daily_kline, fd.fetch_dce_hourly_kline = old_daily, old_hourly
+        fd.fetch_dce_position_rank_multi = old_position_rank
         fd.OUTPUT_PATH = old_output_path
         fd.USDA_API_KEY = old_key
 
@@ -1001,6 +1011,171 @@ def test_dce_continuous_kline_debug_output_is_json_safe(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
+def test_dce_position_rank_success_first_try(monkeypatch_fetch):
+    """★龙虎榜：最简单情况——第一次尝试(今天)就拿到多个合约的数据，验证字段解析正确。"""
+    import pandas as pd
+    import fetch_data as fd_module
+
+    mock_df_09 = pd.DataFrame({
+        "rank": [1, 2, 3],
+        "vol_party_name": ["国泰君安", "中信期货", "永安期货"],
+        "vol": [12000.0, 9500.0, 8000.0],
+        "vol_chg": [500.0, -200.0, 100.0],
+        "long_party_name": ["中信期货", "国泰君安", "永安期货"],
+        "long_open_interest": [45000.0, 38000.0, 30000.0],
+        "long_open_interest_chg": [1200.0, -500.0, 300.0],
+        "short_party_name": ["永安期货", "中信期货", "国泰君安"],
+        "short_open_interest": [42000.0, 36000.0, 28000.0],
+        "short_open_interest_chg": [-800.0, 600.0, -100.0],
+    })
+    mock_df_05 = pd.DataFrame({
+        "rank": [1], "vol_party_name": ["中粮期货"], "vol": [5000.0], "vol_chg": [50.0],
+        "long_party_name": ["中粮期货"], "long_open_interest": [20000.0], "long_open_interest_chg": [300.0],
+        "short_party_name": ["中粮期货"], "short_open_interest": [18000.0], "short_open_interest_chg": [-100.0],
+    })
+    call_count = {"n": 0}
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date):
+            call_count["n"] += 1
+            return {"m2609": mock_df_09, "m2705": mock_df_05}
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        # ★注意：这里只请求mock数据里真实存在的两个合约(M2609/M2705)。
+        #   之前这里错误地还请求了M2701(mock数据里没有)，导致函数为了找M2701
+        #   正确地持续重试到max_attempts次——这是函数的正确行为(不是所有目标都
+        #   找到就不该提前停)，但当时的断言"应该只call 1次"因此自相矛盾。
+        #   "部分合约找不到"这个场景已经由test_dce_position_rank_complete_failure
+        #   单独覆盖，这里只测"全部都找到"这个场景，两者不要混在一起。
+        result = fd_module.fetch_dce_position_rank_multi(["M2609", "M2705"])
+        assert result["M2609"]["available"] is True
+        assert len(result["M2609"]["rows"]) == 3
+        assert result["M2609"]["rows"][0]["volPartyName"] == "国泰君安"
+        assert result["M2609"]["rows"][0]["longOpenInterestChg"] == 1200.0
+        assert result["M2705"]["available"] is True
+        assert result["M2705"]["rows"][0]["volPartyName"] == "中粮期货"
+        assert call_count["n"] == 1, f"★关键验证：2个合约应该合并成1次API调用(接口本来就是一次返回所有合约)，实际调用了{call_count['n']}次"
+        print("✅ 龙虎榜一次调用拿到多个合约数据，字段解析全部正确，且验证了只发起1次API调用(不是2次)")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_stops_once_all_found(monkeypatch_fetch):
+    """★龙虎榜效率验证：一旦所有目标合约都找到数据了，不应该继续往更早的日期尝试
+    (避免对一个已知有反爬风控的接口发起不必要的额外请求)。"""
+    import pandas as pd
+    import fetch_data as fd_module
+
+    mock_df = pd.DataFrame({
+        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
+        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
+        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
+    })
+    call_count = {"n": 0}
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date):
+            call_count["n"] += 1
+            return {"m2609": mock_df}  # 只查一个合约，第一次就能找到
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=6)
+        assert result["M2609"]["available"] is True
+        assert call_count["n"] == 1, f"★只有1个目标合约，第一次就找到了，不应该继续尝试max_attempts设定的其余5次，实际调用了{call_count['n']}次"
+        print(f"✅ 找到所有目标合约后正确提前停止，没有发起多余的请求(只调用了{call_count['n']}次，不是max_attempts的6次)")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_retries_until_found(monkeypatch_fetch):
+    """★龙虎榜：T+1性质模拟——"今天"和"昨天"这个合约都没数据(比如盘前运行，
+    数据还没发布)，第三次尝试(前天)才找到，验证会正确往前找而不是第一次失败就放弃。"""
+    import pandas as pd
+    import fetch_data as fd_module
+
+    mock_df = pd.DataFrame({
+        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
+        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
+        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
+    })
+    call_count = {"n": 0}
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                return {}  # 前两次：这个日期没有任何数据(模拟还没发布)
+            return {"m2609": mock_df}  # 第三次才有
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=6)
+        assert result["M2609"]["available"] is True, "应该在第3次尝试(往前找2天)时成功找到数据"
+        assert call_count["n"] == 3, f"应该恰好尝试3次就停止(找到就不再继续试)，实际尝试了{call_count['n']}次"
+        print(f"✅ 龙虎榜正确处理T+1延迟：前2次(模拟数据未发布)都没找到，第3次往前找到了数据就停止")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_handles_exceptions_gracefully(monkeypatch_fetch):
+    """★龙虎榜：模拟大商所官网风控导致请求报错(比如412)——不应该让整个抓取崩溃，
+    应该记录这次失败继续往前试其他日期。"""
+    import fetch_data as fd_module
+
+    call_count = {"n": 0}
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date):
+            call_count["n"] += 1
+            raise Exception("HTTP 412: 请求被拒绝(模拟大商所官网风控)")
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=4)
+        assert result["M2609"]["available"] is False, "全部尝试都报错，应该诚实返回不可用，而不是崩溃或伪造数据"
+        assert call_count["n"] == 4, f"应该按max_attempts设定的次数重试完，实际尝试了{call_count['n']}次"
+        assert "debug" in result["M2609"] and len(result["M2609"]["debug"]["attempts"]) == 4
+        assert any("412" in str(a.get("error", "")) for a in result["M2609"]["debug"]["attempts"]), "debug信息里应该保留原始错误内容，方便排查"
+        print(f"✅ 龙虎榜遇到接口报错(模拟412风控)时不会崩溃，会优雅降级并在debug里保留原始错误信息")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_complete_failure(monkeypatch_fetch):
+    """★龙虎榜：尝试了所有日期都没有目标合约的数据，应该诚实报告失败原因，不是返回空列表假装成功。
+    同时验证多合约场景下，有数据的正常返回，没数据的独立标记失败(互不影响)。"""
+    import pandas as pd
+    import fetch_data as fd_module
+
+    mock_df = pd.DataFrame({
+        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
+        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
+        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
+    })
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date):
+            return {"m2705": mock_df}  # 只有M2705的数据，M2609一直没有
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2609", "M2705"], max_attempts=3)
+        assert result["M2609"]["available"] is False
+        assert "M2609" in result["M2609"]["reason"], "失败原因里应该明确提到是哪个合约拿不到数据"
+        assert "反爬" in result["M2609"]["reason"] or "不稳定" in result["M2609"]["reason"], "失败原因应该诚实说明这是这个接口的已知特性，不是笼统的\"出错了\""
+        assert result["M2705"]["available"] is True, "★M2705有数据应该正常返回，不应该被M2609的失败连累"
+        print(f"✅ 多合约场景下互不影响：M2609找不到数据诚实报告失败，M2705有数据正常返回")
+    finally:
+        del sys.modules['akshare']
+
+
 def test_dce_continuous_kline_parsing(monkeypatch_fetch):
     """验证连续合约(M0)解析：用于3年回测，字段结构应该跟具体合约的日K线类似。"""
     import pandas as pd
@@ -1098,6 +1273,8 @@ def make_monkeypatch():
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
+              test_dce_position_rank_success_first_try, test_dce_position_rank_stops_once_all_found, test_dce_position_rank_retries_until_found,
+              test_dce_position_rank_handles_exceptions_gracefully, test_dce_position_rank_complete_failure,
               test_dce_continuous_kline_handles_chinese_column_names, test_dce_continuous_kline_debug_output_is_json_safe,
               test_dce_continuous_kline_parsing, test_dce_continuous_kline_detects_rollover_jumps,
               test_us_planting_progress_filters_out_annual_survey_data,

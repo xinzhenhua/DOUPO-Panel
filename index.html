@@ -1088,7 +1088,7 @@ function renderHarvest(hp, genAt){
 /** 技术面K线卡片：日K线(蜡烛图+MA5/10/20/40/60+成交量+MACD+RSI) + 关键统计。
  * 三个合约(9月/5月/1月)共用这一个渲染函数，由selectContract()切换时调用
  * refreshKlineForContract()决定传入哪个合约的数据。 */
-function renderKline(dailyData, hourlyData, genAt){
+function renderKline(dailyData, hourlyData, genAt, positionRankData){
   const badge = document.getElementById('klineBadge');
   const el = document.getElementById('klineContent');
   // ★放在最前面、早于下面的early-return检查：即使切换到的合约没有可用数据，
@@ -1143,6 +1143,15 @@ function renderKline(dailyData, hourlyData, genAt){
   const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi);
   const confluenceHtml = renderConfluenceSummaryHtml(confluenceSummary);
 
+  let positionRankSummaryText, positionRankBodyHtml;
+  if(!positionRankData || !positionRankData.available){
+    positionRankSummaryText = '暂无数据';
+    positionRankBodyHtml = `<div style="font-size:11px;color:var(--t3);padding:8px 0">💡 ${positionRankData?positionRankData.reason:'未知原因'}</div>`;
+  } else {
+    positionRankSummaryText = `截至${positionRankData.date}`;
+    positionRankBodyHtml = renderPositionRankTableHtml(positionRankData);
+  }
+
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
     hourlyHtml = `<details class="tier-details" id="klineHourlyDetails"><summary>查看小时线(近${hourlyData.totalBarsReturned}根) ▸</summary>
@@ -1196,6 +1205,9 @@ function renderKline(dailyData, hourlyData, genAt){
       <div class="tier-body">
         <div id="klineRsiContainer" style="height:100px;margin-top:8px"></div>
       </div></details>
+
+    <details class="tier-details" id="klinePositionRankDetails"><summary>持仓排名(龙虎榜)详情 ▸<span style="font-size:9px;color:var(--t3);font-weight:400">· ${positionRankSummaryText}</span></summary>
+      <div class="tier-body" id="klinePositionRankBody">${positionRankBodyHtml}</div></details>
 
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
@@ -1656,6 +1668,37 @@ function renderConfluenceSummaryHtml(summary){
   return `<div style="font-size:12px;font-weight:700;margin-bottom:4px">${countLine}</div>${rows}`;
 }
 
+/** 持仓排名(龙虎榜)表格：多头/空头会员排名各一个表，显示持仓量+日增减。
+ *  ⚠️这是会员(期货公司)持仓，不是最终客户持仓——名字是"国泰君安"这种经纪商名称，
+ *  不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。*/
+function renderPositionRankTableHtml(data){
+  const rows = data.rows || [];
+  const fmtNum = n => n!=null ? n.toLocaleString() : '--';
+  const fmtChg = n => {
+    if(n==null) return '<span class="neutral">--</span>';
+    const cls = n>0?'pos':n<0?'neg':'neutral';
+    return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString()}</span>`;
+  };
+  const buildTable = (title, nameKey, posKey, chgKey) => {
+    const validRows = rows.filter(r=>r[nameKey]);
+    if(validRows.length===0) return `<div style="font-size:11px;color:var(--t3)">${title}：无数据</div>`;
+    const tableRows = validRows.map(r=>
+      `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
+        <td style="padding:3px 4px">${r[nameKey]}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtNum(r[posKey])}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtChg(r[chgKey])}</td></tr>`
+    ).join('');
+    return `<div style="font-size:10px;color:var(--t2);margin:6px 0 2px">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="color:var(--t3);font-size:9px"><td style="padding:2px 4px">名次</td><td style="padding:2px 4px">会员</td><td style="padding:2px 4px;text-align:right">持仓量</td><td style="padding:2px 4px;text-align:right">增减</td></tr>
+        ${tableRows}
+      </table>`;
+  };
+  return `<div style="font-size:9px;color:var(--t3);margin-bottom:4px">⚠️ 会员(期货公司)持仓排名，非最终客户持仓——除非该机构本身就是直接注册的会员</div>`
+    + buildTable('多头持仓排名(前20名会员)', 'longPartyName', 'longOpenInterest', 'longOpenInterestChg')
+    + buildTable('空头持仓排名(前20名会员)', 'shortPartyName', 'shortOpenInterest', 'shortOpenInterestChg');
+}
+
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
  *  values: 纯数字数组。返回同长度数组，前period-1个是null(数据不够，还算不出来)。
  *  种子值用前period个值的简单平均(常见做法，不是唯一做法，但是最通行的)。*/
@@ -1759,7 +1802,7 @@ function refreshKlineForContract(month){
   if(!data) return; // 数据还没同步回来，loadSyncedData()完成后会自己触发一次
   const keyMap = {sep:'M09', may:'M05', jan:'M01'};
   const prefix = keyMap[month];
-  renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt);
+  renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt, data['dce'+prefix+'PositionRank']);
 }
 
 /** 均线/布林带二选一叠加在主K线图上，切换时重新走一遍完整的renderKline流程

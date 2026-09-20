@@ -922,6 +922,101 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
 
+def fetch_dce_position_rank_multi(symbols, max_attempts=6):
+    """大商所持仓排名(龙虎榜)：一次性取多个合约的前20名会员多空持仓+日增减。
+    ★这个接口比日K线更容易失败——大商所官网自己有反爬风控，akshare的changelog里
+    这个接口被反复修复过(1.13.81/1.13.82/1.17.74等多个版本都有修复记录)，
+    所以这里把"这次请求失败"当成常态来处理，不是异常情况。
+
+    ★设计上特意一次请求拿多个合约：akshare这个接口本来就是"一次调用返回当天
+    所有合约"的字典结构(不是按合约分别请求)，如果对每个合约都各自跑一遍
+    "试6个日期"的重试循环，会对同一个日期重复调用3次——在一个已知会被风控的
+    接口上这样做没有必要，反而增加触发风控的概率。改成：每个日期只调用一次，
+    从返回结果里一次性把symbols里的所有合约都取出来。
+
+    数据是T+1性质：收盘后(约北京时间16:00)才发布当天数据。GitHub Actions有两个
+    运行时间点(09:00盘前 / 21:30盘后)，09:00那次"今天"的数据还没发布，
+    要往前找最近一个已发布的交易日；21:30那次通常当天数据已经出来了。
+    策略：从"今天"开始，最多往前试max_attempts天，只要某天的数据里能取到
+    至少一个symbol，就采用那天的结果(不同合约不强求必须同一天，只是通常会
+    凑在一起，因为都是同一次请求返回的)。
+
+    ⚠️这是会员(期货公司)持仓排名，不是最终客户排名——比如"中信期货"是会员名，
+    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。
+
+    返回：{symbol: {available, rows/reason, ...}}，每个symbol独立标注是否拿到数据。"""
+    try:
+        import akshare as ak
+    except ImportError:
+        return {s: {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare", "debug": {}} for s in symbols}
+
+    now_beijing = datetime.now(timezone.utc) + timedelta(hours=8)
+    attempts_log = []
+    results = {s: None for s in symbols}  # None=还没找到，之后逐个填上
+
+    for days_back in range(max_attempts):
+        if all(v is not None for v in results.values()):
+            break  # 所有合约都已经找到数据了，不用再往前试更早的日期
+
+        try_date = now_beijing - timedelta(days=days_back)
+        date_str = try_date.strftime("%Y%m%d")
+        try:
+            result_dict = ak.futures_dce_position_rank(date=date_str)
+        except Exception as e:
+            attempts_log.append({"date": date_str, "error": f"{type(e).__name__}: {str(e)[:200]}"})
+            continue
+
+        if not result_dict:
+            attempts_log.append({"date": date_str, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
+            continue
+
+        found_any_this_date = False
+        for symbol in symbols:
+            if results[symbol] is not None:
+                continue  # 这个合约之前已经找到过了
+            lookup_key = symbol.lower()
+            df = result_dict.get(lookup_key)
+            if df is None or len(df) == 0:
+                continue
+            try:
+                rows = []
+                for _, row in df.iterrows():
+                    rows.append({
+                        "rank": int(row["rank"]) if row.get("rank") is not None else None,
+                        "volPartyName": str(row.get("vol_party_name") or ""),
+                        "vol": float(row["vol"]) if row.get("vol") is not None else None,
+                        "volChg": float(row["vol_chg"]) if row.get("vol_chg") is not None else None,
+                        "longPartyName": str(row.get("long_party_name") or ""),
+                        "longOpenInterest": float(row["long_open_interest"]) if row.get("long_open_interest") is not None else None,
+                        "longOpenInterestChg": float(row["long_open_interest_chg"]) if row.get("long_open_interest_chg") is not None else None,
+                        "shortPartyName": str(row.get("short_party_name") or ""),
+                        "shortOpenInterest": float(row["short_open_interest"]) if row.get("short_open_interest") is not None else None,
+                        "shortOpenInterestChg": float(row["short_open_interest_chg"]) if row.get("short_open_interest_chg") is not None else None,
+                    })
+            except (KeyError, ValueError, TypeError) as e:
+                attempts_log.append({"date": date_str, "symbol": symbol, "note": f"字段解析失败: {e}", "actualColumns": list(df.columns)})
+                continue
+            results[symbol] = {
+                "available": True, "symbol": symbol, "date": date_str, "rows": rows,
+                "source": "大连商品交易所会员持仓排名(经akshare库获取)，T+1数据(收盘后发布)",
+            }
+            found_any_this_date = True
+
+        if not found_any_this_date:
+            attempts_log.append({"date": date_str, "note": "该日期数据里没有找到任何目标合约"})
+
+    final = {}
+    for symbol in symbols:
+        if results[symbol] is not None:
+            final[symbol] = results[symbol]
+        else:
+            final[symbol] = {
+                "available": False,
+                "reason": f"尝试了最近{max_attempts}个日期都没能获取到{symbol}的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+                "debug": {"attempts": attempts_log},
+            }
+    return final
+
 
 # ---------------------------------------------------------------------------
 # 4. 美国干旱监测 (US Drought Monitor) —— 真正的官方干旱等级数据
@@ -1475,6 +1570,12 @@ def main():
 
     no_usda_key = {"available": False, "reason": "缺少 USDA_API_KEY"}
 
+    # ★三个合约代码只算一次，日线/小时线/持仓排名都复用，不重复调用get_current_contract_code()
+    sep_code = get_current_contract_code(9)
+    may_code = get_current_contract_code(5)
+    jan_code = get_current_contract_code(1)
+    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code])
+
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
@@ -1485,12 +1586,16 @@ def main():
         "usHarvestProgress": fetch_us_harvest_progress(),
         # ★ 技术面覆盖三个合约(9月/5月/1月)。key用月份命名(不用具体年份)，
         #   这样合约年份每年滚动时key不用跟着改——具体是哪年的合约看里面的symbol字段。
-        "dceM09Daily": fetch_dce_daily_kline(get_current_contract_code(9)),
-        "dceM09Hourly": fetch_dce_hourly_kline(get_current_contract_code(9)),
-        "dceM05Daily": fetch_dce_daily_kline(get_current_contract_code(5)),
-        "dceM05Hourly": fetch_dce_hourly_kline(get_current_contract_code(5)),
-        "dceM01Daily": fetch_dce_daily_kline(get_current_contract_code(1)),
-        "dceM01Hourly": fetch_dce_hourly_kline(get_current_contract_code(1)),
+        "dceM09Daily": fetch_dce_daily_kline(sep_code),
+        "dceM09Hourly": fetch_dce_hourly_kline(sep_code),
+        "dceM05Daily": fetch_dce_daily_kline(may_code),
+        "dceM05Hourly": fetch_dce_hourly_kline(may_code),
+        "dceM01Daily": fetch_dce_daily_kline(jan_code),
+        "dceM01Hourly": fetch_dce_hourly_kline(jan_code),
+        # ★龙虎榜(会员持仓排名)，同样按月份命名key，三个合约一次请求批量拿到
+        "dceM09PositionRank": position_ranks[sep_code],
+        "dceM05PositionRank": position_ranks[may_code],
+        "dceM01PositionRank": position_ranks[jan_code],
         "southAmericaWeather": fetch_south_america_weather(),
         "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
