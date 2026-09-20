@@ -27,6 +27,9 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .card-title{font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.ov-toggle{display:inline-flex;gap:4px}
+.ov-toggle button{padding:4px 10px;border-radius:6px;border:1px solid var(--bdr);background:var(--bg2);color:var(--t2);font-size:10px;font-weight:600;cursor:pointer;min-height:26px}
+.ov-toggle button.active{background:var(--bd);border-color:var(--bb);color:var(--b)}
 .badge-auto{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .badge-manual{background:var(--goldd);color:var(--gold);border:1px solid #3d2d00}
 .badge-offline{background:var(--bg3);color:var(--t3)}
@@ -1163,10 +1166,17 @@ function renderKline(dailyData, hourlyData, genAt){
       <div class="stat"><span class="sv neutral">${periodHigh}</span><div class="sl">区间最高(约${dailyData.totalBarsReturned}日)</div></div>
       <div class="stat"><span class="sv neutral">${periodLow}</span><div class="sl">区间最低</div></div>
     </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+      <span style="font-size:10px;color:var(--t2)">日K线</span>
+      <span class="ov-toggle" id="klineOverlayToggle">
+        <button class="active" onclick="setKlineOverlayMode('ma')">均线</button>
+        <button onclick="setKlineOverlayMode('bollinger')">布林带</button>
+      </span>
+    </div>
     <div id="klineChartContainer" style="height:320px"></div>
     <div style="font-size:9px;color:var(--t3);text-align:right;margin-top:2px">💡 可双指缩放/拖动查看细节，点击K线看具体开高低收数值</div>
 
-    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">成交量<span style="font-size:9px;color:var(--t3)">· MA10金 MA20蓝</span></div>
+    <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">成交量/持仓量<span style="font-size:9px;color:var(--t3)">· 柱=成交量(MA10金 MA20蓝) 白线=持仓量(左轴)</span></div>
     <div id="klineVolumeContainer" style="height:100px;margin-top:2px"></div>
 
     <div style="font-size:10px;color:var(--t2);margin-top:10px 0 2px">MACD(12,26,9)<span style="font-size:9px;color:var(--t3)">· DIF白 DEA橙</span></div>
@@ -1192,7 +1202,7 @@ function renderKline(dailyData, hourlyData, genAt){
       if(c) c.innerHTML = '<div style="font-size:11px;color:var(--t3);text-align:center;padding:20px">图表库加载失败(可能是网络问题)，请刷新页面重试</div>';
       return;
     }
-    const mainChart = renderCandlestickChart('klineChartContainer', bars);
+    const mainChart = renderCandlestickChart('klineChartContainer', bars, window._klineOverlayMode);
     const volChart = renderVolumeChart('klineVolumeContainer', bars, mainChart);
     const macdChart = renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
     const rsiChart = renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
@@ -1248,7 +1258,8 @@ function destroyKlineCharts(){
  *  比手写SVG的优势：内置双指缩放、拖动平移、点击/悬停显示具体OHLC数值——
  *  这些手写SVG做不到(或者要花大量功夫重新发明轮子)，用专门的图表库更合理。
  *  中国习惯配色：红涨绿跌(跟西方红跌绿涨相反)。*/
-function renderCandlestickChart(containerId, bars){
+function renderCandlestickChart(containerId, bars, overlayMode){
+  overlayMode = overlayMode || 'ma'; // 'ma'=均线组合(默认，跟之前行为一致) | 'bollinger'=布林带
   const container = document.getElementById(containerId);
   if(!container) return;
   container.innerHTML = ''; // 清空，避免details重复展开时图表叠加残留
@@ -1269,23 +1280,43 @@ function renderCandlestickChart(containerId, bars){
   });
   candleSeries.setData(bars.map(b=>({time:b.date, open:b.open, high:b.high, low:b.low, close:b.close})));
 
-  // MA5/10/20/40/60：只在数据量够长时才画(比如只有40根数据时，MA60就不画了，避免全是null的空线)
-  const maConfigs = [
-    {period:5, color:'#c77dff', label:'MA5'},
-    {period:10, color:'#ff9f40', label:'MA10'},
-    {period:20, color:'#d4a017', label:'MA20'},
-    {period:40, color:'#22d3d3', label:'MA40'},
-    {period:60, color:'#3b82c4', label:'MA60'},
-  ];
-  maConfigs.forEach(cfg=>{
-    if(bars.length < cfg.period) return;
-    const maData = computeMASeriesData(bars, cfg.period);
-    const series = chart.addSeries(LightweightCharts.LineSeries, {
-      color: cfg.color, lineWidth: 1, title: cfg.label,
-      priceLineVisible: false, crosshairMarkerVisible: false,
+  // ★均线和布林带二选一叠加，不同时显示——两组都是"价格区间/趋势"类的辅助线，
+  //   叠在一起(5条均线+3条布林带=8条线)会让K线图变得很难看清楚，用一个开关切换更清爽。
+  if(overlayMode === 'bollinger'){
+    if(bars.length >= 20){
+      const {middle, upper, lower} = computeBollingerBands(bars, 20, 2);
+      const bands = [
+        {data: upper, color: '#ff9f4099', label: '上轨'},
+        {data: middle, color: '#d4a017', label: '中轨(MA20)'},
+        {data: lower, color: '#3b82c499', label: '下轨'},
+      ];
+      bands.forEach(cfg=>{
+        const series = chart.addSeries(LightweightCharts.LineSeries, {
+          color: cfg.color, lineWidth: 1, title: cfg.label,
+          priceLineVisible: false, crosshairMarkerVisible: false,
+        });
+        series.setData(bars.map((b,i)=>cfg.data[i]!==null?{time:b.date, value:cfg.data[i]}:null).filter(v=>v!==null));
+      });
+    }
+  } else {
+    // MA5/10/20/40/60：只在数据量够长时才画(比如只有40根数据时，MA60就不画了，避免全是null的空线)
+    const maConfigs = [
+      {period:5, color:'#c77dff', label:'MA5'},
+      {period:10, color:'#ff9f40', label:'MA10'},
+      {period:20, color:'#d4a017', label:'MA20'},
+      {period:40, color:'#22d3d3', label:'MA40'},
+      {period:60, color:'#3b82c4', label:'MA60'},
+    ];
+    maConfigs.forEach(cfg=>{
+      if(bars.length < cfg.period) return;
+      const maData = computeMASeriesData(bars, cfg.period);
+      const series = chart.addSeries(LightweightCharts.LineSeries, {
+        color: cfg.color, lineWidth: 1, title: cfg.label,
+        priceLineVisible: false, crosshairMarkerVisible: false,
+      });
+      series.setData(maData);
     });
-    series.setData(maData);
-  });
+  }
 
   chart.timeScale().fitContent();
 
@@ -1362,6 +1393,7 @@ function renderVolumeChart(containerId, bars, mainChart){
     grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
     timeScale: { borderColor: '#222', timeVisible: true },
     rightPriceScale: { borderColor: '#222' },
+    leftPriceScale: { visible: true, borderColor: '#222' }, // 持仓量用独立的左侧坐标轴，跟成交量数量级差异大时不会互相挤压
   });
 
   const volSeries = chart.addSeries(LightweightCharts.HistogramSeries, { priceLineVisible: false });
@@ -1374,6 +1406,15 @@ function renderVolumeChart(containerId, bars, mainChart){
   if(bars.length >= 20){
     const ma20 = chart.addSeries(LightweightCharts.LineSeries, {color:'#3b82c4', lineWidth:1, title:'MA20', priceLineVisible:false, crosshairMarkerVisible:false});
     ma20.setData(computeMASeriesData(bars, 20, b=>b.volume||0));
+  }
+
+  const oiBars = bars.filter(b=>b.hold!=null);
+  if(oiBars.length > 0){
+    const oiSeries = chart.addSeries(LightweightCharts.LineSeries, {
+      color: '#e0e0e0', lineWidth: 1.3, title: '持仓量', priceLineVisible: false, crosshairMarkerVisible: false,
+      priceScaleId: 'left',
+    });
+    oiSeries.setData(oiBars.map(b=>({time:b.date, value:b.hold})));
   }
 
   chart.timeScale().fitContent();
@@ -1473,6 +1514,27 @@ function computeRSI(bars, period=14){
     rsi[i] = avgLoss===0 ? 100 : 100 - 100/(1+avgGain/avgLoss);
   }
   return rsi;
+}
+
+/** 布林带(Bollinger Bands)：中轨=N日简单移动平均(默认20)，上/下轨=中轨±K倍标准差(默认K=2)。
+ *  标准差用总体标准差(除以N，不是N-1)，这是布林带的标准算法惯例。
+ *  返回{middle, upper, lower}，每项是跟bars等长的数组，前period-1个是null。*/
+function computeBollingerBands(bars, period=20, k=2){
+  const n = bars.length;
+  const middle = new Array(n).fill(null);
+  const upper = new Array(n).fill(null);
+  const lower = new Array(n).fill(null);
+  for(let i=period-1; i<n; i++){
+    let sum=0;
+    for(let j=i-period+1; j<=i; j++) sum += bars[j].close;
+    const mean = sum/period;
+    let variance=0;
+    for(let j=i-period+1; j<=i; j++) variance += (bars[j].close-mean)**2;
+    variance/=period;
+    const stddev = Math.sqrt(variance);
+    middle[i]=mean; upper[i]=mean+k*stddev; lower[i]=mean-k*stddev;
+  }
+  return {middle, upper, lower};
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
@@ -1579,6 +1641,21 @@ function refreshKlineForContract(month){
   const keyMap = {sep:'M09', may:'M05', jan:'M01'};
   const prefix = keyMap[month];
   renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt);
+}
+
+/** 均线/布林带二选一叠加在主K线图上，切换时重新走一遍完整的renderKline流程
+ *  (而不是只重建主图)，这样能确保跟成交量/MACD/RSI图表的时间轴同步关系
+ *  始终是对着"当前存活"的图表实例，不会指向已经被销毁的旧对象。*/
+window._klineOverlayMode = window._klineOverlayMode || 'ma';
+function setKlineOverlayMode(mode){
+  window._klineOverlayMode = mode;
+  const toggle = document.getElementById('klineOverlayToggle');
+  if(toggle){
+    Array.from(toggle.querySelectorAll('button')).forEach(btn=>{
+      btn.classList.toggle('active', btn.textContent === (mode==='ma'?'均线':'布林带'));
+    });
+  }
+  refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
 }
 
 /** 根据今天的日期，在对应合约的tab上动态加上"· 当前"标记(不是写死在HTML里)，
