@@ -114,9 +114,9 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 
 <!-- ============ 合约切换：不同月份合约关注重点不同（放最顶端，先选合约再看预警）============ -->
 <div class="contract-tabs">
-  <button class="contract-tab active" id="tab-sep" onclick="selectContract('sep')">9月合约<span class="ctab-sub">当前</span></button>
-  <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub">南美收获期</span></button>
-  <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub">美豆收获期</span></button>
+  <button class="contract-tab" id="tab-sep" onclick="selectContract('sep')">9月合约<span class="ctab-sub" id="ctab-sub-sep">北美生长关键期</span></button>
+  <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub" id="ctab-sub-may">南美收获期</span></button>
+  <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub" id="ctab-sub-jan">美豆收获期</span></button>
 </div>
 <div id="tradingWindowInfo"></div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
@@ -257,11 +257,11 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="psdContent" class="loading">正在读取同步数据...</div>
 </div>
 
-<!-- ============ 技术面：DCE豆粕K线（第一阶段，只做9月合约M09） ============ -->
+<!-- ============ 技术面：DCE豆粕K线（日线/小时线，覆盖9月/5月/1月三个合约，跟随合约tab切换） ============ -->
 <div class="stitle">📈 技术面：DCE豆粕K线<span style="font-size:9px;color:var(--t3);font-weight:400">· 日线+小时线，仅供参考</span></div>
 <div class="card">
   <div class="card-head">
-    <div class="card-title">M09(9月合约)日K线 + MA20/MA60</div>
+    <div class="card-title" id="klineCardTitle">日K线</div>
     <span class="badge" id="klineBadge">检查中...</span>
   </div>
   <div id="klineContent" class="loading">正在读取同步数据...</div>
@@ -605,8 +605,10 @@ async function loadSyncedData(){
     renderSaPsd(data.southAmericaPsd, data.generatedAt);
     renderPlanting(data.usPlantingProgress, data.generatedAt);
     renderHarvest(data.usHarvestProgress, data.generatedAt);
-    renderKline(data.dceM09Daily, data.dceM09Hourly, data.generatedAt);
     window._syncedData = data;
+    // ★之前这里写死renderKline(data.dceM09Daily,...)，现在改成按当前选中的合约
+    //   (可能是自动跳转选中的，也可能是用户手动切换过的)去读取对应数据。
+    refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -1080,15 +1082,23 @@ function renderHarvest(hp, genAt){
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>收获进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${hp.weekEnding}</div>`;
 }
 
-/** 技术面K线卡片：日K线(蜡烛图+MA20/MA60) + 关键统计。
- * ★ 第一阶段：只做9月合约(M09)。5月/1月合约的K线还没接，暂时留空并诚实标注。 */
+/** 技术面K线卡片：日K线(蜡烛图+MA5/10/20/40/60+成交量+MACD+RSI) + 关键统计。
+ * 三个合约(9月/5月/1月)共用这一个渲染函数，由selectContract()切换时调用
+ * refreshKlineForContract()决定传入哪个合约的数据。 */
 function renderKline(dailyData, hourlyData, genAt){
   const badge = document.getElementById('klineBadge');
   const el = document.getElementById('klineContent');
+  // ★放在最前面、早于下面的early-return检查：即使切换到的合约没有可用数据，
+  //   上一个合约留下的图表实例也必须先清理掉，否则innerHTML重写虽然移除了DOM节点，
+  //   但LightweightCharts的JS对象(内部的ResizeObserver等)会变成没人管的孤儿，
+  //   继续占用资源。
+  destroyKlineCharts();
   if(!dailyData || !dailyData.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData?dailyData.reason:'未知原因'}</span></div>` + renderDebugInfo(dailyData?dailyData.debug:null);
+    const titleElNoData = document.getElementById('klineCardTitle');
+    if(titleElNoData) titleElNoData.textContent = '日K线';
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
@@ -1169,8 +1179,11 @@ function renderKline(dailyData, hourlyData, genAt){
 
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
-      ⚠️ ${dailyData.source}。5月/1月合约K线暂未接入，只做了9月合约(当前主力)。
+      ⚠️ ${dailyData.source}
     </div>`;
+
+  const titleEl = document.getElementById('klineCardTitle');
+  if(titleEl) titleEl.textContent = `${dailyData.symbol}日K线`;
 
   // 图表容器要等上面这段innerHTML真正插入DOM后才存在，用setTimeout(0)让浏览器先完成这一步
   setTimeout(()=>{
@@ -1180,9 +1193,10 @@ function renderKline(dailyData, hourlyData, genAt){
       return;
     }
     const mainChart = renderCandlestickChart('klineChartContainer', bars);
-    renderVolumeChart('klineVolumeContainer', bars, mainChart);
-    renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
-    renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
+    const volChart = renderVolumeChart('klineVolumeContainer', bars, mainChart);
+    const macdChart = renderMacdChart('klineMacdContainer', bars, dif, dea, histogram, mainChart);
+    const rsiChart = renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
+    window._klineChartInstances.push(mainChart, volChart, macdChart, rsiChart);
     // ★ 已修复真实bug：小时线图表容器包在默认收起的details元素里，之前在这里立刻创建图表，
     //   但收起状态下容器宽高是0，图表建出来了但完全看不见(而且之后展开也不会自动修复，
     //   因为LightweightCharts只在创建那一刻读取容器尺寸，不会持续监听details元素的开合状态)。
@@ -1211,12 +1225,23 @@ function renderKline(dailyData, hourlyData, genAt){
           if(detailsEl.open && !hourlyInitialized){
             hourlyInitialized = true;
             const hMainChart = renderCandlestickChart('klineHourlyChartContainer', hourlyBars);
-            renderMacdChart('klineHourlyMacdContainer', hourlyBars, hDif, hDea, hHist, hMainChart);
+            const hMacdChart = renderMacdChart('klineHourlyMacdContainer', hourlyBars, hDif, hDea, hHist, hMainChart);
+            window._klineChartInstances.push(hMainChart, hMacdChart);
           }
         };
       }
     }
   }, 0);
+}
+
+/** 所有K线相关图表实例的注册表，切换合约重新渲染前要先清空销毁，避免内存泄漏和
+ *  时间轴同步监听器堆积。window级别的数组，跨renderKline()调用持续存在。*/
+window._klineChartInstances = window._klineChartInstances || [];
+function destroyKlineCharts(){
+  window._klineChartInstances.forEach(chart=>{
+    try{ chart && chart.remove && chart.remove(); }catch(e){ /* 图表可能已经不在DOM里了，忽略 */ }
+  });
+  window._klineChartInstances = [];
 }
 
 /** 用TradingView Lightweight Charts(免费开源，35KB)画蜡烛图+MA5/10/20/60均线。
@@ -1530,6 +1555,49 @@ const CONTRACT_CONTEXT = {
   },
 };
 const MONTH_CN = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+/** 根据"现在"是几月，自动判断该默认显示哪个合约——直接复用CONTRACT_CONTEXT里
+ *  已经定义好的recommendedMonths，不重新定义一套判断规则。逐月核对过：
+ *  三个合约的recommendedMonths加起来正好覆盖全年12个月，不重不漏，
+ *  所以任何月份都能唯一命中一个合约，不需要对谨慎/避开月份做特殊处理。*/
+function getDefaultContractByDate(now){
+  now = now || new Date();
+  const nowMonth = now.getMonth()+1;
+  for(const key of ['sep','may','jan']){
+    if(CONTRACT_CONTEXT[key].recommendedMonths.includes(nowMonth)) return key;
+  }
+  return 'sep'; // 理论上不会走到这里(12个月都被覆盖了)，纯防御性兜底
+}
+
+/** 合约的K线数据在window._syncedData里用月份命名的key存着(dceM09Daily等)，
+ *  这个函数负责按当前选中的合约去查对应的日线+小时线数据，重新渲染技术面。
+ *  如果数据还没同步完成(loadSyncedData()异步请求还没回来)，则先不渲染，
+ *  等loadSyncedData()自己在拿到数据后会用当前window._selectedContract重新调用一次。*/
+function refreshKlineForContract(month){
+  const data = window._syncedData;
+  if(!data) return; // 数据还没同步回来，loadSyncedData()完成后会自己触发一次
+  const keyMap = {sep:'M09', may:'M05', jan:'M01'};
+  const prefix = keyMap[month];
+  renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt);
+}
+
+/** 根据今天的日期，在对应合约的tab上动态加上"· 当前"标记(不是写死在HTML里)，
+ *  保留原本的描述性副标题(比如"南美收获期")，两者一起显示。
+ *  这个跟"用户选中了哪个tab"(active样式)是两回事：用户可以手动切换去看别的合约，
+ *  但"今天该做哪个"这个标记应该固定指向按日期算出来的那个，不会跟着用户点击变化。*/
+function markCurrentContractTab(){
+  const current = getDefaultContractByDate();
+  ['sep','may','jan'].forEach(key=>{
+    const sub = document.getElementById('ctab-sub-'+key);
+    if(!sub) return;
+    if(key === current){
+      sub.textContent = sub.textContent.replace(/\s*·\s*当前$/,'') + ' · 当前';
+    } else {
+      sub.textContent = sub.textContent.replace(/\s*·\s*当前$/,'');
+    }
+  });
+}
+
 function renderTradingWindow(ctx){
   const nowMonth = new Date().getMonth()+1;
   const fmt = (arr)=>arr.map(m=>MONTH_CN[m]).join('、');
@@ -1563,6 +1631,7 @@ function selectContract(month){
     el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
   });
   window._selectedContract = month;
+  refreshKlineForContract(month); // 技术面(K线/MACD/RSI/成交量)也要跟着切换到对应合约的数据
   updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
 }
 
@@ -2034,7 +2103,8 @@ loadFxRate();
 loadBrlRate();
 loadSyncedData();
 loadSaWeather();
-selectContract('sep'); // 默认选中9月合约(当前窗口期)
+markCurrentContractTab(); // 根据今天日期标记哪个合约tab是"当前"该做的
+selectContract(getDefaultContractByDate()); // ★已修复：之前写死selectContract('sep')，现在根据日期自动选中该做的合约
 </script>
 </body>
 </html>

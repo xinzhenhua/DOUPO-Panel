@@ -963,7 +963,6 @@ def weighted_avg(state_values):
         return sum(state_values.values()) / len(state_values) if state_values else 0
     weighted_sum = sum(v * STATE_ACREAGE_WEIGHTS.get(st, 0) for st, v in state_values.items())
     return weighted_sum / total_weight
-    return weighted_sum / total_weight
 
 
 # ---------------------------------------------------------------------------
@@ -1484,9 +1483,14 @@ def main():
         "soybeanCondition": fetch_soybean_condition(),
         "usPlantingProgress": fetch_us_planting_progress(),
         "usHarvestProgress": fetch_us_harvest_progress(),
-        # ★ 技术面第一阶段：先只做当前主力9月合约(M09)验证可行，跑通后再加5月/1月合约
+        # ★ 技术面覆盖三个合约(9月/5月/1月)。key用月份命名(不用具体年份)，
+        #   这样合约年份每年滚动时key不用跟着改——具体是哪年的合约看里面的symbol字段。
         "dceM09Daily": fetch_dce_daily_kline(get_current_contract_code(9)),
         "dceM09Hourly": fetch_dce_hourly_kline(get_current_contract_code(9)),
+        "dceM05Daily": fetch_dce_daily_kline(get_current_contract_code(5)),
+        "dceM05Hourly": fetch_dce_hourly_kline(get_current_contract_code(5)),
+        "dceM01Daily": fetch_dce_daily_kline(get_current_contract_code(1)),
+        "dceM01Hourly": fetch_dce_hourly_kline(get_current_contract_code(1)),
         "southAmericaWeather": fetch_south_america_weather(),
         "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
