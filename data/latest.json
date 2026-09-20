@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T08:55:32.154701+00:00",
+  "generatedAt": "2026-09-20T11:30:29.567583+00:00",
   "cbotPrice": {
     "available": true,
     "price": 358.6,
@@ -11657,6 +11657,102 @@
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
+  },
+  "dceM09PositionRank": {
+    "available": false,
+    "reason": "尝试了最近6个日期都没能获取到M2609的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+    "debug": {
+      "attempts": [
+        {
+          "date": "20260920",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260919",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260918",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260917",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260916",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260915",
+          "error": "BadZipFile: File is not a zip file"
+        }
+      ]
+    }
+  },
+  "dceM05PositionRank": {
+    "available": false,
+    "reason": "尝试了最近6个日期都没能获取到M2705的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+    "debug": {
+      "attempts": [
+        {
+          "date": "20260920",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260919",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260918",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260917",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260916",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260915",
+          "error": "BadZipFile: File is not a zip file"
+        }
+      ]
+    }
+  },
+  "dceM01PositionRank": {
+    "available": false,
+    "reason": "尝试了最近6个日期都没能获取到M2701的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+    "debug": {
+      "attempts": [
+        {
+          "date": "20260920",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260919",
+          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+        },
+        {
+          "date": "20260918",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260917",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260916",
+          "error": "BadZipFile: File is not a zip file"
+        },
+        {
+          "date": "20260915",
+          "error": "BadZipFile: File is not a zip file"
+        }
+      ]
+    }
   },
   "southAmericaWeather": {
     "available": true,
