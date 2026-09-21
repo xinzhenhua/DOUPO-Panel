@@ -37,6 +37,7 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
+import zipfile
 from datetime import datetime, timezone, timedelta
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
@@ -925,8 +926,16 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
 def fetch_dce_position_rank_multi(symbols, max_attempts=6):
     """大商所持仓排名(龙虎榜)：一次性取多个合约的前20名会员多空持仓+日增减。
     ★这个接口比日K线更容易失败——大商所官网自己有反爬风控，akshare的changelog里
-    这个接口被反复修复过(1.13.81/1.13.82/1.17.74等多个版本都有修复记录)，
+    这个接口被反复修复过(1.13.81/1.13.82/1.17.74等多个版本都有修复记录，广州所的
+    同类接口futures_gfex_position_rank也有类似的反复修复记录)，这不是孤立个案，
+    是这整个"直接抓交易所官网持仓排名文件"这一类接口的共同特征——跟日K线/小时线
+    走的新浪财经接口(一直很稳定)是完全不同的数据来源，风险特征也不一样。
     所以这里把"这次请求失败"当成常态来处理，不是异常情况。
+
+    ★用vars_list=['M']把请求范围限定在豆粕这一个品种，不要求所有品种——
+    实测确认过'M'是这个接口里豆粕对应的品种代码。范围小一点，下载的文件更小，
+    理论上更不容易在传输/解析环节出问题(虽然这个接口的失败根源在大商所官网那边，
+    缩小范围不保证能解决，但没有坏处，值得试)。
 
     ★设计上特意一次请求拿多个合约：akshare这个接口本来就是"一次调用返回当天
     所有合约"的字典结构(不是按合约分别请求)，如果对每个合约都各自跑一遍
@@ -961,7 +970,13 @@ def fetch_dce_position_rank_multi(symbols, max_attempts=6):
         try_date = now_beijing - timedelta(days=days_back)
         date_str = try_date.strftime("%Y%m%d")
         try:
-            result_dict = ak.futures_dce_position_rank(date=date_str)
+            result_dict = ak.futures_dce_position_rank(date=date_str, vars_list=["M"])
+        except zipfile.BadZipFile:
+            # ★这个具体异常单独捕获、单独说明：大商所官网返回的内容不是有效的zip文件，
+            #   通常意味着请求被反爬拦截返回了错误页面，或者官网这段时间文件格式/路径变了——
+            #   这是这个接口的已知不稳定特征(见上面docstring)，不是本项目代码逻辑的bug。
+            attempts_log.append({"date": date_str, "error": "BadZipFile：大商所官网返回的内容不是有效zip文件，可能是被反爬拦截或官网格式变化(这个接口的已知不稳定特征)"})
+            continue
         except Exception as e:
             attempts_log.append({"date": date_str, "error": f"{type(e).__name__}: {str(e)[:200]}"})
             continue

@@ -1036,7 +1036,7 @@ def test_dce_position_rank_success_first_try(monkeypatch_fetch):
     call_count = {"n": 0}
     class FakeAkshare:
         @staticmethod
-        def futures_dce_position_rank(date):
+        def futures_dce_position_rank(date, vars_list=None):
             call_count["n"] += 1
             return {"m2609": mock_df_09, "m2705": mock_df_05}
 
@@ -1076,7 +1076,7 @@ def test_dce_position_rank_stops_once_all_found(monkeypatch_fetch):
     call_count = {"n": 0}
     class FakeAkshare:
         @staticmethod
-        def futures_dce_position_rank(date):
+        def futures_dce_position_rank(date, vars_list=None):
             call_count["n"] += 1
             return {"m2609": mock_df}  # 只查一个合约，第一次就能找到
 
@@ -1105,7 +1105,7 @@ def test_dce_position_rank_retries_until_found(monkeypatch_fetch):
     call_count = {"n": 0}
     class FakeAkshare:
         @staticmethod
-        def futures_dce_position_rank(date):
+        def futures_dce_position_rank(date, vars_list=None):
             call_count["n"] += 1
             if call_count["n"] < 3:
                 return {}  # 前两次：这个日期没有任何数据(模拟还没发布)
@@ -1130,7 +1130,7 @@ def test_dce_position_rank_handles_exceptions_gracefully(monkeypatch_fetch):
     call_count = {"n": 0}
     class FakeAkshare:
         @staticmethod
-        def futures_dce_position_rank(date):
+        def futures_dce_position_rank(date, vars_list=None):
             call_count["n"] += 1
             raise Exception("HTTP 412: 请求被拒绝(模拟大商所官网风控)")
 
@@ -1160,7 +1160,7 @@ def test_dce_position_rank_complete_failure(monkeypatch_fetch):
     })
     class FakeAkshare:
         @staticmethod
-        def futures_dce_position_rank(date):
+        def futures_dce_position_rank(date, vars_list=None):
             return {"m2705": mock_df}  # 只有M2705的数据，M2609一直没有
 
     import sys
@@ -1172,6 +1172,62 @@ def test_dce_position_rank_complete_failure(monkeypatch_fetch):
         assert "反爬" in result["M2609"]["reason"] or "不稳定" in result["M2609"]["reason"], "失败原因应该诚实说明这是这个接口的已知特性，不是笼统的\"出错了\""
         assert result["M2705"]["available"] is True, "★M2705有数据应该正常返回，不应该被M2609的失败连累"
         print(f"✅ 多合约场景下互不影响：M2609找不到数据诚实报告失败，M2705有数据正常返回")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_passes_vars_list(monkeypatch_fetch):
+    """★验证真实生产环境反馈后的修复：请求时应该带上vars_list=['M']，把范围限定在豆粕这一个品种
+    (而不是请求全品种)，验证过'M'确实是这个接口里豆粕对应的品种代码。"""
+    import pandas as pd
+    import fetch_data as fd_module
+
+    mock_df = pd.DataFrame({
+        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
+        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
+        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
+    })
+    received_calls = []
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date, vars_list=None):
+            received_calls.append({"date": date, "vars_list": vars_list})
+            return {"m2609": mock_df}
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        fd_module.fetch_dce_position_rank_multi(["M2609"])
+        assert len(received_calls) == 1
+        assert received_calls[0]["vars_list"] == ["M"], f"★应该带上vars_list=['M']把请求限定在豆粕品种，实际传入: {received_calls[0]['vars_list']}"
+        print(f"✅ 已修复：请求时正确带上vars_list=['M']，把范围限定在豆粕品种(而不是请求全品种)")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_dce_position_rank_handles_bad_zip_file_specifically(monkeypatch_fetch):
+    """★验证真实生产环境反馈后的修复：这次真实用户反馈里4个交易日全部报BadZipFile错误
+    (大商所官网返回的内容不是有效zip，通常是反爬拦截或官网格式变化)——这个具体异常类型
+    应该被单独捕获，给出比"笼统的Exception"更准确的诊断信息，方便以后排查。"""
+    import zipfile
+    import fetch_data as fd_module
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_dce_position_rank(date, vars_list=None):
+            raise zipfile.BadZipFile("File is not a zip file")
+
+    import sys
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=2)
+        assert result["M2609"]["available"] is False
+        attempts = result["M2609"]["debug"]["attempts"]
+        assert len(attempts) == 2
+        assert "BadZipFile" in attempts[0]["error"]
+        assert "反爬" in attempts[0]["error"] or "格式变化" in attempts[0]["error"], \
+            "★BadZipFile应该有专属的诊断说明(反爬拦截/官网格式变化)，不能只是笼统的异常文本"
+        print(f"✅ 已修复：BadZipFile异常现在有专属诊断信息，明确说明可能是反爬拦截或官网格式变化")
     finally:
         del sys.modules['akshare']
 
@@ -1275,6 +1331,7 @@ if __name__ == "__main__":
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
               test_dce_position_rank_success_first_try, test_dce_position_rank_stops_once_all_found, test_dce_position_rank_retries_until_found,
               test_dce_position_rank_handles_exceptions_gracefully, test_dce_position_rank_complete_failure,
+              test_dce_position_rank_passes_vars_list, test_dce_position_rank_handles_bad_zip_file_specifically,
               test_dce_continuous_kline_handles_chinese_column_names, test_dce_continuous_kline_debug_output_is_json_safe,
               test_dce_continuous_kline_parsing, test_dce_continuous_kline_detects_rollover_jumps,
               test_us_planting_progress_filters_out_annual_survey_data,
