@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-21T06:01:46.667375+00:00",
+  "generatedAt": "2026-09-21T08:12:55.035945+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 361.1,
-    "change": 6.5,
-    "changePct": 1.83,
+    "price": 359.8,
+    "change": 5.2,
+    "changePct": 1.47,
     "asOf": "2026-09-21T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -6760,15 +6760,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-10 15:00:00",
-        "open": 2830.0,
-        "high": 2833.0,
-        "low": 2829.0,
-        "close": 2833.0,
-        "volume": 1096.0,
-        "hold": 642920.0
-      },
-      {
         "datetime": "2026-08-10 22:00:00",
         "open": 2832.0,
         "high": 2834.0,
@@ -8375,9 +8366,18 @@
         "open": 3015.0,
         "high": 3020.0,
         "low": 3011.0,
-        "close": 3016.0,
-        "volume": 7.0,
-        "hold": 867533.0
+        "close": 3013.0,
+        "volume": 85.0,
+        "hold": 867762.0
+      },
+      {
+        "datetime": "2026-09-21 15:00:00",
+        "open": 3013.0,
+        "high": 3015.0,
+        "low": 3010.0,
+        "close": 3013.0,
+        "volume": 700.0,
+        "hold": 867943.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -8385,7 +8385,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 164,
+    "totalBarsReturned": 165,
     "bars": [
       {
         "date": "2026-01-19",
@@ -10026,6 +10026,16 @@
         "volume": 2046376.0,
         "hold": 2731157.0,
         "settle": 3429.0
+      },
+      {
+        "date": "2026-09-21",
+        "open": 3393.0,
+        "high": 3406.0,
+        "low": 3374.0,
+        "close": 3386.0,
+        "volume": 1226414.0,
+        "hold": 2678908.0,
+        "settle": 3391.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -10035,15 +10045,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-10 15:00:00",
-        "open": 3152.0,
-        "high": 3154.0,
-        "low": 3146.0,
-        "close": 3148.0,
-        "volume": 10506.0,
-        "hold": 2160574.0
-      },
       {
         "datetime": "2026-08-10 22:00:00",
         "open": 3150.0,
@@ -11651,9 +11652,18 @@
         "open": 3391.0,
         "high": 3399.0,
         "low": 3387.0,
-        "close": 3393.0,
-        "volume": 159.0,
-        "hold": 2688984.0
+        "close": 3391.0,
+        "volume": 17096.0,
+        "hold": 2687883.0
+      },
+      {
+        "datetime": "2026-09-21 15:00:00",
+        "open": 3390.0,
+        "high": 3393.0,
+        "low": 3386.0,
+        "close": 3386.0,
+        "volume": 16378.0,
+        "hold": 2679192.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11665,62 +11675,122 @@
       "attempts": [
         {
           "date": "2026-09-21",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-21",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-20",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-20",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-19",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-19",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-18",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-18",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-17",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-17",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-17",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-17",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-16",
-          "sortField": "LPRANK",
+          "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
         },
         {
           "date": "2026-09-16",
-          "sortField": "SPRANK",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-16",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-16",
+          "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         }
       ]
@@ -11729,977 +11799,894 @@
   "dceM05PositionRank": {
     "available": true,
     "symbol": "M2705",
-    "date": "2026-09-18",
-    "rows": [
-      {
-        "rank": 1,
-        "volPartyName": "国泰君安",
-        "vol": 88676,
-        "volChg": 9345,
-        "longPartyName": "国泰君安",
-        "longOpenInterest": 66614,
-        "longOpenInterestChg": 2951,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 2,
-        "volPartyName": "高盛期货",
-        "vol": 6024,
-        "volChg": 2963,
-        "longPartyName": "高盛期货",
-        "longOpenInterest": 36724,
-        "longOpenInterestChg": -1032,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 3,
-        "volPartyName": "东吴期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "东吴期货",
-        "longOpenInterest": 35264,
-        "longOpenInterestChg": 654,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 4,
-        "volPartyName": "华泰期货",
-        "vol": 13021,
-        "volChg": 7570,
-        "longPartyName": "华泰期货",
-        "longOpenInterest": 33858,
-        "longOpenInterestChg": 264,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 5,
-        "volPartyName": "招商期货",
-        "vol": 6452,
-        "volChg": -128,
-        "longPartyName": "招商期货",
-        "longOpenInterest": 29334,
-        "longOpenInterestChg": 1812,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 6,
-        "volPartyName": "东证期货",
-        "vol": 99967,
-        "volChg": 5329,
-        "longPartyName": "东证期货",
-        "longOpenInterest": 28285,
-        "longOpenInterestChg": -3559,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 7,
-        "volPartyName": "中信期货",
-        "vol": 65311,
-        "volChg": 5458,
-        "longPartyName": "中信期货",
-        "longOpenInterest": 25477,
-        "longOpenInterestChg": -3875,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 8,
-        "volPartyName": "国投期货",
-        "vol": 8898,
-        "volChg": -5523,
-        "longPartyName": "国投期货",
-        "longOpenInterest": 24822,
-        "longOpenInterestChg": -3220,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 9,
-        "volPartyName": "中粮期货",
-        "vol": 20208,
-        "volChg": 10560,
-        "longPartyName": "中粮期货",
-        "longOpenInterest": 24074,
-        "longOpenInterestChg": 626,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 10,
-        "volPartyName": "方正中期",
-        "vol": 10940,
-        "volChg": 4700,
-        "longPartyName": "方正中期",
-        "longOpenInterest": 22227,
-        "longOpenInterestChg": -9010,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 11,
-        "volPartyName": "浙商期货",
-        "vol": 8709,
-        "volChg": 5953,
-        "longPartyName": "浙商期货",
-        "longOpenInterest": 21952,
-        "longOpenInterestChg": -300,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 12,
-        "volPartyName": "一德期货",
-        "vol": 6458,
-        "volChg": 5146,
-        "longPartyName": "一德期货",
-        "longOpenInterest": 21763,
-        "longOpenInterestChg": -568,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 13,
-        "volPartyName": "大越期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "大越期货",
-        "longOpenInterest": 19941,
-        "longOpenInterestChg": 938,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 14,
-        "volPartyName": "北京首创",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "北京首创",
-        "longOpenInterest": 19843,
-        "longOpenInterestChg": 1067,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 15,
-        "volPartyName": "混沌天成",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "混沌天成",
-        "longOpenInterest": 19155,
-        "longOpenInterestChg": 3018,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 16,
-        "volPartyName": "五矿期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "五矿期货",
-        "longOpenInterest": 17823,
-        "longOpenInterestChg": -101,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 17,
-        "volPartyName": "广发期货",
-        "vol": 18328,
-        "volChg": 353,
-        "longPartyName": "广发期货",
-        "longOpenInterest": 17745,
-        "longOpenInterestChg": -70,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 18,
-        "volPartyName": "南华期货",
-        "vol": 6435,
-        "volChg": 2059,
-        "longPartyName": "南华期货",
-        "longOpenInterest": 17385,
-        "longOpenInterestChg": 1761,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 19,
-        "volPartyName": "国信期货",
-        "vol": 5222,
-        "volChg": 833,
-        "longPartyName": "国信期货",
-        "longOpenInterest": 14613,
-        "longOpenInterestChg": 1459,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 20,
-        "volPartyName": "西部期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "西部期货",
-        "longOpenInterest": 13463,
-        "longOpenInterestChg": 102,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 1,
-        "volPartyName": "中粮期货",
-        "vol": 20208,
-        "volChg": 10560,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中粮期货",
-        "shortOpenInterest": 176231,
-        "shortOpenInterestChg": -2138
-      },
-      {
-        "rank": 2,
-        "volPartyName": "国投期货",
-        "vol": 8898,
-        "volChg": -5523,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "国投期货",
-        "shortOpenInterest": 73411,
-        "shortOpenInterestChg": -812
-      },
-      {
-        "rank": 3,
-        "volPartyName": "中信期货",
-        "vol": 65311,
-        "volChg": 5458,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中信期货",
-        "shortOpenInterest": 70218,
-        "shortOpenInterestChg": 910
-      },
-      {
-        "rank": 4,
-        "volPartyName": "国泰君安",
-        "vol": 88676,
-        "volChg": 9345,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "国泰君安",
-        "shortOpenInterest": 66514,
-        "shortOpenInterestChg": -3557
-      },
-      {
-        "rank": 5,
-        "volPartyName": "东证期货",
-        "vol": 99967,
-        "volChg": 5329,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "东证期货",
-        "shortOpenInterest": 57479,
-        "shortOpenInterestChg": 8340
-      },
-      {
-        "rank": 6,
-        "volPartyName": "永安期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "永安期货",
-        "shortOpenInterest": 42127,
-        "shortOpenInterestChg": -669
-      },
-      {
-        "rank": 7,
-        "volPartyName": "一德期货",
-        "vol": 6458,
-        "volChg": 5146,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "一德期货",
-        "shortOpenInterest": 31322,
-        "shortOpenInterestChg": -436
-      },
-      {
-        "rank": 8,
-        "volPartyName": "广发期货",
-        "vol": 18328,
-        "volChg": 353,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "广发期货",
-        "shortOpenInterest": 26092,
-        "shortOpenInterestChg": 1136
-      },
-      {
-        "rank": 9,
-        "volPartyName": "海证期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "海证期货",
-        "shortOpenInterest": 22194,
-        "shortOpenInterestChg": -53
-      },
-      {
-        "rank": 10,
-        "volPartyName": "南华期货",
-        "vol": 6435,
-        "volChg": 2059,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "南华期货",
-        "shortOpenInterest": 20447,
-        "shortOpenInterestChg": 838
-      },
-      {
-        "rank": 11,
-        "volPartyName": "招商期货",
-        "vol": 6452,
-        "volChg": -128,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "招商期货",
-        "shortOpenInterest": 20163,
-        "shortOpenInterestChg": -64
-      },
-      {
-        "rank": 12,
-        "volPartyName": "五矿期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "五矿期货",
-        "shortOpenInterest": 17852,
-        "shortOpenInterestChg": 458
-      },
-      {
-        "rank": 13,
-        "volPartyName": "华泰期货",
-        "vol": 13021,
-        "volChg": 7570,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "华泰期货",
-        "shortOpenInterest": 16305,
-        "shortOpenInterestChg": 287
-      },
-      {
-        "rank": 14,
-        "volPartyName": "北京首创",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "北京首创",
-        "shortOpenInterest": 14873,
-        "shortOpenInterestChg": -120
-      },
-      {
-        "rank": 15,
-        "volPartyName": "新湖期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "新湖期货",
-        "shortOpenInterest": 10532,
-        "shortOpenInterestChg": -69
-      },
-      {
-        "rank": 16,
-        "volPartyName": "东吴期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "东吴期货",
-        "shortOpenInterest": 10107,
-        "shortOpenInterestChg": -328
-      },
-      {
-        "rank": 17,
-        "volPartyName": "正信期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "正信期货",
-        "shortOpenInterest": 9386,
-        "shortOpenInterestChg": -410
-      },
-      {
-        "rank": 18,
-        "volPartyName": "中信建投",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中信建投",
-        "shortOpenInterest": 8648,
-        "shortOpenInterestChg": -122
-      },
-      {
-        "rank": 19,
-        "volPartyName": "物产中大",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "物产中大",
-        "shortOpenInterest": 8491,
-        "shortOpenInterestChg": -209
-      },
-      {
-        "rank": 20,
-        "volPartyName": "建信期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "建信期货",
-        "shortOpenInterest": 8467,
-        "shortOpenInterestChg": 657
-      }
-    ],
+    "date": "2026-09-21",
+    "tables": {
+      "netLong": [
+        {
+          "rank": 1,
+          "name": "高盛期货",
+          "value": 29037,
+          "change": 780,
+          "isForeign": true
+        },
+        {
+          "rank": 2,
+          "name": "东吴期货",
+          "value": 25960,
+          "change": 803,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "华泰期货",
+          "value": 17490,
+          "change": -63,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "浙商期货",
+          "value": 14349,
+          "change": 864,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "大越期货",
+          "value": 12794,
+          "change": 1320,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "方正中期",
+          "value": 12595,
+          "change": -1165,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "混沌天成",
+          "value": 11790,
+          "change": 1102,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "招商期货",
+          "value": 8415,
+          "change": -756,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "国信期货",
+          "value": 7586,
+          "change": 1440,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "北京首创",
+          "value": 4782,
+          "change": -188,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "五矿期货",
+          "value": 1487,
+          "change": 1516,
+          "isForeign": false
+        }
+      ],
+      "netShort": [
+        {
+          "rank": 1,
+          "name": "中粮期货",
+          "value": 147069,
+          "change": -5088,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "国投期货",
+          "value": 49302,
+          "change": 713,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "中信期货",
+          "value": 42883,
+          "change": -1858,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "东证期货",
+          "value": 36618,
+          "change": 7424,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "永安期货",
+          "value": 27541,
+          "change": -1123,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "一德期货",
+          "value": 12766,
+          "change": 3207,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "海证期货",
+          "value": 7725,
+          "change": -1006,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "广发期货",
+          "value": 7005,
+          "change": -1342,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "南华期货",
+          "value": 3433,
+          "change": 371,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "国泰君安",
+          "value": 1431,
+          "change": 1531,
+          "isForeign": false
+        }
+      ],
+      "longUp": [
+        {
+          "rank": 1,
+          "name": "中粮期货",
+          "value": 25905,
+          "change": 1831,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "永安期货",
+          "value": 14737,
+          "change": 1593,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "五矿期货",
+          "value": 19191,
+          "change": 1368,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "东吴期货",
+          "value": 35709,
+          "change": 445,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "华泰期货",
+          "value": 34253,
+          "change": 395,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "国信期货",
+          "value": 14951,
+          "change": 338,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "南华期货",
+          "value": 17721,
+          "change": 336,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "国投期货",
+          "value": 25091,
+          "change": 269,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "大越期货",
+          "value": 20159,
+          "change": 218,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "广发期货",
+          "value": 17957,
+          "change": 212,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "瑞达期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "金元期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "混沌天成",
+          "value": 19155,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "正信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "中信建投",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "物产中大",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "银河期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "中国国际",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "中泰期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ],
+      "longDown": [
+        {
+          "rank": 1,
+          "name": "一德期货",
+          "value": 18852,
+          "change": -2911,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "方正中期",
+          "value": 19960,
+          "change": -2267,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "东证期货",
+          "value": 26997,
+          "change": -1288,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "国泰君安",
+          "value": 65765,
+          "change": -849,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "招商期货",
+          "value": 28951,
+          "change": -383,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "中信期货",
+          "value": 25113,
+          "change": -364,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "北京首创",
+          "value": 19498,
+          "change": -345,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "高盛期货",
+          "value": 36402,
+          "change": -322,
+          "isForeign": true
+        },
+        {
+          "rank": 9,
+          "name": "浙商期货",
+          "value": 21714,
+          "change": -238,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "瑞达期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "金元期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "混沌天成",
+          "value": 19155,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "正信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "中信建投",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "物产中大",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "银河期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "中国国际",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "中泰期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "冠通期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ]
+    },
     "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)"
   },
   "dceM01PositionRank": {
     "available": true,
     "symbol": "M2701",
-    "date": "2026-09-18",
-    "rows": [
-      {
-        "rank": 1,
-        "volPartyName": "国泰君安",
-        "vol": 611840,
-        "volChg": 107078,
-        "longPartyName": "国泰君安",
-        "longOpenInterest": 282361,
-        "longOpenInterestChg": -6712,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 2,
-        "volPartyName": "中信期货",
-        "vol": 420807,
-        "volChg": 13186,
-        "longPartyName": "中信期货",
-        "longOpenInterest": 249587,
-        "longOpenInterestChg": -25324,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 3,
-        "volPartyName": "东证期货",
-        "vol": 434464,
-        "volChg": 100744,
-        "longPartyName": "东证期货",
-        "longOpenInterest": 208072,
-        "longOpenInterestChg": -17637,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 4,
-        "volPartyName": "高盛期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "高盛期货",
-        "longOpenInterest": 175842,
-        "longOpenInterestChg": 5137,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 5,
-        "volPartyName": "银河期货",
-        "vol": 76049,
-        "volChg": 1892,
-        "longPartyName": "银河期货",
-        "longOpenInterest": 120292,
-        "longOpenInterestChg": -7568,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 6,
-        "volPartyName": "永安期货",
-        "vol": 61437,
-        "volChg": 23476,
-        "longPartyName": "永安期货",
-        "longOpenInterest": 115369,
-        "longOpenInterestChg": -5151,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 7,
-        "volPartyName": "中信建投",
-        "vol": 50956,
-        "volChg": 6345,
-        "longPartyName": "中信建投",
-        "longOpenInterest": 80301,
-        "longOpenInterestChg": 4218,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 8,
-        "volPartyName": "广发期货",
-        "vol": 157510,
-        "volChg": 40547,
-        "longPartyName": "广发期货",
-        "longOpenInterest": 67523,
-        "longOpenInterestChg": -3813,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 9,
-        "volPartyName": "一德期货",
-        "vol": 46936,
-        "volChg": -2192,
-        "longPartyName": "一德期货",
-        "longOpenInterest": 62233,
-        "longOpenInterestChg": -30991,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 10,
-        "volPartyName": "南华期货",
-        "vol": 88653,
-        "volChg": 11878,
-        "longPartyName": "南华期货",
-        "longOpenInterest": 61888,
-        "longOpenInterestChg": 3458,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 11,
-        "volPartyName": "摩根大通",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "摩根大通",
-        "longOpenInterest": 57046,
-        "longOpenInterestChg": -5078,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 12,
-        "volPartyName": "中粮期货",
-        "vol": 87954,
-        "volChg": 52320,
-        "longPartyName": "中粮期货",
-        "longOpenInterest": 56303,
-        "longOpenInterestChg": 6780,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 13,
-        "volPartyName": "国投期货",
-        "vol": 66239,
-        "volChg": 38877,
-        "longPartyName": "国投期货",
-        "longOpenInterest": 56149,
-        "longOpenInterestChg": -7452,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 14,
-        "volPartyName": "北京首创",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "北京首创",
-        "longOpenInterest": 55518,
-        "longOpenInterestChg": 8545,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 15,
-        "volPartyName": "华泰期货",
-        "vol": 98034,
-        "volChg": 20500,
-        "longPartyName": "华泰期货",
-        "longOpenInterest": 47418,
-        "longOpenInterestChg": -3845,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 16,
-        "volPartyName": "中泰期货",
-        "vol": 112184,
-        "volChg": 10283,
-        "longPartyName": "中泰期货",
-        "longOpenInterest": 44497,
-        "longOpenInterestChg": -2626,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 17,
-        "volPartyName": "国富期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "国富期货",
-        "longOpenInterest": 44234,
-        "longOpenInterestChg": -327,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 18,
-        "volPartyName": "海通期货",
-        "vol": 138256,
-        "volChg": 68774,
-        "longPartyName": "海通期货",
-        "longOpenInterest": 44117,
-        "longOpenInterestChg": -10854,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 19,
-        "volPartyName": "中金财富",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "中金财富",
-        "longOpenInterest": 39410,
-        "longOpenInterestChg": -2410,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 20,
-        "volPartyName": "招商期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "招商期货",
-        "longOpenInterest": 35987,
-        "longOpenInterestChg": -3296,
-        "shortPartyName": "",
-        "shortOpenInterest": null,
-        "shortOpenInterestChg": null
-      },
-      {
-        "rank": 1,
-        "volPartyName": "中粮期货",
-        "vol": 87954,
-        "volChg": 52320,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中粮期货",
-        "shortOpenInterest": 591686,
-        "shortOpenInterestChg": -34650
-      },
-      {
-        "rank": 2,
-        "volPartyName": "国投期货",
-        "vol": 66239,
-        "volChg": 38877,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "国投期货",
-        "shortOpenInterest": 326066,
-        "shortOpenInterestChg": -16241
-      },
-      {
-        "rank": 3,
-        "volPartyName": "东证期货",
-        "vol": 434464,
-        "volChg": 100744,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "东证期货",
-        "shortOpenInterest": 187314,
-        "shortOpenInterestChg": -4521
-      },
-      {
-        "rank": 4,
-        "volPartyName": "国泰君安",
-        "vol": 611840,
-        "volChg": 107078,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "国泰君安",
-        "shortOpenInterest": 148453,
-        "shortOpenInterestChg": 1450
-      },
-      {
-        "rank": 5,
-        "volPartyName": "广发期货",
-        "vol": 157510,
-        "volChg": 40547,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "广发期货",
-        "shortOpenInterest": 127194,
-        "shortOpenInterestChg": -16555
-      },
-      {
-        "rank": 6,
-        "volPartyName": "中信期货",
-        "vol": 420807,
-        "volChg": 13186,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中信期货",
-        "shortOpenInterest": 109381,
-        "shortOpenInterestChg": 7427
-      },
-      {
-        "rank": 7,
-        "volPartyName": "华泰期货",
-        "vol": 98034,
-        "volChg": 20500,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "华泰期货",
-        "shortOpenInterest": 94037,
-        "shortOpenInterestChg": -11543
-      },
-      {
-        "rank": 8,
-        "volPartyName": "永安期货",
-        "vol": 61437,
-        "volChg": 23476,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "永安期货",
-        "shortOpenInterest": 77235,
-        "shortOpenInterestChg": -21692
-      },
-      {
-        "rank": 9,
-        "volPartyName": "摩根大通",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "摩根大通",
-        "shortOpenInterest": 64162,
-        "shortOpenInterestChg": 1532
-      },
-      {
-        "rank": 10,
-        "volPartyName": "中泰期货",
-        "vol": 112184,
-        "volChg": 10283,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中泰期货",
-        "shortOpenInterest": 59728,
-        "shortOpenInterestChg": -6818
-      },
-      {
-        "rank": 11,
-        "volPartyName": "银河期货",
-        "vol": 76049,
-        "volChg": 1892,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "银河期货",
-        "shortOpenInterest": 43300,
-        "shortOpenInterestChg": -2843
-      },
-      {
-        "rank": 12,
-        "volPartyName": "国贸期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "国贸期货",
-        "shortOpenInterest": 42984,
-        "shortOpenInterestChg": -727
-      },
-      {
-        "rank": 13,
-        "volPartyName": "海通期货",
-        "vol": 138256,
-        "volChg": 68774,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "海通期货",
-        "shortOpenInterest": 41586,
-        "shortOpenInterestChg": 1322
-      },
-      {
-        "rank": 14,
-        "volPartyName": "中金财富",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "中金财富",
-        "shortOpenInterest": 40652,
-        "shortOpenInterestChg": -11209
-      },
-      {
-        "rank": 15,
-        "volPartyName": "大地期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "大地期货",
-        "shortOpenInterest": 38817,
-        "shortOpenInterestChg": 424
-      },
-      {
-        "rank": 16,
-        "volPartyName": "长江期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "长江期货",
-        "shortOpenInterest": 37250,
-        "shortOpenInterestChg": -9164
-      },
-      {
-        "rank": 17,
-        "volPartyName": "宏源期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "宏源期货",
-        "shortOpenInterest": 35573,
-        "shortOpenInterestChg": -2205
-      },
-      {
-        "rank": 18,
-        "volPartyName": "建信期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "建信期货",
-        "shortOpenInterest": 35457,
-        "shortOpenInterestChg": -3746
-      },
-      {
-        "rank": 19,
-        "volPartyName": "南华期货",
-        "vol": 88653,
-        "volChg": 11878,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "南华期货",
-        "shortOpenInterest": 27430,
-        "shortOpenInterestChg": -3455
-      },
-      {
-        "rank": 20,
-        "volPartyName": "新湖期货",
-        "vol": null,
-        "volChg": null,
-        "longPartyName": "",
-        "longOpenInterest": null,
-        "longOpenInterestChg": null,
-        "shortPartyName": "新湖期货",
-        "shortOpenInterest": 26065,
-        "shortOpenInterestChg": -735
-      }
-    ],
+    "date": "2026-09-21",
+    "tables": {
+      "netLong": [
+        {
+          "rank": 1,
+          "name": "高盛期货",
+          "value": 143204,
+          "change": -6573,
+          "isForeign": true
+        },
+        {
+          "rank": 2,
+          "name": "国泰君安",
+          "value": 134315,
+          "change": 407,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "中信期货",
+          "value": 132252,
+          "change": -7954,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "银河期货",
+          "value": 78755,
+          "change": 1763,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中信建投",
+          "value": 55706,
+          "change": 1470,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "永安期货",
+          "value": 39364,
+          "change": 1230,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "一德期货",
+          "value": 37191,
+          "change": 1023,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "南华期货",
+          "value": 35145,
+          "change": 687,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "北京首创",
+          "value": 29937,
+          "change": 484,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "国富期货",
+          "value": 18186,
+          "change": 17,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "东证期货",
+          "value": 13445,
+          "change": -7313,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "招商期货",
+          "value": 11204,
+          "change": 1282,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "海通期货",
+          "value": 913,
+          "change": -1618,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "摩根大通",
+          "value": 866,
+          "change": 7982,
+          "isForeign": false
+        }
+      ],
+      "netShort": [
+        {
+          "rank": 1,
+          "name": "中粮期货",
+          "value": 530159,
+          "change": -5224,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "国投期货",
+          "value": 269912,
+          "change": -5,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "广发期货",
+          "value": 58959,
+          "change": -712,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "华泰期货",
+          "value": 34062,
+          "change": -12557,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中泰期货",
+          "value": 19722,
+          "change": 4491,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "国贸期货",
+          "value": 6166,
+          "change": -831,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "中金财富",
+          "value": 657,
+          "change": -585,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "大地期货",
+          "value": 583,
+          "change": -2247,
+          "isForeign": false
+        }
+      ],
+      "longUp": [
+        {
+          "rank": 1,
+          "name": "国泰君安",
+          "value": 284952,
+          "change": 2591,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中信建投",
+          "value": 82294,
+          "change": 1993,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "招商期货",
+          "value": 37792,
+          "change": 1805,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "一德期货",
+          "value": 63779,
+          "change": 1546,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "银河期货",
+          "value": 121826,
+          "change": 1534,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "南华期货",
+          "value": 63109,
+          "change": 1221,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "北京首创",
+          "value": 56525,
+          "change": 1007,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "国富期货",
+          "value": 44774,
+          "change": 540,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "摩根大通",
+          "value": 57093,
+          "change": 47,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "浙商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "瑞达期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "华闻期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "国联期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "徽商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "大地期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "新湖期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "国贸期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ],
+      "longDown": [
+        {
+          "rank": 1,
+          "name": "东证期货",
+          "value": 198939,
+          "change": -9133,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中信期货",
+          "value": 241961,
+          "change": -7626,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "高盛期货",
+          "value": 169792,
+          "change": -6050,
+          "isForeign": true
+        },
+        {
+          "rank": 4,
+          "name": "中泰期货",
+          "value": 39807,
+          "change": -4690,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中粮期货",
+          "value": 52440,
+          "change": -3863,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "国投期货",
+          "value": 52768,
+          "change": -3381,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "中金财富",
+          "value": 37019,
+          "change": -2391,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "海通期货",
+          "value": 41942,
+          "change": -2175,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "永安期货",
+          "value": 114122,
+          "change": -1247,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "华泰期货",
+          "value": 46629,
+          "change": -789,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "广发期货",
+          "value": 67379,
+          "change": -144,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "国贸期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "新湖期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "浙商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "大地期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "徽商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "国联期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ]
+    },
     "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)"
   },
   "southAmericaWeather": {
@@ -12709,75 +12696,75 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 9.4,
-        "avgMaxTemp": 35.8
+        "precip7d": 8.6,
+        "avgMaxTemp": 36.1
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 49.0,
-        "avgMaxTemp": 25.0
+        "precip7d": 37.5,
+        "avgMaxTemp": 25.4
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 26.4,
+        "precip7d": 63.0,
         "avgMaxTemp": 22.4
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 3.5,
-        "avgMaxTemp": 34.8
+        "precip7d": 3.6,
+        "avgMaxTemp": 34.7
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 39.9,
+        "precip7d": 60.5,
         "avgMaxTemp": 29.1
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 6.0,
-        "avgMaxTemp": 32.8
+        "precip7d": 11.5,
+        "avgMaxTemp": 31.6
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
         "precip7d": 4.2,
-        "avgMaxTemp": 23.4
+        "avgMaxTemp": 22.8
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 4.2,
-        "avgMaxTemp": 26.0
+        "precip7d": 2.6,
+        "avgMaxTemp": 26.1
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 3.0,
-        "avgMaxTemp": 19.4
+        "precip7d": 59.4,
+        "avgMaxTemp": 19.0
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 3.0,
-        "avgMaxTemp": 23.6
+        "precip7d": 4.2,
+        "avgMaxTemp": 22.9
       }
     },
-    "avgPrecip7d": 19.7,
-    "avgMaxTemp": 30.7,
+    "avgPrecip7d": 25.5,
+    "avgMaxTemp": 30.8,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
