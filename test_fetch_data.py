@@ -788,9 +788,9 @@ def test_contract_code_computation(monkeypatch_fetch):
 
 def test_main_fetches_all_three_contracts(monkeypatch_fetch):
     """★验证多合约接入：main()应该对9月/5月/1月三个合约都分别调用日线+小时线抓取，
-    用get_current_contract_code()算出的具体合约代码去请求，存进以月份命名(不含具体年份)
-    的key里。用手动monkeypatch记录fetch_dce_daily_kline/fetch_dce_hourly_kline实际被
-    调用时传入了什么symbol，而不是真的跑akshare请求。"""
+    以及持仓排名(龙虎榜)，用get_current_contract_code()算出的具体合约代码去请求，
+    存进以月份命名(不含具体年份)的key里。用手动monkeypatch记录实际被调用时传入了
+    什么symbol，而不是真的跑akshare请求。"""
     import json as json_module
     import tempfile
 
@@ -798,18 +798,24 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
 
     daily_calls = []
     hourly_calls = []
+    position_rank_calls = []
     def fake_daily(symbol, max_rows=260):
         daily_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"date": "2026-01-01", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
     def fake_hourly(symbol, max_bars=180):
         hourly_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"datetime": "2026-01-01 10:00:00", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
+    def fake_position_rank(symbols, max_attempts=6):
+        position_rank_calls.append(list(symbols))
+        return {s: {"available": True, "symbol": s, "date": "20260712", "rows": [], "source": "测试"} for s in symbols}
 
     old_daily, old_hourly = fd.fetch_dce_daily_kline, fd.fetch_dce_hourly_kline
+    old_position_rank = fd.fetch_dce_position_rank_multi
     old_output_path = fd.OUTPUT_PATH
     old_key = fd.USDA_API_KEY
     fd.fetch_dce_daily_kline = fake_daily
     fd.fetch_dce_hourly_kline = fake_hourly
+    fd.fetch_dce_position_rank_multi = fake_position_rank
     fd.USDA_API_KEY = ""  # 避免main()真的去跑USDA相关的网络请求路径
 
     tmp_dir = tempfile.mkdtemp()
@@ -826,14 +832,18 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
 
         assert set(daily_calls) == expected_codes, f"main()应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
         assert set(hourly_calls) == expected_codes, f"main()应该对这3个小时线合约代码发起请求: {expected_codes}，实际请求了: {hourly_calls}"
+        assert len(position_rank_calls) == 1, f"★持仓排名应该只调用1次(批量传入3个合约，不是分别调用3次)，实际调用了{len(position_rank_calls)}次"
+        assert set(position_rank_calls[0]) == expected_codes, f"持仓排名批量调用时传入的合约代码应该是这3个: {expected_codes}，实际传入: {position_rank_calls[0]}"
 
         with open(fd.OUTPUT_PATH, "r", encoding="utf-8") as f:
             written = json_module.load(f)
-        for key in ["dceM09Daily", "dceM09Hourly", "dceM05Daily", "dceM05Hourly", "dceM01Daily", "dceM01Hourly"]:
+        for key in ["dceM09Daily", "dceM09Hourly", "dceM05Daily", "dceM05Hourly", "dceM01Daily", "dceM01Hourly",
+                    "dceM09PositionRank", "dceM05PositionRank", "dceM01PositionRank"]:
             assert key in written, f"输出JSON里应该有{key}这个字段(用月份命名，不含具体年份，这样合约年份滚动时key不用改)"
-        print(f"✅ main()正确对三个合约(9/5/1月)都发起了日线+小时线请求，实际请求代码: {sorted(daily_calls)}；输出JSON的6个key(dceM09/05/01Daily/Hourly)都存在")
+        print(f"✅ main()正确对三个合约(9/5/1月)都发起了日线+小时线+持仓排名请求(持仓排名批量1次调用而非3次)，输出JSON的9个key都存在")
     finally:
         fd.fetch_dce_daily_kline, fd.fetch_dce_hourly_kline = old_daily, old_hourly
+        fd.fetch_dce_position_rank_multi = old_position_rank
         fd.OUTPUT_PATH = old_output_path
         fd.USDA_API_KEY = old_key
 
@@ -1001,6 +1011,161 @@ def test_dce_continuous_kline_debug_output_is_json_safe(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
+def test_eastmoney_position_url_construction(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：URL构造应该精确匹配真实抓包结果——这个URL结构是用户在
+    浏览器F12开发者工具里实测抓到的真实请求，不是看文档/猜测的，所以这里用抓包
+    结果的固定部分做精确字符串比对(时间戳_=参数每次都变，只比对其余固定部分)。"""
+    import fetch_data as fd_module
+
+    url = fd_module._build_eastmoney_position_url("M2701", "2026-09-18", "LPRANK")
+    expected_fixed_part = (
+        "https://datacenter-web.eastmoney.com/api/data/v1/get?"
+        "reportName=RPT_FUTU_DAILYPOSITION&columns=ALL&"
+        "filter=(SECURITY_CODE%3D%22M2701%22)(TRADE_DATE%3D%272026-09-18%27)(TYPE%3D%220%22)(LPRANK%3C%3E9999)&"
+        "sortTypes=1&sortColumns=LPRANK&pageNumber=1&pageSize=20&source=WEB&client=WEB"
+    )
+    assert url.startswith(expected_fixed_part), f"URL构造应该跟真实抓包结果完全一致，实际: {url}"
+    print("✅ URL构造精确匹配真实抓包结果(括号不转义、参数顺序、filter语法全部一致)")
+
+
+def test_eastmoney_position_row_parsing(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：用用户提供的真实响应数据验证解析逻辑——包括排名9999
+    (无排名)要被过滤掉、多头/空头分开填充不串号、用干净的会员名(不带"代客"后缀)。"""
+    import fetch_data as fd_module
+
+    raw_rows = [
+        {"MEMBER_NAME_ABBR": "国泰君安（代客）", "ORG_NAME_ABBR_NEW": "国泰君安",
+         "LP_RANK": 1, "SP_RANK": 4, "VOLUME": 611840, "VOLUME_CHANGE": 107078,
+         "LONG_POSITION": 282361, "LP_CHANGE": -6712, "SHORT_POSITION": 148453, "SP_CHANGE": 1450},
+        {"MEMBER_NAME_ABBR": "中粮期货（代客）", "ORG_NAME_ABBR_NEW": "中粮期货",
+         "LP_RANK": 12, "SP_RANK": 1, "VOLUME": 87954, "VOLUME_CHANGE": 52320,
+         "LONG_POSITION": 56303, "LP_CHANGE": 6780, "SHORT_POSITION": 591686, "SP_CHANGE": -34650},
+        {"MEMBER_NAME_ABBR": "国联期货（代客）", "ORG_NAME_ABBR_NEW": "国联期货",
+         "LP_RANK": 9999, "SP_RANK": 9999, "VOLUME": 89447, "VOLUME_CHANGE": 15268,
+         "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": None, "SP_CHANGE": None},
+    ]
+
+    long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "LPRANK")
+    assert len(long_rows) == 2, f"LP_RANK=9999(国联期货)应该被过滤掉，剩2条，实际{len(long_rows)}条"
+    assert long_rows[0]["rank"] == 1 and long_rows[0]["longPartyName"] == "国泰君安"
+    assert long_rows[0]["longOpenInterest"] == 282361 and long_rows[0]["longOpenInterestChg"] == -6712
+    assert long_rows[0]["shortPartyName"] == "", "★按多头排序解析时，不应该混入空头会员名"
+    assert "代客" not in long_rows[0]["longPartyName"], "应该用ORG_NAME_ABBR_NEW干净名字，不带'代客'后缀"
+
+    short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "SPRANK")
+    assert short_rows[0]["rank"] == 1 and short_rows[0]["shortPartyName"] == "中粮期货", "★应该按SP_RANK排序，中粮期货(SP_RANK=1)排第一"
+    assert short_rows[0]["shortOpenInterest"] == 591686
+    assert short_rows[0]["longPartyName"] == "", "★按空头排序解析时，不应该混入多头会员名"
+    print("✅ 用真实响应数据验证：多头/空头分开解析正确，9999哨兵值被过滤，显示名不带'代客'后缀")
+
+
+def test_eastmoney_position_jsonp_unwrap(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：fetch_jsonp_debug应该正确剥掉JSONP回调包装(真实响应实测
+    确认是这个格式)，同时也要能正确处理万一哪天接口直接返回纯JSON(无包装)的情况。"""
+    import fetch_data as fd_module
+
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body.encode("utf-8")
+            self.status = 200
+        def read(self):
+            return self._body
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    jsonp_body = 'jQuery1123041726061443928875_1789959148296({"success":true,"result":{"data":[{"a":1}]},"message":"ok"});'
+    old_urlopen = fd_module.urllib.request.urlopen
+    fd_module.urllib.request.urlopen = lambda req, timeout=20: FakeResponse(jsonp_body)
+    try:
+        data, debug = fd_module.fetch_jsonp_debug("https://example.com/test")
+        assert data is not None and data["success"] is True, "★应该正确剥掉JSONP包装并解析出JSON内容"
+        assert data["result"]["data"] == [{"a": 1}]
+        print("✅ fetch_jsonp_debug正确剥掉真实响应格式的JSONP包装")
+    finally:
+        fd_module.urllib.request.urlopen = old_urlopen
+
+    plain_body = '{"success":true,"result":{"data":[{"b":2}]},"message":"ok"}'
+    fd_module.urllib.request.urlopen = lambda req, timeout=20: FakeResponse(plain_body)
+    try:
+        data, debug = fd_module.fetch_jsonp_debug("https://example.com/test2")
+        assert data is not None and data["result"]["data"] == [{"b": 2}], "★纯JSON(无JSONP包装)也应该能正确处理，不误判成需要剥括号"
+        print("✅ fetch_jsonp_debug对纯JSON(万一接口哪天不带回调了)也能正确兜底处理")
+    finally:
+        fd_module.urllib.request.urlopen = old_urlopen
+
+
+def test_eastmoney_position_rank_integration(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：完整集成测试——mock掉fetch_jsonp_debug，验证
+    fetch_dce_position_rank_multi()对每个合约正确发起2次请求(多头+空头)、
+    正确处理T+1重试(模拟"今天"数据还没发布，要往前找)、结果正确合并成一个rows列表。"""
+    import fetch_data as fd_module
+
+    call_log = []
+    def fake_fetch_jsonp(url, headers=None, retries=3, timeout=20):
+        call_log.append(url)
+        if "TRADE_DATE%3D%272026-09-20%27" in url:
+            # 模拟"今天"数据还没发布
+            return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
+        if "LPRANK" in url and "TRADE_DATE%3D%272026-09-19%27" in url:
+            return {"success": True, "result": {"data": [
+                {"MEMBER_NAME_ABBR": "国泰君安", "ORG_NAME_ABBR_NEW": "国泰君安", "LP_RANK": 1, "SP_RANK": 9999,
+                 "VOLUME": 1000, "VOLUME_CHANGE": 10, "LONG_POSITION": 5000, "LP_CHANGE": 100, "SHORT_POSITION": None, "SP_CHANGE": None},
+            ]}, "message": "ok"}, {"url": url}
+        if "SPRANK" in url and "TRADE_DATE%3D%272026-09-19%27" in url:
+            return {"success": True, "result": {"data": [
+                {"MEMBER_NAME_ABBR": "中粮期货", "ORG_NAME_ABBR_NEW": "中粮期货", "LP_RANK": 9999, "SP_RANK": 1,
+                 "VOLUME": 900, "VOLUME_CHANGE": 5, "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": 4000, "SP_CHANGE": -50},
+            ]}, "message": "ok"}, {"url": url}
+        return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
+
+    old_fn = fd_module.fetch_jsonp_debug
+    fd_module.fetch_jsonp_debug = fake_fetch_jsonp
+    try:
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        old_datetime = fd_module.datetime
+        class FixedDatetime(real_datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return real_datetime(2026, 9, 20, 12, 0, 0, tzinfo=real_timezone.utc)
+        fd_module.datetime = FixedDatetime
+        try:
+            result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=3)
+        finally:
+            fd_module.datetime = old_datetime
+
+        assert result["M2701"]["available"] is True, "★应该往前找到9-19号的数据(9-20号模拟还没发布)"
+        assert result["M2701"]["date"] == "2026-09-19"
+        rows = result["M2701"]["rows"]
+        assert len(rows) == 2, f"多头1条+空头1条应该合并成2条，实际{len(rows)}条"
+        assert any(r["longPartyName"] == "国泰君安" for r in rows)
+        assert any(r["shortPartyName"] == "中粮期货" for r in rows)
+        assert "东方财富" in result["M2701"]["source"], "数据来源说明应该提到东方财富(不再是大商所官网直连)"
+        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-20无数据→往前找到9-19)，多头+空头数据正确合并")
+    finally:
+        fd_module.fetch_jsonp_debug = old_fn
+
+
+def test_eastmoney_position_rank_complete_failure(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：所有日期都拿不到数据时，应该诚实报告失败，不崩溃、不伪造数据。"""
+    import fetch_data as fd_module
+
+    def fake_fetch_jsonp_empty(url, headers=None, retries=3, timeout=20):
+        return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
+
+    old_fn = fd_module.fetch_jsonp_debug
+    fd_module.fetch_jsonp_debug = fake_fetch_jsonp_empty
+    try:
+        result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=2)
+        assert result["M2701"]["available"] is False
+        assert "M2701" in result["M2701"]["reason"]
+        assert "debug" in result["M2701"] and len(result["M2701"]["debug"]["attempts"]) > 0
+        print("✅ 所有日期都没数据时，诚实报告失败原因(不崩溃、不伪造数据)")
+    finally:
+        fd_module.fetch_jsonp_debug = old_fn
+
+
 def test_dce_continuous_kline_parsing(monkeypatch_fetch):
     """验证连续合约(M0)解析：用于3年回测，字段结构应该跟具体合约的日K线类似。"""
     import pandas as pd
@@ -1098,6 +1263,9 @@ def make_monkeypatch():
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
+              test_eastmoney_position_url_construction, test_eastmoney_position_row_parsing,
+              test_eastmoney_position_jsonp_unwrap, test_eastmoney_position_rank_integration,
+              test_eastmoney_position_rank_complete_failure,
               test_dce_continuous_kline_handles_chinese_column_names, test_dce_continuous_kline_debug_output_is_json_safe,
               test_dce_continuous_kline_parsing, test_dce_continuous_kline_detects_rollover_jumps,
               test_us_planting_progress_filters_out_annual_survey_data,

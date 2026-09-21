@@ -1088,7 +1088,7 @@ function renderHarvest(hp, genAt){
 /** 技术面K线卡片：日K线(蜡烛图+MA5/10/20/40/60+成交量+MACD+RSI) + 关键统计。
  * 三个合约(9月/5月/1月)共用这一个渲染函数，由selectContract()切换时调用
  * refreshKlineForContract()决定传入哪个合约的数据。 */
-function renderKline(dailyData, hourlyData, genAt){
+function renderKline(dailyData, hourlyData, genAt, positionRankData){
   const badge = document.getElementById('klineBadge');
   const el = document.getElementById('klineContent');
   // ★放在最前面、早于下面的early-return检查：即使切换到的合约没有可用数据，
@@ -1140,8 +1140,27 @@ function renderKline(dailyData, hourlyData, genAt){
     rsiText = `<span class="${rsiCls}">${latestRsi.toFixed(1)}(${rsiLabel})</span>`;
   }
 
-  const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi);
+  const {k: kdjK, d: kdjD, j: kdjJ} = computeKDJ(bars, 9, 3, 3);
+  const kdjCross = findLatestLineCross(kdjK, kdjD, bars);
+  let kdjCrossText;
+  if(!kdjCross){
+    kdjCrossText = `<span class="neutral">数据不足以判断金叉/死叉(KDJ需要至少9根数据)</span>`;
+  } else {
+    const crossLabel = kdjCross.type==='golden' ? '金叉(偏多)' : '死叉(偏空)';
+    const crossCls = kdjCross.type==='golden' ? 'pos' : 'neg';
+    kdjCrossText = `最近一次<span class="${crossCls}">${crossLabel}</span>：${kdjCross.date}（${kdjCross.daysAgo===0?'今天':kdjCross.daysAgo+'个交易日前'}）`;
+  }
+  const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi, kdjK, kdjD);
   const confluenceHtml = renderConfluenceSummaryHtml(confluenceSummary);
+
+  let positionRankSummaryText, positionRankBodyHtml;
+  if(!positionRankData || !positionRankData.available){
+    positionRankSummaryText = '暂无数据';
+    positionRankBodyHtml = `<div style="font-size:11px;color:var(--t3);padding:8px 0">💡 ${positionRankData?positionRankData.reason:'未知原因'}</div>`;
+  } else {
+    positionRankSummaryText = `截至${positionRankData.date}`;
+    positionRankBodyHtml = renderPositionRankTableHtml(positionRankData);
+  }
 
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
@@ -1197,6 +1216,14 @@ function renderKline(dailyData, hourlyData, genAt){
         <div id="klineRsiContainer" style="height:100px;margin-top:8px"></div>
       </div></details>
 
+    <details class="tier-details" id="klineKdjDetails"><summary>KDJ(9,3,3)详情 ▸<span style="font-size:9px;color:var(--t3);font-weight:400">· ${kdjCrossText}</span></summary>
+      <div class="tier-body">
+        <div id="klineKdjContainer" style="height:100px;margin-top:8px"></div>
+      </div></details>
+
+    <details class="tier-details" id="klinePositionRankDetails"><summary>持仓排名(龙虎榜)详情 ▸<span style="font-size:9px;color:var(--t3);font-weight:400">· ${positionRankSummaryText}</span></summary>
+      <div class="tier-body" id="klinePositionRankBody">${positionRankBodyHtml}</div></details>
+
     ${hourlyHtml}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       ⚠️ ${dailyData.source}
@@ -1238,6 +1265,17 @@ function renderKline(dailyData, hourlyData, genAt){
           rsiInitialized = true;
           const rsiChart = renderRsiChart('klineRsiContainer', bars, rsi, mainChart);
           window._klineChartInstances.push(rsiChart);
+        }
+      };
+    }
+    const kdjDetailsEl = document.getElementById('klineKdjDetails');
+    if(kdjDetailsEl){
+      let kdjInitialized = false;
+      kdjDetailsEl.ontoggle = function(){
+        if(kdjDetailsEl.open && !kdjInitialized){
+          kdjInitialized = true;
+          const kdjChart = renderKdjChart('klineKdjContainer', bars, kdjK, kdjD, kdjJ, mainChart);
+          window._klineChartInstances.push(kdjChart);
         }
       };
     }
@@ -1501,6 +1539,48 @@ function renderRsiChart(containerId, bars, rsi, mainChart){
   return chart;
 }
 
+/** KDJ副图：K(紫)/D(橙)/J(青)三条线，20/80两条参考虚线标出超卖/超买区间。
+ *  J值可能超出0-100范围(公式3K-2D的正常特性)，不额外限制Y轴范围，让图表自动缩放显示。*/
+function renderKdjChart(containerId, bars, k, d, j, mainChart){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
+
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth,
+    height: container.clientHeight || 100,
+    layout: { textColor: '#a0a0a0', background: { type: 'solid', color: 'transparent' } },
+    grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+    timeScale: { borderColor: '#222', timeVisible: true },
+    rightPriceScale: { borderColor: '#222' },
+  });
+
+  const kSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#c77dff', lineWidth:1.3, title:'K', priceLineVisible:false, crosshairMarkerVisible:false});
+  kSeries.setData(bars.map((b,i)=>k[i]!==null?{time:b.date, value:k[i]}:null).filter(v=>v!==null));
+  const dSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#ff9f40', lineWidth:1.3, title:'D', priceLineVisible:false, crosshairMarkerVisible:false});
+  dSeries.setData(bars.map((b,i)=>d[i]!==null?{time:b.date, value:d[i]}:null).filter(v=>v!==null));
+  const jSeries = chart.addSeries(LightweightCharts.LineSeries, {color:'#22d3d3', lineWidth:1, title:'J', priceLineVisible:false, crosshairMarkerVisible:false});
+  jSeries.setData(bars.map((b,i)=>j[i]!==null?{time:b.date, value:j[i]}:null).filter(v=>v!==null));
+
+  if(bars.length>0){
+    const overbought2 = chart.addSeries(LightweightCharts.LineSeries, {color:'#e8414166', lineWidth:1, lineStyle:2, priceLineVisible:false, crosshairMarkerVisible:false});
+    overbought2.setData([{time:bars[0].date, value:80},{time:bars[bars.length-1].date, value:80}]);
+    const oversold2 = chart.addSeries(LightweightCharts.LineSeries, {color:'#00b37a66', lineWidth:1, lineStyle:2, priceLineVisible:false, crosshairMarkerVisible:false});
+    oversold2.setData([{time:bars[0].date, value:20},{time:bars[bars.length-1].date, value:20}]);
+  }
+
+  chart.timeScale().fitContent();
+  if(mainChart){
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) chart.timeScale().setVisibleLogicalRange(range); });
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range=>{ if(range) mainChart.timeScale().setVisibleLogicalRange(range); });
+  }
+  if(typeof ResizeObserver !== 'undefined'){
+    const ro = new ResizeObserver(entries=>{ if(entries.length && entries[0].contentRect) chart.applyOptions({width: entries[0].contentRect.width}); });
+    ro.observe(container);
+  }
+  return chart;
+}
+
 /** ★已修复真实bug：小时线的datetime是"2026-07-13 14:15:00"这种带时分秒的字符串，
  *  Lightweight Charts对于日线这种"只有日期"的K线，接受"2026-07-13"这种纯日期字符串没问题，
  *  但小时线带时间部分，必须转成UNIX时间戳(数字)才能正确渲染——之前直接把这个字符串传进去，
@@ -1602,7 +1682,7 @@ function computeTrendSignal(bars){
 /** 技术面共振摘要：把趋势/RSI/MACD柱状图方向/金叉死叉/价格相对支撑压力位的位置，
  *  各自独立判断偏多还是偏空，然后单纯计数汇总——不合成一个"买/卖"结论，
  *  只是把"现在有几项指标指向哪个方向"这个事实透明地摆出来，具体怎么判断交给用户自己。*/
-function computeConfluenceSummary(bars, dif, dea, histogram, rsi){
+function computeConfluenceSummary(bars, dif, dea, histogram, rsi, kdjK, kdjD){
   const factors = [];
 
   const trend = computeTrendSignal(bars);
@@ -1612,6 +1692,15 @@ function computeConfluenceSummary(bars, dif, dea, histogram, rsi){
   if(latestRsi!==null){
     const dir = latestRsi>55?'bullish':latestRsi<45?'bearish':'neutral';
     factors.push({name:'RSI(14)', direction:dir, detail:`${latestRsi.toFixed(1)}`});
+  }
+
+  if(kdjK && kdjD){
+    const latestK = kdjK[kdjK.length-1], latestD = kdjD[kdjD.length-1];
+    if(latestK!==null && latestD!==null){
+      const dir = latestK>latestD ? 'bullish' : latestK<latestD ? 'bearish' : 'neutral';
+      const zone = latestK>80?'(超买区)':latestK<20?'(超卖区)':'';
+      factors.push({name:'KDJ', direction:dir, detail:`K${latestK.toFixed(1)} D${latestD.toFixed(1)}${zone}`});
+    }
   }
 
   const latestHist = histogram[histogram.length-1], prevHist = histogram[histogram.length-2];
@@ -1656,6 +1745,37 @@ function renderConfluenceSummaryHtml(summary){
   return `<div style="font-size:12px;font-weight:700;margin-bottom:4px">${countLine}</div>${rows}`;
 }
 
+/** 持仓排名(龙虎榜)表格：多头/空头会员排名各一个表，显示持仓量+日增减。
+ *  ⚠️这是会员(期货公司)持仓，不是最终客户持仓——名字是"国泰君安"这种经纪商名称，
+ *  不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。*/
+function renderPositionRankTableHtml(data){
+  const rows = data.rows || [];
+  const fmtNum = n => n!=null ? n.toLocaleString() : '--';
+  const fmtChg = n => {
+    if(n==null) return '<span class="neutral">--</span>';
+    const cls = n>0?'pos':n<0?'neg':'neutral';
+    return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString()}</span>`;
+  };
+  const buildTable = (title, nameKey, posKey, chgKey) => {
+    const validRows = rows.filter(r=>r[nameKey]);
+    if(validRows.length===0) return `<div style="font-size:11px;color:var(--t3)">${title}：无数据</div>`;
+    const tableRows = validRows.map(r=>
+      `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
+        <td style="padding:3px 4px">${r[nameKey]}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtNum(r[posKey])}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtChg(r[chgKey])}</td></tr>`
+    ).join('');
+    return `<div style="font-size:10px;color:var(--t2);margin:6px 0 2px">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr style="color:var(--t3);font-size:9px"><td style="padding:2px 4px">名次</td><td style="padding:2px 4px">会员</td><td style="padding:2px 4px;text-align:right">持仓量</td><td style="padding:2px 4px;text-align:right">增减</td></tr>
+        ${tableRows}
+      </table>`;
+  };
+  return `<div style="font-size:9px;color:var(--t3);margin-bottom:4px">⚠️ 会员(期货公司)持仓排名，非最终客户持仓——除非该机构本身就是直接注册的会员</div>`
+    + buildTable('多头持仓排名(前20名会员)', 'longPartyName', 'longOpenInterest', 'longOpenInterestChg')
+    + buildTable('空头持仓排名(前20名会员)', 'shortPartyName', 'shortOpenInterest', 'shortOpenInterestChg');
+}
+
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
  *  values: 纯数字数组。返回同长度数组，前period-1个是null(数据不够，还算不出来)。
  *  种子值用前period个值的简单平均(常见做法，不是唯一做法，但是最通行的)。*/
@@ -1696,17 +1816,48 @@ function computeMACD(bars){
   return {dif, dea, histogram};
 }
 
-/** 找最近一次金叉(DIF上穿DEA，偏多信号)或死叉(DIF下穿DEA，偏空信号)。
- *  从最新一天往回找，返回{type:'golden'|'death', date, daysAgo}，找不到就返回null。*/
-function findLatestMacdCross(dif, dea, bars){
+/** 找两条线最近一次的金叉(lineA上穿lineB，偏多信号)或死叉(lineA下穿lineB，偏空信号)。
+ *  从最新一天往回找，返回{type:'golden'|'death', date, daysAgo}，找不到就返回null。
+ *  MACD的DIF/DEA交叉、KDJ的K/D交叉都是这个逻辑，抽成通用函数复用。*/
+function findLatestLineCross(lineA, lineB, bars){
   for(let i=bars.length-1; i>0; i--){
-    if(dif[i]===null || dea[i]===null || dif[i-1]===null || dea[i-1]===null) continue;
-    const prevDiff = dif[i-1] - dea[i-1];
-    const curDiff = dif[i] - dea[i];
+    if(lineA[i]===null || lineB[i]===null || lineA[i-1]===null || lineB[i-1]===null) continue;
+    const prevDiff = lineA[i-1] - lineB[i-1];
+    const curDiff = lineA[i] - lineB[i];
     if(prevDiff<=0 && curDiff>0) return {type:'golden', date:bars[i].date, daysAgo: bars.length-1-i};
     if(prevDiff>=0 && curDiff<0) return {type:'death', date:bars[i].date, daysAgo: bars.length-1-i};
   }
   return null;
+}
+
+/** 找最近一次金叉(DIF上穿DEA，偏多信号)或死叉(DIF下穿DEA，偏空信号)。
+ *  保留这个函数名是为了兼容之前写的代码/测试，内部直接调用通用版本。*/
+function findLatestMacdCross(dif, dea, bars){
+  return findLatestLineCross(dif, dea, bars);
+}
+
+/** KDJ指标：N=9(RSV周期)，M1=M2=3(K/D平滑系数)，这是国内行情软件最常见的参数组合。
+ *  K/D初始值用50(中性值)做种子。J=3K-2D，可能超出0-100范围(这是正常的，不是bug)。
+ *  返回{k, d, j}，每项跟bars等长，前period-1个是null(数据不够，还算不出RSV)。*/
+function computeKDJ(bars, period=9, kSmooth=3, dSmooth=3){
+  const n = bars.length;
+  const k = new Array(n).fill(null);
+  const d = new Array(n).fill(null);
+  const j = new Array(n).fill(null);
+  if(n < period) return {k, d, j};
+
+  let kPrev = 50, dPrev = 50;
+  for(let i=period-1; i<n; i++){
+    let hh = -Infinity, ll = Infinity;
+    for(let x=i-period+1; x<=i; x++){ hh=Math.max(hh,bars[x].high); ll=Math.min(ll,bars[x].low); }
+    const rsv = (hh===ll) ? 50 : (bars[i].close-ll)/(hh-ll)*100;
+    const kVal = ((kSmooth-1)/kSmooth)*kPrev + (1/kSmooth)*rsv;
+    const dVal = ((dSmooth-1)/dSmooth)*dPrev + (1/dSmooth)*kVal;
+    const jVal = 3*kVal - 2*dVal;
+    k[i]=kVal; d[i]=dVal; j[i]=jVal;
+    kPrev=kVal; dPrev=dVal;
+  }
+  return {k, d, j};
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
@@ -1759,7 +1910,7 @@ function refreshKlineForContract(month){
   if(!data) return; // 数据还没同步回来，loadSyncedData()完成后会自己触发一次
   const keyMap = {sep:'M09', may:'M05', jan:'M01'};
   const prefix = keyMap[month];
-  renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt);
+  renderKline(data['dce'+prefix+'Daily'], data['dce'+prefix+'Hourly'], data.generatedAt, data['dce'+prefix+'PositionRank']);
 }
 
 /** 均线/布林带二选一叠加在主K线图上，切换时重新走一遍完整的renderKline流程

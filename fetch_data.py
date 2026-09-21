@@ -52,6 +52,62 @@ def fetch_json(url, headers=None, retries=3, timeout=20):
     return data
 
 
+def fetch_jsonp_debug(url, headers=None, retries=3, timeout=20):
+    """
+    跟 fetch_json_debug 一样，但专门处理JSONP格式的响应(用回调函数名包裹JSON，
+    比如 callbackName({...JSON内容...}); 而不是纯JSON)。东方财富的
+    datacenter-web接口就是这种格式——这是实测抓包确认的，不是文档记录的。
+    先剥掉"函数名(...)"这层包装，再按JSON解析剥出来的内容。
+    """
+    headers = dict(headers or {})
+    headers.setdefault("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+    debug = {"url": url}
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+                debug["httpStatus"] = resp.status
+                debug["rawSnippet"] = raw[:500]
+                # 剥JSONP包装：形如 jQuery1123xxx({...}); ，取第一个'('和最后一个')'之间的内容。
+                # 如果接口哪天不带回调直接返回纯JSON了，这个逻辑也不会出错——
+                # 纯JSON整体也会被最外层的{}括号"包住"，正好落在第一个(和最后一个)之间为空的边界情况，
+                # 所以额外做一次"看起来已经是纯JSON"的兜底判断。
+                stripped = raw.strip()
+                if stripped.startswith("{") or stripped.startswith("["):
+                    json_text = stripped
+                else:
+                    first_paren = stripped.find("(")
+                    last_paren = stripped.rfind(")")
+                    if first_paren == -1 or last_paren == -1 or last_paren <= first_paren:
+                        debug["error"] = "JSONP格式识别失败：响应内容里找不到成对的括号"
+                        print(f"[WARN] JSONP解析失败: {url}\n  原始内容片段: {raw[:300]}", file=sys.stderr)
+                        return None, debug
+                    json_text = stripped[first_paren + 1:last_paren]
+                try:
+                    return json.loads(json_text), debug
+                except json.JSONDecodeError as je:
+                    debug["error"] = f"JSON解析失败: {je}（剥掉JSONP包装后的内容仍不是合法JSON）"
+                    print(f"[WARN] JSON解析失败: {url} -> {je}\n  原始内容片段: {raw[:300]}", file=sys.stderr)
+                    return None, debug
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="replace")[:500]
+            except Exception:  # noqa: BLE001
+                pass
+            debug["httpStatus"] = e.code
+            debug["error"] = f"HTTP {e.code}: {e.reason}"
+            debug["rawSnippet"] = body
+            print(f"[WARN] 请求失败(HTTP {e.code}): {url} -> {e.reason}\n  响应体: {body}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+        except Exception as e:  # noqa: BLE001 - 抓取脚本，任何异常都要能继续
+            debug["error"] = str(e)
+            print(f"[WARN] 请求失败: {url} -> {e}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+    return None, debug
+
+
 def fetch_json_debug(url, headers=None, retries=3, timeout=20):
     """
     跟 fetch_json 一样，但额外返回诊断信息 (data, debug)。
@@ -922,6 +978,138 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
 
+def _build_eastmoney_position_url(symbol, date_str, sort_field):
+    """构造东方财富datacenter-web持仓排名接口的请求URL。
+    symbol: 合约代码，如"M2701"(不需要转小写，跟东方财富这边的格式完全一致)
+    date_str: 交易日，格式"YYYY-MM-DD"(不是YYYYMMDD)
+    sort_field: 排序字段，"LPRANK"(多头持仓排名)或"SPRANK"(空头持仓排名)——
+    这个接口返回的每一行是"一个会员在各项指标下的排名"，不是三个独立排行榜，
+    所以要拿"按多头排名前20"，必须显式按LPRANK排序单独查询，不能从任意一次
+    查询结果里直接截取，不然拿到的20个会员可能是按别的指标(比如成交量)排出来的。
+    ⚠️这个URL结构是实测抓包确认的(不是看文档/猜测的)：用户在浏览器F12开发者工具
+    Network标签里，实际点击查询按钮后抓到的真实请求。括号不要被urlencode转义掉——
+    抓包结果显示服务端要的是字面的圆括号，等号和双引号这些字符才需要转义成%3D/%22等。"""
+    filter_str = f'(SECURITY_CODE="{symbol}")(TRADE_DATE=\'{date_str}\')(TYPE="0")({sort_field}<>9999)'
+    params = {
+        "reportName": "RPT_FUTU_DAILYPOSITION",
+        "columns": "ALL",
+        "filter": filter_str,
+        "sortTypes": "1",
+        "sortColumns": sort_field,
+        "pageNumber": "1",
+        "pageSize": "20",
+        "source": "WEB",
+        "client": "WEB",
+        "_": str(int(time.time() * 1000)),
+    }
+    query = "&".join(f"{k}={urllib.parse.quote(str(v), safe='()')}" for k, v in params.items())
+    return f"https://datacenter-web.eastmoney.com/api/data/v1/get?{query}"
+
+
+def _parse_eastmoney_position_rows(raw_rows, sort_field):
+    """把东方财富接口返回的原始行，转换成本项目统一使用的行格式。
+    sort_field='LPRANK'时只填多头相关字段(longXxx)，'SPRANK'时只填空头相关字段(shortXxx)，
+    另一侧留空——这样跟"多头前20/空头前20"是分开查询、分开呈现的设计保持一致，
+    不会把"按空头排序查到的会员"错误地当成"多头持仓前20"里的一员。"""
+    is_long = sort_field == "LPRANK"
+    rank_field = "LP_RANK" if is_long else "SP_RANK"
+    rows = []
+    for r in raw_rows:
+        rank_val = r.get(rank_field)
+        if rank_val is None or rank_val == 9999:
+            continue  # 9999是"没有这项排名"的哨兵值，跳过
+        name = r.get("ORG_NAME_ABBR_NEW") or r.get("MEMBER_NAME_ABBR") or ""
+        row = {
+            "rank": int(rank_val),
+            "volPartyName": name, "vol": r.get("VOLUME"), "volChg": r.get("VOLUME_CHANGE"),
+            "longPartyName": "", "longOpenInterest": None, "longOpenInterestChg": None,
+            "shortPartyName": "", "shortOpenInterest": None, "shortOpenInterestChg": None,
+        }
+        if is_long:
+            row["longPartyName"] = name
+            row["longOpenInterest"] = r.get("LONG_POSITION")
+            row["longOpenInterestChg"] = r.get("LP_CHANGE")
+        else:
+            row["shortPartyName"] = name
+            row["shortOpenInterest"] = r.get("SHORT_POSITION")
+            row["shortOpenInterestChg"] = r.get("SP_CHANGE")
+        rows.append(row)
+    # ★明确按rank排序，不单纯依赖服务端的返回顺序——虽然请求时已经指定了sortColumns，
+    #   服务端理论上会排好序，但多一道自己排序的保险，不容易因为服务端行为的细微变化出问题。
+    rows.sort(key=lambda r: r["rank"])
+    return rows
+
+
+def fetch_dce_position_rank_multi(symbols, max_attempts=6):
+    """大商所持仓排名(龙虎榜)：每个合约前20名会员的多头/空头持仓+日增减。
+    ★2026-09更新：彻底改用东方财富datacenter-web接口，不再走大商所官网直连——
+    之前用akshare的futures_dce_position_rank会稳定报BadZipFile错误(大商所官网
+    反爬拦截或格式变化，生产环境实测确认)。这次改用的接口地址、参数结构、
+    返回字段，全部是通过浏览器F12开发者工具实测抓包确认的，不是看文档/猜测的。
+
+    数据是T+1性质：收盘后才发布当天数据，所以从"今天"开始最多往前试max_attempts天，
+    找到数据就停。每个合约需要2次独立请求(按LPRANK排序拿多头前20，按SPRANK排序拿
+    空头前20)——这个接口的原始数据结构是"每个会员一行、同时列出该会员在各项指标
+    下的排名"，不是分开的独立榜单，所以不能从"按成交量排序"的结果里直接截取
+    多头/空头数据，必须显式指定排序字段分别查询。
+
+    ⚠️这是会员(期货公司)持仓排名，不是最终客户排名——比如"中信期货"是会员名，
+    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。
+
+    返回：{symbol: {available, rows/reason, ...}}，每个symbol独立标注是否拿到数据。"""
+    now_beijing = datetime.now(timezone.utc) + timedelta(hours=8)
+    final = {}
+
+    for symbol in symbols:
+        attempts_log = []
+        long_rows, short_rows, used_date = None, None, None
+
+        for days_back in range(max_attempts):
+            if long_rows is not None and short_rows is not None:
+                break
+            try_date = now_beijing - timedelta(days=days_back)
+            date_str = try_date.strftime("%Y-%m-%d")
+
+            for sort_field, is_long in (("LPRANK", True), ("SPRANK", False)):
+                if (is_long and long_rows is not None) or (not is_long and short_rows is not None):
+                    continue  # 这一侧已经拿到过了，不用再查
+                url = _build_eastmoney_position_url(symbol, date_str, sort_field)
+                data, debug_info = fetch_jsonp_debug(url)
+                if data is None:
+                    attempts_log.append({"date": date_str, "sortField": sort_field, "error": debug_info.get("error", "未知错误")})
+                    continue
+                if not data.get("success"):
+                    attempts_log.append({"date": date_str, "sortField": sort_field, "note": f"接口返回success=false: {data.get('message')}"})
+                    continue
+                raw_rows = (data.get("result") or {}).get("data") or []
+                if not raw_rows:
+                    attempts_log.append({"date": date_str, "sortField": sort_field, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
+                    continue
+                parsed = _parse_eastmoney_position_rows(raw_rows, sort_field)
+                if is_long:
+                    long_rows = parsed
+                else:
+                    short_rows = parsed
+                used_date = date_str
+
+        if long_rows is not None or short_rows is not None:
+            final[symbol] = {
+                "available": True,
+                "symbol": symbol,
+                "date": used_date,
+                "rows": (long_rows or []) + (short_rows or []),
+                "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)",
+            }
+            if long_rows is None or short_rows is None:
+                final[symbol]["partialNote"] = f"{'多头' if long_rows is None else '空头'}持仓排名这次没拿到，只有{'空头' if long_rows is None else '多头'}数据"
+        else:
+            final[symbol] = {
+                "available": False,
+                "reason": f"尝试了最近{max_attempts}个日期都没能获取到{symbol}的持仓排名数据",
+                "debug": {"attempts": attempts_log},
+            }
+    return final
+
 
 # ---------------------------------------------------------------------------
 # 4. 美国干旱监测 (US Drought Monitor) —— 真正的官方干旱等级数据
@@ -1475,6 +1663,12 @@ def main():
 
     no_usda_key = {"available": False, "reason": "缺少 USDA_API_KEY"}
 
+    # ★三个合约代码只算一次，日线/小时线/持仓排名都复用，不重复调用get_current_contract_code()
+    sep_code = get_current_contract_code(9)
+    may_code = get_current_contract_code(5)
+    jan_code = get_current_contract_code(1)
+    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code])
+
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
@@ -1485,12 +1679,16 @@ def main():
         "usHarvestProgress": fetch_us_harvest_progress(),
         # ★ 技术面覆盖三个合约(9月/5月/1月)。key用月份命名(不用具体年份)，
         #   这样合约年份每年滚动时key不用跟着改——具体是哪年的合约看里面的symbol字段。
-        "dceM09Daily": fetch_dce_daily_kline(get_current_contract_code(9)),
-        "dceM09Hourly": fetch_dce_hourly_kline(get_current_contract_code(9)),
-        "dceM05Daily": fetch_dce_daily_kline(get_current_contract_code(5)),
-        "dceM05Hourly": fetch_dce_hourly_kline(get_current_contract_code(5)),
-        "dceM01Daily": fetch_dce_daily_kline(get_current_contract_code(1)),
-        "dceM01Hourly": fetch_dce_hourly_kline(get_current_contract_code(1)),
+        "dceM09Daily": fetch_dce_daily_kline(sep_code),
+        "dceM09Hourly": fetch_dce_hourly_kline(sep_code),
+        "dceM05Daily": fetch_dce_daily_kline(may_code),
+        "dceM05Hourly": fetch_dce_hourly_kline(may_code),
+        "dceM01Daily": fetch_dce_daily_kline(jan_code),
+        "dceM01Hourly": fetch_dce_hourly_kline(jan_code),
+        # ★龙虎榜(会员持仓排名)，同样按月份命名key，三个合约一次请求批量拿到
+        "dceM09PositionRank": position_ranks[sep_code],
+        "dceM05PositionRank": position_ranks[may_code],
+        "dceM01PositionRank": position_ranks[jan_code],
         "southAmericaWeather": fetch_south_america_weather(),
         "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
