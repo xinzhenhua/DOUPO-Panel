@@ -978,14 +978,39 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
 
+# ★确认过的境内外资独资期货公司(实测查证，不是猜测)：这4家目前都是100%外资控股的
+#   境内期货公司，且都是大商所会员——高盛期货是2026年才由"乾坤期货"更名而来。
+#   用"in"做包含匹配(不是精确匹配)，因为会员名称在不同数据源/时间点可能带"(代客)"
+#   这类后缀，或者叫"高盛期货(深圳)"这种更完整的写法。
+FOREIGN_FUTURES_FIRMS = ["高盛期货", "摩根大通期货", "摩根士丹利期货", "瑞银期货"]
+
+
+def _is_foreign_futures_firm(name):
+    """判断一个会员名称是不是已确认的外资独资期货公司。"""
+    return any(firm in name for firm in FOREIGN_FUTURES_FIRMS)
+
+
+# 六个龙虎榜类别的配置：sortField是请求时sortColumns参数要用的值(不带下划线)，
+# rankField/valueField/chgField是响应数据里实际的字段名(部分带下划线)。
+# ⚠️这几个字段名都是从用户实测抓包的真实响应数据里确认的，不是看文档猜的。
+POSITION_RANK_CATEGORIES = {
+    "long":     {"sortField": "LPRANK",      "rankField": "LP_RANK",      "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头持仓龙虎榜"},
+    "short":    {"sortField": "SPRANK",      "rankField": "SP_RANK",      "valueField": "SHORT_POSITION",     "chgField": "SP_CHANGE",  "label": "空头持仓龙虎榜"},
+    "netLong":  {"sortField": "NLPRANK",     "rankField": "NLP_RANK",     "valueField": "NET_LONG_POSITION",  "chgField": "NLP_CHANGE", "label": "净多头龙虎榜"},
+    "netShort": {"sortField": "NSPRANK",     "rankField": "NSP_RANK",     "valueField": "NET_SHORT_POSITION", "chgField": "NSP_CHANGE", "label": "净空头龙虎榜"},
+    "longUp":   {"sortField": "LPUPRANK",    "rankField": "LP_UP_RANK",   "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头增仓龙虎榜"},
+    "longDown": {"sortField": "LPDOWNRANK",  "rankField": "LP_DOWN_RANK", "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头减仓龙虎榜"},
+}
+
+
 def _build_eastmoney_position_url(symbol, date_str, sort_field):
     """构造东方财富datacenter-web持仓排名接口的请求URL。
     symbol: 合约代码，如"M2701"(不需要转小写，跟东方财富这边的格式完全一致)
     date_str: 交易日，格式"YYYY-MM-DD"(不是YYYYMMDD)
-    sort_field: 排序字段，"LPRANK"(多头持仓排名)或"SPRANK"(空头持仓排名)——
-    这个接口返回的每一行是"一个会员在各项指标下的排名"，不是三个独立排行榜，
-    所以要拿"按多头排名前20"，必须显式按LPRANK排序单独查询，不能从任意一次
-    查询结果里直接截取，不然拿到的20个会员可能是按别的指标(比如成交量)排出来的。
+    sort_field: 排序字段，取值见POSITION_RANK_CATEGORIES里各类别的sortField——
+    这个接口返回的每一行是"一个会员在各项指标下的排名"，不是独立的多个排行榜，
+    所以要拿"按某项指标排名前20"，必须显式按对应字段排序单独查询，不能从任意一次
+    查询结果里直接截取，不然拿到的20个会员可能是按别的指标排出来的。
     ⚠️这个URL结构是实测抓包确认的(不是看文档/猜测的)：用户在浏览器F12开发者工具
     Network标签里，实际点击查询按钮后抓到的真实请求。括号不要被urlencode转义掉——
     抓包结果显示服务端要的是字面的圆括号，等号和双引号这些字符才需要转义成%3D/%22等。"""
@@ -1006,102 +1031,105 @@ def _build_eastmoney_position_url(symbol, date_str, sort_field):
     return f"https://datacenter-web.eastmoney.com/api/data/v1/get?{query}"
 
 
-def _parse_eastmoney_position_rows(raw_rows, sort_field):
+def _parse_eastmoney_position_rows(raw_rows, category_key):
     """把东方财富接口返回的原始行，转换成本项目统一使用的行格式。
-    sort_field='LPRANK'时只填多头相关字段(longXxx)，'SPRANK'时只填空头相关字段(shortXxx)，
-    另一侧留空——这样跟"多头前20/空头前20"是分开查询、分开呈现的设计保持一致，
-    不会把"按空头排序查到的会员"错误地当成"多头持仓前20"里的一员。"""
-    is_long = sort_field == "LPRANK"
-    rank_field = "LP_RANK" if is_long else "SP_RANK"
+    category_key: POSITION_RANK_CATEGORIES里的键，决定用哪个排名字段过滤/排序，
+    以及用哪个持仓量+增减字段作为这一类别的"值"。每一行统一输出
+    {rank, name, value, change, isForeign}这几个字段，不管是哪个类别都是同一套结构，
+    方便前端用同一套渲染逻辑处理六个不同的榜单。"""
+    cfg = POSITION_RANK_CATEGORIES[category_key]
     rows = []
     for r in raw_rows:
-        rank_val = r.get(rank_field)
+        rank_val = r.get(cfg["rankField"])
         if rank_val is None or rank_val == 9999:
             continue  # 9999是"没有这项排名"的哨兵值，跳过
         name = r.get("ORG_NAME_ABBR_NEW") or r.get("MEMBER_NAME_ABBR") or ""
-        row = {
+        rows.append({
             "rank": int(rank_val),
-            "volPartyName": name, "vol": r.get("VOLUME"), "volChg": r.get("VOLUME_CHANGE"),
-            "longPartyName": "", "longOpenInterest": None, "longOpenInterestChg": None,
-            "shortPartyName": "", "shortOpenInterest": None, "shortOpenInterestChg": None,
-        }
-        if is_long:
-            row["longPartyName"] = name
-            row["longOpenInterest"] = r.get("LONG_POSITION")
-            row["longOpenInterestChg"] = r.get("LP_CHANGE")
-        else:
-            row["shortPartyName"] = name
-            row["shortOpenInterest"] = r.get("SHORT_POSITION")
-            row["shortOpenInterestChg"] = r.get("SP_CHANGE")
-        rows.append(row)
+            "name": name,
+            "value": r.get(cfg["valueField"]),
+            "change": r.get(cfg["chgField"]),
+            "isForeign": _is_foreign_futures_firm(name),
+        })
     # ★明确按rank排序，不单纯依赖服务端的返回顺序——虽然请求时已经指定了sortColumns，
     #   服务端理论上会排好序，但多一道自己排序的保险，不容易因为服务端行为的细微变化出问题。
     rows.sort(key=lambda r: r["rank"])
     return rows
 
 
-def fetch_dce_position_rank_multi(symbols, max_attempts=6):
-    """大商所持仓排名(龙虎榜)：每个合约前20名会员的多头/空头持仓+日增减。
+def fetch_dce_position_rank_multi(symbols, max_attempts=6, categories=None):
+    """大商所持仓排名(龙虎榜)：每个合约六类榜单(多头持仓/空头持仓/净多头/净空头/
+    多头增仓/多头减仓)的前20名会员，含外资独资期货公司标注。
     ★2026-09更新：彻底改用东方财富datacenter-web接口，不再走大商所官网直连——
     之前用akshare的futures_dce_position_rank会稳定报BadZipFile错误(大商所官网
     反爬拦截或格式变化，生产环境实测确认)。这次改用的接口地址、参数结构、
     返回字段，全部是通过浏览器F12开发者工具实测抓包确认的，不是看文档/猜测的。
 
+    ★categories默认是POSITION_RANK_CATEGORIES的全部键，但按用户明确要求，
+    实际调用时(main()里)只传4类：netLong/netShort/longUp/longDown——多头/空头
+    持仓这两类(long/short)虽然接口支持，暂时不在默认抓取范围内，避免请求量
+    进一步增加(每类都要走一遍T+1重试逻辑，类别越多，最坏情况下请求次数越多)。
+
     数据是T+1性质：收盘后才发布当天数据，所以从"今天"开始最多往前试max_attempts天，
-    找到数据就停。每个合约需要2次独立请求(按LPRANK排序拿多头前20，按SPRANK排序拿
-    空头前20)——这个接口的原始数据结构是"每个会员一行、同时列出该会员在各项指标
-    下的排名"，不是分开的独立榜单，所以不能从"按成交量排序"的结果里直接截取
-    多头/空头数据，必须显式指定排序字段分别查询。
+    找到数据就停。每个合约每个类别都需要独立请求——这个接口的原始数据结构是
+    "每个会员一行、同时列出该会员在各项指标下的排名"，不是分开的独立榜单，
+    所以不能从"按某一个指标排序"的结果里直接截取别的指标数据。
 
     ⚠️这是会员(期货公司)持仓排名，不是最终客户排名——比如"中信期货"是会员名，
-    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。
+    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。已确认的
+    4家外资独资期货公司(高盛期货/摩根大通期货/摩根士丹利期货/瑞银期货)会标注
+    isForeign:true，但要注意：就算这几家进了前20，也不保证当天真的进了榜——
+    多数情况下它们可能根本不在前20名之列(需求量没那么大)，这是真实市场情况，
+    不是数据缺失。
 
-    返回：{symbol: {available, rows/reason, ...}}，每个symbol独立标注是否拿到数据。"""
+    返回：{symbol: {available, date, tables:{类别: rows}, source} 或 {available:False, reason, debug}}"""
+    if categories is None:
+        categories = list(POSITION_RANK_CATEGORIES.keys())
+
     now_beijing = datetime.now(timezone.utc) + timedelta(hours=8)
     final = {}
 
     for symbol in symbols:
         attempts_log = []
-        long_rows, short_rows, used_date = None, None, None
+        tables = {cat: None for cat in categories}
+        used_date = None
 
         for days_back in range(max_attempts):
-            if long_rows is not None and short_rows is not None:
+            if all(v is not None for v in tables.values()):
                 break
             try_date = now_beijing - timedelta(days=days_back)
             date_str = try_date.strftime("%Y-%m-%d")
 
-            for sort_field, is_long in (("LPRANK", True), ("SPRANK", False)):
-                if (is_long and long_rows is not None) or (not is_long and short_rows is not None):
-                    continue  # 这一侧已经拿到过了，不用再查
+            for cat in categories:
+                if tables[cat] is not None:
+                    continue  # 这一类已经拿到过了，不用再查
+                sort_field = POSITION_RANK_CATEGORIES[cat]["sortField"]
                 url = _build_eastmoney_position_url(symbol, date_str, sort_field)
                 data, debug_info = fetch_jsonp_debug(url)
                 if data is None:
-                    attempts_log.append({"date": date_str, "sortField": sort_field, "error": debug_info.get("error", "未知错误")})
+                    attempts_log.append({"date": date_str, "category": cat, "error": debug_info.get("error", "未知错误")})
                     continue
                 if not data.get("success"):
-                    attempts_log.append({"date": date_str, "sortField": sort_field, "note": f"接口返回success=false: {data.get('message')}"})
+                    attempts_log.append({"date": date_str, "category": cat, "note": f"接口返回success=false: {data.get('message')}"})
                     continue
                 raw_rows = (data.get("result") or {}).get("data") or []
                 if not raw_rows:
-                    attempts_log.append({"date": date_str, "sortField": sort_field, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
+                    attempts_log.append({"date": date_str, "category": cat, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
                     continue
-                parsed = _parse_eastmoney_position_rows(raw_rows, sort_field)
-                if is_long:
-                    long_rows = parsed
-                else:
-                    short_rows = parsed
+                tables[cat] = _parse_eastmoney_position_rows(raw_rows, cat)
                 used_date = date_str
 
-        if long_rows is not None or short_rows is not None:
+        if any(v is not None for v in tables.values()):
             final[symbol] = {
                 "available": True,
                 "symbol": symbol,
                 "date": used_date,
-                "rows": (long_rows or []) + (short_rows or []),
+                "tables": {cat: (rows or []) for cat, rows in tables.items()},
                 "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)",
             }
-            if long_rows is None or short_rows is None:
-                final[symbol]["partialNote"] = f"{'多头' if long_rows is None else '空头'}持仓排名这次没拿到，只有{'空头' if long_rows is None else '多头'}数据"
+            missing = [cat for cat, rows in tables.items() if rows is None]
+            if missing:
+                final[symbol]["partialNote"] = f"这几类没拿到数据：{', '.join(POSITION_RANK_CATEGORIES[c]['label'] for c in missing)}"
         else:
             final[symbol] = {
                 "available": False,
@@ -1667,7 +1695,7 @@ def main():
     sep_code = get_current_contract_code(9)
     may_code = get_current_contract_code(5)
     jan_code = get_current_contract_code(1)
-    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code])
+    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code], categories=["netLong", "netShort", "longUp", "longDown"])
 
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),

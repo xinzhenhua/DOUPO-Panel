@@ -805,7 +805,7 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
     def fake_hourly(symbol, max_bars=180):
         hourly_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"datetime": "2026-01-01 10:00:00", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
-    def fake_position_rank(symbols, max_attempts=6):
+    def fake_position_rank(symbols, max_attempts=6, categories=None):
         position_rank_calls.append(list(symbols))
         return {s: {"available": True, "symbol": s, "date": "20260712", "rows": [], "source": "测试"} for s in symbols}
 
@@ -1030,33 +1030,77 @@ def test_eastmoney_position_url_construction(monkeypatch_fetch):
 
 def test_eastmoney_position_row_parsing(monkeypatch_fetch):
     """★龙虎榜(东方财富版)：用用户提供的真实响应数据验证解析逻辑——包括排名9999
-    (无排名)要被过滤掉、多头/空头分开填充不串号、用干净的会员名(不带"代客"后缀)。"""
+    (无排名)要被过滤掉、用干净的会员名(不带"代客"后缀)、统一的rank/name/value/change
+    字段结构对多个类别都适用。"""
     import fetch_data as fd_module
 
     raw_rows = [
         {"MEMBER_NAME_ABBR": "国泰君安（代客）", "ORG_NAME_ABBR_NEW": "国泰君安",
-         "LP_RANK": 1, "SP_RANK": 4, "VOLUME": 611840, "VOLUME_CHANGE": 107078,
-         "LONG_POSITION": 282361, "LP_CHANGE": -6712, "SHORT_POSITION": 148453, "SP_CHANGE": 1450},
+         "LP_RANK": 1, "SP_RANK": 4, "NLP_RANK": 3, "NSP_RANK": 9999, "LP_UP_RANK": 26, "LP_DOWN_RANK": 7,
+         "LONG_POSITION": 282361, "LP_CHANGE": -6712, "SHORT_POSITION": 148453, "SP_CHANGE": 1450,
+         "NET_LONG_POSITION": 133908, "NLP_CHANGE": -8162, "NET_SHORT_POSITION": None, "NSP_CHANGE": None},
         {"MEMBER_NAME_ABBR": "中粮期货（代客）", "ORG_NAME_ABBR_NEW": "中粮期货",
-         "LP_RANK": 12, "SP_RANK": 1, "VOLUME": 87954, "VOLUME_CHANGE": 52320,
-         "LONG_POSITION": 56303, "LP_CHANGE": 6780, "SHORT_POSITION": 591686, "SP_CHANGE": -34650},
+         "LP_RANK": 12, "SP_RANK": 1, "NLP_RANK": 9999, "NSP_RANK": 1, "LP_UP_RANK": 2, "LP_DOWN_RANK": 31,
+         "LONG_POSITION": 56303, "LP_CHANGE": 6780, "SHORT_POSITION": 591686, "SP_CHANGE": -34650,
+         "NET_LONG_POSITION": None, "NLP_CHANGE": None, "NET_SHORT_POSITION": 535383, "NSP_CHANGE": -41430},
         {"MEMBER_NAME_ABBR": "国联期货（代客）", "ORG_NAME_ABBR_NEW": "国联期货",
-         "LP_RANK": 9999, "SP_RANK": 9999, "VOLUME": 89447, "VOLUME_CHANGE": 15268,
-         "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": None, "SP_CHANGE": None},
+         "LP_RANK": 9999, "SP_RANK": 9999, "NLP_RANK": 9999, "NSP_RANK": 9999, "LP_UP_RANK": 9999, "LP_DOWN_RANK": 9999,
+         "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": None, "SP_CHANGE": None,
+         "NET_LONG_POSITION": None, "NLP_CHANGE": None, "NET_SHORT_POSITION": None, "NSP_CHANGE": None},
     ]
 
-    long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "LPRANK")
+    long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "long")
     assert len(long_rows) == 2, f"LP_RANK=9999(国联期货)应该被过滤掉，剩2条，实际{len(long_rows)}条"
-    assert long_rows[0]["rank"] == 1 and long_rows[0]["longPartyName"] == "国泰君安"
-    assert long_rows[0]["longOpenInterest"] == 282361 and long_rows[0]["longOpenInterestChg"] == -6712
-    assert long_rows[0]["shortPartyName"] == "", "★按多头排序解析时，不应该混入空头会员名"
-    assert "代客" not in long_rows[0]["longPartyName"], "应该用ORG_NAME_ABBR_NEW干净名字，不带'代客'后缀"
+    assert long_rows[0]["rank"] == 1 and long_rows[0]["name"] == "国泰君安"
+    assert long_rows[0]["value"] == 282361 and long_rows[0]["change"] == -6712
+    assert "代客" not in long_rows[0]["name"], "应该用ORG_NAME_ABBR_NEW干净名字，不带'代客'后缀"
 
-    short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "SPRANK")
-    assert short_rows[0]["rank"] == 1 and short_rows[0]["shortPartyName"] == "中粮期货", "★应该按SP_RANK排序，中粮期货(SP_RANK=1)排第一"
-    assert short_rows[0]["shortOpenInterest"] == 591686
-    assert short_rows[0]["longPartyName"] == "", "★按空头排序解析时，不应该混入多头会员名"
-    print("✅ 用真实响应数据验证：多头/空头分开解析正确，9999哨兵值被过滤，显示名不带'代客'后缀")
+    short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "short")
+    assert short_rows[0]["rank"] == 1 and short_rows[0]["name"] == "中粮期货", "★应该按SP_RANK排序，中粮期货(SP_RANK=1)排第一"
+    assert short_rows[0]["value"] == 591686
+
+    net_long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "netLong")
+    assert len(net_long_rows) == 1 and net_long_rows[0]["name"] == "国泰君安", "★净多头：只有国泰君安有NLP_RANK(3)，中粮期货NLP_RANK=9999应该被过滤"
+    assert net_long_rows[0]["value"] == 133908
+
+    net_short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "netShort")
+    assert len(net_short_rows) == 1 and net_short_rows[0]["name"] == "中粮期货" and net_short_rows[0]["value"] == 535383
+
+    long_up_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "longUp")
+    assert long_up_rows[0]["name"] == "中粮期货", "★多头增仓：中粮期货LP_UP_RANK=2排第一(比国泰君安的26靠前)"
+
+    long_down_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "longDown")
+    assert long_down_rows[0]["name"] == "国泰君安", "★多头减仓：国泰君安LP_DOWN_RANK=7排第一(比中粮期货的31靠前)"
+
+    print("✅ 用真实响应数据验证：6个类别(多头/空头/净多头/净空头/多头增仓/多头减仓)解析全部正确，9999哨兵值被过滤")
+
+
+def test_foreign_futures_firm_detection(monkeypatch_fetch):
+    """★外资标注：验证4家已确认的境内外资独资期货公司能被正确识别，且是包含匹配
+    (能兼容"(代客)"这类后缀，或"高盛期货(深圳)"这种更完整的写法)，国内期货公司
+    不应该被误判成外资。"""
+    import fetch_data as fd_module
+
+    assert fd_module._is_foreign_futures_firm("高盛期货") is True
+    assert fd_module._is_foreign_futures_firm("高盛期货（深圳）有限公司") is True, "★应该是包含匹配，兼容更完整的公司全称"
+    assert fd_module._is_foreign_futures_firm("高盛期货（代客）") is True, "★应该能兼容'(代客)'后缀"
+    assert fd_module._is_foreign_futures_firm("摩根大通期货") is True
+    assert fd_module._is_foreign_futures_firm("摩根士丹利期货") is True
+    assert fd_module._is_foreign_futures_firm("瑞银期货") is True
+    assert fd_module._is_foreign_futures_firm("中信期货") is False, "★国内期货公司不应该被误判成外资"
+    assert fd_module._is_foreign_futures_firm("国泰君安") is False
+
+    # 解析流程里也要验证isForeign字段确实被正确设置
+    raw_rows = [
+        {"MEMBER_NAME_ABBR": "高盛期货（代客）", "ORG_NAME_ABBR_NEW": "高盛期货", "LP_RANK": 5, "LONG_POSITION": 1000, "LP_CHANGE": 50},
+        {"MEMBER_NAME_ABBR": "中信期货（代客）", "ORG_NAME_ABBR_NEW": "中信期货", "LP_RANK": 1, "LONG_POSITION": 5000, "LP_CHANGE": 100},
+    ]
+    parsed = fd_module._parse_eastmoney_position_rows(raw_rows, "long")
+    goldman_row = next(r for r in parsed if r["name"] == "高盛期货")
+    citic_row = next(r for r in parsed if r["name"] == "中信期货")
+    assert goldman_row["isForeign"] is True, "★高盛期货这一行应该被标注isForeign=true"
+    assert citic_row["isForeign"] is False, "★中信期货不应该被标注为外资"
+    print("✅ 外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)识别正确，国内公司不会被误判，isForeign字段正确写入解析结果")
 
 
 def test_eastmoney_position_jsonp_unwrap(monkeypatch_fetch):
@@ -1098,26 +1142,32 @@ def test_eastmoney_position_jsonp_unwrap(monkeypatch_fetch):
 
 def test_eastmoney_position_rank_integration(monkeypatch_fetch):
     """★龙虎榜(东方财富版)：完整集成测试——mock掉fetch_jsonp_debug，验证
-    fetch_dce_position_rank_multi()对每个合约正确发起2次请求(多头+空头)、
-    正确处理T+1重试(模拟"今天"数据还没发布，要往前找)、结果正确合并成一个rows列表。"""
+    fetch_dce_position_rank_multi()对指定的类别(净多头/净空头/多头增仓/多头减仓)
+    正确发起请求、正确处理T+1重试(模拟"今天"数据还没发布，要往前找)、
+    结果正确组织成tables字典结构(不是扁平的rows列表)。"""
     import fetch_data as fd_module
 
-    call_log = []
     def fake_fetch_jsonp(url, headers=None, retries=3, timeout=20):
-        call_log.append(url)
         if "TRADE_DATE%3D%272026-09-20%27" in url:
             # 模拟"今天"数据还没发布
             return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
-        if "LPRANK" in url and "TRADE_DATE%3D%272026-09-19%27" in url:
-            return {"success": True, "result": {"data": [
-                {"MEMBER_NAME_ABBR": "国泰君安", "ORG_NAME_ABBR_NEW": "国泰君安", "LP_RANK": 1, "SP_RANK": 9999,
-                 "VOLUME": 1000, "VOLUME_CHANGE": 10, "LONG_POSITION": 5000, "LP_CHANGE": 100, "SHORT_POSITION": None, "SP_CHANGE": None},
-            ]}, "message": "ok"}, {"url": url}
-        if "SPRANK" in url and "TRADE_DATE%3D%272026-09-19%27" in url:
-            return {"success": True, "result": {"data": [
-                {"MEMBER_NAME_ABBR": "中粮期货", "ORG_NAME_ABBR_NEW": "中粮期货", "LP_RANK": 9999, "SP_RANK": 1,
-                 "VOLUME": 900, "VOLUME_CHANGE": 5, "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": 4000, "SP_CHANGE": -50},
-            ]}, "message": "ok"}, {"url": url}
+        if "TRADE_DATE%3D%272026-09-19%27" in url:
+            if "NLPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "国泰君安", "ORG_NAME_ABBR_NEW": "国泰君安", "NLP_RANK": 1, "NET_LONG_POSITION": 5000, "NLP_CHANGE": 100},
+                ]}, "message": "ok"}, {"url": url}
+            if "NSPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "高盛期货", "ORG_NAME_ABBR_NEW": "高盛期货", "NSP_RANK": 1, "NET_SHORT_POSITION": 4000, "NSP_CHANGE": -50},
+                ]}, "message": "ok"}, {"url": url}
+            if "LPUPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "中粮期货", "ORG_NAME_ABBR_NEW": "中粮期货", "LP_UP_RANK": 1, "LONG_POSITION": 3000, "LP_CHANGE": 200},
+                ]}, "message": "ok"}, {"url": url}
+            if "LPDOWNRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "中信期货", "ORG_NAME_ABBR_NEW": "中信期货", "LP_DOWN_RANK": 1, "LONG_POSITION": 2000, "LP_CHANGE": -150},
+                ]}, "message": "ok"}, {"url": url}
         return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
 
     old_fn = fd_module.fetch_jsonp_debug
@@ -1131,18 +1181,20 @@ def test_eastmoney_position_rank_integration(monkeypatch_fetch):
                 return real_datetime(2026, 9, 20, 12, 0, 0, tzinfo=real_timezone.utc)
         fd_module.datetime = FixedDatetime
         try:
-            result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=3)
+            result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=3, categories=["netLong", "netShort", "longUp", "longDown"])
         finally:
             fd_module.datetime = old_datetime
 
         assert result["M2701"]["available"] is True, "★应该往前找到9-19号的数据(9-20号模拟还没发布)"
         assert result["M2701"]["date"] == "2026-09-19"
-        rows = result["M2701"]["rows"]
-        assert len(rows) == 2, f"多头1条+空头1条应该合并成2条，实际{len(rows)}条"
-        assert any(r["longPartyName"] == "国泰君安" for r in rows)
-        assert any(r["shortPartyName"] == "中粮期货" for r in rows)
+        tables = result["M2701"]["tables"]
+        assert set(tables.keys()) == {"netLong", "netShort", "longUp", "longDown"}, f"★应该只包含请求的4个类别，实际: {list(tables.keys())}"
+        assert tables["netLong"][0]["name"] == "国泰君安"
+        assert tables["netShort"][0]["name"] == "高盛期货" and tables["netShort"][0]["isForeign"] is True, "★净空头榜里的高盛期货应该被标注isForeign=true"
+        assert tables["longUp"][0]["name"] == "中粮期货"
+        assert tables["longDown"][0]["name"] == "中信期货"
         assert "东方财富" in result["M2701"]["source"], "数据来源说明应该提到东方财富(不再是大商所官网直连)"
-        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-20无数据→往前找到9-19)，多头+空头数据正确合并")
+        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-20无数据→往前找到9-19)，4个指定类别正确组织成tables字典，外资标注正确")
     finally:
         fd_module.fetch_jsonp_debug = old_fn
 
@@ -1157,7 +1209,7 @@ def test_eastmoney_position_rank_complete_failure(monkeypatch_fetch):
     old_fn = fd_module.fetch_jsonp_debug
     fd_module.fetch_jsonp_debug = fake_fetch_jsonp_empty
     try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=2)
+        result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=2, categories=["netLong"])
         assert result["M2701"]["available"] is False
         assert "M2701" in result["M2701"]["reason"]
         assert "debug" in result["M2701"] and len(result["M2701"]["debug"]["attempts"]) > 0
@@ -1263,7 +1315,7 @@ def make_monkeypatch():
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
-              test_eastmoney_position_url_construction, test_eastmoney_position_row_parsing,
+              test_eastmoney_position_url_construction, test_eastmoney_position_row_parsing, test_foreign_futures_firm_detection,
               test_eastmoney_position_jsonp_unwrap, test_eastmoney_position_rank_integration,
               test_eastmoney_position_rank_complete_failure,
               test_dce_continuous_kline_handles_chinese_column_names, test_dce_continuous_kline_debug_output_is_json_safe,

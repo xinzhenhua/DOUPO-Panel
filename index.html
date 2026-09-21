@@ -1748,32 +1748,49 @@ function renderConfluenceSummaryHtml(summary){
 /** 持仓排名(龙虎榜)表格：多头/空头会员排名各一个表，显示持仓量+日增减。
  *  ⚠️这是会员(期货公司)持仓，不是最终客户持仓——名字是"国泰君安"这种经纪商名称，
  *  不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。*/
+/** 六个类别的中文标题，跟fetch_data.py的POSITION_RANK_CATEGORIES保持一致。*/
+const POSITION_RANK_CATEGORY_LABELS = {
+  long: '多头持仓龙虎榜', short: '空头持仓龙虎榜',
+  netLong: '净多头龙虎榜', netShort: '净空头龙虎榜',
+  longUp: '多头增仓龙虎榜', longDown: '多头减仓龙虎榜',
+};
+
 function renderPositionRankTableHtml(data){
-  const rows = data.rows || [];
+  const tables = data.tables || {};
   const fmtNum = n => n!=null ? n.toLocaleString() : '--';
   const fmtChg = n => {
     if(n==null) return '<span class="neutral">--</span>';
     const cls = n>0?'pos':n<0?'neg':'neutral';
     return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString()}</span>`;
   };
-  const buildTable = (title, nameKey, posKey, chgKey) => {
-    const validRows = rows.filter(r=>r[nameKey]);
-    if(validRows.length===0) return `<div style="font-size:11px;color:var(--t3)">${title}：无数据</div>`;
-    const tableRows = validRows.map(r=>
-      `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
-        <td style="padding:3px 4px">${r[nameKey]}</td>
-        <td style="padding:3px 4px;text-align:right">${fmtNum(r[posKey])}</td>
-        <td style="padding:3px 4px;text-align:right">${fmtChg(r[chgKey])}</td></tr>`
-    ).join('');
-    return `<div style="font-size:10px;color:var(--t2);margin:6px 0 2px">${title}</div>
+  const buildTable = (categoryKey, rows) => {
+    const title = POSITION_RANK_CATEGORY_LABELS[categoryKey] || categoryKey;
+    if(!rows || rows.length===0) return `<div style="font-size:11px;color:var(--t3);margin-top:6px">${title}：无数据</div>`;
+    const tableRows = rows.map(r=>{
+      // ★外资标注：已确认的境内外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)，
+      //   名字前加🌐标记+高亮色，方便一眼扫到，不用逐行去读名字
+      const nameHtml = r.isForeign
+        ? `<span style="color:var(--gold);font-weight:700">🌐 ${r.name}</span>`
+        : r.name;
+      return `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
+        <td style="padding:3px 4px">${nameHtml}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtNum(r.value)}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtChg(r.change)}</td></tr>`;
+    }).join('');
+    return `<div style="font-size:10px;color:var(--t2);margin:8px 0 2px">${title}(前${rows.length}名)</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
         <tr style="color:var(--t3);font-size:9px"><td style="padding:2px 4px">名次</td><td style="padding:2px 4px">会员</td><td style="padding:2px 4px;text-align:right">持仓量</td><td style="padding:2px 4px;text-align:right">增减</td></tr>
         ${tableRows}
       </table>`;
   };
+  const order = ['netLong', 'netShort', 'longUp', 'longDown', 'long', 'short'].filter(k => k in tables);
+  const foreignCount = order.reduce((sum, k) => sum + (tables[k]||[]).filter(r=>r.isForeign).length, 0);
+  const foreignNote = foreignCount > 0
+    ? `<div style="font-size:10px;color:var(--gold);margin-bottom:4px">🌐 本次共侦测到${foreignCount}条外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)相关记录，已在下方高亮标注</div>`
+    : `<div style="font-size:10px;color:var(--t3);margin-bottom:4px">🌐 本次这几类榜单里，已确认的外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)均未进入前20名——不代表它们没有持仓，只是没有大到能进入这个榜单</div>`;
   return `<div style="font-size:9px;color:var(--t3);margin-bottom:4px">⚠️ 会员(期货公司)持仓排名，非最终客户持仓——除非该机构本身就是直接注册的会员</div>`
-    + buildTable('多头持仓排名(前20名会员)', 'longPartyName', 'longOpenInterest', 'longOpenInterestChg')
-    + buildTable('空头持仓排名(前20名会员)', 'shortPartyName', 'shortOpenInterest', 'shortOpenInterestChg');
+    + foreignNote
+    + order.map(k => buildTable(k, tables[k])).join('');
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
