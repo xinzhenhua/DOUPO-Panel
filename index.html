@@ -50,8 +50,9 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .alert-box.bull{background:var(--rd);border:1px solid var(--rb);color:#d47a5a}
 .alert-box.bear{background:var(--gd);border:1px solid var(--gb);color:#5ab87a}
 .alert-box.neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t3)}
+.alert-box.warn{background:var(--goldd);border:1px solid #3d2d00;color:var(--gold)}
 .alert-box .at{font-weight:700;margin-bottom:3px;display:block}
-.alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}
+.alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}.alert-box.warn .at{color:var(--gold)}
 .mfield{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .mfield label{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase}
 .minput{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:10px 10px;color:var(--t1);font-size:14px;outline:none;width:100%;transition:border .2s;min-height:20px}
@@ -123,6 +124,14 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </div>
 <div id="tradingWindowInfo"></div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
+
+<!-- ============ 三方共振：技术面+基本面+外资活跃度，放在最顶端，三个系统各自的详情在下方 ============ -->
+<div class="card" id="resonanceCard" style="border-color:var(--gold)">
+  <div class="card-head">
+    <div class="card-title">技术面 × 基本面 × 外资动向</div>
+  </div>
+  <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
+</div>
 
 <!-- ============ 综合基本面预警：紧跟在合约选择下方，一打开就看到结论 ============ -->
 <div class="card" id="alertCard" style="border-color:var(--gold)">
@@ -1152,6 +1161,10 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
   }
   const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi, kdjK, kdjD);
   const confluenceHtml = renderConfluenceSummaryHtml(confluenceSummary);
+  // ★三方共振第①块输入：技术面方向，跟基本面沿用同一套"多数决"逻辑(哪边因子多算哪边)，
+  //   不是又发明一套新标准——bullCount>bearCount就是偏多，方便使用者理解两边为什么会不一样。
+  window._technicalDirection = confluenceSummary.bullCount > confluenceSummary.bearCount ? '偏多'
+    : confluenceSummary.bearCount > confluenceSummary.bullCount ? '偏空' : '中性';
 
   let positionRankSummaryText, positionRankBodyHtml;
   if(!positionRankData || !positionRankData.available){
@@ -1161,6 +1174,10 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
     positionRankSummaryText = `截至${positionRankData.date}`;
     positionRankBodyHtml = renderPositionRankTableHtml(positionRankData);
   }
+  // ★三方共振第②块输入：外资活跃度，跟着positionRankData一起算，不用等使用者
+  //   自己点开龙虎榜详情才发现"原来今天外资有动作"。
+  window._foreignActivity = computeForeignCapitalActivity(positionRankData);
+  renderResonancePanel();
 
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
@@ -1793,6 +1810,81 @@ function renderPositionRankTableHtml(data){
     + order.map(k => buildTable(k, tables[k])).join('');
 }
 
+/** 三方共振第①块输入：从龙虎榜数据里判断"外资活跃度"。
+ *  只陈述事实(谁、在哪个榜单、变化多少)，不做买卖判断——是否要因此回避交易，
+ *  是使用者自己的决定，这里只是把"外资有没有动静"这件事摆到明处，
+ *  不需要使用者自己再去翻好几个折叠面板里的榜单逐条找。*/
+function computeForeignCapitalActivity(positionRankData){
+  if(!positionRankData || !positionRankData.available){
+    return {status:'unavailable', label:'外资持仓数据暂不可用'};
+  }
+  const tables = positionRankData.tables || {};
+  const categoryLabels = {netLong:'净多头榜', netShort:'净空头榜', longUp:'多头增仓榜', longDown:'多头减仓榜', long:'多头持仓榜', short:'空头持仓榜'};
+  const foreignEntries = [];
+  for(const cat of Object.keys(tables)){
+    for(const r of (tables[cat]||[])){
+      if(r.isForeign) foreignEntries.push({...r, category:cat});
+    }
+  }
+  if(foreignEntries.length===0){
+    return {status:'quiet', label:'本次未侦测到已确认外资机构(高盛/摩根大通/摩根士丹利/瑞银)进入前20名榜单', entries:[]};
+  }
+  // 找变化幅度(绝对值)最大的一条，作为最值得留意的一条——不是简单取第一条，
+  // 而是找"动作最大"的那条，更贴近"外资今天在干嘛"这个问题。
+  const mostSignificant = foreignEntries.reduce((max, e) =>
+    Math.abs(e.change||0) > Math.abs(max.change||0) ? e : max, foreignEntries[0]);
+  const isGoldman = mostSignificant.name.includes('高盛');
+  const chgText = mostSignificant.change!=null ? `${mostSignificant.change>0?'+':''}${mostSignificant.change.toLocaleString()}手` : '变化未知';
+  return {
+    status: 'active',
+    label: `${mostSignificant.name}出现在${categoryLabels[mostSignificant.category]||mostSignificant.category}(${chgText})`,
+    isGoldman,
+    entries: foreignEntries,
+  };
+}
+
+/** 三方共振第②块：把技术面方向(来自computeConfluenceSummary)、基本面方向(来自
+ *  updateOverallAlert的score)、外资活跃度，合成一句陈述性的状态描述。
+ *  ⚠️这里只陈述"三者现在是什么关系"这个事实，不生成买卖建议——跟技术面共振摘要
+ *  的原则一致：透明列出，不下结论。外资活跃时的"参考价值降低"提示，是转述自
+ *  博主经验("外资开始搞事情时，其他信号先放一边")的一种谨慎提醒，不是本项目
+ *  自己发明的判断依据。*/
+function computeResonanceStatus(techDirection, fundDirection, foreignActivity){
+  if(foreignActivity.status === 'active'){
+    if(foreignActivity.isGoldman){
+      return {cls:'warn', title:'外资(高盛)活跃', detail:`${foreignActivity.label}。有交易者的经验是：外资(尤其高盛)主导行情阶段，技术面/基本面信号的参考价值可能降低`};
+    }
+    return {cls:'warn', title:'外资活跃(非高盛)', detail:`${foreignActivity.label}。这类机构的持仓变化也可能反映对冲或客户盘而非方向性押注，信号权重建议自行斟酌`};
+  }
+  const foreignNote = foreignActivity.status==='unavailable' ? '(外资数据暂不可用)' : '(外资平静)';
+  if(techDirection && fundDirection && techDirection===fundDirection && techDirection!=='中性'){
+    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}`, detail:`两者方向一致${foreignNote}，仅供参考，不构成操作建议`};
+  }
+  if(!techDirection || !fundDirection){
+    return {cls:'neutral', title:'数据不足', detail:'技术面或基本面数据还没加载完成，暂时无法判断是否共振'};
+  }
+  return {cls:'neutral', title:`技术面(${techDirection}) 与 基本面(${fundDirection}) 方向不一致`, detail:`两者暂未同向${foreignNote}，混合信号`};
+}
+
+/** 三方共振第③块：读取window上的三方状态，渲染成面板HTML。
+ *  技术面/外资状态由renderKline()写入，基本面状态由updateOverallAlert()写入——
+ *  两边各自更新完都会调用这个函数刷新一次，不需要互相等待对方，谁先算完先占位。*/
+function renderResonancePanel(){
+  const el = document.getElementById('resonanceContent');
+  if(!el) return;
+  const techDirection = window._technicalDirection || null;
+  const fundDirection = window._fundamentalDirection || null;
+  const foreignActivity = window._foreignActivity || {status:'unavailable', label:'外资持仓数据暂不可用'};
+  const status = computeResonanceStatus(techDirection, fundDirection, foreignActivity);
+  const rows = [
+    `技术面：${techDirection || '加载中...'}`,
+    `基本面：${fundDirection || '加载中...'}`,
+    `外资动向：${foreignActivity.label}`,
+  ].join(' · ');
+  el.innerHTML = `<div class="alert-box ${status.cls}"><span class="at">${status.title}</span>${status.detail}</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}</div>`;
+}
+
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
  *  values: 纯数字数组。返回同长度数组，前period-1个是null(数据不够，还算不出来)。
  *  种子值用前period个值的简单平均(常见做法，不是唯一做法，但是最通行的)。*/
@@ -2414,6 +2506,8 @@ function updateOverallAlert(){
   const el = document.getElementById('alertContent');
   if(notes.length===0){
     el.innerHTML = '<div class="alert-box neutral"><span class="at">数据不足</span>请至少填写几项手动数据，或等天气/USDA数据加载完成</div>';
+    window._fundamentalDirection = null; // ★三方共振第③块输入：数据不够时明确置空，而不是留着上一次的旧值不管
+    renderResonancePanel();
     return;
   }
 
@@ -2421,6 +2515,9 @@ function updateOverallAlert(){
   if(score>=3){ cls='bull'; title='综合偏多 +'+score; }
   else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
+  // ★三方共振第③块输入：跟上面判定alert-box样式用的同一套score>=3/score<=-3阈值，
+  //   不是另外发明一套标准——这样"基本面：偏多"跟下面详细面板里的"综合偏多"不会对不上。
+  window._fundamentalDirection = score>=3 ? '偏多' : score<=-3 ? '偏空' : '中性';
 
   // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
   // 1月合约现在有南美综合信号(之前没有)+收获进度(新增)，上限从12变成14(13基础+1)
@@ -2458,6 +2555,7 @@ function updateOverallAlert(){
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span></div>${sdTable}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
+  renderResonancePanel();
 }
 
 // ===================== 初始化 =====================
