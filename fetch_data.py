@@ -37,7 +37,6 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
-import zipfile
 from datetime import datetime, timezone, timedelta
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
@@ -51,6 +50,62 @@ OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "data", "latest.json")
 def fetch_json(url, headers=None, retries=3, timeout=20):
     data, _ = fetch_json_debug(url, headers=headers, retries=retries, timeout=timeout)
     return data
+
+
+def fetch_jsonp_debug(url, headers=None, retries=3, timeout=20):
+    """
+    跟 fetch_json_debug 一样，但专门处理JSONP格式的响应(用回调函数名包裹JSON，
+    比如 callbackName({...JSON内容...}); 而不是纯JSON)。东方财富的
+    datacenter-web接口就是这种格式——这是实测抓包确认的，不是文档记录的。
+    先剥掉"函数名(...)"这层包装，再按JSON解析剥出来的内容。
+    """
+    headers = dict(headers or {})
+    headers.setdefault("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+    debug = {"url": url}
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+                debug["httpStatus"] = resp.status
+                debug["rawSnippet"] = raw[:500]
+                # 剥JSONP包装：形如 jQuery1123xxx({...}); ，取第一个'('和最后一个')'之间的内容。
+                # 如果接口哪天不带回调直接返回纯JSON了，这个逻辑也不会出错——
+                # 纯JSON整体也会被最外层的{}括号"包住"，正好落在第一个(和最后一个)之间为空的边界情况，
+                # 所以额外做一次"看起来已经是纯JSON"的兜底判断。
+                stripped = raw.strip()
+                if stripped.startswith("{") or stripped.startswith("["):
+                    json_text = stripped
+                else:
+                    first_paren = stripped.find("(")
+                    last_paren = stripped.rfind(")")
+                    if first_paren == -1 or last_paren == -1 or last_paren <= first_paren:
+                        debug["error"] = "JSONP格式识别失败：响应内容里找不到成对的括号"
+                        print(f"[WARN] JSONP解析失败: {url}\n  原始内容片段: {raw[:300]}", file=sys.stderr)
+                        return None, debug
+                    json_text = stripped[first_paren + 1:last_paren]
+                try:
+                    return json.loads(json_text), debug
+                except json.JSONDecodeError as je:
+                    debug["error"] = f"JSON解析失败: {je}（剥掉JSONP包装后的内容仍不是合法JSON）"
+                    print(f"[WARN] JSON解析失败: {url} -> {je}\n  原始内容片段: {raw[:300]}", file=sys.stderr)
+                    return None, debug
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="replace")[:500]
+            except Exception:  # noqa: BLE001
+                pass
+            debug["httpStatus"] = e.code
+            debug["error"] = f"HTTP {e.code}: {e.reason}"
+            debug["rawSnippet"] = body
+            print(f"[WARN] 请求失败(HTTP {e.code}): {url} -> {e.reason}\n  响应体: {body}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+        except Exception as e:  # noqa: BLE001 - 抓取脚本，任何异常都要能继续
+            debug["error"] = str(e)
+            print(f"[WARN] 请求失败: {url} -> {e}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+    return None, debug
 
 
 def fetch_json_debug(url, headers=None, retries=3, timeout=20):
@@ -468,22 +523,108 @@ def fetch_psd_supply_demand():
 # ---------------------------------------------------------------------------
 NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/"
 
+# ★"进度型"指标(优良率/播种进度/收获进度)专用：同比+五年均值的共用逻辑。
+# 这几个都是NASS Quick Stats接口，用year参数分年查询——这个接口是官方稳定接口，
+# 不是那种容易被风控的爬虫源，所以多查几年(6次而不是1次)的可靠性风险不大。
+def _fetch_nass_years(base_params, years):
+    """给定NASS查询参数(不含year)和一组年份，依次查询每一年，返回{year: rows_list}。
+    某一年查不到就跳过(不是每年都有对应季节的数据，比如季节还没开始)，
+    不会因为某一年缺数据就让整个同比/五年均值计算失败。"""
+    results = {}
+    for year in years:
+        params = dict(base_params)
+        params["year"] = str(year)
+        url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
+        data, debug = fetch_json_debug(url, retries=1)  # 历史年份查询失败不重试3次，避免拖慢整体运行时间
+        if data and "data" in data and data["data"]:
+            results[year] = data["data"]
+    return results
+
+
+def _find_closest_week_rows(rows, target_date, week_field="week_ending"):
+    """在给定一年的rows里，找week_ending离target_date(date对象)最近的那一周，
+    返回(那个week_ending字符串, 该周对应的所有行)。用"最接近"而不是要求精确匹配，
+    是因为USDA的周次一般定在周日，不同年份"同一个月同一天"未必是周日，
+    找最近的周日周次才是真正对应"去年同期"的正确对比对象。"""
+    from datetime import date as date_cls
+    weeks_seen = sorted(set(r.get(week_field) for r in rows if r.get(week_field)))
+    if not weeks_seen:
+        return None, []
+
+    def parse_date(s):
+        return date_cls(*(int(x) for x in s.split("-")))
+
+    closest_week = min(weeks_seen, key=lambda w: abs((parse_date(w) - target_date).days))
+    matched_rows = [r for r in rows if r.get(week_field) == closest_week]
+    return closest_week, matched_rows
+
+
+def _target_date_n_years_ago(base_date, n):
+    """base_date往前推n年的"同一个月同一天"，用来在历史年份数据里找对应周次。
+    处理闰年2月29日这种极端边界：往前推年份后如果那天不存在(比如推到非闰年的2月29日)，
+    就退到2月28日，不让这种边缘情况直接让整个历史对比失败。"""
+    try:
+        return base_date.replace(year=base_date.year - n)
+    except ValueError:
+        return base_date.replace(year=base_date.year - n, day=28)
+
+
+def _compute_yoy_and_five_year_avg(current_rows, current_week_ending, base_params, value_extractor):
+    """通用的同比+五年均值计算：value_extractor是个函数，输入"某一周对应的行列表"，
+    输出这一周该指标的数值(比如优良率要把EXCELLENT+GOOD两行加总，播种/收获进度
+    只需要一个PCT字段)——三个指标各自的取值逻辑不一样，这里只负责"找到对应周次
+    +查多年数据"这个共同部分。
+    返回(yoyValue, yoyChangePts, fiveYearAvg, fiveYearAvgChangePts)，某一项算不出来就是None。"""
+    from datetime import date as date_cls
+    current_value = value_extractor(
+        [r for r in current_rows if r.get("week_ending") == current_week_ending]
+    )
+    if current_value is None:
+        return None, None, None, None
+
+    latest_date = date_cls(*(int(x) for x in current_week_ending.split("-")))
+    years_back = [1, 2, 3, 4, 5]
+    target_dates = {n: _target_date_n_years_ago(latest_date, n) for n in years_back}
+    historical_years = [latest_date.year - n for n in years_back]
+    year_data = _fetch_nass_years(base_params, historical_years)
+
+    matched_values = {}  # {往前第几年: 数值}
+    for n in years_back:
+        year = latest_date.year - n
+        if year not in year_data:
+            continue
+        _, matched_rows = _find_closest_week_rows(year_data[year], target_dates[n])
+        val = value_extractor(matched_rows)
+        if val is not None:
+            matched_values[n] = val
+
+    yoy_value = matched_values.get(1)
+    yoy_change = round(current_value - yoy_value, 1) if yoy_value is not None else None
+
+    five_year_values = list(matched_values.values())  # 有几年算几年，不强求凑满5年
+    five_year_avg = round(sum(five_year_values) / len(five_year_values), 1) if five_year_values else None
+    five_year_avg_change = round(current_value - five_year_avg, 1) if five_year_avg is not None else None
+
+    return yoy_value, yoy_change, five_year_avg, five_year_avg_change
+
 
 def fetch_soybean_condition():
     """查询USDA/NASS Quick Stats的美豆生长状况评级(优良率=Excellent%+Good%)。
-    这个数据每年只在4月-11月生长季发布，其余月份接口有数据但不会更新(正常现象)。"""
+    这个数据每年只在4月-11月生长季发布，其余月份接口有数据但不会更新(正常现象)。
+    ★属于"进度型"指标(0-100%有界、季节性强)，除了环比，也算同比+五年均值——
+    单看环比容易被单周噪音误导，同比+五年均值才能看出"今年这个水平算不算异常"。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         "statisticcat_desc": "CONDITION",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -497,52 +638,51 @@ def fetch_soybean_condition():
     latest_week = weeks[-1]
     latest_rows = [r for r in rows if r.get("week_ending") == latest_week]
 
-    # 5个等级分别是独立的行，靠short_desc或unit_desc里的关键词区分，容错匹配大小写
-    excellent_pct, good_pct = None, None
-    for r in latest_rows:
-        desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
-        try:
-            val = float(str(r.get("Value", "")).replace(",", ""))
-        except (ValueError, TypeError):
-            continue
-        if "EXCELLENT" in desc:
-            excellent_pct = val
-        elif "GOOD" in desc and "VERY" not in desc:
-            good_pct = val
-
-    if excellent_pct is None or good_pct is None:
-        return {
-            "available": False,
-            "reason": "拿到数据但没能识别出Excellent/Good这两个等级的字段",
-            "debug": {"sampleRawRows": latest_rows[:5], "actualDescsSeen": [r.get("short_desc") for r in latest_rows]},
-        }
-
-    good_excellent = round(excellent_pct + good_pct, 1)
-
-    # 尝试算环比：找上一个有数据的周
-    prev_change = None
-    if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_rows = [r for r in rows if r.get("week_ending") == prev_week]
-        prev_excellent, prev_good = None, None
-        for r in prev_rows:
+    def extract_good_excellent(week_rows):
+        """从某一周的行列表里，把EXCELLENT+GOOD两个等级的百分比加总。取不到就返回None。"""
+        excellent, good = None, None
+        for r in week_rows:
             desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
             try:
                 val = float(str(r.get("Value", "")).replace(",", ""))
             except (ValueError, TypeError):
                 continue
             if "EXCELLENT" in desc:
-                prev_excellent = val
+                excellent = val
             elif "GOOD" in desc and "VERY" not in desc:
-                prev_good = val
-        if prev_excellent is not None and prev_good is not None:
-            prev_change = round(good_excellent - (prev_excellent + prev_good), 1)
+                good = val
+        if excellent is None or good is None:
+            return None
+        return round(excellent + good, 1)
+
+    good_excellent = extract_good_excellent(latest_rows)
+    if good_excellent is None:
+        return {
+            "available": False,
+            "reason": "拿到数据但没能识别出Excellent/Good这两个等级的字段",
+            "debug": {"sampleRawRows": latest_rows[:5], "actualDescsSeen": [r.get("short_desc") for r in latest_rows]},
+        }
+
+    # 环比：找上一个有数据的周
+    prev_change = None
+    if len(weeks) >= 2:
+        prev_value = extract_good_excellent([r for r in rows if r.get("week_ending") == weeks[-2]])
+        if prev_value is not None:
+            prev_change = round(good_excellent - prev_value, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_good_excellent
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "goodExcellentPct": good_excellent,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -556,12 +696,13 @@ def fetch_soybean_condition():
 def fetch_us_planting_progress():
     """查询美豆播种进度(占预期种植面积的百分比)。
     这个数据只在每年4-6月(播种季)有意义，其余月份接口有数据但不会更新(正常现象，
-    因为播种季结束后这个"进度%"就一直停在100%不变了，不像"CONDITION"那样全季都更新)。"""
+    因为播种季结束后这个"进度%"就一直停在100%不变了，不像"CONDITION"那样全季都更新)。
+    ★属于"进度型"指标，同时算同比+五年均值(逻辑跟优良率共用_compute_yoy_and_five_year_avg)。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         # ★已修复(第三次修复，找到确切根因)：之前先后用过"AREA PLANTED"(年度英亩数调查，
@@ -574,9 +715,9 @@ def fetch_us_planting_progress():
         "statisticcat_desc": "PROGRESS",
         "unit_desc": "PCT PLANTED",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -596,29 +737,40 @@ def fetch_us_planting_progress():
     if not weeks:
         return {"available": False, "reason": "返回数据里没有week_ending字段", "debug": {"sampleRawRow": pct_rows[0]}}
     latest_week = weeks[-1]
-    latest_row = next((r for r in pct_rows if r.get("week_ending") == latest_week), None)
-    try:
-        pct_planted = float(str(latest_row.get("Value", "")).replace(",", ""))
-    except (ValueError, TypeError):
-        return {"available": False, "reason": "PCT PLANTED字段值无法解析为数字", "debug": {"rawValue": latest_row.get("Value")}}
+
+    def extract_pct_planted(week_rows):
+        pct_only = [r for r in week_rows if "PCT PLANTED" in (r.get("short_desc") or "").upper()]
+        if not pct_only:
+            return None
+        try:
+            return float(str(pct_only[0].get("Value", "")).replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+
+    pct_planted = extract_pct_planted([r for r in pct_rows if r.get("week_ending") == latest_week])
+    if pct_planted is None:
+        return {"available": False, "reason": "PCT PLANTED字段值无法解析为数字", "debug": {"latestWeek": latest_week}}
 
     # 环比：找上一个有数据的周
     prev_change = None
     if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_row = next((r for r in pct_rows if r.get("week_ending") == prev_week), None)
-        if prev_row:
-            try:
-                prev_pct = float(str(prev_row.get("Value", "")).replace(",", ""))
-                prev_change = round(pct_planted - prev_pct, 1)
-            except (ValueError, TypeError):
-                pass
+        prev_pct = extract_pct_planted([r for r in pct_rows if r.get("week_ending") == weeks[-2]])
+        if prev_pct is not None:
+            prev_change = round(pct_planted - prev_pct, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_pct_planted
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "pctPlanted": pct_planted,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -631,12 +783,13 @@ def fetch_us_planting_progress():
 # ---------------------------------------------------------------------------
 def fetch_us_harvest_progress():
     """查询美豆收获进度(占预期收获面积的百分比)。
-    这个数据只在每年9-11月(收获季)有意义，其余月份接口有数据但不会更新(正常现象)。"""
+    这个数据只在每年9-11月(收获季)有意义，其余月份接口有数据但不会更新(正常现象)。
+    ★属于"进度型"指标，同时算同比+五年均值(逻辑跟优良率共用_compute_yoy_and_five_year_avg)。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         # ★已修复(第三次修复，找到确切根因，跟播种进度同样的问题)：周度收获进度
@@ -645,9 +798,9 @@ def fetch_us_harvest_progress():
         "statisticcat_desc": "PROGRESS",
         "unit_desc": "PCT HARVESTED",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -666,28 +819,39 @@ def fetch_us_harvest_progress():
     if not weeks:
         return {"available": False, "reason": "返回数据里没有week_ending字段", "debug": {"sampleRawRow": pct_rows[0]}}
     latest_week = weeks[-1]
-    latest_row = next((r for r in pct_rows if r.get("week_ending") == latest_week), None)
-    try:
-        pct_harvested = float(str(latest_row.get("Value", "")).replace(",", ""))
-    except (ValueError, TypeError):
-        return {"available": False, "reason": "PCT HARVESTED字段值无法解析为数字", "debug": {"rawValue": latest_row.get("Value")}}
+
+    def extract_pct_harvested(week_rows):
+        pct_only = [r for r in week_rows if "PCT HARVESTED" in (r.get("short_desc") or "").upper()]
+        if not pct_only:
+            return None
+        try:
+            return float(str(pct_only[0].get("Value", "")).replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+
+    pct_harvested = extract_pct_harvested([r for r in pct_rows if r.get("week_ending") == latest_week])
+    if pct_harvested is None:
+        return {"available": False, "reason": "PCT HARVESTED字段值无法解析为数字", "debug": {"latestWeek": latest_week}}
 
     prev_change = None
     if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_row = next((r for r in pct_rows if r.get("week_ending") == prev_week), None)
-        if prev_row:
-            try:
-                prev_pct = float(str(prev_row.get("Value", "")).replace(",", ""))
-                prev_change = round(pct_harvested - prev_pct, 1)
-            except (ValueError, TypeError):
-                pass
+        prev_pct = extract_pct_harvested([r for r in pct_rows if r.get("week_ending") == weeks[-2]])
+        if prev_pct is not None:
+            prev_change = round(pct_harvested - prev_pct, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_pct_harvested
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "pctHarvested": pct_harvested,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -923,111 +1087,162 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
 
-def fetch_dce_position_rank_multi(symbols, max_attempts=6):
-    """大商所持仓排名(龙虎榜)：一次性取多个合约的前20名会员多空持仓+日增减。
-    ★这个接口比日K线更容易失败——大商所官网自己有反爬风控，akshare的changelog里
-    这个接口被反复修复过(1.13.81/1.13.82/1.17.74等多个版本都有修复记录，广州所的
-    同类接口futures_gfex_position_rank也有类似的反复修复记录)，这不是孤立个案，
-    是这整个"直接抓交易所官网持仓排名文件"这一类接口的共同特征——跟日K线/小时线
-    走的新浪财经接口(一直很稳定)是完全不同的数据来源，风险特征也不一样。
-    所以这里把"这次请求失败"当成常态来处理，不是异常情况。
+# ★确认过的境内外资独资期货公司(实测查证，不是猜测)：这4家目前都是100%外资控股的
+#   境内期货公司，且都是大商所会员——高盛期货是2026年才由"乾坤期货"更名而来。
+#   用"in"做包含匹配(不是精确匹配)，因为会员名称在不同数据源/时间点可能带"(代客)"
+#   这类后缀，或者叫"高盛期货(深圳)"这种更完整的写法。
+FOREIGN_FUTURES_FIRMS = ["高盛期货", "摩根大通期货", "摩根士丹利期货", "瑞银期货"]
 
-    ★用vars_list=['M']把请求范围限定在豆粕这一个品种，不要求所有品种——
-    实测确认过'M'是这个接口里豆粕对应的品种代码。范围小一点，下载的文件更小，
-    理论上更不容易在传输/解析环节出问题(虽然这个接口的失败根源在大商所官网那边，
-    缩小范围不保证能解决，但没有坏处，值得试)。
 
-    ★设计上特意一次请求拿多个合约：akshare这个接口本来就是"一次调用返回当天
-    所有合约"的字典结构(不是按合约分别请求)，如果对每个合约都各自跑一遍
-    "试6个日期"的重试循环，会对同一个日期重复调用3次——在一个已知会被风控的
-    接口上这样做没有必要，反而增加触发风控的概率。改成：每个日期只调用一次，
-    从返回结果里一次性把symbols里的所有合约都取出来。
+def _is_foreign_futures_firm(name):
+    """判断一个会员名称是不是已确认的外资独资期货公司。"""
+    return any(firm in name for firm in FOREIGN_FUTURES_FIRMS)
 
-    数据是T+1性质：收盘后(约北京时间16:00)才发布当天数据。GitHub Actions有两个
-    运行时间点(09:00盘前 / 21:30盘后)，09:00那次"今天"的数据还没发布，
-    要往前找最近一个已发布的交易日；21:30那次通常当天数据已经出来了。
-    策略：从"今天"开始，最多往前试max_attempts天，只要某天的数据里能取到
-    至少一个symbol，就采用那天的结果(不同合约不强求必须同一天，只是通常会
-    凑在一起，因为都是同一次请求返回的)。
+
+# 六个龙虎榜类别的配置：sortField是请求时sortColumns参数要用的值(不带下划线)，
+# rankField/valueField/chgField是响应数据里实际的字段名(部分带下划线)。
+# ⚠️这几个字段名都是从用户实测抓包的真实响应数据里确认的，不是看文档猜的。
+POSITION_RANK_CATEGORIES = {
+    "long":     {"sortField": "LPRANK",      "rankField": "LP_RANK",      "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头持仓龙虎榜"},
+    "short":    {"sortField": "SPRANK",      "rankField": "SP_RANK",      "valueField": "SHORT_POSITION",     "chgField": "SP_CHANGE",  "label": "空头持仓龙虎榜"},
+    "netLong":  {"sortField": "NLPRANK",     "rankField": "NLP_RANK",     "valueField": "NET_LONG_POSITION",  "chgField": "NLP_CHANGE", "label": "净多头龙虎榜"},
+    "netShort": {"sortField": "NSPRANK",     "rankField": "NSP_RANK",     "valueField": "NET_SHORT_POSITION", "chgField": "NSP_CHANGE", "label": "净空头龙虎榜"},
+    "longUp":   {"sortField": "LPUPRANK",    "rankField": "LP_UP_RANK",   "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头增仓龙虎榜"},
+    "longDown": {"sortField": "LPDOWNRANK",  "rankField": "LP_DOWN_RANK", "valueField": "LONG_POSITION",      "chgField": "LP_CHANGE",  "label": "多头减仓龙虎榜"},
+}
+
+
+def _build_eastmoney_position_url(symbol, date_str, sort_field):
+    """构造东方财富datacenter-web持仓排名接口的请求URL。
+    symbol: 合约代码，如"M2701"(不需要转小写，跟东方财富这边的格式完全一致)
+    date_str: 交易日，格式"YYYY-MM-DD"(不是YYYYMMDD)
+    sort_field: 排序字段，取值见POSITION_RANK_CATEGORIES里各类别的sortField——
+    这个接口返回的每一行是"一个会员在各项指标下的排名"，不是独立的多个排行榜，
+    所以要拿"按某项指标排名前20"，必须显式按对应字段排序单独查询，不能从任意一次
+    查询结果里直接截取，不然拿到的20个会员可能是按别的指标排出来的。
+    ⚠️这个URL结构是实测抓包确认的(不是看文档/猜测的)：用户在浏览器F12开发者工具
+    Network标签里，实际点击查询按钮后抓到的真实请求。括号不要被urlencode转义掉——
+    抓包结果显示服务端要的是字面的圆括号，等号和双引号这些字符才需要转义成%3D/%22等。"""
+    filter_str = f'(SECURITY_CODE="{symbol}")(TRADE_DATE=\'{date_str}\')(TYPE="0")({sort_field}<>9999)'
+    params = {
+        "reportName": "RPT_FUTU_DAILYPOSITION",
+        "columns": "ALL",
+        "filter": filter_str,
+        "sortTypes": "1",
+        "sortColumns": sort_field,
+        "pageNumber": "1",
+        "pageSize": "20",
+        "source": "WEB",
+        "client": "WEB",
+        "_": str(int(time.time() * 1000)),
+    }
+    query = "&".join(f"{k}={urllib.parse.quote(str(v), safe='()')}" for k, v in params.items())
+    return f"https://datacenter-web.eastmoney.com/api/data/v1/get?{query}"
+
+
+def _parse_eastmoney_position_rows(raw_rows, category_key):
+    """把东方财富接口返回的原始行，转换成本项目统一使用的行格式。
+    category_key: POSITION_RANK_CATEGORIES里的键，决定用哪个排名字段过滤/排序，
+    以及用哪个持仓量+增减字段作为这一类别的"值"。每一行统一输出
+    {rank, name, value, change, isForeign}这几个字段，不管是哪个类别都是同一套结构，
+    方便前端用同一套渲染逻辑处理六个不同的榜单。"""
+    cfg = POSITION_RANK_CATEGORIES[category_key]
+    rows = []
+    for r in raw_rows:
+        rank_val = r.get(cfg["rankField"])
+        if rank_val is None or rank_val == 9999:
+            continue  # 9999是"没有这项排名"的哨兵值，跳过
+        name = r.get("ORG_NAME_ABBR_NEW") or r.get("MEMBER_NAME_ABBR") or ""
+        rows.append({
+            "rank": int(rank_val),
+            "name": name,
+            "value": r.get(cfg["valueField"]),
+            "change": r.get(cfg["chgField"]),
+            "isForeign": _is_foreign_futures_firm(name),
+        })
+    # ★明确按rank排序，不单纯依赖服务端的返回顺序——虽然请求时已经指定了sortColumns，
+    #   服务端理论上会排好序，但多一道自己排序的保险，不容易因为服务端行为的细微变化出问题。
+    rows.sort(key=lambda r: r["rank"])
+    return rows
+
+
+def fetch_dce_position_rank_multi(symbols, max_attempts=6, categories=None):
+    """大商所持仓排名(龙虎榜)：每个合约六类榜单(多头持仓/空头持仓/净多头/净空头/
+    多头增仓/多头减仓)的前20名会员，含外资独资期货公司标注。
+    ★2026-09更新：彻底改用东方财富datacenter-web接口，不再走大商所官网直连——
+    之前用akshare的futures_dce_position_rank会稳定报BadZipFile错误(大商所官网
+    反爬拦截或格式变化，生产环境实测确认)。这次改用的接口地址、参数结构、
+    返回字段，全部是通过浏览器F12开发者工具实测抓包确认的，不是看文档/猜测的。
+
+    ★categories默认是POSITION_RANK_CATEGORIES的全部键，但按用户明确要求，
+    实际调用时(main()里)只传4类：netLong/netShort/longUp/longDown——多头/空头
+    持仓这两类(long/short)虽然接口支持，暂时不在默认抓取范围内，避免请求量
+    进一步增加(每类都要走一遍T+1重试逻辑，类别越多，最坏情况下请求次数越多)。
+
+    数据是T+1性质：收盘后才发布当天数据，所以从"今天"开始最多往前试max_attempts天，
+    找到数据就停。每个合约每个类别都需要独立请求——这个接口的原始数据结构是
+    "每个会员一行、同时列出该会员在各项指标下的排名"，不是分开的独立榜单，
+    所以不能从"按某一个指标排序"的结果里直接截取别的指标数据。
 
     ⚠️这是会员(期货公司)持仓排名，不是最终客户排名——比如"中信期货"是会员名，
-    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。
+    不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。已确认的
+    4家外资独资期货公司(高盛期货/摩根大通期货/摩根士丹利期货/瑞银期货)会标注
+    isForeign:true，但要注意：就算这几家进了前20，也不保证当天真的进了榜——
+    多数情况下它们可能根本不在前20名之列(需求量没那么大)，这是真实市场情况，
+    不是数据缺失。
 
-    返回：{symbol: {available, rows/reason, ...}}，每个symbol独立标注是否拿到数据。"""
-    try:
-        import akshare as ak
-    except ImportError:
-        return {s: {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare", "debug": {}} for s in symbols}
+    返回：{symbol: {available, date, tables:{类别: rows}, source} 或 {available:False, reason, debug}}"""
+    if categories is None:
+        categories = list(POSITION_RANK_CATEGORIES.keys())
 
     now_beijing = datetime.now(timezone.utc) + timedelta(hours=8)
-    attempts_log = []
-    results = {s: None for s in symbols}  # None=还没找到，之后逐个填上
-
-    for days_back in range(max_attempts):
-        if all(v is not None for v in results.values()):
-            break  # 所有合约都已经找到数据了，不用再往前试更早的日期
-
-        try_date = now_beijing - timedelta(days=days_back)
-        date_str = try_date.strftime("%Y%m%d")
-        try:
-            result_dict = ak.futures_dce_position_rank(date=date_str, vars_list=["M"])
-        except zipfile.BadZipFile:
-            # ★这个具体异常单独捕获、单独说明：大商所官网返回的内容不是有效的zip文件，
-            #   通常意味着请求被反爬拦截返回了错误页面，或者官网这段时间文件格式/路径变了——
-            #   这是这个接口的已知不稳定特征(见上面docstring)，不是本项目代码逻辑的bug。
-            attempts_log.append({"date": date_str, "error": "BadZipFile：大商所官网返回的内容不是有效zip文件，可能是被反爬拦截或官网格式变化(这个接口的已知不稳定特征)"})
-            continue
-        except Exception as e:
-            attempts_log.append({"date": date_str, "error": f"{type(e).__name__}: {str(e)[:200]}"})
-            continue
-
-        if not result_dict:
-            attempts_log.append({"date": date_str, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
-            continue
-
-        found_any_this_date = False
-        for symbol in symbols:
-            if results[symbol] is not None:
-                continue  # 这个合约之前已经找到过了
-            lookup_key = symbol.lower()
-            df = result_dict.get(lookup_key)
-            if df is None or len(df) == 0:
-                continue
-            try:
-                rows = []
-                for _, row in df.iterrows():
-                    rows.append({
-                        "rank": int(row["rank"]) if row.get("rank") is not None else None,
-                        "volPartyName": str(row.get("vol_party_name") or ""),
-                        "vol": float(row["vol"]) if row.get("vol") is not None else None,
-                        "volChg": float(row["vol_chg"]) if row.get("vol_chg") is not None else None,
-                        "longPartyName": str(row.get("long_party_name") or ""),
-                        "longOpenInterest": float(row["long_open_interest"]) if row.get("long_open_interest") is not None else None,
-                        "longOpenInterestChg": float(row["long_open_interest_chg"]) if row.get("long_open_interest_chg") is not None else None,
-                        "shortPartyName": str(row.get("short_party_name") or ""),
-                        "shortOpenInterest": float(row["short_open_interest"]) if row.get("short_open_interest") is not None else None,
-                        "shortOpenInterestChg": float(row["short_open_interest_chg"]) if row.get("short_open_interest_chg") is not None else None,
-                    })
-            except (KeyError, ValueError, TypeError) as e:
-                attempts_log.append({"date": date_str, "symbol": symbol, "note": f"字段解析失败: {e}", "actualColumns": list(df.columns)})
-                continue
-            results[symbol] = {
-                "available": True, "symbol": symbol, "date": date_str, "rows": rows,
-                "source": "大连商品交易所会员持仓排名(经akshare库获取)，T+1数据(收盘后发布)",
-            }
-            found_any_this_date = True
-
-        if not found_any_this_date:
-            attempts_log.append({"date": date_str, "note": "该日期数据里没有找到任何目标合约"})
-
     final = {}
+
     for symbol in symbols:
-        if results[symbol] is not None:
-            final[symbol] = results[symbol]
+        attempts_log = []
+        tables = {cat: None for cat in categories}
+        used_date = None
+
+        for days_back in range(max_attempts):
+            if all(v is not None for v in tables.values()):
+                break
+            try_date = now_beijing - timedelta(days=days_back)
+            date_str = try_date.strftime("%Y-%m-%d")
+
+            for cat in categories:
+                if tables[cat] is not None:
+                    continue  # 这一类已经拿到过了，不用再查
+                sort_field = POSITION_RANK_CATEGORIES[cat]["sortField"]
+                url = _build_eastmoney_position_url(symbol, date_str, sort_field)
+                data, debug_info = fetch_jsonp_debug(url)
+                if data is None:
+                    attempts_log.append({"date": date_str, "category": cat, "error": debug_info.get("error", "未知错误")})
+                    continue
+                if not data.get("success"):
+                    attempts_log.append({"date": date_str, "category": cat, "note": f"接口返回success=false: {data.get('message')}"})
+                    continue
+                raw_rows = (data.get("result") or {}).get("data") or []
+                if not raw_rows:
+                    attempts_log.append({"date": date_str, "category": cat, "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"})
+                    continue
+                tables[cat] = _parse_eastmoney_position_rows(raw_rows, cat)
+                used_date = date_str
+
+        if any(v is not None for v in tables.values()):
+            final[symbol] = {
+                "available": True,
+                "symbol": symbol,
+                "date": used_date,
+                "tables": {cat: (rows or []) for cat, rows in tables.items()},
+                "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)",
+            }
+            missing = [cat for cat, rows in tables.items() if rows is None]
+            if missing:
+                final[symbol]["partialNote"] = f"这几类没拿到数据：{', '.join(POSITION_RANK_CATEGORIES[c]['label'] for c in missing)}"
         else:
             final[symbol] = {
                 "available": False,
-                "reason": f"尝试了最近{max_attempts}个日期都没能获取到{symbol}的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+                "reason": f"尝试了最近{max_attempts}个日期都没能获取到{symbol}的持仓排名数据",
                 "debug": {"attempts": attempts_log},
             }
     return final
@@ -1589,7 +1804,7 @@ def main():
     sep_code = get_current_contract_code(9)
     may_code = get_current_contract_code(5)
     jan_code = get_current_contract_code(1)
-    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code])
+    position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code], categories=["netLong", "netShort", "longUp", "longDown"])
 
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),

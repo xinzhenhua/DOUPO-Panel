@@ -50,8 +50,9 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .alert-box.bull{background:var(--rd);border:1px solid var(--rb);color:#d47a5a}
 .alert-box.bear{background:var(--gd);border:1px solid var(--gb);color:#5ab87a}
 .alert-box.neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t3)}
+.alert-box.warn{background:var(--goldd);border:1px solid #3d2d00;color:var(--gold)}
 .alert-box .at{font-weight:700;margin-bottom:3px;display:block}
-.alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}
+.alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}.alert-box.warn .at{color:var(--gold)}
 .mfield{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .mfield label{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase}
 .minput{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:10px 10px;color:var(--t1);font-size:14px;outline:none;width:100%;transition:border .2s;min-height:20px}
@@ -123,6 +124,14 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </div>
 <div id="tradingWindowInfo"></div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
+
+<!-- ============ 三方共振：技术面+基本面+外资活跃度，放在最顶端，三个系统各自的详情在下方 ============ -->
+<div class="card" id="resonanceCard" style="border-color:var(--gold)">
+  <div class="card-head">
+    <div class="card-title">技术面 × 基本面 × 外资动向</div>
+  </div>
+  <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
+</div>
 
 <!-- ============ 综合基本面预警：紧跟在合约选择下方，一打开就看到结论 ============ -->
 <div class="card" id="alertCard" style="border-color:var(--gold)">
@@ -912,6 +921,40 @@ function renderNoaaOutlook(no, genAt){
   window._noaaOutlookSignal = sig;
 }
 
+/** "进度型"指标(优良率/播种进度/收获进度)共用的信号计算：优先用"跟五年均值的差距"
+ *  判断，而不是只看环比——单周环比容易被噪音误导(一周-2不代表什么，但如果已经连续
+ *  偏离五年均值一大截，说明明显不正常)。三个指标的方向语义碰巧是一致的：
+ *  数值比五年均值高(优良率高/播种或收获推进快) → 偏空(供给端更宽松)；
+ *  数值比五年均值低 → 偏多(供给端更紧张)。
+ *  五年均值缺失时(比如刚开始收集数据、或者历史年份查询失败)，退回到环比阈值判断，
+ *  但会在文字说明里明确标注"置信度较低"，不假装这个退化路径的判断力度跟主路径一样。*/
+function computeProgressSignal(fieldData, wowFallbackThresholds){
+  const pct = fieldData.currentValue;
+  const avg5 = fieldData.fiveYearAvg;
+  const avg5Chg = fieldData.fiveYearAvgChangePts;
+  const yoyVal = fieldData.yoyValue;
+  const yoyChg = fieldData.yoyChangePts;
+  const wowChg = fieldData.wowChangePts;
+
+  if(avg5 != null && avg5Chg != null){
+    const gap = avg5Chg; // pct - avg5
+    let sig, cls, reason;
+    if(gap <= -5){ sig=1; cls='bull'; reason=`比五年均值(${avg5}%)低${Math.abs(gap).toFixed(1)}个百分点 — 明显偏慢/偏低`; }
+    else if(gap >= 5){ sig=-1; cls='bear'; reason=`比五年均值(${avg5}%)高${gap.toFixed(1)}个百分点 — 明显偏快/偏高`; }
+    else { sig=0; cls='neutral'; reason=`跟五年均值(${avg5}%)基本持平(${gap>0?'+':''}${gap.toFixed(1)}个百分点)`; }
+    return {sig, cls, reason, basis: 'fiveYearAvg'};
+  }
+
+  // 退化路径：没有五年均值时，用环比阈值(旧逻辑保留，但明确标注置信度低)
+  const {slow, fast} = wowFallbackThresholds;
+  if(wowChg == null){
+    return {sig: null, cls: 'neutral', reason: '暂无法判断快慢(信息不足)', basis: 'none'};
+  }
+  if(wowChg < slow){ return {sig:1, cls:'bull', reason:'本周推进缓慢 — 弱偏多信号(⚠️无五年均值基准，置信度低)', basis:'wow'}; }
+  if(wowChg >= fast){ return {sig:-1, cls:'bear', reason:'本周推进较快 — 弱偏空信号(⚠️无五年均值基准，置信度低)', basis:'wow'}; }
+  return {sig:0, cls:'neutral', reason:'本周推进正常，持续观察', basis:'wow'};
+}
+
 function renderSoyCond(sc, genAt){
   const badge = document.getElementById('soyCondBadge');
   const el = document.getElementById('soyCondContent');
@@ -926,15 +969,21 @@ function renderSoyCond(sc, genAt){
   badge.className = 'badge badge-auto';
   const pct = sc.goodExcellentPct;
   const chg = sc.wowChangePts;
-  // 优良率越高=作物长势越好=供给越充足=偏空；越低=偏多。跟环比变化方向结合判断
-  const sig = chg!=null ? (chg<=-2?1:chg>=2?-1:0) : (pct<60?1:pct>70?-1:0);
-  const cls = sig===1?'bull':sig===-1?'bear':'neutral';
-  const text = sig===1?'优良率下滑/偏低 — 偏多信号':sig===-1?'优良率上升/偏高 — 偏空信号':'优良率变化不大，持续观察';
+  // 优良率越高=作物长势越好=供给越充足=偏空；越低=偏多。
+  // ★现在优先跟五年均值比，不再只看环比(环比容易被单周噪音误导)
+  const {sig, cls, reason} = computeProgressSignal(
+    {currentValue: pct, fiveYearAvg: sc.fiveYearAvg, fiveYearAvgChangePts: sc.fiveYearAvgChangePts,
+     yoyValue: sc.yoyValue, yoyChangePts: sc.yoyChangePts, wowChangePts: chg},
+    {slow: -2, fast: 2}
+  );
+  const text = sig===1?`优良率${reason} — 偏多信号`:sig===-1?`优良率${reason} — 偏空信号`:`优良率${reason}`;
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>优良率${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''}</div>
     <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="ir"><div class="il">数据周次</div><div class="iv">${sc.weekEnding}</div></div>
     <div class="ir"><div class="il">优良率(Good+Excellent)</div><div class="iv"><span class="b">${pct}%</span></div></div>
     <div class="ir"><div class="il">环比变化</div><div class="iv">${chg!=null?(chg>0?'+':'')+chg+'个百分点':'--'}</div></div>
+    <div class="ir"><div class="il">去年同期</div><div class="iv">${sc.yoyValue!=null?sc.yoyValue+'%'+(sc.yoyChangePts!=null?`（${sc.yoyChangePts>0?'+':''}${sc.yoyChangePts}）`:''):'--'}</div></div>
+    <div class="ir"><div class="il">近五年同期均值</div><div class="iv">${sc.fiveYearAvg!=null?sc.fiveYearAvg+'%'+(sc.fiveYearAvgChangePts!=null?`（${sc.fiveYearAvgChangePts>0?'+':''}${sc.fiveYearAvgChangePts}）`:''):'--'}</div></div>
     <div style="font-size:10px;color:var(--t3);margin-top:6px">来源：${sc.source}</div>
     </div></details>`;
   window._soyCondSignal = sig;
@@ -1046,17 +1095,20 @@ function renderPlanting(pp, genAt){
   badge.className = 'badge badge-auto';
   const pct = pp.pctPlanted;
   const chg = pp.wowChangePts;
-  // ⚠️没有历史同期均值做对比基准(比如"5年同期平均进度")，只能用周环比推速度做粗略参考，
-  // 置信度明显低于其他有明确阈值依据的指标：周进度明显停滞(播种季却几乎不推进，
-  // 可能是持续降雨导致农机下不了地)→偏多；进度推进较快(天气配合，播种顺利)→偏空
-  let sig = null, cls = 'neutral', text = `播种进度${pct}%，暂无法判断快慢(信息不足)`;
-  if(chg!=null){
-    if(chg < 5){ sig=1; cls='bull'; text='本周播种推进缓慢 — 弱偏多信号(⚠️无历史同期基准，置信度低)'; }
-    else if(chg >= 15){ sig=-1; cls='bear'; text='本周播种推进较快 — 弱偏空信号(⚠️无历史同期基准，置信度低)'; }
-    else { sig=0; cls='neutral'; text='本周播种推进正常，持续观察'; }
-  }
+  // 播种推进慢(天气不配合)→偏多；推进快(天气顺利)→偏空。
+  // ★现在优先跟五年均值比，不再只靠环比阈值(那套是没有历史基准时的权宜之计)
+  const {sig, cls, reason} = computeProgressSignal(
+    {currentValue: pct, fiveYearAvg: pp.fiveYearAvg, fiveYearAvgChangePts: pp.fiveYearAvgChangePts,
+     yoyValue: pp.yoyValue, yoyChangePts: pp.yoyChangePts, wowChangePts: chg},
+    {slow: 5, fast: 15}
+  );
+  const text = sig===1?`播种${reason} — 偏多信号`:sig===-1?`播种${reason} — 偏空信号`:`播种${reason}`;
   window._plantingSignal = sig;
-  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>播种进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${pp.weekEnding}</div>`;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>播种进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${pp.weekEnding}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div class="ir"><div class="il">去年同期</div><div class="iv">${pp.yoyValue!=null?pp.yoyValue+'%'+(pp.yoyChangePts!=null?`（${pp.yoyChangePts>0?'+':''}${pp.yoyChangePts}）`:''):'--'}</div></div>
+    <div class="ir"><div class="il">近五年同期均值</div><div class="iv">${pp.fiveYearAvg!=null?pp.fiveYearAvg+'%'+(pp.fiveYearAvgChangePts!=null?`（${pp.fiveYearAvgChangePts>0?'+':''}${pp.fiveYearAvgChangePts}）`:''):'--'}</div></div>
+    </div></details>`;
 }
 
 function renderHarvest(hp, genAt){
@@ -1073,16 +1125,20 @@ function renderHarvest(hp, genAt){
   badge.className = 'badge badge-auto';
   const pct = hp.pctHarvested;
   const chg = hp.wowChangePts;
-  // ⚠️同样没有历史同期均值做基准，置信度低：收获快(新豆快速流入市场)→偏空；
-  // 收获慢(比如秋雨连绵导致收割延误，供给流入受阻)→偏多
-  let sig = null, cls = 'neutral', text = `收获进度${pct}%，暂无法判断快慢(信息不足)`;
-  if(chg!=null){
-    if(chg < 5){ sig=1; cls='bull'; text='本周收获推进缓慢 — 弱偏多信号(⚠️无历史同期基准，置信度低)'; }
-    else if(chg >= 15){ sig=-1; cls='bear'; text='本周收获推进较快 — 弱偏空信号(⚠️无历史同期基准，置信度低)'; }
-    else { sig=0; cls='neutral'; text='本周收获推进正常，持续观察'; }
-  }
+  // 收获快(新豆快速流入市场)→偏空；收获慢(比如秋雨连绵导致收割延误)→偏多。
+  // ★现在优先跟五年均值比，不再只靠环比阈值
+  const {sig, cls, reason} = computeProgressSignal(
+    {currentValue: pct, fiveYearAvg: hp.fiveYearAvg, fiveYearAvgChangePts: hp.fiveYearAvgChangePts,
+     yoyValue: hp.yoyValue, yoyChangePts: hp.yoyChangePts, wowChangePts: chg},
+    {slow: 5, fast: 15}
+  );
+  const text = sig===1?`收获${reason} — 偏多信号`:sig===-1?`收获${reason} — 偏空信号`:`收获${reason}`;
   window._harvestSignal = sig;
-  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>收获进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${hp.weekEnding}</div>`;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>收获进度${pct}%${chg!=null?`（较上周${chg>0?'+':''}${chg}个百分点）`:''} · 数据周次${hp.weekEnding}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div class="ir"><div class="il">去年同期</div><div class="iv">${hp.yoyValue!=null?hp.yoyValue+'%'+(hp.yoyChangePts!=null?`（${hp.yoyChangePts>0?'+':''}${hp.yoyChangePts}）`:''):'--'}</div></div>
+    <div class="ir"><div class="il">近五年同期均值</div><div class="iv">${hp.fiveYearAvg!=null?hp.fiveYearAvg+'%'+(hp.fiveYearAvgChangePts!=null?`（${hp.fiveYearAvgChangePts>0?'+':''}${hp.fiveYearAvgChangePts}）`:''):'--'}</div></div>
+    </div></details>`;
 }
 
 /** 技术面K线卡片：日K线(蜡烛图+MA5/10/20/40/60+成交量+MACD+RSI) + 关键统计。
@@ -1152,6 +1208,10 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
   }
   const confluenceSummary = computeConfluenceSummary(bars, dif, dea, histogram, rsi, kdjK, kdjD);
   const confluenceHtml = renderConfluenceSummaryHtml(confluenceSummary);
+  // ★三方共振第①块输入：技术面方向，跟基本面沿用同一套"多数决"逻辑(哪边因子多算哪边)，
+  //   不是又发明一套新标准——bullCount>bearCount就是偏多，方便使用者理解两边为什么会不一样。
+  window._technicalDirection = confluenceSummary.bullCount > confluenceSummary.bearCount ? '偏多'
+    : confluenceSummary.bearCount > confluenceSummary.bullCount ? '偏空' : '中性';
 
   let positionRankSummaryText, positionRankBodyHtml;
   if(!positionRankData || !positionRankData.available){
@@ -1161,6 +1221,10 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
     positionRankSummaryText = `截至${positionRankData.date}`;
     positionRankBodyHtml = renderPositionRankTableHtml(positionRankData);
   }
+  // ★三方共振第②块输入：外资活跃度，跟着positionRankData一起算，不用等使用者
+  //   自己点开龙虎榜详情才发现"原来今天外资有动作"。
+  window._foreignActivity = computeForeignCapitalActivity(positionRankData);
+  renderResonancePanel();
 
   let hourlyHtml = '';
   if(hourlyData && hourlyData.available){
@@ -1748,32 +1812,124 @@ function renderConfluenceSummaryHtml(summary){
 /** 持仓排名(龙虎榜)表格：多头/空头会员排名各一个表，显示持仓量+日增减。
  *  ⚠️这是会员(期货公司)持仓，不是最终客户持仓——名字是"国泰君安"这种经纪商名称，
  *  不代表某个具体机构自己的仓位，除非该机构本身就是直接注册的会员。*/
+/** 六个类别的中文标题，跟fetch_data.py的POSITION_RANK_CATEGORIES保持一致。*/
+const POSITION_RANK_CATEGORY_LABELS = {
+  long: '多头持仓龙虎榜', short: '空头持仓龙虎榜',
+  netLong: '净多头龙虎榜', netShort: '净空头龙虎榜',
+  longUp: '多头增仓龙虎榜', longDown: '多头减仓龙虎榜',
+};
+
 function renderPositionRankTableHtml(data){
-  const rows = data.rows || [];
+  const tables = data.tables || {};
   const fmtNum = n => n!=null ? n.toLocaleString() : '--';
   const fmtChg = n => {
     if(n==null) return '<span class="neutral">--</span>';
     const cls = n>0?'pos':n<0?'neg':'neutral';
     return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString()}</span>`;
   };
-  const buildTable = (title, nameKey, posKey, chgKey) => {
-    const validRows = rows.filter(r=>r[nameKey]);
-    if(validRows.length===0) return `<div style="font-size:11px;color:var(--t3)">${title}：无数据</div>`;
-    const tableRows = validRows.map(r=>
-      `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
-        <td style="padding:3px 4px">${r[nameKey]}</td>
-        <td style="padding:3px 4px;text-align:right">${fmtNum(r[posKey])}</td>
-        <td style="padding:3px 4px;text-align:right">${fmtChg(r[chgKey])}</td></tr>`
-    ).join('');
-    return `<div style="font-size:10px;color:var(--t2);margin:6px 0 2px">${title}</div>
+  const buildTable = (categoryKey, rows) => {
+    const title = POSITION_RANK_CATEGORY_LABELS[categoryKey] || categoryKey;
+    if(!rows || rows.length===0) return `<div style="font-size:11px;color:var(--t3);margin-top:6px">${title}：无数据</div>`;
+    const tableRows = rows.map(r=>{
+      // ★外资标注：已确认的境内外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)，
+      //   名字前加🌐标记+高亮色，方便一眼扫到，不用逐行去读名字
+      const nameHtml = r.isForeign
+        ? `<span style="color:var(--gold);font-weight:700">🌐 ${r.name}</span>`
+        : r.name;
+      return `<tr><td style="padding:3px 4px;color:var(--t3)">${r.rank}</td>
+        <td style="padding:3px 4px">${nameHtml}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtNum(r.value)}</td>
+        <td style="padding:3px 4px;text-align:right">${fmtChg(r.change)}</td></tr>`;
+    }).join('');
+    return `<div style="font-size:10px;color:var(--t2);margin:8px 0 2px">${title}(前${rows.length}名)</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px">
         <tr style="color:var(--t3);font-size:9px"><td style="padding:2px 4px">名次</td><td style="padding:2px 4px">会员</td><td style="padding:2px 4px;text-align:right">持仓量</td><td style="padding:2px 4px;text-align:right">增减</td></tr>
         ${tableRows}
       </table>`;
   };
+  const order = ['netLong', 'netShort', 'longUp', 'longDown', 'long', 'short'].filter(k => k in tables);
+  const foreignCount = order.reduce((sum, k) => sum + (tables[k]||[]).filter(r=>r.isForeign).length, 0);
+  const foreignNote = foreignCount > 0
+    ? `<div style="font-size:10px;color:var(--gold);margin-bottom:4px">🌐 本次共侦测到${foreignCount}条外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)相关记录，已在下方高亮标注</div>`
+    : `<div style="font-size:10px;color:var(--t3);margin-bottom:4px">🌐 本次这几类榜单里，已确认的外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)均未进入前20名——不代表它们没有持仓，只是没有大到能进入这个榜单</div>`;
   return `<div style="font-size:9px;color:var(--t3);margin-bottom:4px">⚠️ 会员(期货公司)持仓排名，非最终客户持仓——除非该机构本身就是直接注册的会员</div>`
-    + buildTable('多头持仓排名(前20名会员)', 'longPartyName', 'longOpenInterest', 'longOpenInterestChg')
-    + buildTable('空头持仓排名(前20名会员)', 'shortPartyName', 'shortOpenInterest', 'shortOpenInterestChg');
+    + foreignNote
+    + order.map(k => buildTable(k, tables[k])).join('');
+}
+
+/** 三方共振第①块输入：从龙虎榜数据里判断"外资活跃度"。
+ *  只陈述事实(谁、在哪个榜单、变化多少)，不做买卖判断——是否要因此回避交易，
+ *  是使用者自己的决定，这里只是把"外资有没有动静"这件事摆到明处，
+ *  不需要使用者自己再去翻好几个折叠面板里的榜单逐条找。*/
+function computeForeignCapitalActivity(positionRankData){
+  if(!positionRankData || !positionRankData.available){
+    return {status:'unavailable', label:'外资持仓数据暂不可用'};
+  }
+  const tables = positionRankData.tables || {};
+  const categoryLabels = {netLong:'净多头榜', netShort:'净空头榜', longUp:'多头增仓榜', longDown:'多头减仓榜', long:'多头持仓榜', short:'空头持仓榜'};
+  const foreignEntries = [];
+  for(const cat of Object.keys(tables)){
+    for(const r of (tables[cat]||[])){
+      if(r.isForeign) foreignEntries.push({...r, category:cat});
+    }
+  }
+  if(foreignEntries.length===0){
+    return {status:'quiet', label:'本次未侦测到已确认外资机构(高盛/摩根大通/摩根士丹利/瑞银)进入前20名榜单', entries:[]};
+  }
+  // 找变化幅度(绝对值)最大的一条，作为最值得留意的一条——不是简单取第一条，
+  // 而是找"动作最大"的那条，更贴近"外资今天在干嘛"这个问题。
+  const mostSignificant = foreignEntries.reduce((max, e) =>
+    Math.abs(e.change||0) > Math.abs(max.change||0) ? e : max, foreignEntries[0]);
+  const isGoldman = mostSignificant.name.includes('高盛');
+  const chgText = mostSignificant.change!=null ? `${mostSignificant.change>0?'+':''}${mostSignificant.change.toLocaleString()}手` : '变化未知';
+  return {
+    status: 'active',
+    label: `${mostSignificant.name}出现在${categoryLabels[mostSignificant.category]||mostSignificant.category}(${chgText})`,
+    isGoldman,
+    entries: foreignEntries,
+  };
+}
+
+/** 三方共振第②块：把技术面方向(来自computeConfluenceSummary)、基本面方向(来自
+ *  updateOverallAlert的score)、外资活跃度，合成一句陈述性的状态描述。
+ *  ⚠️这里只陈述"三者现在是什么关系"这个事实，不生成买卖建议——跟技术面共振摘要
+ *  的原则一致：透明列出，不下结论。外资活跃时的"参考价值降低"提示，是转述自
+ *  博主经验("外资开始搞事情时，其他信号先放一边")的一种谨慎提醒，不是本项目
+ *  自己发明的判断依据。*/
+function computeResonanceStatus(techDirection, fundDirection, foreignActivity){
+  if(foreignActivity.status === 'active'){
+    if(foreignActivity.isGoldman){
+      return {cls:'warn', title:'外资(高盛)活跃', detail:`${foreignActivity.label}。有交易者的经验是：外资(尤其高盛)主导行情阶段，技术面/基本面信号的参考价值可能降低`};
+    }
+    return {cls:'warn', title:'外资活跃(非高盛)', detail:`${foreignActivity.label}。这类机构的持仓变化也可能反映对冲或客户盘而非方向性押注，信号权重建议自行斟酌`};
+  }
+  const foreignNote = foreignActivity.status==='unavailable' ? '(外资数据暂不可用)' : '(外资平静)';
+  if(techDirection && fundDirection && techDirection===fundDirection && techDirection!=='中性'){
+    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}`, detail:`两者方向一致${foreignNote}，仅供参考，不构成操作建议`};
+  }
+  if(!techDirection || !fundDirection){
+    return {cls:'neutral', title:'数据不足', detail:'技术面或基本面数据还没加载完成，暂时无法判断是否共振'};
+  }
+  return {cls:'neutral', title:`技术面(${techDirection}) 与 基本面(${fundDirection}) 方向不一致`, detail:`两者暂未同向${foreignNote}，混合信号`};
+}
+
+/** 三方共振第③块：读取window上的三方状态，渲染成面板HTML。
+ *  技术面/外资状态由renderKline()写入，基本面状态由updateOverallAlert()写入——
+ *  两边各自更新完都会调用这个函数刷新一次，不需要互相等待对方，谁先算完先占位。*/
+function renderResonancePanel(){
+  const el = document.getElementById('resonanceContent');
+  if(!el) return;
+  const techDirection = window._technicalDirection || null;
+  const fundDirection = window._fundamentalDirection || null;
+  const foreignActivity = window._foreignActivity || {status:'unavailable', label:'外资持仓数据暂不可用'};
+  const status = computeResonanceStatus(techDirection, fundDirection, foreignActivity);
+  const rows = [
+    `技术面：${techDirection || '加载中...'}`,
+    `基本面：${fundDirection || '加载中...'}`,
+    `外资动向：${foreignActivity.label}`,
+  ].join(' · ');
+  el.innerHTML = `<div class="alert-box ${status.cls}"><span class="at">${status.title}</span>${status.detail}</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}</div>`;
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
@@ -2397,6 +2553,8 @@ function updateOverallAlert(){
   const el = document.getElementById('alertContent');
   if(notes.length===0){
     el.innerHTML = '<div class="alert-box neutral"><span class="at">数据不足</span>请至少填写几项手动数据，或等天气/USDA数据加载完成</div>';
+    window._fundamentalDirection = null; // ★三方共振第③块输入：数据不够时明确置空，而不是留着上一次的旧值不管
+    renderResonancePanel();
     return;
   }
 
@@ -2404,6 +2562,9 @@ function updateOverallAlert(){
   if(score>=3){ cls='bull'; title='综合偏多 +'+score; }
   else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
   else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
+  // ★三方共振第③块输入：跟上面判定alert-box样式用的同一套score>=3/score<=-3阈值，
+  //   不是另外发明一套标准——这样"基本面：偏多"跟下面详细面板里的"综合偏多"不会对不上。
+  window._fundamentalDirection = score>=3 ? '偏多' : score<=-3 ? '偏空' : '中性';
 
   // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
   // 1月合约现在有南美综合信号(之前没有)+收获进度(新增)，上限从12变成14(13基础+1)
@@ -2441,6 +2602,7 @@ function updateOverallAlert(){
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span></div>${sdTable}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
+  renderResonancePanel();
 }
 
 // ===================== 初始化 =====================

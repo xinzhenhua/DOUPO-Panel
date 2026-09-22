@@ -506,6 +506,98 @@ def test_soybean_condition_field_mismatch_gives_diagnostic(monkeypatch_fetch):
         fd.NASS_API_KEY = old_key
 
 
+def test_soybean_condition_yoy_and_five_year_avg_full_integration(monkeypatch_fetch):
+    """★用户明确要求的功能：美豆优良率不能只看环比，要能看出"今年这个水平算不算异常"。
+    用真正按年份区分的mock(根据URL里的year=参数返回不同数据)，完整验证从
+    fetch_soybean_condition()到同比/五年均值的端到端链路——不是只测试内部计算函数，
+    是测试真实调用路径下year参数有没有被正确传递、多次请求有没有被正确拼起来。"""
+    old_key = fd.NASS_API_KEY
+    fd.NASS_API_KEY = "test-key"
+
+    # 模拟：2026年最新一周58%，去年同期61%，2024年65%，2023年60%，2022年缺失(查不到)，2021年64%
+    yearly_data = {
+        "2026": [
+            {"week_ending": "2026-09-13", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "8"},
+            {"week_ending": "2026-09-13", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "52"},
+            {"week_ending": "2026-09-20", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "8"},
+            {"week_ending": "2026-09-20", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计58
+        ],
+        "2025": [
+            {"week_ending": "2025-09-21", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "11"},
+            {"week_ending": "2025-09-21", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计61
+        ],
+        "2024": [
+            {"week_ending": "2024-09-15", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "15"},
+            {"week_ending": "2024-09-15", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计65
+        ],
+        "2023": [
+            {"week_ending": "2023-09-17", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "10"},
+            {"week_ending": "2023-09-17", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计60
+        ],
+        "2022": [],  # 模拟这一年查不到数据(真实世界里可能是接口临时失败)
+        "2021": [
+            {"week_ending": "2021-09-19", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "14"},
+            {"week_ending": "2021-09-19", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计64
+        ],
+    }
+    call_log = []
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        call_log.append(url)
+        import re
+        m = re.search(r"year=(\d{4})", url)
+        year = m.group(1) if m else None
+        rows = yearly_data.get(year, [])
+        if not rows:
+            return None, {"error": "该年份无数据(模拟)"}
+        return {"data": rows}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+
+    try:
+        result = fd.fetch_soybean_condition()
+        assert result["available"] is True
+        assert result["goodExcellentPct"] == 58.0, f"8+50=58，实际{result['goodExcellentPct']}"
+        assert len(call_log) == 6, f"应该发起6次请求(今年+往前5年)，实际{len(call_log)}次"
+        assert result["yoyValue"] == 61.0, f"★去年同期应该是61(2025-09-21那一周)，实际{result['yoyValue']}"
+        assert result["yoyChangePts"] == -3.0, f"★同比变化应该是58-61=-3，实际{result['yoyChangePts']}"
+        assert result["fiveYearAvg"] == 62.5, f"★五年均值应该是(61+65+60+64)/4=62.5(2022年缺失不计入分母)，实际{result['fiveYearAvg']}"
+        assert result["fiveYearAvgChangePts"] == -4.5, f"★五年均值对比应该是58-62.5=-4.5，实际{result['fiveYearAvgChangePts']}"
+        print(f"✅ 端到端验证：优良率58% vs 去年同期61%(-3) vs 五年均值62.5%(-4.5)，2022年缺失正确排除在均值分母外")
+        print(f"   完整输出: yoyValue={result['yoyValue']}, fiveYearAvg={result['fiveYearAvg']}")
+    finally:
+        fd.NASS_API_KEY = old_key
+
+
+def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
+    """收获进度同样要验证同比/五年均值——跟优良率共用同一套_compute_yoy_and_five_year_avg，
+    但取值逻辑不同(单一PCT HARVESTED字段，不是两个字段相加)，要单独验证一次不是简单复制粘贴对了。"""
+    old_key = fd.NASS_API_KEY
+    fd.NASS_API_KEY = "test-key"
+    yearly_data = {
+        "2026": [{"week_ending": "2026-09-20", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "12"}],
+        "2025": [{"week_ending": "2025-09-21", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "8"}],
+        "2024": [{"week_ending": "2024-09-15", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "10"}],
+        "2023": [],
+        "2022": [],
+        "2021": [],
+    }
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        import re
+        m = re.search(r"year=(\d{4})", url)
+        rows = yearly_data.get(m.group(1) if m else None, [])
+        return ({"data": rows}, {"httpStatus": 200}) if rows else (None, {"error": "无数据"})
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_harvest_progress()
+        assert result["available"] is True
+        assert result["pctHarvested"] == 12.0
+        assert result["yoyValue"] == 8.0, f"★去年同期收获率应该是8，实际{result['yoyValue']}"
+        assert result["yoyChangePts"] == 4.0, f"★同比变化应该是12-8=+4，实际{result['yoyChangePts']}"
+        assert result["fiveYearAvg"] == 9.0, f"★五年均值应该是(8+10)/2=9(只有2年有数据)，实际{result['fiveYearAvg']}"
+        print(f"✅ 收获进度同比/五年均值验证正确：12% vs 去年同期8%(+4) vs 均值9%(+3)")
+    finally:
+        fd.NASS_API_KEY = old_key
+
+
 def test_south_america_weather_weighted_avg(monkeypatch_fetch):
     """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
     米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
@@ -805,7 +897,7 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
     def fake_hourly(symbol, max_bars=180):
         hourly_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"datetime": "2026-01-01 10:00:00", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
-    def fake_position_rank(symbols, max_attempts=6):
+    def fake_position_rank(symbols, max_attempts=6, categories=None):
         position_rank_calls.append(list(symbols))
         return {s: {"available": True, "symbol": s, "date": "20260712", "rows": [], "source": "测试"} for s in symbols}
 
@@ -1011,225 +1103,211 @@ def test_dce_continuous_kline_debug_output_is_json_safe(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
-def test_dce_position_rank_success_first_try(monkeypatch_fetch):
-    """★龙虎榜：最简单情况——第一次尝试(今天)就拿到多个合约的数据，验证字段解析正确。"""
-    import pandas as pd
+def test_eastmoney_position_url_construction(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：URL构造应该精确匹配真实抓包结果——这个URL结构是用户在
+    浏览器F12开发者工具里实测抓到的真实请求，不是看文档/猜测的，所以这里用抓包
+    结果的固定部分做精确字符串比对(时间戳_=参数每次都变，只比对其余固定部分)。"""
     import fetch_data as fd_module
 
-    mock_df_09 = pd.DataFrame({
-        "rank": [1, 2, 3],
-        "vol_party_name": ["国泰君安", "中信期货", "永安期货"],
-        "vol": [12000.0, 9500.0, 8000.0],
-        "vol_chg": [500.0, -200.0, 100.0],
-        "long_party_name": ["中信期货", "国泰君安", "永安期货"],
-        "long_open_interest": [45000.0, 38000.0, 30000.0],
-        "long_open_interest_chg": [1200.0, -500.0, 300.0],
-        "short_party_name": ["永安期货", "中信期货", "国泰君安"],
-        "short_open_interest": [42000.0, 36000.0, 28000.0],
-        "short_open_interest_chg": [-800.0, 600.0, -100.0],
-    })
-    mock_df_05 = pd.DataFrame({
-        "rank": [1], "vol_party_name": ["中粮期货"], "vol": [5000.0], "vol_chg": [50.0],
-        "long_party_name": ["中粮期货"], "long_open_interest": [20000.0], "long_open_interest_chg": [300.0],
-        "short_party_name": ["中粮期货"], "short_open_interest": [18000.0], "short_open_interest_chg": [-100.0],
-    })
-    call_count = {"n": 0}
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            call_count["n"] += 1
-            return {"m2609": mock_df_09, "m2705": mock_df_05}
-
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        # ★注意：这里只请求mock数据里真实存在的两个合约(M2609/M2705)。
-        #   之前这里错误地还请求了M2701(mock数据里没有)，导致函数为了找M2701
-        #   正确地持续重试到max_attempts次——这是函数的正确行为(不是所有目标都
-        #   找到就不该提前停)，但当时的断言"应该只call 1次"因此自相矛盾。
-        #   "部分合约找不到"这个场景已经由test_dce_position_rank_complete_failure
-        #   单独覆盖，这里只测"全部都找到"这个场景，两者不要混在一起。
-        result = fd_module.fetch_dce_position_rank_multi(["M2609", "M2705"])
-        assert result["M2609"]["available"] is True
-        assert len(result["M2609"]["rows"]) == 3
-        assert result["M2609"]["rows"][0]["volPartyName"] == "国泰君安"
-        assert result["M2609"]["rows"][0]["longOpenInterestChg"] == 1200.0
-        assert result["M2705"]["available"] is True
-        assert result["M2705"]["rows"][0]["volPartyName"] == "中粮期货"
-        assert call_count["n"] == 1, f"★关键验证：2个合约应该合并成1次API调用(接口本来就是一次返回所有合约)，实际调用了{call_count['n']}次"
-        print("✅ 龙虎榜一次调用拿到多个合约数据，字段解析全部正确，且验证了只发起1次API调用(不是2次)")
-    finally:
-        del sys.modules['akshare']
+    url = fd_module._build_eastmoney_position_url("M2701", "2026-09-18", "LPRANK")
+    expected_fixed_part = (
+        "https://datacenter-web.eastmoney.com/api/data/v1/get?"
+        "reportName=RPT_FUTU_DAILYPOSITION&columns=ALL&"
+        "filter=(SECURITY_CODE%3D%22M2701%22)(TRADE_DATE%3D%272026-09-18%27)(TYPE%3D%220%22)(LPRANK%3C%3E9999)&"
+        "sortTypes=1&sortColumns=LPRANK&pageNumber=1&pageSize=20&source=WEB&client=WEB"
+    )
+    assert url.startswith(expected_fixed_part), f"URL构造应该跟真实抓包结果完全一致，实际: {url}"
+    print("✅ URL构造精确匹配真实抓包结果(括号不转义、参数顺序、filter语法全部一致)")
 
 
-def test_dce_position_rank_stops_once_all_found(monkeypatch_fetch):
-    """★龙虎榜效率验证：一旦所有目标合约都找到数据了，不应该继续往更早的日期尝试
-    (避免对一个已知有反爬风控的接口发起不必要的额外请求)。"""
-    import pandas as pd
+def test_eastmoney_position_row_parsing(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：用用户提供的真实响应数据验证解析逻辑——包括排名9999
+    (无排名)要被过滤掉、用干净的会员名(不带"代客"后缀)、统一的rank/name/value/change
+    字段结构对多个类别都适用。"""
     import fetch_data as fd_module
 
-    mock_df = pd.DataFrame({
-        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
-        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
-        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
-    })
-    call_count = {"n": 0}
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            call_count["n"] += 1
-            return {"m2609": mock_df}  # 只查一个合约，第一次就能找到
+    raw_rows = [
+        {"MEMBER_NAME_ABBR": "国泰君安（代客）", "ORG_NAME_ABBR_NEW": "国泰君安",
+         "LP_RANK": 1, "SP_RANK": 4, "NLP_RANK": 3, "NSP_RANK": 9999, "LP_UP_RANK": 26, "LP_DOWN_RANK": 7,
+         "LONG_POSITION": 282361, "LP_CHANGE": -6712, "SHORT_POSITION": 148453, "SP_CHANGE": 1450,
+         "NET_LONG_POSITION": 133908, "NLP_CHANGE": -8162, "NET_SHORT_POSITION": None, "NSP_CHANGE": None},
+        {"MEMBER_NAME_ABBR": "中粮期货（代客）", "ORG_NAME_ABBR_NEW": "中粮期货",
+         "LP_RANK": 12, "SP_RANK": 1, "NLP_RANK": 9999, "NSP_RANK": 1, "LP_UP_RANK": 2, "LP_DOWN_RANK": 31,
+         "LONG_POSITION": 56303, "LP_CHANGE": 6780, "SHORT_POSITION": 591686, "SP_CHANGE": -34650,
+         "NET_LONG_POSITION": None, "NLP_CHANGE": None, "NET_SHORT_POSITION": 535383, "NSP_CHANGE": -41430},
+        {"MEMBER_NAME_ABBR": "国联期货（代客）", "ORG_NAME_ABBR_NEW": "国联期货",
+         "LP_RANK": 9999, "SP_RANK": 9999, "NLP_RANK": 9999, "NSP_RANK": 9999, "LP_UP_RANK": 9999, "LP_DOWN_RANK": 9999,
+         "LONG_POSITION": None, "LP_CHANGE": None, "SHORT_POSITION": None, "SP_CHANGE": None,
+         "NET_LONG_POSITION": None, "NLP_CHANGE": None, "NET_SHORT_POSITION": None, "NSP_CHANGE": None},
+    ]
 
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=6)
-        assert result["M2609"]["available"] is True
-        assert call_count["n"] == 1, f"★只有1个目标合约，第一次就找到了，不应该继续尝试max_attempts设定的其余5次，实际调用了{call_count['n']}次"
-        print(f"✅ 找到所有目标合约后正确提前停止，没有发起多余的请求(只调用了{call_count['n']}次，不是max_attempts的6次)")
-    finally:
-        del sys.modules['akshare']
+    long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "long")
+    assert len(long_rows) == 2, f"LP_RANK=9999(国联期货)应该被过滤掉，剩2条，实际{len(long_rows)}条"
+    assert long_rows[0]["rank"] == 1 and long_rows[0]["name"] == "国泰君安"
+    assert long_rows[0]["value"] == 282361 and long_rows[0]["change"] == -6712
+    assert "代客" not in long_rows[0]["name"], "应该用ORG_NAME_ABBR_NEW干净名字，不带'代客'后缀"
+
+    short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "short")
+    assert short_rows[0]["rank"] == 1 and short_rows[0]["name"] == "中粮期货", "★应该按SP_RANK排序，中粮期货(SP_RANK=1)排第一"
+    assert short_rows[0]["value"] == 591686
+
+    net_long_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "netLong")
+    assert len(net_long_rows) == 1 and net_long_rows[0]["name"] == "国泰君安", "★净多头：只有国泰君安有NLP_RANK(3)，中粮期货NLP_RANK=9999应该被过滤"
+    assert net_long_rows[0]["value"] == 133908
+
+    net_short_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "netShort")
+    assert len(net_short_rows) == 1 and net_short_rows[0]["name"] == "中粮期货" and net_short_rows[0]["value"] == 535383
+
+    long_up_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "longUp")
+    assert long_up_rows[0]["name"] == "中粮期货", "★多头增仓：中粮期货LP_UP_RANK=2排第一(比国泰君安的26靠前)"
+
+    long_down_rows = fd_module._parse_eastmoney_position_rows(raw_rows, "longDown")
+    assert long_down_rows[0]["name"] == "国泰君安", "★多头减仓：国泰君安LP_DOWN_RANK=7排第一(比中粮期货的31靠前)"
+
+    print("✅ 用真实响应数据验证：6个类别(多头/空头/净多头/净空头/多头增仓/多头减仓)解析全部正确，9999哨兵值被过滤")
 
 
-def test_dce_position_rank_retries_until_found(monkeypatch_fetch):
-    """★龙虎榜：T+1性质模拟——"今天"和"昨天"这个合约都没数据(比如盘前运行，
-    数据还没发布)，第三次尝试(前天)才找到，验证会正确往前找而不是第一次失败就放弃。"""
-    import pandas as pd
+def test_foreign_futures_firm_detection(monkeypatch_fetch):
+    """★外资标注：验证4家已确认的境内外资独资期货公司能被正确识别，且是包含匹配
+    (能兼容"(代客)"这类后缀，或"高盛期货(深圳)"这种更完整的写法)，国内期货公司
+    不应该被误判成外资。"""
     import fetch_data as fd_module
 
-    mock_df = pd.DataFrame({
-        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
-        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
-        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
-    })
-    call_count = {"n": 0}
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            call_count["n"] += 1
-            if call_count["n"] < 3:
-                return {}  # 前两次：这个日期没有任何数据(模拟还没发布)
-            return {"m2609": mock_df}  # 第三次才有
+    assert fd_module._is_foreign_futures_firm("高盛期货") is True
+    assert fd_module._is_foreign_futures_firm("高盛期货（深圳）有限公司") is True, "★应该是包含匹配，兼容更完整的公司全称"
+    assert fd_module._is_foreign_futures_firm("高盛期货（代客）") is True, "★应该能兼容'(代客)'后缀"
+    assert fd_module._is_foreign_futures_firm("摩根大通期货") is True
+    assert fd_module._is_foreign_futures_firm("摩根士丹利期货") is True
+    assert fd_module._is_foreign_futures_firm("瑞银期货") is True
+    assert fd_module._is_foreign_futures_firm("中信期货") is False, "★国内期货公司不应该被误判成外资"
+    assert fd_module._is_foreign_futures_firm("国泰君安") is False
 
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=6)
-        assert result["M2609"]["available"] is True, "应该在第3次尝试(往前找2天)时成功找到数据"
-        assert call_count["n"] == 3, f"应该恰好尝试3次就停止(找到就不再继续试)，实际尝试了{call_count['n']}次"
-        print(f"✅ 龙虎榜正确处理T+1延迟：前2次(模拟数据未发布)都没找到，第3次往前找到了数据就停止")
-    finally:
-        del sys.modules['akshare']
+    # 解析流程里也要验证isForeign字段确实被正确设置
+    raw_rows = [
+        {"MEMBER_NAME_ABBR": "高盛期货（代客）", "ORG_NAME_ABBR_NEW": "高盛期货", "LP_RANK": 5, "LONG_POSITION": 1000, "LP_CHANGE": 50},
+        {"MEMBER_NAME_ABBR": "中信期货（代客）", "ORG_NAME_ABBR_NEW": "中信期货", "LP_RANK": 1, "LONG_POSITION": 5000, "LP_CHANGE": 100},
+    ]
+    parsed = fd_module._parse_eastmoney_position_rows(raw_rows, "long")
+    goldman_row = next(r for r in parsed if r["name"] == "高盛期货")
+    citic_row = next(r for r in parsed if r["name"] == "中信期货")
+    assert goldman_row["isForeign"] is True, "★高盛期货这一行应该被标注isForeign=true"
+    assert citic_row["isForeign"] is False, "★中信期货不应该被标注为外资"
+    print("✅ 外资独资期货公司(高盛/摩根大通/摩根士丹利/瑞银)识别正确，国内公司不会被误判，isForeign字段正确写入解析结果")
 
 
-def test_dce_position_rank_handles_exceptions_gracefully(monkeypatch_fetch):
-    """★龙虎榜：模拟大商所官网风控导致请求报错(比如412)——不应该让整个抓取崩溃，
-    应该记录这次失败继续往前试其他日期。"""
+def test_eastmoney_position_jsonp_unwrap(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：fetch_jsonp_debug应该正确剥掉JSONP回调包装(真实响应实测
+    确认是这个格式)，同时也要能正确处理万一哪天接口直接返回纯JSON(无包装)的情况。"""
     import fetch_data as fd_module
 
-    call_count = {"n": 0}
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            call_count["n"] += 1
-            raise Exception("HTTP 412: 请求被拒绝(模拟大商所官网风控)")
+    class FakeResponse:
+        def __init__(self, body):
+            self._body = body.encode("utf-8")
+            self.status = 200
+        def read(self):
+            return self._body
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
 
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
+    jsonp_body = 'jQuery1123041726061443928875_1789959148296({"success":true,"result":{"data":[{"a":1}]},"message":"ok"});'
+    old_urlopen = fd_module.urllib.request.urlopen
+    fd_module.urllib.request.urlopen = lambda req, timeout=20: FakeResponse(jsonp_body)
     try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=4)
-        assert result["M2609"]["available"] is False, "全部尝试都报错，应该诚实返回不可用，而不是崩溃或伪造数据"
-        assert call_count["n"] == 4, f"应该按max_attempts设定的次数重试完，实际尝试了{call_count['n']}次"
-        assert "debug" in result["M2609"] and len(result["M2609"]["debug"]["attempts"]) == 4
-        assert any("412" in str(a.get("error", "")) for a in result["M2609"]["debug"]["attempts"]), "debug信息里应该保留原始错误内容，方便排查"
-        print(f"✅ 龙虎榜遇到接口报错(模拟412风控)时不会崩溃，会优雅降级并在debug里保留原始错误信息")
+        data, debug = fd_module.fetch_jsonp_debug("https://example.com/test")
+        assert data is not None and data["success"] is True, "★应该正确剥掉JSONP包装并解析出JSON内容"
+        assert data["result"]["data"] == [{"a": 1}]
+        print("✅ fetch_jsonp_debug正确剥掉真实响应格式的JSONP包装")
     finally:
-        del sys.modules['akshare']
+        fd_module.urllib.request.urlopen = old_urlopen
+
+    plain_body = '{"success":true,"result":{"data":[{"b":2}]},"message":"ok"}'
+    fd_module.urllib.request.urlopen = lambda req, timeout=20: FakeResponse(plain_body)
+    try:
+        data, debug = fd_module.fetch_jsonp_debug("https://example.com/test2")
+        assert data is not None and data["result"]["data"] == [{"b": 2}], "★纯JSON(无JSONP包装)也应该能正确处理，不误判成需要剥括号"
+        print("✅ fetch_jsonp_debug对纯JSON(万一接口哪天不带回调了)也能正确兜底处理")
+    finally:
+        fd_module.urllib.request.urlopen = old_urlopen
 
 
-def test_dce_position_rank_complete_failure(monkeypatch_fetch):
-    """★龙虎榜：尝试了所有日期都没有目标合约的数据，应该诚实报告失败原因，不是返回空列表假装成功。
-    同时验证多合约场景下，有数据的正常返回，没数据的独立标记失败(互不影响)。"""
-    import pandas as pd
+def test_eastmoney_position_rank_integration(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：完整集成测试——mock掉fetch_jsonp_debug，验证
+    fetch_dce_position_rank_multi()对指定的类别(净多头/净空头/多头增仓/多头减仓)
+    正确发起请求、正确处理T+1重试(模拟"今天"数据还没发布，要往前找)、
+    结果正确组织成tables字典结构(不是扁平的rows列表)。"""
     import fetch_data as fd_module
 
-    mock_df = pd.DataFrame({
-        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
-        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
-        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
-    })
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            return {"m2705": mock_df}  # 只有M2705的数据，M2609一直没有
+    def fake_fetch_jsonp(url, headers=None, retries=3, timeout=20):
+        if "TRADE_DATE%3D%272026-09-20%27" in url:
+            # 模拟"今天"数据还没发布
+            return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
+        if "TRADE_DATE%3D%272026-09-19%27" in url:
+            if "NLPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "国泰君安", "ORG_NAME_ABBR_NEW": "国泰君安", "NLP_RANK": 1, "NET_LONG_POSITION": 5000, "NLP_CHANGE": 100},
+                ]}, "message": "ok"}, {"url": url}
+            if "NSPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "高盛期货", "ORG_NAME_ABBR_NEW": "高盛期货", "NSP_RANK": 1, "NET_SHORT_POSITION": 4000, "NSP_CHANGE": -50},
+                ]}, "message": "ok"}, {"url": url}
+            if "LPUPRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "中粮期货", "ORG_NAME_ABBR_NEW": "中粮期货", "LP_UP_RANK": 1, "LONG_POSITION": 3000, "LP_CHANGE": 200},
+                ]}, "message": "ok"}, {"url": url}
+            if "LPDOWNRANK" in url:
+                return {"success": True, "result": {"data": [
+                    {"MEMBER_NAME_ABBR": "中信期货", "ORG_NAME_ABBR_NEW": "中信期货", "LP_DOWN_RANK": 1, "LONG_POSITION": 2000, "LP_CHANGE": -150},
+                ]}, "message": "ok"}, {"url": url}
+        return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
 
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
+    old_fn = fd_module.fetch_jsonp_debug
+    fd_module.fetch_jsonp_debug = fake_fetch_jsonp
     try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2609", "M2705"], max_attempts=3)
-        assert result["M2609"]["available"] is False
-        assert "M2609" in result["M2609"]["reason"], "失败原因里应该明确提到是哪个合约拿不到数据"
-        assert "反爬" in result["M2609"]["reason"] or "不稳定" in result["M2609"]["reason"], "失败原因应该诚实说明这是这个接口的已知特性，不是笼统的\"出错了\""
-        assert result["M2705"]["available"] is True, "★M2705有数据应该正常返回，不应该被M2609的失败连累"
-        print(f"✅ 多合约场景下互不影响：M2609找不到数据诚实报告失败，M2705有数据正常返回")
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        old_datetime = fd_module.datetime
+        class FixedDatetime(real_datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return real_datetime(2026, 9, 20, 12, 0, 0, tzinfo=real_timezone.utc)
+        fd_module.datetime = FixedDatetime
+        try:
+            result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=3, categories=["netLong", "netShort", "longUp", "longDown"])
+        finally:
+            fd_module.datetime = old_datetime
+
+        assert result["M2701"]["available"] is True, "★应该往前找到9-19号的数据(9-20号模拟还没发布)"
+        assert result["M2701"]["date"] == "2026-09-19"
+        tables = result["M2701"]["tables"]
+        assert set(tables.keys()) == {"netLong", "netShort", "longUp", "longDown"}, f"★应该只包含请求的4个类别，实际: {list(tables.keys())}"
+        assert tables["netLong"][0]["name"] == "国泰君安"
+        assert tables["netShort"][0]["name"] == "高盛期货" and tables["netShort"][0]["isForeign"] is True, "★净空头榜里的高盛期货应该被标注isForeign=true"
+        assert tables["longUp"][0]["name"] == "中粮期货"
+        assert tables["longDown"][0]["name"] == "中信期货"
+        assert "东方财富" in result["M2701"]["source"], "数据来源说明应该提到东方财富(不再是大商所官网直连)"
+        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-20无数据→往前找到9-19)，4个指定类别正确组织成tables字典，外资标注正确")
     finally:
-        del sys.modules['akshare']
+        fd_module.fetch_jsonp_debug = old_fn
 
 
-def test_dce_position_rank_passes_vars_list(monkeypatch_fetch):
-    """★验证真实生产环境反馈后的修复：请求时应该带上vars_list=['M']，把范围限定在豆粕这一个品种
-    (而不是请求全品种)，验证过'M'确实是这个接口里豆粕对应的品种代码。"""
-    import pandas as pd
+def test_eastmoney_position_rank_complete_failure(monkeypatch_fetch):
+    """★龙虎榜(东方财富版)：所有日期都拿不到数据时，应该诚实报告失败，不崩溃、不伪造数据。"""
     import fetch_data as fd_module
 
-    mock_df = pd.DataFrame({
-        "rank": [1], "vol_party_name": ["国泰君安"], "vol": [1000.0], "vol_chg": [0.0],
-        "long_party_name": ["国泰君安"], "long_open_interest": [5000.0], "long_open_interest_chg": [0.0],
-        "short_party_name": ["国泰君安"], "short_open_interest": [4000.0], "short_open_interest_chg": [0.0],
-    })
-    received_calls = []
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            received_calls.append({"date": date, "vars_list": vars_list})
-            return {"m2609": mock_df}
+    def fake_fetch_jsonp_empty(url, headers=None, retries=3, timeout=20):
+        return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
 
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
+    old_fn = fd_module.fetch_jsonp_debug
+    fd_module.fetch_jsonp_debug = fake_fetch_jsonp_empty
     try:
-        fd_module.fetch_dce_position_rank_multi(["M2609"])
-        assert len(received_calls) == 1
-        assert received_calls[0]["vars_list"] == ["M"], f"★应该带上vars_list=['M']把请求限定在豆粕品种，实际传入: {received_calls[0]['vars_list']}"
-        print(f"✅ 已修复：请求时正确带上vars_list=['M']，把范围限定在豆粕品种(而不是请求全品种)")
+        result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=2, categories=["netLong"])
+        assert result["M2701"]["available"] is False
+        assert "M2701" in result["M2701"]["reason"]
+        assert "debug" in result["M2701"] and len(result["M2701"]["debug"]["attempts"]) > 0
+        print("✅ 所有日期都没数据时，诚实报告失败原因(不崩溃、不伪造数据)")
     finally:
-        del sys.modules['akshare']
-
-
-def test_dce_position_rank_handles_bad_zip_file_specifically(monkeypatch_fetch):
-    """★验证真实生产环境反馈后的修复：这次真实用户反馈里4个交易日全部报BadZipFile错误
-    (大商所官网返回的内容不是有效zip，通常是反爬拦截或官网格式变化)——这个具体异常类型
-    应该被单独捕获，给出比"笼统的Exception"更准确的诊断信息，方便以后排查。"""
-    import zipfile
-    import fetch_data as fd_module
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_dce_position_rank(date, vars_list=None):
-            raise zipfile.BadZipFile("File is not a zip file")
-
-    import sys
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_dce_position_rank_multi(["M2609"], max_attempts=2)
-        assert result["M2609"]["available"] is False
-        attempts = result["M2609"]["debug"]["attempts"]
-        assert len(attempts) == 2
-        assert "BadZipFile" in attempts[0]["error"]
-        assert "反爬" in attempts[0]["error"] or "格式变化" in attempts[0]["error"], \
-            "★BadZipFile应该有专属的诊断说明(反爬拦截/官网格式变化)，不能只是笼统的异常文本"
-        print(f"✅ 已修复：BadZipFile异常现在有专属诊断信息，明确说明可能是反爬拦截或官网格式变化")
-    finally:
-        del sys.modules['akshare']
+        fd_module.fetch_jsonp_debug = old_fn
 
 
 def test_dce_continuous_kline_parsing(monkeypatch_fetch):
@@ -1329,9 +1407,9 @@ def make_monkeypatch():
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
-              test_dce_position_rank_success_first_try, test_dce_position_rank_stops_once_all_found, test_dce_position_rank_retries_until_found,
-              test_dce_position_rank_handles_exceptions_gracefully, test_dce_position_rank_complete_failure,
-              test_dce_position_rank_passes_vars_list, test_dce_position_rank_handles_bad_zip_file_specifically,
+              test_eastmoney_position_url_construction, test_eastmoney_position_row_parsing, test_foreign_futures_firm_detection,
+              test_eastmoney_position_jsonp_unwrap, test_eastmoney_position_rank_integration,
+              test_eastmoney_position_rank_complete_failure,
               test_dce_continuous_kline_handles_chinese_column_names, test_dce_continuous_kline_debug_output_is_json_safe,
               test_dce_continuous_kline_parsing, test_dce_continuous_kline_detects_rollover_jumps,
               test_us_planting_progress_filters_out_annual_survey_data,
@@ -1349,6 +1427,7 @@ if __name__ == "__main__":
               test_weighted_avg_small_producer_drought_gets_diluted_appropriately,
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
               test_soybean_condition_field_mismatch_gives_diagnostic,
+              test_soybean_condition_yoy_and_five_year_avg_full_integration, test_us_harvest_progress_yoy_and_five_year_avg,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
