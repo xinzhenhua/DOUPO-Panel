@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-23T14:53:14.444981+00:00",
+  "generatedAt": "2026-09-23T17:49:30.218865+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 372.4,
-    "change": 3.5,
-    "changePct": 0.95,
+    "price": 369.9,
+    "change": 1.0,
+    "changePct": 0.27,
     "asOf": "2026-09-23T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -8480,11 +8480,11 @@
       {
         "datetime": "2026-09-23 23:00:00",
         "open": 3005.0,
-        "high": 3010.0,
+        "high": 3012.0,
         "low": 2999.0,
-        "close": 3008.0,
-        "volume": 80.0,
-        "hold": 861831.0
+        "close": 3011.0,
+        "volume": 62.0,
+        "hold": 862744.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11788,9 +11788,9 @@
         "open": 3393.0,
         "high": 3400.0,
         "low": 3385.0,
-        "close": 3395.0,
-        "volume": 180.0,
-        "hold": 2693772.0
+        "close": 3397.0,
+        "volume": 193.0,
+        "hold": 2689478.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11801,6 +11801,26 @@
     "debug": {
       "attempts": [
         {
+          "date": "2026-09-24",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-24",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-24",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-24",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
           "date": "2026-09-23",
           "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
@@ -11897,26 +11917,6 @@
         },
         {
           "date": "2026-09-19",
-          "category": "longDown",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-18",
-          "category": "netLong",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-18",
-          "category": "netShort",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-18",
-          "category": "longUp",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-18",
           "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         }
