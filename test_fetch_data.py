@@ -598,7 +598,6 @@ def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
         fd.NASS_API_KEY = old_key
 
 
-<<<<<<< HEAD
 def test_cftc_managed_money_parsing(monkeypatch_fetch):
     """★用户明确要求：CFTC持仓报告是美国版龙虎榜，Managed Money(基金/投机资金)
     这一类最接近"外资/资金动向"这个概念。用实测抓包确认过的真实字段结构模拟
@@ -652,8 +651,77 @@ def test_cftc_managed_money_field_mismatch_gives_diagnostic(monkeypatch_fetch):
     print("✅ 字段名对不上时给出诊断信息(实际有哪些字段)，而不是静默失败")
 
 
-=======
->>>>>>> c257abc5554a0826af9273b0a451410eb3c83992
+def test_get_current_contract_code_prefix_param(monkeypatch_fetch):
+    """★验证get_current_contract_code新增的prefix参数：压榨利润要复用这个函数
+    算豆油(Y)/豆二(B)的合约代码，不能破坏原本豆粕(M)的默认行为。"""
+    from datetime import datetime as real_datetime, timezone as real_timezone
+    now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+    assert fd.get_current_contract_code(9, now) == "M2609", "不传prefix应该保持默认M，不能破坏现有调用方"
+    assert fd.get_current_contract_code(9, now, prefix="Y") == "Y2609", "★传Y应该算出豆油合约代码"
+    assert fd.get_current_contract_code(9, now, prefix="B") == "B2609", "★传B应该算出豆二合约代码"
+    print("✅ get_current_contract_code的prefix参数正确：默认M不受影响，Y/B也能正确生成")
+
+
+def test_crush_margin_calculation(monkeypatch_fetch):
+    """★用户明确要求：压榨利润=豆粕价格×出粕率+豆油价格×出油率-大豆价格。
+    用手算验证过的例子(3400×0.785+8500×0.185-4200=41.5)验证代入公式的结果正确。"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        prices = {"M2609": 3400, "Y2609": 8500, "B2609": 4200}
+        if symbol not in prices:
+            return {"available": False, "reason": "测试里没配置这个合约"}
+        return {"available": True, "symbol": symbol, "bars": [{"close": prices[symbol]}], "source": "测试"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+        result = fd.fetch_crush_margin(9, now)
+        assert result["available"] is True
+        assert result["mealPrice"] == 3400 and result["oilPrice"] == 8500 and result["beanPrice"] == 4200
+        assert result["grossMargin"] == 41.5, f"★手算验证值应该是41.5，实际{result['grossMargin']}"
+        assert result["yieldMeal"] == 0.785 and result["yieldOil"] == 0.185, "★系数应该是DCE官方交割置换标准(78.5%/18.5%)"
+        print(f"✅ 压榨利润计算正确：{result['grossMargin']}元/吨(手算验证过)")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
+def test_crush_margin_missing_one_contract_reports_all_missing(monkeypatch_fetch):
+    """★三个合约价格有一个缺失就应该整体标记不可用，不能用0硬凑一个看似正常的数字。
+    还要验证：缺失原因里应该点名到底是哪个合约缺(不是笼统一句"数据不足")。"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        if symbol == "Y2609":
+            return {"available": False, "reason": "接口调用失败"}
+        prices = {"M2609": 3400, "B2609": 4200}
+        return {"available": True, "symbol": symbol, "bars": [{"close": prices[symbol]}], "source": "测试"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+        result = fd.fetch_crush_margin(9, now)
+        assert result["available"] is False
+        assert "豆油" in result["reason"] and "Y2609" in result["reason"], "★缺失原因应该点名是豆油缺失，不是笼统报告"
+        assert "豆粕" not in result["reason"] or "M2609" not in result["reason"].split("豆油")[0], "不应该错误地把正常的豆粕也报成缺失"
+        print("✅ 三个合约中有一个缺失时，整体标记不可用且准确点名是哪个合约缺失")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
+def test_crush_margin_all_three_missing_lists_all(monkeypatch_fetch):
+    """三个合约全部缺失时，reason里应该把三个都列出来，不是只报第一个就停"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        return {"available": False, "reason": "全部没有"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        result = fd.fetch_crush_margin(9)
+        assert result["available"] is False
+        assert "豆粕" in result["reason"] and "豆油" in result["reason"] and "豆二" in result["reason"]
+        print("✅ 三个合约全部缺失时，三个都被列在错误信息里，不是只报第一个")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
 def test_south_america_weather_weighted_avg(monkeypatch_fetch):
     """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
     米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
@@ -978,7 +1046,10 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
         }
         fd.main()
 
-        assert set(daily_calls) == expected_codes, f"main()应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
+        # ★压榨利润功能上线后，fetch_dce_daily_kline还会被拿去查豆油(Y)/豆二(B)合约价格，
+        #   daily_calls不再是"只有这3个M合约"了，改成检查这3个M合约都在里面(子集关系)，
+        #   而不是要求完全相等——压榨利润那部分自己有专门的测试覆盖，这里不重复断言。
+        assert expected_codes.issubset(set(daily_calls)), f"main()至少应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
         assert set(hourly_calls) == expected_codes, f"main()应该对这3个小时线合约代码发起请求: {expected_codes}，实际请求了: {hourly_calls}"
         assert len(position_rank_calls) == 1, f"★持仓排名应该只调用1次(批量传入3个合约，不是分别调用3次)，实际调用了{len(position_rank_calls)}次"
         assert set(position_rank_calls[0]) == expected_codes, f"持仓排名批量调用时传入的合约代码应该是这3个: {expected_codes}，实际传入: {position_rank_calls[0]}"
@@ -1484,10 +1555,9 @@ if __name__ == "__main__":
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
               test_soybean_condition_field_mismatch_gives_diagnostic,
               test_soybean_condition_yoy_and_five_year_avg_full_integration, test_us_harvest_progress_yoy_and_five_year_avg,
-<<<<<<< HEAD
               test_cftc_managed_money_parsing, test_cftc_managed_money_no_data_found, test_cftc_managed_money_field_mismatch_gives_diagnostic,
-=======
->>>>>>> c257abc5554a0826af9273b0a451410eb3c83992
+              test_get_current_contract_code_prefix_param, test_crush_margin_calculation,
+              test_crush_margin_missing_one_contract_reports_all_missing, test_crush_margin_all_three_missing_lists_all,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,

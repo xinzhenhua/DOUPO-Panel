@@ -963,15 +963,17 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 # ★ 诚实说明：akshare底层是抓取新浪财经公开页面，不是官方付费实时数据源，
 #   实际数据大概率有几秒到几分钟延迟，不是真正的逐笔实时行情。
 # ---------------------------------------------------------------------------
-def get_current_contract_code(contract_month, now=None):
+def get_current_contract_code(contract_month, now=None, prefix="M"):
     """算出"现在"该关注的是哪个具体合约代码，比如7月看9月合约，应该是M2609
     （不能写死，因为合约到期后，同一个"9月合约"概念下个周期就该指向M2709了）。
-    简化规则：如果当前月份<=合约月份，用今年；否则用明年。"""
+    简化规则：如果当前月份<=合约月份，用今年；否则用明年。
+    ★prefix参数：默认"M"(豆粕)，压榨利润计算需要复用这个函数算"Y"(豆油)/"B"(豆二/
+    进口大豆)的合约代码——年份计算逻辑对这三个品种是通用的，不用另外写一份。"""
     if now is None:
         now = datetime.now(timezone.utc)
     year = now.year if now.month <= contract_month else now.year + 1
     yy = str(year)[-2:]
-    return f"M{yy}{contract_month:02d}"
+    return f"{prefix}{yy}{contract_month:02d}"
 
 
 def fetch_dce_daily_kline(symbol, max_rows=260):
@@ -1152,6 +1154,66 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "bars": bars,
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
+
+
+# ---------------------------------------------------------------------------
+# 压榨利润(榨利)：按用户确认的优先级排第二项。这个不是直接抓来的数据，是算出来的——
+# 复用豆粕日K线同一个akshare接口，换成豆油(Y)/豆二(B，进口大豆)的合约代码去查最新收盘价，
+# 三者代入行业标准公式算出"盘面毛利"。
+#
+# ★标准公式+系数确认过程(多个独立信息源交叉确认，其中出粕率/出油率这组数字
+#   最权威的来源是大商所豆二期货厂库交割置换的官方标准本身)：
+#   压榨利润 = 豆粕价格×出粕率 + 豆油价格×出油率 - 大豆价格 - 加工费
+#   进口大豆(豆二/B)：出粕率78.5%，出油率18.5%
+#
+# ★诚实说明这是"毛利"不是"净利"：公式里的"加工费"(油厂自己的加工/物流成本)
+#   没有一个公开、权威、会随时间变化的数据源可以查，硬编一个猜测数字反而不诚实
+#   (看起来精确，实际是瞎猜)。所以这里只算到"豆粕+豆油产出价值 - 大豆成本"这一步，
+#   不减加工费——趋势方向(涨跌)依然有参考价值，只是绝对数值会比真实净利润更高。
+# ---------------------------------------------------------------------------
+CRUSH_YIELD_MEAL = 0.785  # 出粕率(进口大豆/豆二)
+CRUSH_YIELD_OIL = 0.185   # 出油率(进口大豆/豆二)
+
+
+def fetch_crush_margin(contract_month, now=None):
+    """算指定合约月份(9/5/1)的盘面压榨毛利：分别抓豆粕(M)/豆油(Y)/豆二(B)三个
+    同月份合约的最新收盘价，代入标准公式。三者只要有一个抓不到数据就整体标记不可用——
+    压榨利润是三个价格联动算出来的，缺一个都算不出有意义的结果，不能用"缺了就当0"
+    这种方式硬凑一个看似正常的数字出来。"""
+    meal_symbol = get_current_contract_code(contract_month, now, prefix="M")
+    oil_symbol = get_current_contract_code(contract_month, now, prefix="Y")
+    bean_symbol = get_current_contract_code(contract_month, now, prefix="B")
+
+    meal_data = fetch_dce_daily_kline(meal_symbol, max_rows=1)
+    oil_data = fetch_dce_daily_kline(oil_symbol, max_rows=1)
+    bean_data = fetch_dce_daily_kline(bean_symbol, max_rows=1)
+
+    missing = []
+    if not meal_data.get("available") or not meal_data.get("bars"):
+        missing.append(f"豆粕{meal_symbol}({meal_data.get('reason','未知原因')})")
+    if not oil_data.get("available") or not oil_data.get("bars"):
+        missing.append(f"豆油{oil_symbol}({oil_data.get('reason','未知原因')})")
+    if not bean_data.get("available") or not bean_data.get("bars"):
+        missing.append(f"豆二{bean_symbol}({bean_data.get('reason','未知原因')})")
+    if missing:
+        return {"available": False, "reason": f"以下合约价格缺失，无法计算压榨利润: {'; '.join(missing)}"}
+
+    meal_price = meal_data["bars"][-1]["close"]
+    oil_price = oil_data["bars"][-1]["close"]
+    bean_price = bean_data["bars"][-1]["close"]
+    gross_margin = round(meal_price * CRUSH_YIELD_MEAL + oil_price * CRUSH_YIELD_OIL - bean_price, 1)
+
+    return {
+        "available": True,
+        "contractMonth": contract_month,
+        "mealSymbol": meal_symbol, "mealPrice": meal_price,
+        "oilSymbol": oil_symbol, "oilPrice": oil_price,
+        "beanSymbol": bean_symbol, "beanPrice": bean_price,
+        "grossMargin": gross_margin,
+        "yieldMeal": CRUSH_YIELD_MEAL, "yieldOil": CRUSH_YIELD_OIL,
+        "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+    }
+
 
 # ★确认过的境内外资独资期货公司(实测查证，不是猜测)：这4家目前都是100%外资控股的
 #   境内期货公司，且都是大商所会员——高盛期货是2026年才由"乾坤期货"更名而来。
@@ -1871,11 +1933,17 @@ def main():
     may_code = get_current_contract_code(5)
     jan_code = get_current_contract_code(1)
     position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code], categories=["netLong", "netShort", "longUp", "longDown"])
+    crush_margins = {
+        "sep": fetch_crush_margin(9),
+        "may": fetch_crush_margin(5),
+        "jan": fetch_crush_margin(1),
+    }
 
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
+        "crushMargins": crush_margins,
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),

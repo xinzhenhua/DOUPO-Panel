@@ -297,6 +297,15 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="cftcContent" class="loading">正在读取同步数据...</div>
 </div>
 
+<div class="stitle">⚙️ 压榨利润(盘面毛利，跟随合约切换)</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">豆粕+豆油产出价值 - 豆二(进口大豆)成本</div>
+    <span class="badge" id="crushBadge">检查中...</span>
+  </div>
+  <div id="crushContent" class="loading">正在读取同步数据...</div>
+</div>
+
 <!-- ============ 一键复制提示词 + 一键粘贴填充板块 ============ -->
 <div class="stitle">📋 一键复制提示词 → 粘贴填充（替代AI搜索，纯本地解析不联网）</div>
 <details class="tier-details big-collapse">
@@ -372,6 +381,32 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
       <div class="ai-suggest" id="ai_arrival"></div>
       <input class="minput" id="m_arrival" type="number" placeholder="如1100" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
     </div>
+  </div>
+</div>
+
+<div class="stitle">🌎 南美供给 · 每周更新</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">巴西大豆播种进度(CONAB官方数据，本期+去年同期对比)</div>
+    <span class="badge badge-manual">🟡 可编辑</span>
+  </div>
+  <div class="mrow">
+    <div class="mfield">
+      <label>本期播种率(%)</label>
+      <div class="ai-suggest" id="ai_brplant"></div>
+      <input class="minput" id="m_brplant" type="number" step="0.1" placeholder="如8.2" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_brplant"></span>
+    </div>
+    <div class="mfield">
+      <label>去年同期播种率(%)</label>
+      <div class="ai-suggest" id="ai_brplantyoy"></div>
+      <input class="minput" id="m_brplantyoy" type="number" step="0.1" placeholder="如5.1" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_brplantyoy"></span>
+    </div>
+  </div>
+  <div style="font-size:10px;color:var(--t3);padding:0 8px 8px">
+    💡 CONAB(巴西农业部旗下国家商品供应公司)每周发布，报告里本来就是"本期+上周+去年同期+五年均值"一起给，
+    没有像美豆播种进度那样的官方API(测试过第三方库要靠浏览器自动化才能抓CONAB的数据，不够稳定)，
+    走手动贴的方式，跟去年同期比才有意义——单看本期数字容易误判(比如8.2%听起来很低，但如果去年同期
+    只有5.1%，其实是偏快而不是偏慢)。
   </div>
 </div>
 
@@ -631,6 +666,7 @@ async function loadSyncedData(){
     // ★之前这里写死renderKline(data.dceM09Daily,...)，现在改成按当前选中的合约
     //   (可能是自动跳转选中的，也可能是用户手动切换过的)去读取对应数据。
     refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
+    refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // 压榨利润同样要在数据到达后按当前合约重新渲染一次
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -676,6 +712,8 @@ const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析�
 上月中国大豆月度进口量(万吨)
 白羽肉鸡养殖利润(元/只)
 豆菜粕价差(元/吨)
+巴西大豆本期播种率(%)
+巴西大豆去年同期播种率(%)
 
 我要数据+日期+来源，直接给我表格，所有数据必须是最近日期的，而且必须是全国的`;
 
@@ -718,6 +756,8 @@ const PASTE_INDICATOR_PATTERNS = [
   {id: 'm_import', unit: '万吨', keywords: ['进口量']},
   {id: 'm_poultry', unit: '元/只', keywords: ['肉鸡养殖利润', '白羽肉鸡利润', '毛鸡养殖利润', '肉鸡利润']},
   {id: 'm_rmspread', unit: '元/吨', keywords: ['豆菜粕价差', '豆粕菜粕价差', '菜粕价差']},
+  {id: 'm_brplant', unit: '%', keywords: ['巴西大豆本期播种率', '巴西大豆播种率', '巴西播种率', '巴西大豆播种进度']},
+  {id: 'm_brplantyoy', unit: '%', keywords: ['巴西大豆去年同期播种率', '巴西去年同期播种率', '去年同期播种率']},
 ];
 
 function _pasteExtractValueSection(line, matchedKeyword){
@@ -791,10 +831,10 @@ function parseAndFillPastedData(){
   const parsed = parsePastedData(text);
   const idToElId = {m_crush:'ai_crush', m_stock:'ai_stock', m_basis:'ai_basis', m_arrival:'ai_arrival',
                      m_hogratio:'ai_hogratio', m_sows:'ai_sows', m_import:'ai_import', m_poultry:'ai_poultry',
-                     m_rmspread:'ai_rmspread'};
+                     m_rmspread:'ai_rmspread', m_brplant:'ai_brplant', m_brplantyoy:'ai_brplantyoy'};
   const idToLabel = {m_crush:'开机率', m_stock:'商业库存', m_basis:'现货基差', m_arrival:'到港预报',
                       m_hogratio:'猪粮比', m_sows:'能繁母猪', m_import:'进口量', m_poultry:'肉鸡养殖利润',
-                      m_rmspread:'豆菜粕价差'};
+                      m_rmspread:'豆菜粕价差', m_brplant:'巴西播种率(本期)', m_brplantyoy:'巴西播种率(去年同期)'};
 
   let recognized = [];
   for(const [fieldId, elId] of Object.entries(idToElId)){
@@ -2166,6 +2206,7 @@ function selectContract(month){
   });
   window._selectedContract = month;
   refreshKlineForContract(month); // 技术面(K线/MACD/RSI/成交量)也要跟着切换到对应合约的数据
+  refreshCrushMarginForContract(month); // 压榨利润也是按合约月份算的，同样要跟着切换
   updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
 }
 
@@ -2423,6 +2464,49 @@ function renderCftc(cftc, genAt){
   `;
 }
 
+/** 压榨利润(榨利)：豆粕+豆油产出价值 - 豆二(进口大豆)成本，标准行业公式，
+ *  系数(出粕率78.5%/出油率18.5%)是大商所豆二期货厂库交割置换的官方标准。
+ *  ⚠️这里算的是"毛利"，没有减加工费——加工费没有公开权威的数据源，硬编一个猜测值
+ *  反而不诚实，所以只提供趋势方向参考，不代表真实净利润，界面上要说清楚这一点。
+ *  跟着合约tab切换：不同合约月份用不同的豆粕/豆油/豆二合约代码，见refreshCrushMarginForContract。*/
+function renderCrushMargin(margin, genAt){
+  const badge = document.getElementById('crushBadge');
+  const el = document.getElementById('crushContent');
+  if(!margin || !margin.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${margin?margin.reason:'未知原因'}</span></div>`;
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  const gm = margin.grossMargin;
+  // 榨利越高，油厂越有动力多买豆多开机(供给端更宽松)→偏空；榨利低/为负，
+  // 油厂挺价惜售动力强(供给端偏紧)→偏多。跟文华文章里"榨利深度亏损→挺价意愿强"这个
+  // 逻辑一致，但只做参考展示，不纳入综合评分——加工费缺失导致的绝对值偏差，
+  // 不适合直接拿来跟其他有明确阈值依据的指标同等对待。
+  const cls = gm>0?'bear':gm<0?'bull':'neutral';
+  const text = gm>0?'盘面毛利为正 — 油厂开机动力较强，偏空参考':gm<0?'盘面毛利为负 — 油厂挺价惜售动力强，偏多参考':'盘面毛利接近盈亏平衡';
+  el.innerHTML = `
+    <div class="alert-box ${cls}"><span class="at">${text}</span>${gm>0?'+':''}${gm}元/吨(毛利，未扣加工费)　仅供参考不计入综合评分</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div class="grid2">
+      <div class="stat"><span class="sv neutral">${margin.mealPrice}</span><div class="sl">豆粕${margin.mealSymbol}(元/吨)</div></div>
+      <div class="stat"><span class="sv neutral">${margin.oilPrice}</span><div class="sl">豆油${margin.oilSymbol}(元/吨)</div></div>
+      <div class="stat"><span class="sv neutral">${margin.beanPrice}</span><div class="sl">豆二${margin.beanSymbol}(元/吨)</div></div>
+      <div class="stat"><span class="sv ${cls==='bear'?'pos':cls==='bull'?'neg':'neutral'}">${gm>0?'+':''}${gm}</span><div class="sl">盘面毛利(元/吨)</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">公式：豆粕×${(margin.yieldMeal*100).toFixed(1)}% + 豆油×${(margin.yieldOil*100).toFixed(1)}% − 豆二　(出粕率/出油率为大商所豆二交割置换官方标准)<br>来源：${margin.source}</div>
+    </div></details>
+  `;
+}
+
+function refreshCrushMarginForContract(month){
+  const data = window._syncedData;
+  if(!data || !data.crushMargins) return;
+  renderCrushMargin(data.crushMargins[month], data.generatedAt);
+}
+
 // ===================== 手动数据 + 综合预警 =====================
 function loadManual(){
   const saved = JSON.parse(localStorage.getItem('soymeal_manual')||'{}');
@@ -2433,7 +2517,7 @@ function loadManual(){
   updateOverallAlert(); // 恢复上次填写的数值后，立刻显示对应颜色指示，不用等用户重新输入才触发
 }
 function saveManualAndRefresh(){
-  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry','m_rmspread'];
+  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry','m_rmspread','m_brplant','m_brplantyoy'];
   const data = {};
   ids.forEach(id=>{ data[id] = document.getElementById(id).value; });
   localStorage.setItem('soymeal_manual', JSON.stringify(data));
@@ -2458,11 +2542,13 @@ function updateOverallAlert(){
   const cnImport = parseFloat(document.getElementById('m_import').value);
   const poultryProfit = parseFloat(document.getElementById('m_poultry').value);
   const rmSpread = parseFloat(document.getElementById('m_rmspread').value);
+  const brPlant = parseFloat(document.getElementById('m_brplant').value);
+  const brPlantYoy = parseFloat(document.getElementById('m_brplantyoy').value);
 
   let score = 0;
   const notes = [];
   // 追踪7个手动指标各自的信号值(1/-1/0/null)，供状态点图使用
-  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null;
+  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null, sigBrPlant=null;
 
   if(!isNaN(crush)){
     if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
@@ -2608,6 +2694,16 @@ function updateOverallAlert(){
   if(contract === 'jan'){
     if(window._harvestSignal===1){ score+=1; notes.push('美豆收获推进缓慢 → 偏多'); }
     else if(window._harvestSignal===-1){ score-=1; notes.push('美豆收获推进较快 → 偏空'); }
+    // ★巴西大豆播种进度：跟同比(去年同期)比，不用固定阈值——播种率本身是从0%累积到100%的
+    // 季节性数字，同一个百分比在播种季初期和末期意义完全不同，没有一个固定阈值能贯穿整个播种季
+    // 都有效，只有跟"去年同期同一时间点"比才有意义(这正是这次改造的初衷)。
+    // 播种快于去年同期(天气配合)→供给更宽松→偏空；播种慢于去年同期(天气不利)→偏多。
+    if(!isNaN(brPlant) && !isNaN(brPlantYoy)){
+      const brGap = brPlant - brPlantYoy;
+      if(brGap < -3){ score+=1; notes.push(`巴西大豆播种率${brPlant}%比去年同期${brPlantYoy}%慢${Math.abs(brGap).toFixed(1)}个百分点 → 偏多`); setInd('ind_brplant',1,'→ 偏多'); sigBrPlant=1; }
+      else if(brGap > 3){ score-=1; notes.push(`巴西大豆播种率${brPlant}%比去年同期${brPlantYoy}%快${brGap.toFixed(1)}个百分点 → 偏空`); setInd('ind_brplant',-1,'→ 偏空'); sigBrPlant=-1; }
+      else { setInd('ind_brplant',0,'→ 中性'); sigBrPlant=0; notes.push(`巴西大豆播种率${brPlant}%，跟去年同期${brPlantYoy}%基本持平`); }
+    } else { setInd('ind_brplant', null); }
   }
   if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
   else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
@@ -2633,9 +2729,9 @@ function updateOverallAlert(){
   window._fundamentalDirection = score>=3 ? '偏多' : score<=-3 ? '偏空' : '中性';
 
   // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
-  // 1月合约现在有南美综合信号(之前没有)+收获进度(新增)，上限从12变成14(13基础+1)
+  // 1月合约现在有南美综合信号(之前没有)+收获进度+巴西播种进度(新增)，上限从14变成15
   // 5月合约多了播种进度+雷亚尔汇率这2项，上限15
-  const maxVotes = contract === 'jan' ? 14 : contract === 'may' ? 15 : 13;
+  const maxVotes = contract === 'jan' ? 15 : contract === 'may' ? 15 : 13;
   const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
   // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
   const supplyItems = [];
@@ -2652,7 +2748,10 @@ function updateOverallAlert(){
     );
   }
   if(contract === 'jan'){
-    supplyItems.push({label:'美豆收获进度', signal:window._harvestSignal});
+    supplyItems.push(
+      {label:'美豆收获进度', signal:window._harvestSignal},
+      {label:'巴西大豆播种进度', signal:sigBrPlant},
+    );
   }
   const demandItems = [
     {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
