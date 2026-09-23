@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-23T08:29:34.395574+00:00",
+  "generatedAt": "2026-09-23T10:15:51.716495+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 370.0,
-    "change": 1.1,
-    "changePct": 0.3,
+    "price": 369.9,
+    "change": 1.0,
+    "changePct": 0.27,
     "asOf": "2026-09-23T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -42,10 +42,10 @@
       "mealSymbol": "M2705",
       "mealPrice": 3011.0,
       "oilSymbol": "Y2705",
-      "oilPrice": 8776.0,
+      "oilPrice": 8732.0,
       "beanSymbol": "B2705",
       "beanPrice": 3808.0,
-      "grossMargin": 179.2,
+      "grossMargin": 171.1,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
@@ -5948,7 +5948,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 89,
+    "totalBarsReturned": 90,
     "bars": [
       {
         "date": "2026-05-20",
@@ -6839,6 +6839,16 @@
         "volume": 209335.0,
         "hold": 857373.0,
         "settle": 3022.0
+      },
+      {
+        "date": "2026-09-23",
+        "open": 3019.0,
+        "high": 3026.0,
+        "low": 3008.0,
+        "close": 3011.0,
+        "volume": 185474.0,
+        "hold": 865938.0,
+        "settle": 3016.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
