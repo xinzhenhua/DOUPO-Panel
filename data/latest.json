@@ -1,12 +1,77 @@
 {
-  "generatedAt": "2026-09-20T16:53:33.163081+00:00",
+  "generatedAt": "2026-09-23T14:53:14.444981+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 358.6,
-    "change": -10.1,
-    "changePct": -2.74,
-    "asOf": "2026-09-18T04:00:00+00:00",
+    "price": 372.4,
+    "change": 3.5,
+    "changePct": 0.95,
+    "asOf": "2026-09-23T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
+  },
+  "cftcManagedMoney": {
+    "available": true,
+    "marketName": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+    "reportDate": "2026-09-15",
+    "longPositions": 195227.0,
+    "shortPositions": 12116.0,
+    "netPosition": 183111.0,
+    "longChange": 22148.0,
+    "shortChange": -3274.0,
+    "netChange": 25422.0,
+    "streakWeeks": 5,
+    "streakDirection": "up",
+    "historyPercentile": 100.0,
+    "historyWeeksUsed": 156,
+    "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
+    "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"
+  },
+  "crushMargins": {
+    "sep": {
+      "available": true,
+      "contractMonth": 9,
+      "mealSymbol": "M2609",
+      "mealPrice": 3319.0,
+      "oilSymbol": "Y2609",
+      "oilPrice": 9200.0,
+      "beanSymbol": "B2609",
+      "beanPrice": 3910.0,
+      "grossMargin": 397.4,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    },
+    "may": {
+      "available": true,
+      "contractMonth": 5,
+      "mealSymbol": "M2705",
+      "mealPrice": 3011.0,
+      "oilSymbol": "Y2705",
+      "oilPrice": 8732.0,
+      "beanSymbol": "B2705",
+      "beanPrice": 3808.0,
+      "grossMargin": 171.1,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    },
+    "jan": {
+      "available": true,
+      "contractMonth": 1,
+      "mealSymbol": "M2701",
+      "mealPrice": 3404.0,
+      "oilSymbol": "Y2701",
+      "oilPrice": 8922.0,
+      "beanSymbol": "B2701",
+      "beanPrice": 4150.0,
+      "grossMargin": 172.7,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    }
+  },
+  "brazilPlantingProgress": {
+    "available": false,
+    "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
   },
   "droughtMonitor": {
     "available": true,
@@ -151,9 +216,9 @@
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":48263.83,\"d0\":8047.67,\"d1\":3821.31,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":41687.53,\"d0\":14623.97,\"d1\":4863.63,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbbreviation\":\"IA",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":48263.83,\"d0\":8047.67,\"d1\":3821.31,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":41687.53,\"d0\":14623.97,\"d1\":4863.63,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "IA",
@@ -167,12 +232,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":31022.55,\"d0\":25360.00,\"d1\":290.64,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":37750.01,\"d0\":18632.54,\"d1\":290.64,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbbreviation\":\"IL\"",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":31022.55,\"d0\":25360.00,\"d1\":290.64,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":37750.01,\"d0\":18632.54,\"d1\":290.64,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "IL",
@@ -186,12 +251,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":6033.68,\"d0\":78347.50,\"d1\":59700.31,\"d2\":27486.88,\"d3\":3583.65,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":5064.54,\"d0\":79316.64,\"d1\":59654.53,\"d2\":38976.48,\"d3\":3583.65,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAb",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":6033.68,\"d0\":78347.50,\"d1\":59700.31,\"d2\":27486.88,\"d3\":3583.65,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":5064.54,\"d0\":79316.64,\"d1\":59654.53,\"d2\":38976.48,\"d3\":3583.65,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "MN",
@@ -205,12 +270,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "IN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":33059.53,\"d0\":3139.58,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":34812.04,\"d0\":1387.07,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbbreviation\":\"IN\",\"none",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":33059.53,\"d0\":3139.58,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":34812.04,\"d0\":1387.07,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "IN",
@@ -224,12 +289,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "NE": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":14313.99,\"d0\":62986.01,\"d1\":46626.93,\"d2\":25515.51,\"d3\":7004.38,\"d4\":719.43,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":13375.52,\"d0\":63924.47,\"d1\":47722.36,\"d2\":25698.97,\"d3\":7004.38,\"d4\":719.43,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"s",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":14313.99,\"d0\":62986.01,\"d1\":46626.93,\"d2\":25515.51,\"d3\":7004.38,\"d4\":719.43,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":13375.52,\"d0\":63924.47,\"d1\":47722.36,\"d2\":25698.97,\"d3\":7004.38,\"d4\":719.43,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "NE",
@@ -243,12 +308,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "OH": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41309.55,\"d0\":0.00,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41309.55,\"d0\":0.00,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":4130",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41309.55,\"d0\":0.00,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41309.55,\"d0\":0.00,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "OH",
@@ -262,12 +327,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MO": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":23673.21,\"d0\":46044.85,\"d1\":22590.28,\"d2\":14801.10,\"d3\":3930.56,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":13427.36,\"d0\":56290.70,\"d1\":23526.96,\"d2\":11099.43,\"d3\":4204.07,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"state",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":23673.21,\"d0\":46044.85,\"d1\":22590.28,\"d2\":14801.10,\"d3\":3930.56,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":13427.36,\"d0\":56290.70,\"d1\":23526.96,\"d2\":11099.43,\"d3\":4204.07,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "MO",
@@ -281,12 +346,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "SD": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":4577.34,\"d0\":72549.72,\"d1\":53783.00,\"d2\":24794.60,\"d3\":5679.41,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":4577.34,\"d0\":72549.72,\"d1\":53146.92,\"d2\":23195.19,\"d3\":5722.93,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAb",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":4577.34,\"d0\":72549.72,\"d1\":53783.00,\"d2\":24794.60,\"d3\":5679.41,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":4577.34,\"d0\":72549.72,\"d1\":53146.92,\"d2\":23195.19,\"d3\":5722.93,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "SD",
@@ -300,12 +365,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "ND": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5737.33,\"d0\":64968.96,\"d1\":46586.22,\"d2\":31921.36,\"d3\":9675.79,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5737.33,\"d0\":64968.96,\"d1\":46586.22,\"d2\":31928.42,\"d3\":9675.79,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAb",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5737.33,\"d0\":64968.96,\"d1\":46586.22,\"d2\":31921.36,\"d3\":9675.79,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":5737.33,\"d0\":64968.96,\"d1\":46586.22,\"d2\":31928.42,\"d3\":9675.79,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "ND",
@@ -319,12 +384,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "KS": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":7403.67,\"d0\":74883.73,\"d1\":42449.58,\"d2\":24432.96,\"d3\":175.04,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":7403.67,\"d0\":74883.73,\"d1\":45298.98,\"d2\":26905.66,\"d3\":1451.38,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbb",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":7403.67,\"d0\":74883.73,\"d1\":42449.58,\"d2\":24432.96,\"d3\":175.04,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":7403.67,\"d0\":74883.73,\"d1\":45298.98,\"d2\":26905.66,\"d3\":1451.38,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "KS",
@@ -338,12 +403,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "MI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":24187.16,\"d0\":33970.37,\"d1\":8646.81,\"d2\":2252.56,\"d3\":259.95,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":22712.25,\"d0\":35445.29,\"d1\":8646.81,\"d2\":2252.56,\"d3\":249.62,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateAbbrev",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":24187.16,\"d0\":33970.37,\"d1\":8646.81,\"d2\":2252.56,\"d3\":259.95,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":22712.25,\"d0\":35445.29,\"d1\":8646.81,\"d2\":2252.56,\"d3\":249.62,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "MI",
@@ -357,12 +422,12 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       },
       "WI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/6/2026&enddate=9/20/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/9/2026&enddate=9/23/2026&statisticsType=1",
         "httpStatus": 200,
-        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":7439.15,\"d0\":48609.30,\"d1\":31456.42,\"d2\":25469.79,\"d3\":10146.40,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4292.46,\"d0\":51755.99,\"d1\":33708.62,\"d2\":23794.96,\"d3\":8387.89,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-01T00:00:00\",\"stateA",
+        "rawSnippet": "[{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":7439.15,\"d0\":48609.30,\"d1\":31456.42,\"d2\":25469.79,\"d3\":10146.40,\"d4\":0.00,\"validStart\":\"2026-09-15T00:00:00\",\"validEnd\":\"2026-09-21T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-08T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":4292.46,\"d0\":51755.99,\"d1\":33708.62,\"d2\":23794.96,\"d3\":8387.89,\"d4\":0.00,\"validStart\":\"2026-09-08T00:00:00\",\"validEnd\":\"2026-09-14T23:59:59\",\"statisticFormatID\":1}]",
         "sampleRawRow": {
           "mapDate": "2026-09-15T00:00:00",
           "stateAbbreviation": "WI",
@@ -376,7 +441,7 @@
           "validEnd": "2026-09-21T23:59:59",
           "statisticFormatID": 1
         },
-        "totalRowsReturned": 3
+        "totalRowsReturned": 2
       }
     }
   },
@@ -1798,9 +1863,13 @@
   },
   "soybeanCondition": {
     "available": true,
-    "weekEnding": "2026-09-13",
+    "weekEnding": "2026-09-20",
     "goodExcellentPct": 58.0,
     "wowChangePts": 0.0,
+    "yoyValue": 61.0,
+    "yoyChangePts": -3.0,
+    "fiveYearAvg": 58.0,
+    "fiveYearAvgChangePts": 0.0,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -1809,14 +1878,22 @@
     "weekEnding": "2026-06-14",
     "pctPlanted": 95.0,
     "wowChangePts": 3.0,
+    "yoyValue": 93.0,
+    "yoyChangePts": 2.0,
+    "fiveYearAvg": 92.8,
+    "fiveYearAvgChangePts": 2.2,
     "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usHarvestProgress": {
     "available": true,
-    "weekEnding": "2026-09-13",
-    "pctHarvested": 6.0,
-    "wowChangePts": null,
+    "weekEnding": "2026-09-20",
+    "pctHarvested": 12.0,
+    "wowChangePts": 6.0,
+    "yoyValue": 9.0,
+    "yoyChangePts": 3.0,
+    "fiveYearAvg": 7.2,
+    "fiveYearAvgChangePts": 4.8,
     "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -5879,7 +5956,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 87,
+    "totalBarsReturned": 90,
     "bars": [
       {
         "date": "2026-05-20",
@@ -6750,6 +6827,36 @@
         "volume": 291973.0,
         "hold": 863558.0,
         "settle": 3037.0
+      },
+      {
+        "date": "2026-09-21",
+        "open": 3018.0,
+        "high": 3021.0,
+        "low": 2997.0,
+        "close": 3013.0,
+        "volume": 168368.0,
+        "hold": 867862.0,
+        "settle": 3011.0
+      },
+      {
+        "date": "2026-09-22",
+        "open": 3016.0,
+        "high": 3034.0,
+        "low": 3010.0,
+        "close": 3023.0,
+        "volume": 209335.0,
+        "hold": 857373.0,
+        "settle": 3022.0
+      },
+      {
+        "date": "2026-09-23",
+        "open": 3019.0,
+        "high": 3026.0,
+        "low": 3008.0,
+        "close": 3011.0,
+        "volume": 185474.0,
+        "hold": 865938.0,
+        "settle": 3016.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -6759,168 +6866,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-10 10:00:00",
-        "open": 2826.0,
-        "high": 2827.0,
-        "low": 2820.0,
-        "close": 2825.0,
-        "volume": 57524.0,
-        "hold": 633062.0
-      },
-      {
-        "datetime": "2026-08-10 11:15:00",
-        "open": 2825.0,
-        "high": 2830.0,
-        "low": 2823.0,
-        "close": 2830.0,
-        "volume": 266.0,
-        "hold": 632772.0
-      },
-      {
-        "datetime": "2026-08-10 14:15:00",
-        "open": 2830.0,
-        "high": 2833.0,
-        "low": 2827.0,
-        "close": 2830.0,
-        "volume": 1.0,
-        "hold": 640149.0
-      },
-      {
-        "datetime": "2026-08-10 15:00:00",
-        "open": 2830.0,
-        "high": 2833.0,
-        "low": 2829.0,
-        "close": 2833.0,
-        "volume": 1096.0,
-        "hold": 642920.0
-      },
-      {
-        "datetime": "2026-08-10 22:00:00",
-        "open": 2832.0,
-        "high": 2834.0,
-        "low": 2826.0,
-        "close": 2828.0,
-        "volume": 13485.0,
-        "hold": 647034.0
-      },
-      {
-        "datetime": "2026-08-10 23:00:00",
-        "open": 2828.0,
-        "high": 2831.0,
-        "low": 2827.0,
-        "close": 2830.0,
-        "volume": 4701.0,
-        "hold": 648463.0
-      },
-      {
-        "datetime": "2026-08-11 10:00:00",
-        "open": 2831.0,
-        "high": 2833.0,
-        "low": 2829.0,
-        "close": 2831.0,
-        "volume": 7567.0,
-        "hold": 649996.0
-      },
-      {
-        "datetime": "2026-08-11 11:15:00",
-        "open": 2831.0,
-        "high": 2832.0,
-        "low": 2820.0,
-        "close": 2828.0,
-        "volume": 16475.0,
-        "hold": 658589.0
-      },
-      {
-        "datetime": "2026-08-11 14:15:00",
-        "open": 2828.0,
-        "high": 2833.0,
-        "low": 2826.0,
-        "close": 2832.0,
-        "volume": 1.0,
-        "hold": 663245.0
-      },
-      {
-        "datetime": "2026-08-11 15:00:00",
-        "open": 2833.0,
-        "high": 2835.0,
-        "low": 2830.0,
-        "close": 2833.0,
-        "volume": 35.0,
-        "hold": 666619.0
-      },
-      {
-        "datetime": "2026-08-11 22:00:00",
-        "open": 2830.0,
-        "high": 2832.0,
-        "low": 2821.0,
-        "close": 2825.0,
-        "volume": 24115.0,
-        "hold": 666983.0
-      },
-      {
-        "datetime": "2026-08-11 23:00:00",
-        "open": 2825.0,
-        "high": 2826.0,
-        "low": 2822.0,
-        "close": 2822.0,
-        "volume": 3766.0,
-        "hold": 667754.0
-      },
-      {
-        "datetime": "2026-08-12 10:00:00",
-        "open": 2822.0,
-        "high": 2831.0,
-        "low": 2821.0,
-        "close": 2830.0,
-        "volume": 209.0,
-        "hold": 671079.0
-      },
-      {
-        "datetime": "2026-08-12 11:15:00",
-        "open": 2829.0,
-        "high": 2830.0,
-        "low": 2827.0,
-        "close": 2829.0,
-        "volume": 4.0,
-        "hold": 673759.0
-      },
-      {
-        "datetime": "2026-08-12 14:15:00",
-        "open": 2829.0,
-        "high": 2836.0,
-        "low": 2828.0,
-        "close": 2832.0,
-        "volume": 657.0,
-        "hold": 673670.0
-      },
-      {
-        "datetime": "2026-08-12 15:00:00",
-        "open": 2834.0,
-        "high": 2834.0,
-        "low": 2831.0,
-        "close": 2834.0,
-        "volume": 3.0,
-        "hold": 677429.0
-      },
-      {
-        "datetime": "2026-08-12 22:00:00",
-        "open": 2832.0,
-        "high": 2836.0,
-        "low": 2828.0,
-        "close": 2832.0,
-        "volume": 13548.0,
-        "hold": 678992.0
-      },
-      {
-        "datetime": "2026-08-12 23:00:00",
-        "open": 2832.0,
-        "high": 2835.0,
-        "low": 2827.0,
-        "close": 2828.0,
-        "volume": 90.0,
-        "hold": 679229.0
-      },
       {
         "datetime": "2026-08-13 10:00:00",
         "open": 2839.0,
@@ -8378,6 +8323,168 @@
         "close": 3000.0,
         "volume": 1.0,
         "hold": 863906.0
+      },
+      {
+        "datetime": "2026-09-21 10:00:00",
+        "open": 3012.0,
+        "high": 3018.0,
+        "low": 3002.0,
+        "close": 3003.0,
+        "volume": 38.0,
+        "hold": 867796.0
+      },
+      {
+        "datetime": "2026-09-21 11:15:00",
+        "open": 3003.0,
+        "high": 3021.0,
+        "low": 3003.0,
+        "close": 3015.0,
+        "volume": 3.0,
+        "hold": 867148.0
+      },
+      {
+        "datetime": "2026-09-21 14:15:00",
+        "open": 3015.0,
+        "high": 3020.0,
+        "low": 3011.0,
+        "close": 3013.0,
+        "volume": 85.0,
+        "hold": 867762.0
+      },
+      {
+        "datetime": "2026-09-21 15:00:00",
+        "open": 3013.0,
+        "high": 3015.0,
+        "low": 3010.0,
+        "close": 3013.0,
+        "volume": 700.0,
+        "hold": 867943.0
+      },
+      {
+        "datetime": "2026-09-21 22:00:00",
+        "open": 3018.0,
+        "high": 3029.0,
+        "low": 3017.0,
+        "close": 3021.0,
+        "volume": 38507.0,
+        "hold": 871942.0
+      },
+      {
+        "datetime": "2026-09-21 23:00:00",
+        "open": 3022.0,
+        "high": 3031.0,
+        "low": 3021.0,
+        "close": 3028.0,
+        "volume": 5644.0,
+        "hold": 869110.0
+      },
+      {
+        "datetime": "2026-09-22 10:00:00",
+        "open": 3030.0,
+        "high": 3034.0,
+        "low": 3015.0,
+        "close": 3020.0,
+        "volume": 1991.0,
+        "hold": 862476.0
+      },
+      {
+        "datetime": "2026-09-22 11:15:00",
+        "open": 3020.0,
+        "high": 3022.0,
+        "low": 3010.0,
+        "close": 3010.0,
+        "volume": 381.0,
+        "hold": 863716.0
+      },
+      {
+        "datetime": "2026-09-22 14:15:00",
+        "open": 3012.0,
+        "high": 3029.0,
+        "low": 3012.0,
+        "close": 3027.0,
+        "volume": 75.0,
+        "hold": 862553.0
+      },
+      {
+        "datetime": "2026-09-22 15:00:00",
+        "open": 3027.0,
+        "high": 3030.0,
+        "low": 3021.0,
+        "close": 3023.0,
+        "volume": 644.0,
+        "hold": 857534.0
+      },
+      {
+        "datetime": "2026-09-22 22:00:00",
+        "open": 3019.0,
+        "high": 3024.0,
+        "low": 3008.0,
+        "close": 3018.0,
+        "volume": 47369.0,
+        "hold": 859880.0
+      },
+      {
+        "datetime": "2026-09-22 23:00:00",
+        "open": 3018.0,
+        "high": 3026.0,
+        "low": 3017.0,
+        "close": 3024.0,
+        "volume": 131.0,
+        "hold": 860679.0
+      },
+      {
+        "datetime": "2026-09-23 10:00:00",
+        "open": 3021.0,
+        "high": 3024.0,
+        "low": 3010.0,
+        "close": 3012.0,
+        "volume": 39786.0,
+        "hold": 863631.0
+      },
+      {
+        "datetime": "2026-09-23 11:15:00",
+        "open": 3012.0,
+        "high": 3017.0,
+        "low": 3010.0,
+        "close": 3013.0,
+        "volume": 493.0,
+        "hold": 862841.0
+      },
+      {
+        "datetime": "2026-09-23 14:15:00",
+        "open": 3013.0,
+        "high": 3021.0,
+        "low": 3008.0,
+        "close": 3015.0,
+        "volume": 762.0,
+        "hold": 864007.0
+      },
+      {
+        "datetime": "2026-09-23 15:00:00",
+        "open": 3012.0,
+        "high": 3014.0,
+        "low": 3010.0,
+        "close": 3011.0,
+        "volume": 4130.0,
+        "hold": 866168.0
+      },
+      {
+        "datetime": "2026-09-23 22:00:00",
+        "open": 3013.0,
+        "high": 3016.0,
+        "low": 2997.0,
+        "close": 3005.0,
+        "volume": 36.0,
+        "hold": 862955.0
+      },
+      {
+        "datetime": "2026-09-23 23:00:00",
+        "open": 3005.0,
+        "high": 3010.0,
+        "low": 2999.0,
+        "close": 3008.0,
+        "volume": 80.0,
+        "hold": 861831.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -8385,7 +8492,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 164,
+    "totalBarsReturned": 167,
     "bars": [
       {
         "date": "2026-01-19",
@@ -10026,6 +10133,36 @@
         "volume": 2046376.0,
         "hold": 2731157.0,
         "settle": 3429.0
+      },
+      {
+        "date": "2026-09-21",
+        "open": 3393.0,
+        "high": 3406.0,
+        "low": 3374.0,
+        "close": 3386.0,
+        "volume": 1226414.0,
+        "hold": 2678908.0,
+        "settle": 3391.0
+      },
+      {
+        "date": "2026-09-22",
+        "open": 3399.0,
+        "high": 3425.0,
+        "low": 3395.0,
+        "close": 3416.0,
+        "volume": 1320817.0,
+        "hold": 2703569.0,
+        "settle": 3410.0
+      },
+      {
+        "date": "2026-09-23",
+        "open": 3415.0,
+        "high": 3431.0,
+        "low": 3402.0,
+        "close": 3404.0,
+        "volume": 1060443.0,
+        "hold": 2705731.0,
+        "settle": 3414.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -10035,159 +10172,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-10 11:15:00",
-        "open": 3147.0,
-        "high": 3152.0,
-        "low": 3144.0,
-        "close": 3152.0,
-        "volume": 25518.0,
-        "hold": 2124122.0
-      },
-      {
-        "datetime": "2026-08-10 14:15:00",
-        "open": 3151.0,
-        "high": 3153.0,
-        "low": 3148.0,
-        "close": 3151.0,
-        "volume": 4.0,
-        "hold": 2140471.0
-      },
-      {
-        "datetime": "2026-08-10 15:00:00",
-        "open": 3152.0,
-        "high": 3154.0,
-        "low": 3146.0,
-        "close": 3148.0,
-        "volume": 10506.0,
-        "hold": 2160574.0
-      },
-      {
-        "datetime": "2026-08-10 22:00:00",
-        "open": 3150.0,
-        "high": 3152.0,
-        "low": 3137.0,
-        "close": 3137.0,
-        "volume": 154805.0,
-        "hold": 2179507.0
-      },
-      {
-        "datetime": "2026-08-10 23:00:00",
-        "open": 3137.0,
-        "high": 3142.0,
-        "low": 3136.0,
-        "close": 3138.0,
-        "volume": 34327.0,
-        "hold": 2186402.0
-      },
-      {
-        "datetime": "2026-08-11 10:00:00",
-        "open": 3142.0,
-        "high": 3145.0,
-        "low": 3137.0,
-        "close": 3142.0,
-        "volume": 97082.0,
-        "hold": 2194155.0
-      },
-      {
-        "datetime": "2026-08-11 11:15:00",
-        "open": 3143.0,
-        "high": 3143.0,
-        "low": 3128.0,
-        "close": 3138.0,
-        "volume": 15304.0,
-        "hold": 2204552.0
-      },
-      {
-        "datetime": "2026-08-11 14:15:00",
-        "open": 3137.0,
-        "high": 3141.0,
-        "low": 3135.0,
-        "close": 3138.0,
-        "volume": 85917.0,
-        "hold": 2212237.0
-      },
-      {
-        "datetime": "2026-08-11 15:00:00",
-        "open": 3138.0,
-        "high": 3141.0,
-        "low": 3135.0,
-        "close": 3140.0,
-        "volume": 3118.0,
-        "hold": 2221208.0
-      },
-      {
-        "datetime": "2026-08-11 22:00:00",
-        "open": 3135.0,
-        "high": 3137.0,
-        "low": 3119.0,
-        "close": 3125.0,
-        "volume": 220622.0,
-        "hold": 2223482.0
-      },
-      {
-        "datetime": "2026-08-11 23:00:00",
-        "open": 3125.0,
-        "high": 3126.0,
-        "low": 3120.0,
-        "close": 3121.0,
-        "volume": 31246.0,
-        "hold": 2216396.0
-      },
-      {
-        "datetime": "2026-08-12 10:00:00",
-        "open": 3121.0,
-        "high": 3132.0,
-        "low": 3117.0,
-        "close": 3132.0,
-        "volume": 7.0,
-        "hold": 2223383.0
-      },
-      {
-        "datetime": "2026-08-12 11:15:00",
-        "open": 3130.0,
-        "high": 3132.0,
-        "low": 3127.0,
-        "close": 3129.0,
-        "volume": 37.0,
-        "hold": 2228419.0
-      },
-      {
-        "datetime": "2026-08-12 14:15:00",
-        "open": 3130.0,
-        "high": 3146.0,
-        "low": 3129.0,
-        "close": 3141.0,
-        "volume": 2519.0,
-        "hold": 2241340.0
-      },
-      {
-        "datetime": "2026-08-12 15:00:00",
-        "open": 3143.0,
-        "high": 3144.0,
-        "low": 3139.0,
-        "close": 3142.0,
-        "volume": 35.0,
-        "hold": 2242713.0
-      },
-      {
-        "datetime": "2026-08-12 22:00:00",
-        "open": 3138.0,
-        "high": 3144.0,
-        "low": 3134.0,
-        "close": 3136.0,
-        "volume": 132516.0,
-        "hold": 2258776.0
-      },
-      {
-        "datetime": "2026-08-12 23:00:00",
-        "open": 3136.0,
-        "high": 3142.0,
-        "low": 3129.0,
-        "close": 3131.0,
-        "volume": 63135.0,
-        "hold": 2269803.0
-      },
       {
         "datetime": "2026-08-13 10:00:00",
         "open": 3151.0,
@@ -11649,110 +11633,1209 @@
       {
         "datetime": "2026-09-21 10:00:00",
         "open": 3378.0,
-        "high": 3378.0,
+        "high": 3406.0,
         "low": 3378.0,
-        "close": 3378.0,
-        "volume": 66.0,
-        "hold": 2704909.0
+        "close": 3384.0,
+        "volume": 22624.0,
+        "hold": 2693852.0
+      },
+      {
+        "datetime": "2026-09-21 11:15:00",
+        "open": 3384.0,
+        "high": 3399.0,
+        "low": 3383.0,
+        "close": 3391.0,
+        "volume": 29.0,
+        "hold": 2687281.0
+      },
+      {
+        "datetime": "2026-09-21 14:15:00",
+        "open": 3391.0,
+        "high": 3399.0,
+        "low": 3387.0,
+        "close": 3391.0,
+        "volume": 17096.0,
+        "hold": 2687883.0
+      },
+      {
+        "datetime": "2026-09-21 15:00:00",
+        "open": 3390.0,
+        "high": 3393.0,
+        "low": 3386.0,
+        "close": 3386.0,
+        "volume": 16378.0,
+        "hold": 2679192.0
+      },
+      {
+        "datetime": "2026-09-21 22:00:00",
+        "open": 3397.0,
+        "high": 3414.0,
+        "low": 3395.0,
+        "close": 3411.0,
+        "volume": 335937.0,
+        "hold": 2703415.0
+      },
+      {
+        "datetime": "2026-09-21 23:00:00",
+        "open": 3411.0,
+        "high": 3422.0,
+        "low": 3409.0,
+        "close": 3414.0,
+        "volume": 158141.0,
+        "hold": 2701388.0
+      },
+      {
+        "datetime": "2026-09-22 10:00:00",
+        "open": 3422.0,
+        "high": 3424.0,
+        "low": 3396.0,
+        "close": 3401.0,
+        "volume": 7867.0,
+        "hold": 2700399.0
+      },
+      {
+        "datetime": "2026-09-22 11:15:00",
+        "open": 3401.0,
+        "high": 3410.0,
+        "low": 3399.0,
+        "close": 3401.0,
+        "volume": 140.0,
+        "hold": 2693693.0
+      },
+      {
+        "datetime": "2026-09-22 14:15:00",
+        "open": 3401.0,
+        "high": 3424.0,
+        "low": 3401.0,
+        "close": 3421.0,
+        "volume": 15933.0,
+        "hold": 2704908.0
+      },
+      {
+        "datetime": "2026-09-22 15:00:00",
+        "open": 3420.0,
+        "high": 3423.0,
+        "low": 3414.0,
+        "close": 3416.0,
+        "volume": 79.0,
+        "hold": 2703880.0
+      },
+      {
+        "datetime": "2026-09-22 22:00:00",
+        "open": 3411.0,
+        "high": 3427.0,
+        "low": 3407.0,
+        "close": 3418.0,
+        "volume": 83.0,
+        "hold": 2723851.0
+      },
+      {
+        "datetime": "2026-09-22 23:00:00",
+        "open": 3419.0,
+        "high": 3429.0,
+        "low": 3418.0,
+        "close": 3425.0,
+        "volume": 781.0,
+        "hold": 2724080.0
+      },
+      {
+        "datetime": "2026-09-23 10:00:00",
+        "open": 3425.0,
+        "high": 3425.0,
+        "low": 3403.0,
+        "close": 3405.0,
+        "volume": 5726.0,
+        "hold": 2717133.0
+      },
+      {
+        "datetime": "2026-09-23 11:15:00",
+        "open": 3405.0,
+        "high": 3412.0,
+        "low": 3404.0,
+        "close": 3408.0,
+        "volume": 11271.0,
+        "hold": 2716261.0
+      },
+      {
+        "datetime": "2026-09-23 14:15:00",
+        "open": 3408.0,
+        "high": 3419.0,
+        "low": 3402.0,
+        "close": 3411.0,
+        "volume": 5607.0,
+        "hold": 2715209.0
+      },
+      {
+        "datetime": "2026-09-23 15:00:00",
+        "open": 3409.0,
+        "high": 3411.0,
+        "low": 3404.0,
+        "close": 3404.0,
+        "volume": 12448.0,
+        "hold": 2705888.0
+      },
+      {
+        "datetime": "2026-09-23 22:00:00",
+        "open": 3408.0,
+        "high": 3411.0,
+        "low": 3385.0,
+        "close": 3395.0,
+        "volume": 57.0,
+        "hold": 2701389.0
+      },
+      {
+        "datetime": "2026-09-23 23:00:00",
+        "open": 3393.0,
+        "high": 3400.0,
+        "low": 3385.0,
+        "close": 3395.0,
+        "volume": 180.0,
+        "hold": 2693772.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
   },
   "dceM09PositionRank": {
     "available": false,
-    "reason": "尝试了最近6个日期都没能获取到M2609的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
+    "reason": "尝试了最近6个日期都没能获取到M2609的持仓排名数据",
     "debug": {
       "attempts": [
         {
-          "date": "20260921",
-          "error": "BadZipFile: File is not a zip file"
+          "date": "2026-09-23",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
         },
         {
-          "date": "20260920",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "date": "2026-09-23",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
         },
         {
-          "date": "20260919",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "date": "2026-09-23",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
         },
         {
-          "date": "20260918",
-          "error": "BadZipFile: File is not a zip file"
+          "date": "2026-09-23",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
         },
         {
-          "date": "20260917",
-          "error": "BadZipFile: File is not a zip file"
+          "date": "2026-09-22",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
         },
         {
-          "date": "20260916",
-          "error": "BadZipFile: File is not a zip file"
+          "date": "2026-09-22",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-22",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-22",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-21",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-20",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-19",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-18",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
         }
       ]
     }
   },
   "dceM05PositionRank": {
-    "available": false,
-    "reason": "尝试了最近6个日期都没能获取到M2705的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
-    "debug": {
-      "attempts": [
+    "available": true,
+    "symbol": "M2705",
+    "date": "2026-09-23",
+    "tables": {
+      "netLong": [
         {
-          "date": "20260921",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 1,
+          "name": "高盛期货",
+          "value": 29072,
+          "change": 471,
+          "isForeign": true
         },
         {
-          "date": "20260920",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "rank": 2,
+          "name": "东吴期货",
+          "value": 26862,
+          "change": 229,
+          "isForeign": false
         },
         {
-          "date": "20260919",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "rank": 3,
+          "name": "华泰期货",
+          "value": 18496,
+          "change": 292,
+          "isForeign": false
         },
         {
-          "date": "20260918",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 4,
+          "name": "浙商期货",
+          "value": 14026,
+          "change": 307,
+          "isForeign": false
         },
         {
-          "date": "20260917",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 5,
+          "name": "混沌天成",
+          "value": 13340,
+          "change": 331,
+          "isForeign": false
         },
         {
-          "date": "20260916",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 6,
+          "name": "大越期货",
+          "value": 11954,
+          "change": 32,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "招商期货",
+          "value": 8379,
+          "change": 175,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "国信期货",
+          "value": 7089,
+          "change": 391,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "广发期货",
+          "value": 6713,
+          "change": 7555,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "中泰期货",
+          "value": 5910,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "五矿期货",
+          "value": 4361,
+          "change": 1499,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "新湖期货",
+          "value": 3657,
+          "change": 838,
+          "isForeign": false
+        }
+      ],
+      "netShort": [
+        {
+          "rank": 1,
+          "name": "中粮期货",
+          "value": 138872,
+          "change": 2399,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中信期货",
+          "value": 54752,
+          "change": 11736,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "国投期货",
+          "value": 44391,
+          "change": -5063,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "东证期货",
+          "value": 32039,
+          "change": 4175,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "永安期货",
+          "value": 23359,
+          "change": -1858,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "一德期货",
+          "value": 10559,
+          "change": 1323,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "海证期货",
+          "value": 9548,
+          "change": -415,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "国泰君安",
+          "value": 8818,
+          "change": 3383,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "南华期货",
+          "value": 1079,
+          "change": -1848,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "北京首创",
+          "value": 741,
+          "change": -388,
+          "isForeign": false
+        }
+      ],
+      "longUp": [
+        {
+          "rank": 1,
+          "name": "国投期货",
+          "value": 29030,
+          "change": 3622,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中粮期货",
+          "value": 28245,
+          "change": 2362,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "南华期货",
+          "value": 22121,
+          "change": 1914,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "五矿期货",
+          "value": 21732,
+          "change": 1358,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中泰期货",
+          "value": 13997,
+          "change": 1334,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "新湖期货",
+          "value": 14494,
+          "change": 845,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "广发期货",
+          "value": 18639,
+          "change": 503,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "华泰期货",
+          "value": 35017,
+          "change": 460,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "国泰君安",
+          "value": 66667,
+          "change": 447,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "高盛期货",
+          "value": 37159,
+          "change": 400,
+          "isForeign": true
+        },
+        {
+          "rank": 11,
+          "name": "国信期货",
+          "value": 15176,
+          "change": 320,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "混沌天成",
+          "value": 21427,
+          "change": 260,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "浙商期货",
+          "value": 22113,
+          "change": 236,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "招商期货",
+          "value": 29349,
+          "change": 232,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "东吴期货",
+          "value": 36369,
+          "change": 31,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "银河期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "瑞达期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "申银万国",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "冠通期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ],
+      "longDown": [
+        {
+          "rank": 1,
+          "name": "中信期货",
+          "value": 23755,
+          "change": -3918,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "东证期货",
+          "value": 28085,
+          "change": -3195,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "一德期货",
+          "value": 16723,
+          "change": -1475,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "永安期货",
+          "value": 15351,
+          "change": -124,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "大越期货",
+          "value": 20041,
+          "change": -39,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "中金财富",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "正信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "金元期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "渤海期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "中信建投",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "海通期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "海证期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "北京首创",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "冠通期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "申银万国",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "瑞达期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "银河期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "东吴期货",
+          "value": 36369,
+          "change": 31,
+          "isForeign": false
         }
       ]
-    }
+    },
+    "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)"
   },
   "dceM01PositionRank": {
-    "available": false,
-    "reason": "尝试了最近6个日期都没能获取到M2701的持仓排名数据(大商所官网有反爬风控，这个接口historically不稳定，属于预期内的可能失败)",
-    "debug": {
-      "attempts": [
+    "available": true,
+    "symbol": "M2701",
+    "date": "2026-09-23",
+    "tables": {
+      "netLong": [
         {
-          "date": "20260921",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 1,
+          "name": "中信期货",
+          "value": 161535,
+          "change": 5119,
+          "isForeign": false
         },
         {
-          "date": "20260920",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "rank": 2,
+          "name": "国泰君安",
+          "value": 144994,
+          "change": -2840,
+          "isForeign": false
         },
         {
-          "date": "20260919",
-          "note": "该日期没有返回任何数据(可能是非交易日，或数据尚未发布)"
+          "rank": 3,
+          "name": "高盛期货",
+          "value": 141683,
+          "change": -1886,
+          "isForeign": true
         },
         {
-          "date": "20260918",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 4,
+          "name": "银河期货",
+          "value": 63752,
+          "change": -8939,
+          "isForeign": false
         },
         {
-          "date": "20260917",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 5,
+          "name": "中信建投",
+          "value": 57203,
+          "change": -889,
+          "isForeign": false
         },
         {
-          "date": "20260916",
-          "error": "BadZipFile: File is not a zip file"
+          "rank": 6,
+          "name": "一德期货",
+          "value": 39359,
+          "change": -3057,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "南华期货",
+          "value": 37559,
+          "change": -1670,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "永安期货",
+          "value": 33725,
+          "change": -4243,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "国富期货",
+          "value": 20335,
+          "change": -37,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "招商期货",
+          "value": 11502,
+          "change": -639,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "海通期货",
+          "value": 7947,
+          "change": 1794,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "瑞银期货",
+          "value": 7931,
+          "change": null,
+          "isForeign": true
+        },
+        {
+          "rank": 13,
+          "name": "东证期货",
+          "value": 4884,
+          "change": 10135,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "中金财富",
+          "value": 1146,
+          "change": 1435,
+          "isForeign": false
+        }
+      ],
+      "netShort": [
+        {
+          "rank": 1,
+          "name": "中粮期货",
+          "value": 514809,
+          "change": -18906,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "国投期货",
+          "value": 268447,
+          "change": 1033,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "广发期货",
+          "value": 71253,
+          "change": 12600,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "华泰期货",
+          "value": 29654,
+          "change": -3961,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中泰期货",
+          "value": 17631,
+          "change": -442,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "国贸期货",
+          "value": 10250,
+          "change": 573,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "摩根大通",
+          "value": 6192,
+          "change": 2907,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "浙商期货",
+          "value": 4862,
+          "change": -265,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "大地期货",
+          "value": 4452,
+          "change": 329,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "建信期货",
+          "value": 656,
+          "change": -1204,
+          "isForeign": false
+        }
+      ],
+      "longUp": [
+        {
+          "rank": 1,
+          "name": "东证期货",
+          "value": 197861,
+          "change": 13419,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中粮期货",
+          "value": 54924,
+          "change": 6118,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "中信期货",
+          "value": 267851,
+          "change": 5116,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "华泰期货",
+          "value": 48663,
+          "change": 837,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "中金财富",
+          "value": 38526,
+          "change": 406,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "国富期货",
+          "value": 46216,
+          "change": 189,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "国联期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "浙商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "华闻期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "渤海期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "创元期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "新湖期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "徽商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "华安期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "国贸期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "大地期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        }
+      ],
+      "longDown": [
+        {
+          "rank": 1,
+          "name": "银河期货",
+          "value": 109129,
+          "change": -7796,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "广发期货",
+          "value": 64319,
+          "change": -2979,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "一德期货",
+          "value": 65240,
+          "change": -2831,
+          "isForeign": false
+        },
+        {
+          "rank": 4,
+          "name": "摩根大通",
+          "value": 55853,
+          "change": -2667,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "高盛期货",
+          "value": 167564,
+          "change": -1660,
+          "isForeign": true
+        },
+        {
+          "rank": 6,
+          "name": "国泰君安",
+          "value": 296951,
+          "change": -1613,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "南华期货",
+          "value": 63440,
+          "change": -1444,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "中信建投",
+          "value": 83084,
+          "change": -663,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "中泰期货",
+          "value": 43707,
+          "change": -544,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "招商期货",
+          "value": 37383,
+          "change": -413,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "永安期货",
+          "value": 114889,
+          "change": -375,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "海通期货",
+          "value": 43184,
+          "change": -171,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "瑞银期货",
+          "value": 33812,
+          "change": -137,
+          "isForeign": true
+        },
+        {
+          "rank": 14,
+          "name": "国投期货",
+          "value": 53583,
+          "change": -26,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "国贸期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "大地期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "国联期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "华安期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
         }
       ]
-    }
+    },
+    "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)"
   },
   "southAmericaWeather": {
     "available": true,
@@ -11761,75 +12844,75 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 7.1,
-        "avgMaxTemp": 36.1
+        "precip7d": 1.3,
+        "avgMaxTemp": 36.7
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 48.1,
-        "avgMaxTemp": 25.6
+        "precip7d": 23.6,
+        "avgMaxTemp": 26.3
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 55.1,
-        "avgMaxTemp": 22.6
+        "precip7d": 41.1,
+        "avgMaxTemp": 23.2
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 2.7,
-        "avgMaxTemp": 34.2
+        "precip7d": 3.5,
+        "avgMaxTemp": 34.8
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 34.0,
-        "avgMaxTemp": 29.2
+        "precip7d": 0.1,
+        "avgMaxTemp": 31.0
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 14.8,
-        "avgMaxTemp": 31.6
+        "precip7d": 10.4,
+        "avgMaxTemp": 32.0
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 12.3,
-        "avgMaxTemp": 23.6
+        "precip7d": 6.9,
+        "avgMaxTemp": 24.1
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 1.4,
-        "avgMaxTemp": 27.1
+        "precip7d": 11.2,
+        "avgMaxTemp": 25.9
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 21.1,
-        "avgMaxTemp": 20.4
+        "precip7d": 59.4,
+        "avgMaxTemp": 20.5
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 14.4,
-        "avgMaxTemp": 23.3
+        "precip7d": 8.8,
+        "avgMaxTemp": 24.2
       }
     },
-    "avgPrecip7d": 22.8,
-    "avgMaxTemp": 30.8,
+    "avgPrecip7d": 11.9,
+    "avgMaxTemp": 31.5,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
@@ -12101,7 +13184,7 @@
     "available": true,
     "weekEnding": "2026-09-10T00:00:00",
     "marketYearUsed": 2026,
-    "dataAgeDays": 10,
+    "dataAgeDays": 13,
     "isStale": false,
     "latestTotalMT": 308051,
     "prevTotalMT": 248336,
