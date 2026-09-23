@@ -598,6 +598,7 @@ def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
         fd.NASS_API_KEY = old_key
 
 
+<<<<<<< HEAD
 def test_cftc_managed_money_parsing(monkeypatch_fetch):
     """★用户明确要求：CFTC持仓报告是美国版龙虎榜，Managed Money(基金/投机资金)
     这一类最接近"外资/资金动向"这个概念。用实测抓包确认过的真实字段结构模拟
@@ -651,6 +652,8 @@ def test_cftc_managed_money_field_mismatch_gives_diagnostic(monkeypatch_fetch):
     print("✅ 字段名对不上时给出诊断信息(实际有哪些字段)，而不是静默失败")
 
 
+=======
+>>>>>>> c257abc5554a0826af9273b0a451410eb3c83992
 def test_south_america_weather_weighted_avg(monkeypatch_fetch):
     """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
     米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
@@ -1481,7 +1484,10 @@ if __name__ == "__main__":
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
               test_soybean_condition_field_mismatch_gives_diagnostic,
               test_soybean_condition_yoy_and_five_year_avg_full_integration, test_us_harvest_progress_yoy_and_five_year_avg,
+<<<<<<< HEAD
               test_cftc_managed_money_parsing, test_cftc_managed_money_no_data_found, test_cftc_managed_money_field_mismatch_gives_diagnostic,
+=======
+>>>>>>> c257abc5554a0826af9273b0a451410eb3c83992
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
