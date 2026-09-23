@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-23T02:24:21.302854+00:00",
+  "generatedAt": "2026-09-23T03:08:20.649070+00:00",
   "cbotPrice": {
     "available": true,
     "price": 371.4,
     "change": 4.8,
     "changePct": 1.31,
-    "asOf": "2026-09-23T02:13:45+00:00",
+    "asOf": "2026-09-23T02:56:42+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "cftcManagedMoney": {
@@ -20,6 +20,50 @@
     "netChange": 25422.0,
     "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
     "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"
+  },
+  "crushMargins": {
+    "sep": {
+      "available": true,
+      "contractMonth": 9,
+      "mealSymbol": "M2609",
+      "mealPrice": 3319.0,
+      "oilSymbol": "Y2609",
+      "oilPrice": 9200.0,
+      "beanSymbol": "B2609",
+      "beanPrice": 3910.0,
+      "grossMargin": 397.4,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    },
+    "may": {
+      "available": true,
+      "contractMonth": 5,
+      "mealSymbol": "M2705",
+      "mealPrice": 3023.0,
+      "oilSymbol": "Y2705",
+      "oilPrice": 8776.0,
+      "beanSymbol": "B2705",
+      "beanPrice": 3825.0,
+      "grossMargin": 171.6,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    },
+    "jan": {
+      "available": true,
+      "contractMonth": 1,
+      "mealSymbol": "M2701",
+      "mealPrice": 3416.0,
+      "oilSymbol": "Y2701",
+      "oilPrice": 8945.0,
+      "beanSymbol": "B2701",
+      "beanPrice": 4163.0,
+      "grossMargin": 173.4,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+    }
   },
   "droughtMonitor": {
     "available": true,
@@ -8418,11 +8462,11 @@
       {
         "datetime": "2026-09-23 11:15:00",
         "open": 3012.0,
-        "high": 3016.0,
+        "high": 3017.0,
         "low": 3010.0,
-        "close": 3013.0,
-        "volume": 102.0,
-        "hold": 864152.0
+        "close": 3010.0,
+        "volume": 10.0,
+        "hold": 863173.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11716,9 +11760,9 @@
         "open": 3405.0,
         "high": 3412.0,
         "low": 3404.0,
-        "close": 3408.0,
-        "volume": 577.0,
-        "hold": 2716573.0
+        "close": 3405.0,
+        "volume": 80.0,
+        "hold": 2716854.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -12779,75 +12823,75 @@
         "available": true,
         "nameCn": "马托格罗索",
         "country": "BR",
-        "precip7d": 5.2,
-        "avgMaxTemp": 36.3
+        "precip7d": 4.1,
+        "avgMaxTemp": 36.5
       },
       "PR": {
         "available": true,
         "nameCn": "巴拉那",
         "country": "BR",
-        "precip7d": 2.6,
-        "avgMaxTemp": 25.7
+        "precip7d": 19.6,
+        "avgMaxTemp": 26.7
       },
       "RS": {
         "available": true,
         "nameCn": "南里奥格朗德",
         "country": "BR",
-        "precip7d": 7.0,
-        "avgMaxTemp": 22.6
+        "precip7d": 33.1,
+        "avgMaxTemp": 23.7
       },
       "GO": {
         "available": true,
         "nameCn": "戈亚斯",
         "country": "BR",
-        "precip7d": 7.3,
-        "avgMaxTemp": 34.2
+        "precip7d": 3.5,
+        "avgMaxTemp": 34.9
       },
       "MS": {
         "available": true,
         "nameCn": "南马托格罗索",
         "country": "BR",
-        "precip7d": 34.8,
-        "avgMaxTemp": 29.7
+        "precip7d": 0.1,
+        "avgMaxTemp": 31.0
       },
       "MG": {
         "available": true,
         "nameCn": "米纳斯吉拉斯",
         "country": "BR",
-        "precip7d": 17.3,
-        "avgMaxTemp": 31.7
+        "precip7d": 11.1,
+        "avgMaxTemp": 32.6
       },
       "SantaFe": {
         "available": true,
         "nameCn": "圣菲",
         "country": "AR",
-        "precip7d": 9.9,
-        "avgMaxTemp": 24.1
+        "precip7d": 11.1,
+        "avgMaxTemp": 25.4
       },
       "Cordoba": {
         "available": true,
         "nameCn": "科尔多瓦",
         "country": "AR",
-        "precip7d": 46.1,
-        "avgMaxTemp": 26.9
+        "precip7d": 50.1,
+        "avgMaxTemp": 27.4
       },
       "BuenosAires": {
         "available": true,
         "nameCn": "布宜诺斯艾利斯",
         "country": "AR",
-        "precip7d": 55.9,
-        "avgMaxTemp": 19.9
+        "precip7d": 82.3,
+        "avgMaxTemp": 20.9
       },
       "EntreRios": {
         "available": true,
         "nameCn": "恩特雷里奥斯",
         "country": "AR",
-        "precip7d": 11.3,
-        "avgMaxTemp": 24.1
+        "precip7d": 11.7,
+        "avgMaxTemp": 25.4
       }
     },
-    "avgPrecip7d": 10.2,
-    "avgMaxTemp": 31.0,
+    "avgPrecip7d": 12.1,
+    "avgMaxTemp": 31.7,
     "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
     "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月"
   },
