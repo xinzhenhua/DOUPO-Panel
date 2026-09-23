@@ -523,22 +523,108 @@ def fetch_psd_supply_demand():
 # ---------------------------------------------------------------------------
 NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/"
 
+# ★"进度型"指标(优良率/播种进度/收获进度)专用：同比+五年均值的共用逻辑。
+# 这几个都是NASS Quick Stats接口，用year参数分年查询——这个接口是官方稳定接口，
+# 不是那种容易被风控的爬虫源，所以多查几年(6次而不是1次)的可靠性风险不大。
+def _fetch_nass_years(base_params, years):
+    """给定NASS查询参数(不含year)和一组年份，依次查询每一年，返回{year: rows_list}。
+    某一年查不到就跳过(不是每年都有对应季节的数据，比如季节还没开始)，
+    不会因为某一年缺数据就让整个同比/五年均值计算失败。"""
+    results = {}
+    for year in years:
+        params = dict(base_params)
+        params["year"] = str(year)
+        url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
+        data, debug = fetch_json_debug(url, retries=1)  # 历史年份查询失败不重试3次，避免拖慢整体运行时间
+        if data and "data" in data and data["data"]:
+            results[year] = data["data"]
+    return results
+
+
+def _find_closest_week_rows(rows, target_date, week_field="week_ending"):
+    """在给定一年的rows里，找week_ending离target_date(date对象)最近的那一周，
+    返回(那个week_ending字符串, 该周对应的所有行)。用"最接近"而不是要求精确匹配，
+    是因为USDA的周次一般定在周日，不同年份"同一个月同一天"未必是周日，
+    找最近的周日周次才是真正对应"去年同期"的正确对比对象。"""
+    from datetime import date as date_cls
+    weeks_seen = sorted(set(r.get(week_field) for r in rows if r.get(week_field)))
+    if not weeks_seen:
+        return None, []
+
+    def parse_date(s):
+        return date_cls(*(int(x) for x in s.split("-")))
+
+    closest_week = min(weeks_seen, key=lambda w: abs((parse_date(w) - target_date).days))
+    matched_rows = [r for r in rows if r.get(week_field) == closest_week]
+    return closest_week, matched_rows
+
+
+def _target_date_n_years_ago(base_date, n):
+    """base_date往前推n年的"同一个月同一天"，用来在历史年份数据里找对应周次。
+    处理闰年2月29日这种极端边界：往前推年份后如果那天不存在(比如推到非闰年的2月29日)，
+    就退到2月28日，不让这种边缘情况直接让整个历史对比失败。"""
+    try:
+        return base_date.replace(year=base_date.year - n)
+    except ValueError:
+        return base_date.replace(year=base_date.year - n, day=28)
+
+
+def _compute_yoy_and_five_year_avg(current_rows, current_week_ending, base_params, value_extractor):
+    """通用的同比+五年均值计算：value_extractor是个函数，输入"某一周对应的行列表"，
+    输出这一周该指标的数值(比如优良率要把EXCELLENT+GOOD两行加总，播种/收获进度
+    只需要一个PCT字段)——三个指标各自的取值逻辑不一样，这里只负责"找到对应周次
+    +查多年数据"这个共同部分。
+    返回(yoyValue, yoyChangePts, fiveYearAvg, fiveYearAvgChangePts)，某一项算不出来就是None。"""
+    from datetime import date as date_cls
+    current_value = value_extractor(
+        [r for r in current_rows if r.get("week_ending") == current_week_ending]
+    )
+    if current_value is None:
+        return None, None, None, None
+
+    latest_date = date_cls(*(int(x) for x in current_week_ending.split("-")))
+    years_back = [1, 2, 3, 4, 5]
+    target_dates = {n: _target_date_n_years_ago(latest_date, n) for n in years_back}
+    historical_years = [latest_date.year - n for n in years_back]
+    year_data = _fetch_nass_years(base_params, historical_years)
+
+    matched_values = {}  # {往前第几年: 数值}
+    for n in years_back:
+        year = latest_date.year - n
+        if year not in year_data:
+            continue
+        _, matched_rows = _find_closest_week_rows(year_data[year], target_dates[n])
+        val = value_extractor(matched_rows)
+        if val is not None:
+            matched_values[n] = val
+
+    yoy_value = matched_values.get(1)
+    yoy_change = round(current_value - yoy_value, 1) if yoy_value is not None else None
+
+    five_year_values = list(matched_values.values())  # 有几年算几年，不强求凑满5年
+    five_year_avg = round(sum(five_year_values) / len(five_year_values), 1) if five_year_values else None
+    five_year_avg_change = round(current_value - five_year_avg, 1) if five_year_avg is not None else None
+
+    return yoy_value, yoy_change, five_year_avg, five_year_avg_change
+
 
 def fetch_soybean_condition():
     """查询USDA/NASS Quick Stats的美豆生长状况评级(优良率=Excellent%+Good%)。
-    这个数据每年只在4月-11月生长季发布，其余月份接口有数据但不会更新(正常现象)。"""
+    这个数据每年只在4月-11月生长季发布，其余月份接口有数据但不会更新(正常现象)。
+    ★属于"进度型"指标(0-100%有界、季节性强)，除了环比，也算同比+五年均值——
+    单看环比容易被单周噪音误导，同比+五年均值才能看出"今年这个水平算不算异常"。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         "statisticcat_desc": "CONDITION",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -552,52 +638,51 @@ def fetch_soybean_condition():
     latest_week = weeks[-1]
     latest_rows = [r for r in rows if r.get("week_ending") == latest_week]
 
-    # 5个等级分别是独立的行，靠short_desc或unit_desc里的关键词区分，容错匹配大小写
-    excellent_pct, good_pct = None, None
-    for r in latest_rows:
-        desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
-        try:
-            val = float(str(r.get("Value", "")).replace(",", ""))
-        except (ValueError, TypeError):
-            continue
-        if "EXCELLENT" in desc:
-            excellent_pct = val
-        elif "GOOD" in desc and "VERY" not in desc:
-            good_pct = val
-
-    if excellent_pct is None or good_pct is None:
-        return {
-            "available": False,
-            "reason": "拿到数据但没能识别出Excellent/Good这两个等级的字段",
-            "debug": {"sampleRawRows": latest_rows[:5], "actualDescsSeen": [r.get("short_desc") for r in latest_rows]},
-        }
-
-    good_excellent = round(excellent_pct + good_pct, 1)
-
-    # 尝试算环比：找上一个有数据的周
-    prev_change = None
-    if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_rows = [r for r in rows if r.get("week_ending") == prev_week]
-        prev_excellent, prev_good = None, None
-        for r in prev_rows:
+    def extract_good_excellent(week_rows):
+        """从某一周的行列表里，把EXCELLENT+GOOD两个等级的百分比加总。取不到就返回None。"""
+        excellent, good = None, None
+        for r in week_rows:
             desc = (r.get("short_desc") or r.get("unit_desc") or "").upper()
             try:
                 val = float(str(r.get("Value", "")).replace(",", ""))
             except (ValueError, TypeError):
                 continue
             if "EXCELLENT" in desc:
-                prev_excellent = val
+                excellent = val
             elif "GOOD" in desc and "VERY" not in desc:
-                prev_good = val
-        if prev_excellent is not None and prev_good is not None:
-            prev_change = round(good_excellent - (prev_excellent + prev_good), 1)
+                good = val
+        if excellent is None or good is None:
+            return None
+        return round(excellent + good, 1)
+
+    good_excellent = extract_good_excellent(latest_rows)
+    if good_excellent is None:
+        return {
+            "available": False,
+            "reason": "拿到数据但没能识别出Excellent/Good这两个等级的字段",
+            "debug": {"sampleRawRows": latest_rows[:5], "actualDescsSeen": [r.get("short_desc") for r in latest_rows]},
+        }
+
+    # 环比：找上一个有数据的周
+    prev_change = None
+    if len(weeks) >= 2:
+        prev_value = extract_good_excellent([r for r in rows if r.get("week_ending") == weeks[-2]])
+        if prev_value is not None:
+            prev_change = round(good_excellent - prev_value, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_good_excellent
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "goodExcellentPct": good_excellent,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -611,12 +696,13 @@ def fetch_soybean_condition():
 def fetch_us_planting_progress():
     """查询美豆播种进度(占预期种植面积的百分比)。
     这个数据只在每年4-6月(播种季)有意义，其余月份接口有数据但不会更新(正常现象，
-    因为播种季结束后这个"进度%"就一直停在100%不变了，不像"CONDITION"那样全季都更新)。"""
+    因为播种季结束后这个"进度%"就一直停在100%不变了，不像"CONDITION"那样全季都更新)。
+    ★属于"进度型"指标，同时算同比+五年均值(逻辑跟优良率共用_compute_yoy_and_five_year_avg)。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         # ★已修复(第三次修复，找到确切根因)：之前先后用过"AREA PLANTED"(年度英亩数调查，
@@ -629,9 +715,9 @@ def fetch_us_planting_progress():
         "statisticcat_desc": "PROGRESS",
         "unit_desc": "PCT PLANTED",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -651,29 +737,40 @@ def fetch_us_planting_progress():
     if not weeks:
         return {"available": False, "reason": "返回数据里没有week_ending字段", "debug": {"sampleRawRow": pct_rows[0]}}
     latest_week = weeks[-1]
-    latest_row = next((r for r in pct_rows if r.get("week_ending") == latest_week), None)
-    try:
-        pct_planted = float(str(latest_row.get("Value", "")).replace(",", ""))
-    except (ValueError, TypeError):
-        return {"available": False, "reason": "PCT PLANTED字段值无法解析为数字", "debug": {"rawValue": latest_row.get("Value")}}
+
+    def extract_pct_planted(week_rows):
+        pct_only = [r for r in week_rows if "PCT PLANTED" in (r.get("short_desc") or "").upper()]
+        if not pct_only:
+            return None
+        try:
+            return float(str(pct_only[0].get("Value", "")).replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+
+    pct_planted = extract_pct_planted([r for r in pct_rows if r.get("week_ending") == latest_week])
+    if pct_planted is None:
+        return {"available": False, "reason": "PCT PLANTED字段值无法解析为数字", "debug": {"latestWeek": latest_week}}
 
     # 环比：找上一个有数据的周
     prev_change = None
     if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_row = next((r for r in pct_rows if r.get("week_ending") == prev_week), None)
-        if prev_row:
-            try:
-                prev_pct = float(str(prev_row.get("Value", "")).replace(",", ""))
-                prev_change = round(pct_planted - prev_pct, 1)
-            except (ValueError, TypeError):
-                pass
+        prev_pct = extract_pct_planted([r for r in pct_rows if r.get("week_ending") == weeks[-2]])
+        if prev_pct is not None:
+            prev_change = round(pct_planted - prev_pct, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_pct_planted
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "pctPlanted": pct_planted,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -686,12 +783,13 @@ def fetch_us_planting_progress():
 # ---------------------------------------------------------------------------
 def fetch_us_harvest_progress():
     """查询美豆收获进度(占预期收获面积的百分比)。
-    这个数据只在每年9-11月(收获季)有意义，其余月份接口有数据但不会更新(正常现象)。"""
+    这个数据只在每年9-11月(收获季)有意义，其余月份接口有数据但不会更新(正常现象)。
+    ★属于"进度型"指标，同时算同比+五年均值(逻辑跟优良率共用_compute_yoy_and_five_year_avg)。"""
     if not NASS_API_KEY:
         return {"available": False, "reason": "缺少 NASS_API_KEY"}
 
     now = datetime.now(timezone.utc)
-    params = {
+    base_params = {
         "key": NASS_API_KEY,
         "commodity_desc": "SOYBEANS",
         # ★已修复(第三次修复，找到确切根因，跟播种进度同样的问题)：周度收获进度
@@ -700,9 +798,9 @@ def fetch_us_harvest_progress():
         "statisticcat_desc": "PROGRESS",
         "unit_desc": "PCT HARVESTED",
         "agg_level_desc": "NATIONAL",
-        "year": str(now.year),
         "format": "JSON",
     }
+    params = dict(base_params, year=str(now.year))
     url = f"{NASS_BASE}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
     if not data or "data" not in data or not data["data"]:
@@ -721,28 +819,39 @@ def fetch_us_harvest_progress():
     if not weeks:
         return {"available": False, "reason": "返回数据里没有week_ending字段", "debug": {"sampleRawRow": pct_rows[0]}}
     latest_week = weeks[-1]
-    latest_row = next((r for r in pct_rows if r.get("week_ending") == latest_week), None)
-    try:
-        pct_harvested = float(str(latest_row.get("Value", "")).replace(",", ""))
-    except (ValueError, TypeError):
-        return {"available": False, "reason": "PCT HARVESTED字段值无法解析为数字", "debug": {"rawValue": latest_row.get("Value")}}
+
+    def extract_pct_harvested(week_rows):
+        pct_only = [r for r in week_rows if "PCT HARVESTED" in (r.get("short_desc") or "").upper()]
+        if not pct_only:
+            return None
+        try:
+            return float(str(pct_only[0].get("Value", "")).replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+
+    pct_harvested = extract_pct_harvested([r for r in pct_rows if r.get("week_ending") == latest_week])
+    if pct_harvested is None:
+        return {"available": False, "reason": "PCT HARVESTED字段值无法解析为数字", "debug": {"latestWeek": latest_week}}
 
     prev_change = None
     if len(weeks) >= 2:
-        prev_week = weeks[-2]
-        prev_row = next((r for r in pct_rows if r.get("week_ending") == prev_week), None)
-        if prev_row:
-            try:
-                prev_pct = float(str(prev_row.get("Value", "")).replace(",", ""))
-                prev_change = round(pct_harvested - prev_pct, 1)
-            except (ValueError, TypeError):
-                pass
+        prev_pct = extract_pct_harvested([r for r in pct_rows if r.get("week_ending") == weeks[-2]])
+        if prev_pct is not None:
+            prev_change = round(pct_harvested - prev_pct, 1)
+
+    yoy_value, yoy_change, five_year_avg, five_year_avg_change = _compute_yoy_and_five_year_avg(
+        rows, latest_week, base_params, extract_pct_harvested
+    )
 
     return {
         "available": True,
         "weekEnding": latest_week,
         "pctHarvested": pct_harvested,
         "wowChangePts": prev_change,
+        "yoyValue": yoy_value,
+        "yoyChangePts": yoy_change,
+        "fiveYearAvg": five_year_avg,
+        "fiveYearAvgChangePts": five_year_avg_change,
         "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
         "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/",
     }
@@ -780,6 +889,72 @@ def fetch_cbot_price():
         }
     except (KeyError, IndexError, TypeError) as e:
         return {"available": False, "reason": f"数据解析失败: {e}", "debug": {"note": "接口返回的JSON结构和预期不一致", "sampleRawRow": data}}
+
+
+# ---------------------------------------------------------------------------
+# CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
+# 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
+# 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
+#
+# ★数据源确认过程(不是看文档/猜测的，是实测抓包确认的)：
+# - CFTC通过Socrata开放数据平台(publicreporting.cftc.gov)发布COT数据，不需要API key——
+#   CFTC官方文档原话："Currently, we are not providing tokens...As long as you are not
+#   overusing the API, you should be able to use the API without a token."
+# - COT报告分Legacy/Disaggregated/TFF三种口径，Legacy只分Commercial/Non-Commercial，
+#   不够细；Disaggregated才有Managed Money这个细分类别，数据集ID是72hh-3qpy——这个ID
+#   交叉核对过2个独立信息源都指向同一个，且实测直接抓取过真实响应验证过字段名。
+# - 关键字段命名有个坑：swap dealer那类字段(swap__positions_short_all)在short/spread
+#   前有双下划线，但m_money(Managed Money)这类没有这个问题，字段名是规整的
+#   m_money_positions_long_all/short_all，不要混淆搞错。
+# - CFTC每周五下午发布，覆盖到当周二的持仓数据(不是当周五当天)。
+# ---------------------------------------------------------------------------
+CFTC_DISAGGREGATED_BASE = "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"
+
+
+def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"):
+    """查询CFTC Disaggregated COT报告里，指定市场的Managed Money(基金/投机资金)
+    净多空持仓+CFTC官方已经算好的周变化(change_in_m_money_long_all等字段，
+    不需要自己再去抓上一周数据算差值)。"""
+    params = {
+        "$where": f"market_and_exchange_names='{market_name}'",
+        "$order": "report_date_as_yyyy_mm_dd DESC",
+        "$limit": "1",
+    }
+    url = f"{CFTC_DISAGGREGATED_BASE}?{urllib.parse.urlencode(params)}"
+    data, debug = fetch_json_debug(url)
+    if data is None:
+        return {"available": False, "reason": "CFTC接口无返回数据", "debug": debug}
+    if len(data) == 0:
+        return {"available": False, "reason": f"没有查到市场名称为\"{market_name}\"的记录(可能CFTC那边的命名有细微差异)", "debug": debug}
+
+    row = data[0]
+    try:
+        long_pos = float(row["m_money_positions_long_all"])
+        short_pos = float(row["m_money_positions_short_all"])
+        long_chg = float(row["change_in_m_money_long_all"])
+        short_chg = float(row["change_in_m_money_short_all"])
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}(CFTC那边可能改了字段名)",
+            "debug": {"sampleRawRow": row, "actualKeysSeen": list(row.keys())},
+        }
+
+    net_pos = round(long_pos - short_pos, 0)
+    net_chg = round(long_chg - short_chg, 0)
+    return {
+        "available": True,
+        "marketName": row.get("market_and_exchange_names", market_name),
+        "reportDate": row.get("report_date_as_yyyy_mm_dd", "")[:10],
+        "longPositions": long_pos,
+        "shortPositions": short_pos,
+        "netPosition": net_pos,
+        "longChange": long_chg,
+        "shortChange": short_chg,
+        "netChange": net_chg,
+        "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
+        "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1700,6 +1875,7 @@ def main():
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
+        "cftcManagedMoney": fetch_cftc_managed_money(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),

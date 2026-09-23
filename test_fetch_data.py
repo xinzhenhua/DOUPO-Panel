@@ -506,6 +506,151 @@ def test_soybean_condition_field_mismatch_gives_diagnostic(monkeypatch_fetch):
         fd.NASS_API_KEY = old_key
 
 
+def test_soybean_condition_yoy_and_five_year_avg_full_integration(monkeypatch_fetch):
+    """★用户明确要求的功能：美豆优良率不能只看环比，要能看出"今年这个水平算不算异常"。
+    用真正按年份区分的mock(根据URL里的year=参数返回不同数据)，完整验证从
+    fetch_soybean_condition()到同比/五年均值的端到端链路——不是只测试内部计算函数，
+    是测试真实调用路径下year参数有没有被正确传递、多次请求有没有被正确拼起来。"""
+    old_key = fd.NASS_API_KEY
+    fd.NASS_API_KEY = "test-key"
+
+    # 模拟：2026年最新一周58%，去年同期61%，2024年65%，2023年60%，2022年缺失(查不到)，2021年64%
+    yearly_data = {
+        "2026": [
+            {"week_ending": "2026-09-13", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "8"},
+            {"week_ending": "2026-09-13", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "52"},
+            {"week_ending": "2026-09-20", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "8"},
+            {"week_ending": "2026-09-20", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计58
+        ],
+        "2025": [
+            {"week_ending": "2025-09-21", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "11"},
+            {"week_ending": "2025-09-21", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计61
+        ],
+        "2024": [
+            {"week_ending": "2024-09-15", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "15"},
+            {"week_ending": "2024-09-15", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计65
+        ],
+        "2023": [
+            {"week_ending": "2023-09-17", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "10"},
+            {"week_ending": "2023-09-17", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计60
+        ],
+        "2022": [],  # 模拟这一年查不到数据(真实世界里可能是接口临时失败)
+        "2021": [
+            {"week_ending": "2021-09-19", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT EXCELLENT", "Value": "14"},
+            {"week_ending": "2021-09-19", "short_desc": "SOYBEANS - CONDITION, MEASURED IN PCT GOOD", "Value": "50"},  # 合计64
+        ],
+    }
+    call_log = []
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        call_log.append(url)
+        import re
+        m = re.search(r"year=(\d{4})", url)
+        year = m.group(1) if m else None
+        rows = yearly_data.get(year, [])
+        if not rows:
+            return None, {"error": "该年份无数据(模拟)"}
+        return {"data": rows}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+
+    try:
+        result = fd.fetch_soybean_condition()
+        assert result["available"] is True
+        assert result["goodExcellentPct"] == 58.0, f"8+50=58，实际{result['goodExcellentPct']}"
+        assert len(call_log) == 6, f"应该发起6次请求(今年+往前5年)，实际{len(call_log)}次"
+        assert result["yoyValue"] == 61.0, f"★去年同期应该是61(2025-09-21那一周)，实际{result['yoyValue']}"
+        assert result["yoyChangePts"] == -3.0, f"★同比变化应该是58-61=-3，实际{result['yoyChangePts']}"
+        assert result["fiveYearAvg"] == 62.5, f"★五年均值应该是(61+65+60+64)/4=62.5(2022年缺失不计入分母)，实际{result['fiveYearAvg']}"
+        assert result["fiveYearAvgChangePts"] == -4.5, f"★五年均值对比应该是58-62.5=-4.5，实际{result['fiveYearAvgChangePts']}"
+        print(f"✅ 端到端验证：优良率58% vs 去年同期61%(-3) vs 五年均值62.5%(-4.5)，2022年缺失正确排除在均值分母外")
+        print(f"   完整输出: yoyValue={result['yoyValue']}, fiveYearAvg={result['fiveYearAvg']}")
+    finally:
+        fd.NASS_API_KEY = old_key
+
+
+def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
+    """收获进度同样要验证同比/五年均值——跟优良率共用同一套_compute_yoy_and_five_year_avg，
+    但取值逻辑不同(单一PCT HARVESTED字段，不是两个字段相加)，要单独验证一次不是简单复制粘贴对了。"""
+    old_key = fd.NASS_API_KEY
+    fd.NASS_API_KEY = "test-key"
+    yearly_data = {
+        "2026": [{"week_ending": "2026-09-20", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "12"}],
+        "2025": [{"week_ending": "2025-09-21", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "8"}],
+        "2024": [{"week_ending": "2024-09-15", "short_desc": "SOYBEANS - PROGRESS, MEASURED IN PCT HARVESTED", "Value": "10"}],
+        "2023": [],
+        "2022": [],
+        "2021": [],
+    }
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        import re
+        m = re.search(r"year=(\d{4})", url)
+        rows = yearly_data.get(m.group(1) if m else None, [])
+        return ({"data": rows}, {"httpStatus": 200}) if rows else (None, {"error": "无数据"})
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_harvest_progress()
+        assert result["available"] is True
+        assert result["pctHarvested"] == 12.0
+        assert result["yoyValue"] == 8.0, f"★去年同期收获率应该是8，实际{result['yoyValue']}"
+        assert result["yoyChangePts"] == 4.0, f"★同比变化应该是12-8=+4，实际{result['yoyChangePts']}"
+        assert result["fiveYearAvg"] == 9.0, f"★五年均值应该是(8+10)/2=9(只有2年有数据)，实际{result['fiveYearAvg']}"
+        print(f"✅ 收获进度同比/五年均值验证正确：12% vs 去年同期8%(+4) vs 均值9%(+3)")
+    finally:
+        fd.NASS_API_KEY = old_key
+
+
+def test_cftc_managed_money_parsing(monkeypatch_fetch):
+    """★用户明确要求：CFTC持仓报告是美国版龙虎榜，Managed Money(基金/投机资金)
+    这一类最接近"外资/资金动向"这个概念。用实测抓包确认过的真实字段结构模拟
+    (数据集72hh-3qpy，字段名m_money_positions_long_all等)，验证解析逻辑正确。"""
+    mock_response = [{
+        "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+        "report_date_as_yyyy_mm_dd": "2026-09-16T00:00:00.000",
+        "m_money_positions_long_all": "115467",
+        "m_money_positions_short_all": "37899",
+        "change_in_m_money_long_all": "6950",
+        "change_in_m_money_short_all": "-11514",
+    }]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        assert "72hh-3qpy" in url, "★应该请求Disaggregated数据集(72hh-3qpy)，不是Legacy"
+        assert "m_money" not in url or "$where" in url, "确认请求带了筛选条件"
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is True
+    assert result["reportDate"] == "2026-09-16"
+    assert result["longPositions"] == 115467
+    assert result["shortPositions"] == 37899
+    assert result["netPosition"] == 115467 - 37899, f"净多头应该是多单减空单，实际{result['netPosition']}"
+    assert result["longChange"] == 6950
+    assert result["shortChange"] == -11514
+    assert result["netChange"] == 6950 - (-11514), f"净变化应该是多单变化减空单变化，实际{result['netChange']}"
+    print(f"✅ CFTC Managed Money解析正确：净多头{result['netPosition']}手，净变化{result['netChange']}手")
+
+
+def test_cftc_managed_money_no_data_found(monkeypatch_fetch):
+    """如果查询的市场名称在CFTC那边找不到匹配记录(比如命名细微差异)，应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return [], {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is False
+    assert "SOYBEAN MEAL" in result["reason"]
+    print("✅ 查不到匹配市场名称时诚实报告原因，不崩溃")
+
+
+def test_cftc_managed_money_field_mismatch_gives_diagnostic(monkeypatch_fetch):
+    """如果CFTC改了字段名，应该给出诊断信息(实际有哪些字段)，而不是静默失败"""
+    mock_response = [{"market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE", "some_other_field": "123"}]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is False
+    assert "debug" in result and "actualKeysSeen" in result["debug"]
+    print("✅ 字段名对不上时给出诊断信息(实际有哪些字段)，而不是静默失败")
+
+
 def test_south_america_weather_weighted_avg(monkeypatch_fetch):
     """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
     米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
@@ -1335,6 +1480,8 @@ if __name__ == "__main__":
               test_weighted_avg_small_producer_drought_gets_diluted_appropriately,
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
               test_soybean_condition_field_mismatch_gives_diagnostic,
+              test_soybean_condition_yoy_and_five_year_avg_full_integration, test_us_harvest_progress_yoy_and_five_year_avg,
+              test_cftc_managed_money_parsing, test_cftc_managed_money_no_data_found, test_cftc_managed_money_field_mismatch_gives_diagnostic,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
