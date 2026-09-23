@@ -149,4 +149,30 @@ makeEl('alertContent');
 updateOverallAlert();
 check('★完全没有数据时(早退路径)，window._fundamentalDirection应该被明确置空，而不是留着上次的旧值', window._fundamentalDirection === null);
 
+// ===================== 测试6：CFTC数据整合进外资活跃度判断 =====================
+// DCE平静 + CFTC显著变化(超过1万手阈值) → 应该被CFTC信号触发为active
+window._cftcNetChange = 18464;
+const cftcOnly = computeForeignCapitalActivity(quietData);
+check('★DCE平静但CFTC有显著变化时，应该被CFTC信号触发为active', cftcOnly.status === 'active');
+check('★CFTC触发的信号应该在label里体现"增仓"和具体手数', cftcOnly.label.includes('增仓') && cftcOnly.label.includes('18,464'));
+check('★CFTC信号不涉及具体机构区分，isGoldman应该是false(不是高盛专属信号)', cftcOnly.isGoldman === false);
+check('cftcActive标记应该为true，方便调用方区分信号来源', cftcOnly.cftcActive === true);
+
+// CFTC变化幅度未超过阈值 → 不应该被触发，DCE平静的话仍然是quiet
+window._cftcNetChange = 3000;
+const cftcBelowThreshold = computeForeignCapitalActivity(quietData);
+check('★CFTC变化幅度低于1万手阈值时不应该触发active(DCE同时平静)', cftcBelowThreshold.status === 'quiet');
+
+// DCE和CFTC都有显著动作 → 两者应该合并显示在同一个label里，不是互相覆盖
+window._cftcNetChange = -20000;
+const bothActive = computeForeignCapitalActivity(activeData); // activeData来自前面测试1，含高盛
+check('★DCE和CFTC都活跃时，label应该同时包含两边的信息，不是只显示其中一个', 
+  bothActive.label.includes('高盛期货') && bothActive.label.includes('CFTC') && bothActive.label.includes('减仓'));
+check('DCE和CFTC都活跃时，isGoldman应该保留DCE那边判断出的结果(高盛)，不被CFTC覆盖成false', bothActive.isGoldman === true);
+
+// CFTC数据完全没有(undefined，比如还没调用过renderCftc)时，不应该报错，也不应该影响DCE的判断
+delete window._cftcNetChange;
+const cftcUndefined = computeForeignCapitalActivity(quietData);
+check('★window._cftcNetChange是undefined时(尚未加载)不应该报错，DCE平静的话仍然是quiet', cftcUndefined.status === 'quiet');
+
 H.printSummary();

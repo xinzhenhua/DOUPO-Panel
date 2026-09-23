@@ -61,8 +61,15 @@ check('★供需表格应精确显示12个偏多格子', posCount === 12);
 check('供需表格需求侧应显示"肉鸡养殖利润"这个新标签', elements['alertContent'].innerHTML.includes('肉鸡养殖利润'));
 
 // ===================== 测试4：一键复制的提示词应包含新指标 =====================
+// ★修复：原本断言"豆菜粕价差(元/吨)\n\n我要数据"这种依赖"豆菜粕价差是模板里最后一项"
+//   的位置耦合写法，后来模板里在豆菜粕价差后面又加了巴西播种进度相关的新指标，
+//   这种位置耦合断言就必然被打破——这个文件真正该验证的是"肉鸡养殖利润"这个
+//   关键词有没有出现在提示词模板里，跟模板里其他指标的相对位置无关。
 const rawHtml = require('fs').readFileSync('/home/claude/soymeal-dashboard/index.html', 'utf8');
-check('复制提示词(PASTE_PROMPT_TEMPLATE)应包含新指标名称，确保用户实际复制时能问到AI', rawHtml.includes('豆菜粕价差(元/吨)\n\n我要数据'));
+const promptTemplateMatch = rawHtml.match(/const PASTE_PROMPT_TEMPLATE = `([\s\S]*?)`;/);
+check('★复制提示词(PASTE_PROMPT_TEMPLATE)模板应该能提取到', promptTemplateMatch !== null);
+const promptTemplateText = promptTemplateMatch ? promptTemplateMatch[1] : '';
+check('复制提示词(PASTE_PROMPT_TEMPLATE)应包含新指标名称，确保用户实际复制时能问到AI', promptTemplateText.includes('肉鸡养殖利润'));
 
 
 H.printSummary();

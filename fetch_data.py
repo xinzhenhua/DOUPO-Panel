@@ -892,20 +892,135 @@ def fetch_cbot_price():
 
 
 # ---------------------------------------------------------------------------
+# CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
+# 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
+# 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
+#
+# ★数据源确认过程(不是看文档/猜测的，是实测抓包确认的)：
+# - CFTC通过Socrata开放数据平台(publicreporting.cftc.gov)发布COT数据，不需要API key——
+#   CFTC官方文档原话："Currently, we are not providing tokens...As long as you are not
+#   overusing the API, you should be able to use the API without a token."
+# - COT报告分Legacy/Disaggregated/TFF三种口径，Legacy只分Commercial/Non-Commercial，
+#   不够细；Disaggregated才有Managed Money这个细分类别，数据集ID是72hh-3qpy——这个ID
+#   交叉核对过2个独立信息源都指向同一个，且实测直接抓取过真实响应验证过字段名。
+# - 关键字段命名有个坑：swap dealer那类字段(swap__positions_short_all)在short/spread
+#   前有双下划线，但m_money(Managed Money)这类没有这个问题，字段名是规整的
+#   m_money_positions_long_all/short_all，不要混淆搞错。
+# - CFTC每周五下午发布，覆盖到当周二的持仓数据(不是当周五当天)。
+# ---------------------------------------------------------------------------
+CFTC_DISAGGREGATED_BASE = "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"
+
+
+def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE", history_limit=156):
+    """查询CFTC Disaggregated COT报告里，指定市场的Managed Money(基金/投机资金)
+    净多空持仓+CFTC官方已经算好的周变化(change_in_m_money_long_all等字段)。
+
+    ★用户明确要求：只看"这周涨跌"不够，净多头"持续增加"、"处于历史高位"、
+    "持续下降/转净空"这三种情况，含义完全不同，值得分开展示，方便决策判断。
+    这几项都需要多周历史数据才能判断，不是只看最新一周就够——所以这次把
+    单次请求的$limit从1改成history_limit(默认156周≈3年)，一次请求把历史
+    序列都拿回来，不需要额外发起156次请求。
+
+    ★为什么选3年当回看窗口：COT数据本身能追溯几十年，但拿几十年前的数据当
+    "正常范围"参考意义有限(当年市场结构、参与者跟现在很不一样)，3年是常见的、
+    既能反映"近期正常波动区间"、又不会因窗口太短被单次极端值扭曲的折中选择。"""
+    params = {
+        "$where": f"market_and_exchange_names='{market_name}'",
+        "$order": "report_date_as_yyyy_mm_dd DESC",
+        "$limit": str(history_limit),
+    }
+    url = f"{CFTC_DISAGGREGATED_BASE}?{urllib.parse.urlencode(params)}"
+    data, debug = fetch_json_debug(url)
+    if data is None:
+        return {"available": False, "reason": "CFTC接口无返回数据", "debug": debug}
+    if len(data) == 0:
+        return {"available": False, "reason": f"没有查到市场名称为\"{market_name}\"的记录(可能CFTC那边的命名有细微差异)", "debug": debug}
+
+    latest_row = data[0]
+    try:
+        long_pos = float(latest_row["m_money_positions_long_all"])
+        short_pos = float(latest_row["m_money_positions_short_all"])
+        long_chg = float(latest_row["change_in_m_money_long_all"])
+        short_chg = float(latest_row["change_in_m_money_short_all"])
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}(CFTC那边可能改了字段名)",
+            "debug": {"sampleRawRow": latest_row, "actualKeysSeen": list(latest_row.keys())},
+        }
+
+    net_pos = round(long_pos - short_pos, 0)
+    net_chg = round(long_chg - short_chg, 0)
+
+    # 解析全部历史行的净持仓，构建时间序列(数据本来就是按report_date DESC排的，
+    # data[0]最新、data[-1]最旧)。个别行解析失败就跳过，不让整体功能失效。
+    net_series = []
+    for row in data:
+        try:
+            net_series.append(float(row["m_money_positions_long_all"]) - float(row["m_money_positions_short_all"]))
+        except (KeyError, ValueError, TypeError):
+            continue
+
+    # ★信号①③：连续上升/下降了几周——从最新一周往回看，相邻两周的差值方向
+    #   连续一致就累加，遇到方向反转或打平就停。
+    streak_weeks = 0
+    streak_direction = None
+    for i in range(len(net_series) - 1):
+        diff = net_series[i] - net_series[i + 1]
+        direction = "up" if diff > 0 else "down" if diff < 0 else None
+        if streak_direction is None:
+            if direction is None:
+                break
+            streak_direction = direction
+            streak_weeks = 1
+        elif direction == streak_direction:
+            streak_weeks += 1
+        else:
+            break
+
+    # ★信号②：历史百分位——当前净持仓在这段回看窗口里，比多少历史值都高(或持平)。
+    #   用>=1年(52周)数据才计算，数据太短的话"历史高位"这个说法没有意义。
+    history_percentile = None
+    if len(net_series) >= 52:
+        below_or_equal = sum(1 for v in net_series if v <= net_pos)
+        history_percentile = round(below_or_equal / len(net_series) * 100, 1)
+
+    return {
+        "available": True,
+        "marketName": latest_row.get("market_and_exchange_names", market_name),
+        "reportDate": latest_row.get("report_date_as_yyyy_mm_dd", "")[:10],
+        "longPositions": long_pos,
+        "shortPositions": short_pos,
+        "netPosition": net_pos,
+        "longChange": long_chg,
+        "shortChange": short_chg,
+        "netChange": net_chg,
+        "streakWeeks": streak_weeks,
+        "streakDirection": streak_direction,  # 'up' | 'down' | None
+        "historyPercentile": history_percentile,  # 0-100，None表示历史数据不够(<52周)
+        "historyWeeksUsed": len(net_series),
+        "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
+        "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
+    }
+
+
+# ---------------------------------------------------------------------------
 # 技术面：DCE豆粕期货K线数据（日线+小时线），用akshare库(免密钥，抓新浪财经公开数据)
 # ★ 第一阶段范围：先只做当前主力(9月合约M09)验证可行，跑通后再加5月/1月合约。
 # ★ 诚实说明：akshare底层是抓取新浪财经公开页面，不是官方付费实时数据源，
 #   实际数据大概率有几秒到几分钟延迟，不是真正的逐笔实时行情。
 # ---------------------------------------------------------------------------
-def get_current_contract_code(contract_month, now=None):
+def get_current_contract_code(contract_month, now=None, prefix="M"):
     """算出"现在"该关注的是哪个具体合约代码，比如7月看9月合约，应该是M2609
     （不能写死，因为合约到期后，同一个"9月合约"概念下个周期就该指向M2709了）。
-    简化规则：如果当前月份<=合约月份，用今年；否则用明年。"""
+    简化规则：如果当前月份<=合约月份，用今年；否则用明年。
+    ★prefix参数：默认"M"(豆粕)，压榨利润计算需要复用这个函数算"Y"(豆油)/"B"(豆二/
+    进口大豆)的合约代码——年份计算逻辑对这三个品种是通用的，不用另外写一份。"""
     if now is None:
         now = datetime.now(timezone.utc)
     year = now.year if now.month <= contract_month else now.year + 1
     yy = str(year)[-2:]
-    return f"M{yy}{contract_month:02d}"
+    return f"{prefix}{yy}{contract_month:02d}"
 
 
 def fetch_dce_daily_kline(symbol, max_rows=260):
@@ -1086,6 +1201,66 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         "bars": bars,
         "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟",
     }
+
+
+# ---------------------------------------------------------------------------
+# 压榨利润(榨利)：按用户确认的优先级排第二项。这个不是直接抓来的数据，是算出来的——
+# 复用豆粕日K线同一个akshare接口，换成豆油(Y)/豆二(B，进口大豆)的合约代码去查最新收盘价，
+# 三者代入行业标准公式算出"盘面毛利"。
+#
+# ★标准公式+系数确认过程(多个独立信息源交叉确认，其中出粕率/出油率这组数字
+#   最权威的来源是大商所豆二期货厂库交割置换的官方标准本身)：
+#   压榨利润 = 豆粕价格×出粕率 + 豆油价格×出油率 - 大豆价格 - 加工费
+#   进口大豆(豆二/B)：出粕率78.5%，出油率18.5%
+#
+# ★诚实说明这是"毛利"不是"净利"：公式里的"加工费"(油厂自己的加工/物流成本)
+#   没有一个公开、权威、会随时间变化的数据源可以查，硬编一个猜测数字反而不诚实
+#   (看起来精确，实际是瞎猜)。所以这里只算到"豆粕+豆油产出价值 - 大豆成本"这一步，
+#   不减加工费——趋势方向(涨跌)依然有参考价值，只是绝对数值会比真实净利润更高。
+# ---------------------------------------------------------------------------
+CRUSH_YIELD_MEAL = 0.785  # 出粕率(进口大豆/豆二)
+CRUSH_YIELD_OIL = 0.185   # 出油率(进口大豆/豆二)
+
+
+def fetch_crush_margin(contract_month, now=None):
+    """算指定合约月份(9/5/1)的盘面压榨毛利：分别抓豆粕(M)/豆油(Y)/豆二(B)三个
+    同月份合约的最新收盘价，代入标准公式。三者只要有一个抓不到数据就整体标记不可用——
+    压榨利润是三个价格联动算出来的，缺一个都算不出有意义的结果，不能用"缺了就当0"
+    这种方式硬凑一个看似正常的数字出来。"""
+    meal_symbol = get_current_contract_code(contract_month, now, prefix="M")
+    oil_symbol = get_current_contract_code(contract_month, now, prefix="Y")
+    bean_symbol = get_current_contract_code(contract_month, now, prefix="B")
+
+    meal_data = fetch_dce_daily_kline(meal_symbol, max_rows=1)
+    oil_data = fetch_dce_daily_kline(oil_symbol, max_rows=1)
+    bean_data = fetch_dce_daily_kline(bean_symbol, max_rows=1)
+
+    missing = []
+    if not meal_data.get("available") or not meal_data.get("bars"):
+        missing.append(f"豆粕{meal_symbol}({meal_data.get('reason','未知原因')})")
+    if not oil_data.get("available") or not oil_data.get("bars"):
+        missing.append(f"豆油{oil_symbol}({oil_data.get('reason','未知原因')})")
+    if not bean_data.get("available") or not bean_data.get("bars"):
+        missing.append(f"豆二{bean_symbol}({bean_data.get('reason','未知原因')})")
+    if missing:
+        return {"available": False, "reason": f"以下合约价格缺失，无法计算压榨利润: {'; '.join(missing)}"}
+
+    meal_price = meal_data["bars"][-1]["close"]
+    oil_price = oil_data["bars"][-1]["close"]
+    bean_price = bean_data["bars"][-1]["close"]
+    gross_margin = round(meal_price * CRUSH_YIELD_MEAL + oil_price * CRUSH_YIELD_OIL - bean_price, 1)
+
+    return {
+        "available": True,
+        "contractMonth": contract_month,
+        "mealSymbol": meal_symbol, "mealPrice": meal_price,
+        "oilSymbol": oil_symbol, "oilPrice": oil_price,
+        "beanSymbol": bean_symbol, "beanPrice": bean_price,
+        "grossMargin": gross_margin,
+        "yieldMeal": CRUSH_YIELD_MEAL, "yieldOil": CRUSH_YIELD_OIL,
+        "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+    }
+
 
 # ★确认过的境内外资独资期货公司(实测查证，不是猜测)：这4家目前都是100%外资控股的
 #   境内期货公司，且都是大商所会员——高盛期货是2026年才由"乾坤期货"更名而来。
@@ -1432,6 +1607,93 @@ def fetch_south_america_psd():
         "available": any(v.get("available") for v in results.values()),
         "byCountry": results,
         "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 巴西大豆播种进度：用开源库agrobr对接CONAB(巴西农业部旗下国家商品供应公司)。
+#
+# ★之前判断这项要走手动指标，原因是"需要浏览器自动化"——后来用户指出这个判断
+#   有误，实测查了agrobr的源码(conab/progresso/api.py + client.py)确认：
+#   核心逻辑是httpx.AsyncClient(纯HTTP客户端) + BeautifulSoup(从列表页解析出
+#   最新周报的链接) + 直接下载解析XLSX二进制内容，源码里meta信息明确标注
+#   source为"httpx+xlsx"，完全不涉及Playwright/浏览器渲染。之前的判断是把
+#   "agrobr这个库整体的默认Docker镜像包含Playwright"错误地推广到了这一个
+#   具体功能上，这次已经订正。
+#
+# ★诚实的限制说明：本项目的开发/测试沙盒网络白名单不包含gov.br(CONAB官网域名)，
+#   没法在开发环境完整测试"实际连上CONAB、真实解析一次"这个流程——GitHub Actions
+#   的runner网络是完全开放的，没有这个限制，但这意味着下面这个函数的验证程度
+#   不如NASS/CFTC那两个(那两个是真的抓包/实测过真实响应)。这里改用尽量详尽的
+#   防御性检查+debug信息，万一CONAB那边的数据结构跟从源码读到的预期有出入，
+#   第一次在GitHub Actions真实运行时能通过debug信息定位问题，而不是静默出错
+#   或编造数据。
+COLUNAS_ESPERADAS_CONAB = {"cultura", "safra", "operacao", "estado",
+                           "pct_ano_anterior", "pct_semana_anterior", "pct_semana_atual", "pct_media_5_anos"}
+
+
+def fetch_brazil_planting_progress():
+    """查询CONAB每周发布的巴西大豆播种进度(全国汇总)，包含本周/上周/去年同期/
+    近五年均值——CONAB自己的报告格式本来就是这四个数字放在一起发布的，比
+    美豆播种进度(NASS只给当周+需要自己另外查历史年份算同比)更直接。"""
+    try:
+        import asyncio
+        from agrobr import conab
+    except ImportError as e:
+        return {"available": False, "reason": f"agrobr库未安装(需要 pip install agrobr pandas): {e}"}
+
+    try:
+        df = asyncio.run(conab.progresso_safra(cultura="Soja", operacao="Plantio"))
+    except Exception as e:
+        # agrobr内部可能抛出各种网络/解析异常，这里统一兜底成"不可用+具体报错"，
+        # 不让这一项的失败影响main()里其他数据的抓取。
+        return {"available": False, "reason": f"CONAB接口调用失败: {type(e).__name__}: {e}"}
+
+    if df is None or len(df) == 0:
+        return {"available": False, "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"}
+
+    missing_cols = COLUNAS_ESPERADAS_CONAB - set(df.columns)
+    if missing_cols:
+        return {
+            "available": False,
+            "reason": f"返回数据缺少预期字段: {sorted(missing_cols)}(CONAB或agrobr可能改了格式)",
+            "debug": {"actualColumns": list(df.columns)},
+        }
+
+    # ★实测查过agrobr源码(parser.py)确认：全国汇总行的estado字段值固定是"BR"
+    #   (源码判断逻辑：表格里出现"Estados"或"Brasil"字样的行，归一化成"BR")。
+    national_rows = df[df["estado"] == "BR"]
+    if len(national_rows) == 0:
+        return {
+            "available": False,
+            "reason": "没有找到estado='BR'的全国汇总行(数据结构跟预期不符)",
+            "debug": {"actualEstadoValues": sorted(df["estado"].astype(str).unique().tolist())},
+        }
+
+    row = national_rows.iloc[-1]  # 万一有多条(理论上不该发生)，取最后一条(通常是最新)
+    try:
+        import pandas as pd
+        pct_atual = float(row["pct_semana_atual"])
+        pct_ano_anterior = float(row["pct_ano_anterior"])
+        pct_semana_anterior = float(row["pct_semana_anterior"]) if pd.notna(row["pct_semana_anterior"]) else None
+        pct_media_5_anos = float(row["pct_media_5_anos"]) if pd.notna(row["pct_media_5_anos"]) else None
+    except (ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段值无法解析为数字: {e}",
+            "debug": {"sampleRow": {k: str(v) for k, v in row.to_dict().items()}},
+        }
+
+    return {
+        "available": True,
+        "safra": row.get("safra"),
+        "weekLabel": row.get("semana_atual"),
+        "pctCurrent": pct_atual,
+        "pctYearAgo": pct_ano_anterior,
+        "pctPrevWeek": pct_semana_anterior,
+        "pctFiveYearAvg": pct_media_5_anos,
+        "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
+        "sourceUrl": "https://www.gov.br/conab",
     }
 
 
@@ -1805,10 +2067,18 @@ def main():
     may_code = get_current_contract_code(5)
     jan_code = get_current_contract_code(1)
     position_ranks = fetch_dce_position_rank_multi([sep_code, may_code, jan_code], categories=["netLong", "netShort", "longUp", "longDown"])
+    crush_margins = {
+        "sep": fetch_crush_margin(9),
+        "may": fetch_crush_margin(5),
+        "jan": fetch_crush_margin(1),
+    }
 
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
+        "cftcManagedMoney": fetch_cftc_managed_money(),
+        "crushMargins": crush_margins,
+        "brazilPlantingProgress": fetch_brazil_planting_progress(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),

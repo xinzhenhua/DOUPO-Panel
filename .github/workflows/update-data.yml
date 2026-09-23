@@ -49,6 +49,9 @@ jobs:
       - name: 安装依赖(akshare，用于抓取DCE豆粕期货K线数据)
         run: pip install akshare
 
+      - name: 安装依赖(agrobr，用于抓取CONAB巴西大豆播种进度——纯HTTP+XLSX解析，不需要浏览器)
+        run: pip install agrobr pandas
+
       - name: 运行数据抓取脚本
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}

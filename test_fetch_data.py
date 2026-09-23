@@ -598,6 +598,232 @@ def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
         fd.NASS_API_KEY = old_key
 
 
+def test_cftc_managed_money_parsing(monkeypatch_fetch):
+    """★用户明确要求：CFTC持仓报告是美国版龙虎榜，Managed Money(基金/投机资金)
+    这一类最接近"外资/资金动向"这个概念。用实测抓包确认过的真实字段结构模拟
+    (数据集72hh-3qpy，字段名m_money_positions_long_all等)，验证解析逻辑正确。"""
+    mock_response = [{
+        "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+        "report_date_as_yyyy_mm_dd": "2026-09-16T00:00:00.000",
+        "m_money_positions_long_all": "115467",
+        "m_money_positions_short_all": "37899",
+        "change_in_m_money_long_all": "6950",
+        "change_in_m_money_short_all": "-11514",
+    }]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        assert "72hh-3qpy" in url, "★应该请求Disaggregated数据集(72hh-3qpy)，不是Legacy"
+        assert "m_money" not in url or "$where" in url, "确认请求带了筛选条件"
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is True
+    assert result["reportDate"] == "2026-09-16"
+    assert result["longPositions"] == 115467
+    assert result["shortPositions"] == 37899
+    assert result["netPosition"] == 115467 - 37899, f"净多头应该是多单减空单，实际{result['netPosition']}"
+    assert result["longChange"] == 6950
+    assert result["shortChange"] == -11514
+    assert result["netChange"] == 6950 - (-11514), f"净变化应该是多单变化减空单变化，实际{result['netChange']}"
+    print(f"✅ CFTC Managed Money解析正确：净多头{result['netPosition']}手，净变化{result['netChange']}手")
+
+
+def test_cftc_managed_money_no_data_found(monkeypatch_fetch):
+    """如果查询的市场名称在CFTC那边找不到匹配记录(比如命名细微差异)，应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return [], {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is False
+    assert "SOYBEAN MEAL" in result["reason"]
+    print("✅ 查不到匹配市场名称时诚实报告原因，不崩溃")
+
+
+def test_cftc_managed_money_field_mismatch_gives_diagnostic(monkeypatch_fetch):
+    """如果CFTC改了字段名，应该给出诊断信息(实际有哪些字段)，而不是静默失败"""
+    mock_response = [{"market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE", "some_other_field": "123"}]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is False
+    assert "debug" in result and "actualKeysSeen" in result["debug"]
+    print("✅ 字段名对不上时给出诊断信息(实际有哪些字段)，而不是静默失败")
+
+
+def test_cftc_streak_weeks_consecutive_increase(monkeypatch_fetch):
+    """★用户明确要求：净多头"持续增加"要能看出来，不是只看这周涨跌。
+    用手算验证过的例子(100→90→80→60→70，从新到旧)验证连续上升3周被正确识别，
+    第4周(60比70低，打破了上升趋势)之后不再往前累加。"""
+    def make_row(date, long_pos, short_pos, is_latest=False):
+        row = {
+            "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+            "report_date_as_yyyy_mm_dd": date,
+            "m_money_positions_long_all": str(long_pos), "m_money_positions_short_all": str(short_pos),
+        }
+        if is_latest:
+            row["change_in_m_money_long_all"] = "5000"
+            row["change_in_m_money_short_all"] = "-5000"
+        return row
+    # 净持仓(long-short)序列：100(最新), 90, 80, 60, 70(最旧)——净多头连续3周上升后，第4周才打破
+    mock_response = [
+        make_row("2026-09-16", 150, 50, is_latest=True),  # net=100
+        make_row("2026-09-09", 140, 50),                   # net=90
+        make_row("2026-09-02", 130, 50),                   # net=80
+        make_row("2026-08-26", 110, 50),                   # net=60
+        make_row("2026-08-19", 120, 50),                   # net=70
+    ]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is True
+    assert result["streakWeeks"] == 3, f"★应该识别出连续3周上升，实际{result['streakWeeks']}"
+    assert result["streakDirection"] == "up", f"★方向应该是up，实际{result['streakDirection']}"
+    print(f"✅ 连续上升周数正确识别：{result['streakWeeks']}周(手算验证过)")
+
+
+def test_cftc_streak_weeks_consecutive_decrease(monkeypatch_fetch):
+    """反过来验证连续下降的情况，确认不是只认得上升方向"""
+    def make_row(date, long_pos, short_pos, is_latest=False):
+        row = {
+            "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+            "report_date_as_yyyy_mm_dd": date,
+            "m_money_positions_long_all": str(long_pos), "m_money_positions_short_all": str(short_pos),
+        }
+        if is_latest:
+            row["change_in_m_money_long_all"] = "-3000"
+            row["change_in_m_money_short_all"] = "2000"
+        return row
+    # 净持仓序列：50(最新), 70, 90(最旧)——连续2周下降
+    mock_response = [
+        make_row("2026-09-16", 100, 50, is_latest=True),  # net=50
+        make_row("2026-09-09", 120, 50),                   # net=70
+        make_row("2026-09-02", 140, 50),                   # net=90
+    ]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["streakWeeks"] == 2, f"★应该识别出连续2周下降，实际{result['streakWeeks']}"
+    assert result["streakDirection"] == "down"
+    print(f"✅ 连续下降周数正确识别：{result['streakWeeks']}周")
+
+
+def test_cftc_history_percentile_calculation(monkeypatch_fetch):
+    """★用户明确要求：净多头"处于历史高位"要能看出来。用构造的60周数据
+    (刚好超过52周门槛)验证百分位计算——当前值是历史最高，百分位应该是100。"""
+    rows = []
+    # 构造60周数据：最新一周net=1000(全场最高)，其余59周net从100到990递增(但都比1000低)
+    for i in range(60):
+        date = f"2025-{(i%12)+1:02d}-01"
+        if i == 0:
+            rows.append({
+                "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+                "report_date_as_yyyy_mm_dd": "2026-09-16", "m_money_positions_long_all": "1000", "m_money_positions_short_all": "0",
+                "change_in_m_money_long_all": "100", "change_in_m_money_short_all": "0",
+            })
+        else:
+            rows.append({
+                "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+                "report_date_as_yyyy_mm_dd": date, "m_money_positions_long_all": str(500+i), "m_money_positions_short_all": "0",
+            })
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return rows, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["available"] is True
+    assert result["historyWeeksUsed"] == 60
+    assert result["historyPercentile"] == 100.0, f"★当前值是历史最高，百分位应该是100，实际{result['historyPercentile']}"
+    print(f"✅ 历史百分位计算正确：当前净持仓处于回看窗口的第{result['historyPercentile']}百分位")
+
+
+def test_cftc_history_percentile_none_when_insufficient_data(monkeypatch_fetch):
+    """★历史数据不够52周时，historyPercentile应该是None，不能硬凑一个没有统计意义的百分位"""
+    mock_response = [{
+        "market_and_exchange_names": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
+        "report_date_as_yyyy_mm_dd": "2026-09-16", "m_money_positions_long_all": "100", "m_money_positions_short_all": "50",
+        "change_in_m_money_long_all": "10", "change_in_m_money_short_all": "5",
+    }]  # 只有1周数据
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_cftc_managed_money()
+    assert result["historyPercentile"] is None, "★历史数据不足52周时，不应该硬算一个百分位出来"
+    print("✅ 历史数据不足52周时，正确返回None而不是硬凑一个没有统计意义的百分位")
+
+
+def test_get_current_contract_code_prefix_param(monkeypatch_fetch):
+    """★验证get_current_contract_code新增的prefix参数：压榨利润要复用这个函数
+    算豆油(Y)/豆二(B)的合约代码，不能破坏原本豆粕(M)的默认行为。"""
+    from datetime import datetime as real_datetime, timezone as real_timezone
+    now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+    assert fd.get_current_contract_code(9, now) == "M2609", "不传prefix应该保持默认M，不能破坏现有调用方"
+    assert fd.get_current_contract_code(9, now, prefix="Y") == "Y2609", "★传Y应该算出豆油合约代码"
+    assert fd.get_current_contract_code(9, now, prefix="B") == "B2609", "★传B应该算出豆二合约代码"
+    print("✅ get_current_contract_code的prefix参数正确：默认M不受影响，Y/B也能正确生成")
+
+
+def test_crush_margin_calculation(monkeypatch_fetch):
+    """★用户明确要求：压榨利润=豆粕价格×出粕率+豆油价格×出油率-大豆价格。
+    用手算验证过的例子(3400×0.785+8500×0.185-4200=41.5)验证代入公式的结果正确。"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        prices = {"M2609": 3400, "Y2609": 8500, "B2609": 4200}
+        if symbol not in prices:
+            return {"available": False, "reason": "测试里没配置这个合约"}
+        return {"available": True, "symbol": symbol, "bars": [{"close": prices[symbol]}], "source": "测试"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+        result = fd.fetch_crush_margin(9, now)
+        assert result["available"] is True
+        assert result["mealPrice"] == 3400 and result["oilPrice"] == 8500 and result["beanPrice"] == 4200
+        assert result["grossMargin"] == 41.5, f"★手算验证值应该是41.5，实际{result['grossMargin']}"
+        assert result["yieldMeal"] == 0.785 and result["yieldOil"] == 0.185, "★系数应该是DCE官方交割置换标准(78.5%/18.5%)"
+        print(f"✅ 压榨利润计算正确：{result['grossMargin']}元/吨(手算验证过)")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
+def test_crush_margin_missing_one_contract_reports_all_missing(monkeypatch_fetch):
+    """★三个合约价格有一个缺失就应该整体标记不可用，不能用0硬凑一个看似正常的数字。
+    还要验证：缺失原因里应该点名到底是哪个合约缺(不是笼统一句"数据不足")。"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        if symbol == "Y2609":
+            return {"available": False, "reason": "接口调用失败"}
+        prices = {"M2609": 3400, "B2609": 4200}
+        return {"available": True, "symbol": symbol, "bars": [{"close": prices[symbol]}], "source": "测试"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        from datetime import datetime as real_datetime, timezone as real_timezone
+        now = real_datetime(2026, 7, 12, tzinfo=real_timezone.utc)
+        result = fd.fetch_crush_margin(9, now)
+        assert result["available"] is False
+        assert "豆油" in result["reason"] and "Y2609" in result["reason"], "★缺失原因应该点名是豆油缺失，不是笼统报告"
+        assert "豆粕" not in result["reason"] or "M2609" not in result["reason"].split("豆油")[0], "不应该错误地把正常的豆粕也报成缺失"
+        print("✅ 三个合约中有一个缺失时，整体标记不可用且准确点名是哪个合约缺失")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
+def test_crush_margin_all_three_missing_lists_all(monkeypatch_fetch):
+    """三个合约全部缺失时，reason里应该把三个都列出来，不是只报第一个就停"""
+    old_daily = fd.fetch_dce_daily_kline
+    def fake_daily(symbol, max_rows=260):
+        return {"available": False, "reason": "全部没有"}
+    fd.fetch_dce_daily_kline = fake_daily
+    try:
+        result = fd.fetch_crush_margin(9)
+        assert result["available"] is False
+        assert "豆粕" in result["reason"] and "豆油" in result["reason"] and "豆二" in result["reason"]
+        print("✅ 三个合约全部缺失时，三个都被列在错误信息里，不是只报第一个")
+    finally:
+        fd.fetch_dce_daily_kline = old_daily
+
+
 def test_south_america_weather_weighted_avg(monkeypatch_fetch):
     """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
     米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
@@ -922,7 +1148,10 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
         }
         fd.main()
 
-        assert set(daily_calls) == expected_codes, f"main()应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
+        # ★压榨利润功能上线后，fetch_dce_daily_kline还会被拿去查豆油(Y)/豆二(B)合约价格，
+        #   daily_calls不再是"只有这3个M合约"了，改成检查这3个M合约都在里面(子集关系)，
+        #   而不是要求完全相等——压榨利润那部分自己有专门的测试覆盖，这里不重复断言。
+        assert expected_codes.issubset(set(daily_calls)), f"main()至少应该对这3个日线合约代码发起请求: {expected_codes}，实际请求了: {daily_calls}"
         assert set(hourly_calls) == expected_codes, f"main()应该对这3个小时线合约代码发起请求: {expected_codes}，实际请求了: {hourly_calls}"
         assert len(position_rank_calls) == 1, f"★持仓排名应该只调用1次(批量传入3个合约，不是分别调用3次)，实际调用了{len(position_rank_calls)}次"
         assert set(position_rank_calls[0]) == expected_codes, f"持仓排名批量调用时传入的合约代码应该是这3个: {expected_codes}，实际传入: {position_rank_calls[0]}"
@@ -1404,6 +1633,120 @@ def make_monkeypatch():
     return _patch
 
 
+def _make_conab_mock_df(rows):
+    import pandas as pd
+    return pd.DataFrame(rows)
+
+
+def test_brazil_planting_progress_extracts_national_row(monkeypatch_fetch):
+    """★核心逻辑验证：CONAB数据按州分行(MT/PR/BR等)，必须正确取到estado='BR'
+    的全国汇总行，不能误取某个州的行当成全国数据。用实际查过的agrobr真实
+    列结构(cultura/safra/operacao/estado/semana_atual/pct_*四个百分比字段)构造mock。"""
+    import agrobr
+    mock_df = _make_conab_mock_df([
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Plantio", "estado": "MT",
+         "semana_atual": "2026-10-04", "pct_ano_anterior": 15.0, "pct_semana_anterior": 20.0,
+         "pct_semana_atual": 25.0, "pct_media_5_anos": 22.0},
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Plantio", "estado": "BR",
+         "semana_atual": "2026-10-04", "pct_ano_anterior": 5.1, "pct_semana_anterior": 3.5,
+         "pct_semana_atual": 8.2, "pct_media_5_anos": 9.4},
+    ])
+    async def fake_progresso_safra(**kwargs):
+        return mock_df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        result = fd.fetch_brazil_planting_progress()
+        assert result["available"] is True
+        assert result["pctCurrent"] == 8.2, f"★应该取全国(BR)行的8.2，不是MT州的25.0，实际{result['pctCurrent']}"
+        assert result["pctYearAgo"] == 5.1
+        assert result["pctPrevWeek"] == 3.5
+        assert result["pctFiveYearAvg"] == 9.4
+        print(f"✅ 正确从全国(BR)行提取数据(8.2%)，没有误取MT州的行(25.0%)")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
+def test_brazil_planting_progress_no_national_row_found(monkeypatch_fetch):
+    """如果返回数据里完全没有estado='BR'的行(比如CONAB改了全国汇总行的标记方式)，
+    应该诚实报告，并且debug信息里要列出实际看到的estado值，方便排查"""
+    import agrobr
+    mock_df = _make_conab_mock_df([
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Plantio", "estado": "MT",
+         "semana_atual": "2026-10-04", "pct_ano_anterior": 15.0, "pct_semana_anterior": 20.0,
+         "pct_semana_atual": 25.0, "pct_media_5_anos": 22.0},
+    ])
+    async def fake_progresso_safra(**kwargs):
+        return mock_df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        result = fd.fetch_brazil_planting_progress()
+        assert result["available"] is False
+        assert "BR" in result["reason"]
+        assert result["debug"]["actualEstadoValues"] == ["MT"]
+        print("✅ 找不到全国汇总行时诚实报告，debug信息列出了实际看到的estado值")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
+def test_brazil_planting_progress_missing_columns(monkeypatch_fetch):
+    """★列结构跟预期不符(比如CONAB改了字段名)时应该给出诊断信息，不静默失败或崩溃"""
+    import agrobr
+    mock_df = _make_conab_mock_df([
+        {"cultura": "Soja", "estado": "BR", "algum_campo_diferente": 123},
+    ])
+    async def fake_progresso_safra(**kwargs):
+        return mock_df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        result = fd.fetch_brazil_planting_progress()
+        assert result["available"] is False
+        assert "debug" in result and "actualColumns" in result["debug"]
+        print("✅ 列结构跟预期不符时给出诊断信息(实际有哪些列)，不崩溃")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
+def test_brazil_planting_progress_exception_handled_gracefully(monkeypatch_fetch):
+    """★CONAB接口调用过程中抛出任何异常(网络问题/解析失败等)都应该被兜底捕获，
+    返回明确的不可用原因，不能让整个main()因为这一项失败而崩溃"""
+    import agrobr
+    async def fake_progresso_safra(**kwargs):
+        raise ConnectionError("模拟网络连接失败")
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        result = fd.fetch_brazil_planting_progress()
+        assert result["available"] is False
+        assert "ConnectionError" in result["reason"]
+        print("✅ 接口调用抛出异常时被正确捕获兜底，不会让整个程序崩溃")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
+def test_brazil_planting_progress_empty_dataframe(monkeypatch_fetch):
+    """返回空DataFrame(比如播种季还没开始)时应该诚实报告，不报错"""
+    import agrobr
+    mock_df = _make_conab_mock_df([])
+    async def fake_progresso_safra(**kwargs):
+        return mock_df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        result = fd.fetch_brazil_planting_progress()
+        assert result["available"] is False
+        print("✅ 空DataFrame时诚实报告不可用，不报错")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -1428,6 +1771,14 @@ if __name__ == "__main__":
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
               test_soybean_condition_field_mismatch_gives_diagnostic,
               test_soybean_condition_yoy_and_five_year_avg_full_integration, test_us_harvest_progress_yoy_and_five_year_avg,
+              test_cftc_managed_money_parsing, test_cftc_managed_money_no_data_found, test_cftc_managed_money_field_mismatch_gives_diagnostic,
+              test_cftc_streak_weeks_consecutive_increase, test_cftc_streak_weeks_consecutive_decrease,
+              test_cftc_history_percentile_calculation, test_cftc_history_percentile_none_when_insufficient_data,
+              test_get_current_contract_code_prefix_param, test_crush_margin_calculation,
+              test_crush_margin_missing_one_contract_reports_all_missing, test_crush_margin_all_three_missing_lists_all,
+              test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
+              test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
+              test_brazil_planting_progress_empty_dataframe,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
