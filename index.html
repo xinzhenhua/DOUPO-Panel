@@ -899,20 +899,35 @@ function renderDebugInfo(debug){
   // 场景B：网络请求失败（ESR/CBOT/drought那种），结构可能是单个{url,httpStatus,error,rawSnippet}
   // 也可能是按州分组的{IA:{...}, IL:{...}, MN:{...}}
   const entries = debug.url ? {'请求':debug} : debug;
-  let html = '<div style="background:var(--bg2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:10px;color:var(--t3);font-family:monospace;overflow-x:auto">';
-  html += '<div style="color:var(--gold);font-weight:700;margin-bottom:4px">🔍 诊断信息（帮助定位问题，不用去翻GitHub Actions日志）</div>';
+  let bodyHtml = '';
   Object.keys(entries).forEach(key=>{
     const d = entries[key];
-    if(!d) return;
-    html += `<div style="margin-bottom:4px">`;
-    if(d.httpStatus) html += `[${key}] HTTP状态码: ${d.httpStatus}<br>`;
-    if(d.error) html += `[${key}] 错误: ${esc(d.error)}<br>`;
-    if(d.rawSnippet) html += `[${key}] 返回内容片段: ${esc(d.rawSnippet.slice(0,200))}${d.rawSnippet.length>200?'...':''}<br>`;
-    if(d.note) html += `[${key}] ${esc(d.note)}<br>`;
-    html += `</div>`;
+    if(!d || typeof d !== 'object') return;
+    let entryHtml = '';
+    if(d.httpStatus) entryHtml += `[${key}] HTTP状态码: ${d.httpStatus}<br>`;
+    if(d.error) entryHtml += `[${key}] 错误: ${esc(d.error)}<br>`;
+    if(d.rawSnippet) entryHtml += `[${key}] 返回内容片段: ${esc(d.rawSnippet.slice(0,200))}${d.rawSnippet.length>200?'...':''}<br>`;
+    if(d.note) entryHtml += `[${key}] ${esc(d.note)}<br>`;
+    if(entryHtml){ bodyHtml += `<div style="margin-bottom:4px">${entryHtml}</div>`; }
   });
-  html += '</div>';
-  return html;
+  if(bodyHtml){
+    return '<div style="background:var(--bg2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:10px;color:var(--t3);font-family:monospace;overflow-x:auto">'
+      + '<div style="color:var(--gold);font-weight:700;margin-bottom:4px">🔍 诊断信息（帮助定位问题，不用去翻GitHub Actions日志）</div>'
+      + bodyHtml + '</div>';
+  }
+  // ★场景C(兜底，已修复的真实bug)：场景A/B的属性检查(httpStatus/error/rawSnippet/note
+  //   这类固定字段名)都没能从debug对象里提取出任何内容时——比如这次
+  //   _find_export_inspections_slug()返回的{stage, totalReportsInCatalog,
+  //   sampleReportEntries}这种自定义形状，字符串/数字/数组类型的字段值本身
+  //   没有.httpStatus等属性，会被场景B的检查全部过滤掉——之前会导致渲染出
+  //   一个只有"🔍 诊断信息"标题、底下完全空白的容器，用户看到的是"这里好像
+  //   什么都没有"而不是"这里有诊断信息"，容易被完全忽略过去或者根本找不到
+  //   有实际内容的地方。现在退回到直接把整个debug对象序列化展示，保证标题
+  //   下面一定有实际内容，不会出现"有标题没内容"这种误导性的空壳。
+  return '<div style="background:var(--bg2);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:10px;color:var(--t3);font-family:monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-all">'
+    + '<div style="color:var(--gold);font-weight:700;margin-bottom:4px">🔍 诊断信息（帮助定位问题，不用去翻GitHub Actions日志）</div>'
+    + esc(JSON.stringify(debug, null, 2))
+    + '</div>';
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
