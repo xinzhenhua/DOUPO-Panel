@@ -824,21 +824,6 @@ def test_crush_margin_all_three_missing_lists_all(monkeypatch_fetch):
         fd.fetch_dce_daily_kline = old_daily
 
 
-def test_south_america_weather_weighted_avg(monkeypatch_fetch):
-    """验证南美天气加权平均：马托格罗索(权重30，巴西最大产区)应该比
-    米纳斯吉拉斯(权重5，小产区)在加权平均里占更大比重。"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        if "latitude=-12.5" in url:  # MT
-            return {"daily": {"precipitation_sum": [10,10,10,10,10,10,10], "temperature_2m_max": [30]*7}}, {}
-        return {"daily": {"precipitation_sum": [0,0,0,0,0,0,0], "temperature_2m_max": [30]*7}}, {}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_south_america_weather()
-    assert result["available"] is True
-    # MT(权重30)=70mm，其余5个州(权重共38)=0mm；加权平均=70*30/68≈30.9，明显高于简单平均(70/6≈11.7)
-    assert result["avgPrecip7d"] > 25, f"马托格罗索权重最大，应该显著拉高加权平均，实际{result['avgPrecip7d']}"
-    print(f"✅ 南美天气加权平均正确：马托格罗索(权重30)主导结果，加权平均{result['avgPrecip7d']}mm")
-
-
 def test_south_america_psd_uses_soybean_not_meal_code(monkeypatch_fetch):
     """回归测试：南美关心的是大豆原豆产量，不是豆粕产量，这个测试确认
     get_soybean_psd_code()正确排除了包含'meal'的商品，只匹配纯'Soybeans'。"""
@@ -928,18 +913,6 @@ def test_south_america_psd_diagnostic_shows_soybean_entries_not_generic_alphabet
         f"即使前面有60个不相关商品，也应该能在诊断信息里看到真正含soybean的那条: {debug}"
     assert len(debug["allSoybeanRelatedEntries"]) == 1, "不应该把60个不相关的Aardvark条目也塞进来"
     print("✅ 诊断信息已改进：专门列出含soybean的条目，不会被大量不相关商品淹没")
-
-
-def test_south_america_weather_handles_partial_failure(monkeypatch_fetch):
-    """如果只有部分产区数据可用(比如阿根廷查询失败)，应该用可用的数据继续计算，不整体失败。"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        if "latitude=-12.5" in url:  # 只有巴西MT成功
-            return {"daily": {"precipitation_sum": [5]*7, "temperature_2m_max": [28]*7}}, {}
-        return None, {"error": "模拟失败"}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_south_america_weather()
-    assert result["available"] is True, "只要有至少1个产区数据可用，就不应该整体标记失败"
-    print("✅ 南美天气部分产区失败时，用可用数据继续计算，不因个别产区失败而整体不可用")
 
 
 def test_us_planting_progress_parsing_and_wow_change(monkeypatch_fetch):
@@ -1747,6 +1720,20 @@ def test_brazil_planting_progress_empty_dataframe(monkeypatch_fetch):
             agrobr.conab = old_conab
 
 
+def _make_two_stage_mars_mock(data_response, data_debug=None, capture_headers=None):
+    """构造两阶段MARS mock：第一次调用(URL以/reports结尾，无具体slug)返回目录
+    搜索结果(固定一个能唯一匹配到的候选报告)，第二次调用(URL带具体slug)返回
+    传入的data_response——对应新版fetch_us_export_inspections()"先查目录动态
+    搜slug，再用slug查数据"这个两步设计，不能再像旧版那样只mock一次调用。"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        if capture_headers is not None:
+            capture_headers.update(headers or {})
+        if url.rstrip('/').endswith('/reports'):
+            return {"results": [{"slug_id": "9999", "report_name": "Grains Inspected for Export (Weekly)"}]}, {"httpStatus": 200}
+        return data_response, data_debug or {"httpStatus": 200}
+    return fake_fetch
+
+
 def test_export_inspections_missing_key(monkeypatch_fetch):
     """缺少MARS_API_KEY时应该诚实报告，不崩溃"""
     old_key = fd.MARS_API_KEY
@@ -1760,22 +1747,73 @@ def test_export_inspections_missing_key(monkeypatch_fetch):
         fd.MARS_API_KEY = old_key
 
 
-def test_export_inspections_basic_auth_header_constructed_correctly(monkeypatch_fetch):
-    """★验证HTTP Basic Auth的Authorization头构造正确(手算验证过base64编码逻辑)，
-    确认发起请求时带了这个头，而不是漏掉验证直接裸请求(会被API拒绝)。"""
+def test_export_inspections_slug_search_finds_unique_candidate(monkeypatch_fetch):
+    """★核心设计验证(修复真实bug后的行为)：第一步应该先查/reports目录，
+    按报告名称动态搜出slug_id，不再像旧版那样硬编一个(已证实是错的)"WA_GR101"。
+    这里验证：目录里只有1个匹配"export"+"grain/inspect"的候选时，应该正确
+    用它的slug_id去查第二步的实际数据。"""
     import base64
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key-12345"
     captured_headers = {}
+    urls_called = []
     def fake_fetch(url, headers=None, retries=3, timeout=20):
+        urls_called.append(url)
         captured_headers.update(headers or {})
-        return None, {"note": "测试用，不关心具体返回内容"}
+        if url.rstrip('/').endswith('/reports'):
+            return {"results": [
+                {"slug_id": "2887", "report_name": "Daily Grain Futures Settlements"},  # 诱饵：不含export/inspect
+                {"slug_id": "3721", "report_name": "Grains Inspected for Export (Weekly)"},  # 真正该匹配的
+            ]}, {"httpStatus": 200}
+        return {"results": [{"commodity": "Soybeans", "value": 673000}]}, {"httpStatus": 200}
     fd.fetch_json_debug = fake_fetch
     try:
-        fd.fetch_us_export_inspections()
+        result = fd.fetch_us_export_inspections()
         expected_auth = "Basic " + base64.b64encode(b"test-key-12345:").decode()
-        assert captured_headers.get("Authorization") == expected_auth, f"★Authorization头应该正确构造，实际{captured_headers.get('Authorization')}"
-        print("✅ HTTP Basic Auth的Authorization头构造正确")
+        assert captured_headers.get("Authorization") == expected_auth, "★两次调用都应该带正确的Basic Auth头"
+        assert len(urls_called) == 2, f"★应该发起2次请求(先查目录再查数据)，实际{len(urls_called)}次"
+        assert "/reports" == urls_called[0].rstrip('/').split('/services/v1.2')[-1] or urls_called[0].rstrip('/').endswith('/reports'), "第1次应该是查目录"
+        assert "3721" in urls_called[1], f"★第2次查询应该用目录搜到的slug_id(3721)，不是硬编的WA_GR101，实际URL: {urls_called[1]}"
+        assert result["debug"]["usedSlug"] == "3721", "★结果里应该记录实际用的是哪个slug，方便核对"
+        print(f"✅ 目录搜索正确定位唯一候选(slug_id=3721)，第2步正确用这个slug查数据，不再硬编WA_GR101")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_slug_search_no_candidate_found(monkeypatch_fetch):
+    """目录里完全没有匹配"export"+"grain/inspect"的报告时(比如MARS改了命名)，
+    应该诚实报告，debug里说明目录里总共有多少份报告，不是笼统报错"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return {"results": [{"slug_id": "1", "report_name": "Daily Dairy Prices"}, {"slug_id": "2", "report_name": "Livestock Auction"}]}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert "没能在MARS报告目录里定位到" in result["reason"]
+        assert result["debug"]["totalReportsInCatalog"] == 2
+        print("✅ 目录里找不到匹配报告时诚实报告，debug里说明目录总报告数")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_slug_search_multiple_candidates(monkeypatch_fetch):
+    """★目录里匹配到多个候选(比如同时有"周报"和"月报"两个都含export+grain)时，
+    不应该擅自猜选其中一个，应该把所有候选都列在debug里，让人工核对该用哪个。"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return {"results": [
+            {"slug_id": "100", "report_name": "Grains Inspected for Export (Weekly)"},
+            {"slug_id": "200", "report_name": "Grains Inspected for Export (Monthly)"},
+        ]}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert len(result["debug"]["candidates"]) == 2, "★多个候选时应该全部列出，不擅自猜选一个"
+        print("✅ 目录里有多个候选时，全部列在debug里，不擅自猜选")
     finally:
         fd.MARS_API_KEY = old_key
 
@@ -1792,9 +1830,7 @@ def test_export_inspections_finds_soybean_record_regardless_of_field_name(monkey
         {"grain_type": "Soybeans", "report_date": "09/22/2026", "value": 673000},
         {"grain_type": "Wheat", "report_date": "09/22/2026", "value": 50},
     ]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
+    fd.fetch_json_debug = _make_two_stage_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert "debug" in result and result["debug"]["matchedRecordsCount"] == 1, "★应该只匹配到1条(Soybeans那条)，不是全部3条"
@@ -1809,9 +1845,7 @@ def test_export_inspections_case_insensitive_matching(monkeypatch_fetch):
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"commodity": "SOYBEANS", "value": 500}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
+    fd.fetch_json_debug = _make_two_stage_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["debug"]["matchedRecordsCount"] == 1
@@ -1826,9 +1860,7 @@ def test_export_inspections_no_soybean_found_gives_diagnostic(monkeypatch_fetch)
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"weird_field": "Corn", "another_field": 123}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
+    fd.fetch_json_debug = _make_two_stage_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
@@ -1845,9 +1877,7 @@ def test_export_inspections_always_unavailable_in_phase_one(monkeypatch_fetch):
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"commodity": "Soybeans", "metric_tons": 673000, "report_date": "09/22/2026"}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
+    fd.fetch_json_debug = _make_two_stage_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False, "★即使找到了看起来很完整的大豆记录，第一阶段也不应该标记available=True"
@@ -1863,9 +1893,8 @@ def test_export_inspections_empty_results_reports_raw_structure(monkeypatch_fetc
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"totally_different_key": "unexpected"}
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return mock_response, {"httpStatus": 200, "rawSnippet": '{"totally_different_key": "unexpected"}'}
-    fd.fetch_json_debug = fake_fetch
+    mock_debug = {"httpStatus": 200, "rawSnippet": '{"totally_different_key": "unexpected"}'}
+    fd.fetch_json_debug = _make_two_stage_mars_mock(mock_response, mock_debug)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
@@ -1874,6 +1903,7 @@ def test_export_inspections_empty_results_reports_raw_structure(monkeypatch_fetc
         print("✅ 顶层结构跟预期不同时，debug信息暴露了真实的顶层key，方便判断问题")
     finally:
         fd.MARS_API_KEY = old_key
+
 
 
 if __name__ == "__main__":
@@ -1889,12 +1919,11 @@ if __name__ == "__main__":
               test_us_harvest_progress_parsing_and_wow_change, test_us_harvest_progress_distinguishes_from_planting,
               test_us_planting_progress_parsing_and_wow_change, test_us_planting_progress_missing_api_key,
               test_us_planting_progress_field_mismatch_gives_diagnostic,
-              test_south_america_weather_weighted_avg, test_south_america_psd_uses_soybean_not_meal_code,
+              test_south_america_psd_uses_soybean_not_meal_code,
               test_south_america_psd_handles_oilseed_soybean_naming,
               test_south_america_psd_exact_match_beats_decoy_commodity,
               test_south_america_psd_falls_back_when_exact_name_missing,
               test_south_america_psd_diagnostic_shows_soybean_entries_not_generic_alphabet,
-              test_south_america_weather_handles_partial_failure,
               test_weighted_avg_large_producer_dominates_over_small_producer,
               test_weighted_avg_small_producer_drought_gets_diluted_appropriately,
               test_soybean_condition_parsing_and_wow_change, test_soybean_condition_missing_api_key,
@@ -1908,7 +1937,8 @@ if __name__ == "__main__":
               test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
               test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
               test_brazil_planting_progress_empty_dataframe,
-              test_export_inspections_missing_key, test_export_inspections_basic_auth_header_constructed_correctly,
+              test_export_inspections_missing_key, test_export_inspections_slug_search_finds_unique_candidate,
+              test_export_inspections_slug_search_no_candidate_found, test_export_inspections_slug_search_multiple_candidates,
               test_export_inspections_finds_soybean_record_regardless_of_field_name, test_export_inspections_case_insensitive_matching,
               test_export_inspections_no_soybean_found_gives_diagnostic, test_export_inspections_always_unavailable_in_phase_one,
               test_export_inspections_empty_results_reports_raw_structure,

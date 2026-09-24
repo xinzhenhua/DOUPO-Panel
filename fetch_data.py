@@ -1006,6 +1006,7 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
     }
 
 
+
 # ---------------------------------------------------------------------------
 # 美国大豆出口检验(Export Inspections)：用USDA/AMS的MyMarketNews(MARS)API。
 # 衡量的是"实际离境的货物"(海关查验放行量)，跟出口销售(ESR，衡量"签了多少合同")
@@ -1015,37 +1016,79 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 #   推算另一个指标(到港预报)"这个做法，不是说出口检验这个原始数据源本身有问题。
 #   这次是直接展示原始检验量本身，不做二次推算，值得重新尝试。
 #
-# ★诚实说明这次验证的局限：本项目没法在开发环境里用真实API key实测这个接口——
-#   申请key需要真人邮箱走E-Auth验证流程，不是能在这个沙盒里代劳的事。下面的
-#   实现分两个阶段：第一阶段只负责"诚实地找出疑似的大豆记录、把真实字段结构
-#   暴露在debug信息里"，暂不尝试解析出具体数值(因为字段名没有实测确认过，
-#   宁可暂不展示数字，也不展示一个可能算错的数字)。等GitHub Actions第一次
-#   真实运行后，从debug信息里能看到MARS API对这份报告实际返回的字段名，
-#   到时候再补一版精确解析。
+# ★真实运行暴露的bug(第一版硬编码"WA_GR101"这个slug，已修复)：GitHub Actions
+#   真实跑起来后，MARS API直接返回"Slug Id is invalid"——之前这个代码是从第三方
+#   新闻博客"based on the WA_GR101 file"这句话反推出来的，实测证明是错的(大概率
+#   是旧版内部文件命名，不是MARS API v1.2真正用的slug_id，官方文档说slug_id是
+#   MARS系统自己生成的，例子都是纯数字)。改成更稳健的两步设计：第一步查
+#   /reports目录、按报告名称动态搜出真正的slug_id(不猜、不硬编)，第二步才用
+#   这个搜到的slug_id去查实际数据——这样即使以后MARS那边调整了具体的slug编号，
+#   也不会重蹈"硬编一个可能过期/错误的代码"这个坑。
 MARS_API_BASE = "https://marsapi.ams.usda.gov/services/v1.2"
 
 
+def _mars_auth_headers():
+    auth_str = base64.b64encode(f"{MARS_API_KEY}:".encode()).decode()
+    return {"Authorization": f"Basic {auth_str}"}
+
+
+def _find_export_inspections_slug():
+    """查MARS的/reports目录(所有已发布报告的清单)，按报告名称动态搜出
+    "Grains Inspected for Export"这份周报对应的真正slug_id——不猜、不硬编，
+    因为已经证实硬编的"WA_GR101"是错的。返回(slug_id或None, debug信息)。"""
+    url = f"{MARS_API_BASE}/reports"
+    data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
+    if data is None:
+        return None, {"stage": "目录查询失败", "fetchDebug": debug}
+
+    all_reports = data.get("results") if isinstance(data, dict) else (data if isinstance(data, list) else None)
+    if not all_reports:
+        return None, {"stage": "目录返回数据结构跟预期不同", "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data))}
+
+    # 报告名称里同时含"export"和("grain"或"inspect")才算候选，避免"Export"这个
+    # 太常见的词匹配到一堆不相关的报告(奶制品出口、家畜出口等)。
+    candidates = []
+    for r in all_reports:
+        if not isinstance(r, dict):
+            continue
+        name = str(r.get("report_name") or r.get("slug_name") or "").lower()
+        if "export" in name and ("grain" in name or "inspect" in name):
+            candidates.append(r)
+
+    if len(candidates) == 1:
+        slug = candidates[0].get("slug_id") or candidates[0].get("slug_name")
+        return slug, {"stage": "目录搜索成功", "matchedReport": candidates[0]}
+    if len(candidates) == 0:
+        return None, {"stage": "目录里没有找到匹配'export'+'grain/inspect'的报告", "totalReportsInCatalog": len(all_reports)}
+    # 多于1个候选：全部列出来，不擅自猜选哪个，让实际运行后的debug信息帮助判断该用哪个
+    return None, {"stage": "目录里匹配到多个候选报告，无法自动确定唯一slug", "candidates": candidates}
+
+
 def fetch_us_export_inspections():
-    """查询USDA/AMS每周谷物出口检验报告(WA_GR101，多个独立信息源交叉确认过
-    这个报告代码)，尝试定位大豆相关的记录。当前处于"第一阶段"：只探测、不解析
-    具体数值，见上方注释。"""
+    """查询USDA/AMS每周谷物出口检验报告，尝试定位大豆相关的记录。
+    第一步动态搜出正确的slug_id(见_find_export_inspections_slug)，第二步用这个
+    slug查真实数据。当前仍处于"探测阶段"：找到疑似大豆记录后只暴露真实字段结构
+    在debug里，暂不解析具体数值(字段名没有实测确认过，宁可暂不展示数字，也不
+    展示一个可能读错字段、算错的数字)。"""
     if not MARS_API_KEY:
         return {"available": False, "reason": "缺少 MARS_API_KEY"}
 
-    auth_str = base64.b64encode(f"{MARS_API_KEY}:".encode()).decode()
-    headers = {"Authorization": f"Basic {auth_str}"}
-    url = f"{MARS_API_BASE}/reports/WA_GR101"
-    data, debug = fetch_json_debug(url, headers=headers)
+    slug, slug_debug = _find_export_inspections_slug()
+    if not slug:
+        return {"available": False, "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id", "debug": slug_debug}
+
+    url = f"{MARS_API_BASE}/reports/{slug}"
+    data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
 
     if data is None:
-        return {"available": False, "reason": "MARS接口无返回数据", "debug": debug}
+        return {"available": False, "reason": f"用搜到的slug({slug})查询数据时无返回", "debug": {"slugSearchDebug": slug_debug, "dataFetchDebug": debug}}
 
     results = data.get("results") if isinstance(data, dict) else None
     if not results:
         return {
             "available": False,
             "reason": "返回数据里没有results字段或为空(可能是API结构跟预期不同)",
-            "debug": {"rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data)), "rawSnippet": debug.get("rawSnippet")},
+            "debug": {"usedSlug": slug, "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data)), "rawSnippet": debug.get("rawSnippet")},
         }
 
     # 扫描所有记录，找出任意字段的值里包含"soybean"字样(不分大小写)的记录——
@@ -1063,7 +1106,7 @@ def fetch_us_export_inspections():
         return {
             "available": False,
             "reason": "在返回记录里没能自动定位到大豆相关的行(字段名可能跟预期不同)",
-            "debug": {"totalRecords": len(results), "firstRecordSample": results[0], "allKeysSeen": list(results[0].keys()) if results else []},
+            "debug": {"usedSlug": slug, "totalRecords": len(results), "firstRecordSample": results[0], "allKeysSeen": list(results[0].keys()) if results else []},
         }
 
     # ★第一阶段先到这里为止：找到了疑似记录，但数值字段名(是叫quantity/metric_tons/
@@ -1072,7 +1115,7 @@ def fetch_us_export_inspections():
     return {
         "available": False,
         "reason": "找到疑似大豆记录，但具体数值字段名尚未实测确认，暂不展示数字(第一阶段：仅探测结构)",
-        "debug": {"matchedRecordsCount": len(soybean_records), "latestSoybeanRecordSample": soybean_records[0]},
+        "debug": {"usedSlug": slug, "matchedRecordsCount": len(soybean_records), "latestSoybeanRecordSample": soybean_records[0]},
     }
 
 
@@ -1570,63 +1613,13 @@ ARGENTINA_LOCATIONS = {
 }
 ARGENTINA_STATE_WEIGHTS = {k: 1 for k in ARGENTINA_LOCATIONS}  # 权重相等，见上方说明
 
-SOUTH_AMERICA_LOCATIONS = {**BRAZIL_LOCATIONS, **ARGENTINA_LOCATIONS}
-SOUTH_AMERICA_WEIGHTS = {**BRAZIL_STATE_WEIGHTS, **ARGENTINA_STATE_WEIGHTS}
-
-
-def fetch_south_america_weather():
-    """南美(巴西+阿根廷)产区天气监测，用Open-Meteo(全球性API，跟美国那边用的是同一个服务)。
-    南美是南半球，生长季节跟北美相反：南美播种期约9-12月，收获期约1-6月(集中在2-4月)。"""
-    results = {}
-    debugs = {}
-    for code, loc in SOUTH_AMERICA_LOCATIONS.items():
-        url = (
-            f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}"
-            f"&daily=precipitation_sum,temperature_2m_max&forecast_days=7&timezone=America%2FSao_Paulo"
-        )
-        data, debug = fetch_json_debug(url)
-        debugs[code] = debug
-        if not data or "daily" not in data:
-            results[code] = {"available": False}
-            continue
-        precip_list = data["daily"].get("precipitation_sum") or []
-        temp_list = data["daily"].get("temperature_2m_max") or []
-        precip7d = round(sum(v for v in precip_list if v is not None), 1)
-        valid_temps = [v for v in temp_list if v is not None]
-        avg_temp = round(sum(valid_temps) / len(valid_temps), 1) if valid_temps else None
-        results[code] = {
-            "available": True,
-            "nameCn": loc["name_cn"],
-            "country": "BR" if code in BRAZIL_LOCATIONS else "AR",
-            "precip7d": precip7d,
-            "avgMaxTemp": avg_temp,
-        }
-
-    available = {k: v for k, v in results.items() if v.get("available")}
-    if not available:
-        return {"available": False, "reason": "南美天气接口未返回任何产区数据", "debug": debugs}
-
-    precip_weighted = weighted_avg_custom({k: v["precip7d"] for k, v in available.items()}, SOUTH_AMERICA_WEIGHTS)
-    temp_valid = {k: v["avgMaxTemp"] for k, v in available.items() if v["avgMaxTemp"] is not None}
-    temp_weighted = weighted_avg_custom(temp_valid, SOUTH_AMERICA_WEIGHTS) if temp_valid else None
-
-    return {
-        "available": True,
-        "byRegion": results,
-        "avgPrecip7d": precip_weighted,
-        "avgMaxTemp": temp_weighted,
-        "source": "Open-Meteo（全球性天气API），按巴西州产量占比+阿根廷4省等权重加权",
-        "note": "南半球生长季与北半球相反：播种约9-12月，收获集中在2-4月",
-    }
-
-
-def weighted_avg_custom(values, weights):
-    """跟weighted_avg()逻辑一样，但权重表可以自定义传入(南美用的是单独的权重表，不是STATE_ACREAGE_WEIGHTS)。"""
-    total_weight = sum(weights.get(k, 0) for k in values)
-    if total_weight == 0:
-        return round(sum(values.values()) / len(values), 1) if values else 0
-    weighted_sum = sum(v * weights.get(k, 0) for k, v in values.items())
-    return round(weighted_sum / total_weight, 1)
+# ★已移除fetch_south_america_weather()：实测发现前端loadSaWeather()是完全独立的
+#   异步函式，直接在浏览器里重新打了一遍Open-Meteo API(同样10个地点、同样权重)，
+#   根本没有读取这里算出来的southAmericaWeather数据——后端这份完全是重复劳动，
+#   白白消耗GitHub Actions执行时间和data/latest.json的文件大小，删掉不影响任何
+#   前端功能。SOUTH_AMERICA_LOCATIONS/SOUTH_AMERICA_WEIGHTS/weighted_avg_custom
+#   这三个只服务于这个被移除的函数，一并删除；BRAZIL_LOCATIONS/ARGENTINA_LOCATIONS
+#   这些底层常量保留，因为fetch_south_america_psd()等其他函数还在用。
 
 
 def fetch_south_america_psd():
@@ -2169,7 +2162,6 @@ def main():
         "dceM09PositionRank": position_ranks[sep_code],
         "dceM05PositionRank": position_ranks[may_code],
         "dceM01PositionRank": position_ranks[jan_code],
-        "southAmericaWeather": fetch_south_america_weather(),
         "southAmericaPsd": fetch_south_america_psd() if USDA_API_KEY else no_usda_key,
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,

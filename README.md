@@ -1188,25 +1188,37 @@ GitHub Actions workflow新增了`pip install agrobr pandas`这一步来装这个
 值得重新尝试。
 
 **数据源**：USDA/AMS的MyMarketNews(MARS)API——`https://marsapi.ams.usda.gov/services/v1.2`，
-免费、有官方文档(HTTP Basic Auth，API key当用户名、密码留空)，报告代码`WA_GR101`
-(多个独立信息源交叉确认过)。这是继`USDA_API_KEY`(FAS，用于ESR/PSD)、
-`NASS_API_KEY`(Crop Progress)之后的**第三套USDA相关密钥**，需要单独在
-mymarketnews.ams.usda.gov注册申请，走E-Auth邮箱验证流程。
+免费、有官方文档(HTTP Basic Auth，API key当用户名、密码留空)。这是继`USDA_API_KEY`
+(FAS，用于ESR/PSD)、`NASS_API_KEY`(Crop Progress)之后的**第三套USDA相关密钥**，
+需要单独在mymarketnews.ams.usda.gov注册申请，走E-Auth邮箱验证流程。
 
 **诚实说明这次为什么分两阶段**：本项目没法在开发环境里用真实API key实测这个
 接口——申请key需要真人邮箱验证，不是能在沙盒里代劳的事，也没有像`agrobr`那样
 能读到的开源代码可以确认字段结构。所以`fetch_us_export_inspections()`目前
-只做"探测"：请求`WA_GR101`报告后，扫描所有返回记录，只要**任意字段的值**里
-包含"soybean"字样(不区分大小写、不预设字段名)就判定为疑似大豆记录，但**不去
-解析具体的数值字段**(是叫`metric_tons`还是`quantity`还是别的，没有把握)，
-`available`目前恒为`False`，reason里写明"找到疑似记录，但数值字段名尚未实测
-确认"，同时把匹配到的完整记录样本放进`debug`字段里。
+只做"探测"：扫描所有返回记录，只要**任意字段的值**里包含"soybean"字样(不区分
+大小写、不预设字段名)就判定为疑似大豆记录，但**不去解析具体的数值字段**(是叫
+`metric_tons`还是`quantity`还是别的，没有把握)，`available`目前恒为`False`，
+reason里写明"找到疑似记录，但数值字段名尚未实测确认"，同时把匹配到的完整记录
+样本放进`debug`字段里。
 
-第二阶段：等GitHub Actions配置好`MARS_API_KEY`并真实运行一次后，`data/latest.json`
-里`exportInspections.debug.latestSoybeanRecordSample`会包含真实的字段结构，
-把这段内容反馈回来，就能照着真实结构补一版精确解析(数值提取+同比等)，并加上
-前端显示卡片——现在还没加前端UI，是因为没有必要为了展示"暂无数据"这个内部
-探测状态去占用界面空间，等真正能展示数字了再一起加。
+**真实运行暴露的bug(已修复)**：第一版硬编码了报告代码`WA_GR101`(从第三方新闻
+博客"based on the WA_GR101 file"这句话反推出来的)，GitHub Actions真实跑起来后，
+MARS API直接返回`{"message":"Slug Id is invalid"}`——这个代码本身就是错的，
+大概率是旧版内部文件命名，不是MARS API v1.2真正用的slug_id(官方文档说slug_id
+是MARS系统自己生成的，例子都是纯数字)。改成更稳健的两步设计：`_find_export_
+inspections_slug()`先查`/reports`目录(所有已发布报告的清单)，按报告名称动态
+搜出"Grains Inspected for Export"这份周报对应的真正slug_id(要求名称同时含
+"export"和"grain"/"inspect"，避免匹配到不相关的报告)，只有唯一候选时才使用，
+找到多个或零个候选都会诚实报告、把候选列表放进debug——第二步才用这个搜到的
+slug_id去查实际数据。这样即使以后MARS那边调整了具体的slug编号，也不会重蹈
+"硬编一个可能过期/错误的代码"这个坑。好消息是：这次的404错误证实了API key本身
+是有效的(是"代码无效"不是"认证失败")，说明密钥申请和配置都是对的。
+
+第二阶段：等下一次GitHub Actions运行、目录搜索成功定位到真正的slug后，
+`data/latest.json`里`exportInspections.debug.latestSoybeanRecordSample`会
+包含真实的字段结构，把这段内容反馈回来，就能照着真实结构补一版精确解析(数值
+提取+同比等)，并加上前端显示卡片——现在还没加前端UI，是因为没有必要为了展示
+"暂无数据"这个内部探测状态去占用界面空间，等真正能展示数字了再一起加。
 
 ## 国储进口大豆拍卖量(第10项手动指标)
 
@@ -1489,6 +1501,20 @@ T+1性质不变(收盘后才发布当天数据)，重试往前找最近交易日
 有3个测试文件(涉及评分审计)因为隐含依赖"脚本加载时默认是9月合约"这个旧假设，
 在9月运行时会得到不同结果——已经改成显式设置测试语境，不再受"今天实际是几月"
 影响。
+
+## 清理：移除完全冗余的南美天气后端函数
+
+用户拿真实运行的`data/latest.json`让核对"还有哪些字段没在前端显示"，逐一比对
+后发现`southAmericaWeather`这个字段虽然后端认真算了(10个产区、加权平均)，
+但前端根本没读取它——`loadSaWeather()`是个完全独立的异步函数，直接在浏览器里
+重新调用了一遍Open-Meteo API(一模一样的10个地点、一模一样的权重)。后端这份
+纯粹是重复劳动，白白消耗GitHub Actions执行时间和`data/latest.json`文件大小，
+删掉`fetch_south_america_weather()`(以及只服务于它的`SOUTH_AMERICA_LOCATIONS`/
+`SOUTH_AMERICA_WEIGHTS`/`weighted_avg_custom`)不影响任何前端功能。
+
+同一次核对里还确认了`dceM09PositionRank`等持仓排名字段"看起来没被引用"是误报——
+前端用的是动态拼接的key名(`data['dce'+prefix+'PositionRank']`)，不是写死的
+字面量，简单grep搜不到但实际有在用。
 
 ## 关于合并进现有交易系统
 
