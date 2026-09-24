@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-24T05:08:39.843174+00:00",
+  "generatedAt": "2026-09-24T05:42:56.425764+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 371.9,
-    "change": 1.6,
-    "changePct": 0.43,
+    "price": 372.4,
+    "change": 2.1,
+    "changePct": 0.57,
     "asOf": "2026-09-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -77,8 +77,95 @@
     "available": false,
     "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id",
     "debug": {
-      "stage": "目录里没有找到匹配'export'+'grain/inspect'的报告",
-      "totalReportsInCatalog": 1051
+      "stage": "连只含'grain'这个词的报告都一个没找到，可能是report_name字段名或数据结构跟预期不同",
+      "totalReportsInCatalog": 1051,
+      "sampleReportEntries": [
+        {
+          "slug_id": "1034",
+          "slug_name": "AMS_1034",
+          "report_title": "Dry Whey - Europe",
+          "report_date": "09/07/2026",
+          "published_date": "09/10/2026 09:23:34",
+          "report_status": "Final",
+          "markets": [],
+          "market_types": [
+            "Point of Sale - Dairy"
+          ],
+          "offices": [
+            "Madison"
+          ],
+          "hasCorrectionsInLastThreeDays": false,
+          "sectionNames": []
+        },
+        {
+          "slug_id": "1035",
+          "slug_name": "AMS_1035",
+          "report_title": "Skim Milk Powder - Europe",
+          "report_date": "09/07/2026",
+          "published_date": "09/10/2026 09:23:28",
+          "report_status": "Final",
+          "markets": [],
+          "market_types": [
+            "Point of Sale - Dairy"
+          ],
+          "offices": [
+            "Madison"
+          ],
+          "hasCorrectionsInLastThreeDays": false,
+          "sectionNames": []
+        },
+        {
+          "slug_id": "1036",
+          "slug_name": "AMS_1036",
+          "report_title": "Whole Milk Powder - Europe",
+          "report_date": "09/07/2026",
+          "published_date": "09/10/2026 09:23:32",
+          "report_status": "Final",
+          "markets": [],
+          "market_types": [
+            "Point of Sale - Dairy"
+          ],
+          "offices": [
+            "Madison"
+          ],
+          "hasCorrectionsInLastThreeDays": false,
+          "sectionNames": []
+        },
+        {
+          "slug_id": "1038",
+          "slug_name": "AMS_1038",
+          "report_title": "Skim Milk Powder - Oceania",
+          "report_date": "09/07/2026",
+          "published_date": "09/10/2026 08:53:13",
+          "report_status": "Final",
+          "markets": [],
+          "market_types": [
+            "Point of Sale - Dairy"
+          ],
+          "offices": [
+            "Madison"
+          ],
+          "hasCorrectionsInLastThreeDays": false,
+          "sectionNames": []
+        },
+        {
+          "slug_id": "1039",
+          "slug_name": "AMS_1039",
+          "report_title": "Whole Milk Powder - Oceania",
+          "report_date": "09/07/2026",
+          "published_date": "09/10/2026 08:49:22",
+          "report_status": "Final",
+          "markets": [],
+          "market_types": [
+            "Point of Sale - Dairy"
+          ],
+          "offices": [
+            "Madison"
+          ],
+          "hasCorrectionsInLastThreeDays": false,
+          "sectionNames": []
+        }
+      ]
     }
   },
   "droughtMonitor": {
@@ -8488,11 +8575,11 @@
       {
         "datetime": "2026-09-24 14:15:00",
         "open": 3022.0,
-        "high": 3025.0,
+        "high": 3030.0,
         "low": 3022.0,
-        "close": 3023.0,
-        "volume": 2.0,
-        "hold": 855325.0
+        "close": 3024.0,
+        "volume": 5.0,
+        "hold": 858073.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11794,11 +11881,11 @@
       {
         "datetime": "2026-09-24 14:15:00",
         "open": 3419.0,
-        "high": 3422.0,
+        "high": 3425.0,
         "low": 3417.0,
-        "close": 3417.0,
-        "volume": 73.0,
-        "hold": 2698705.0
+        "close": 3423.0,
+        "volume": 15809.0,
+        "hold": 2697612.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
