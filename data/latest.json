@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-24T06:08:36.875642+00:00",
+  "generatedAt": "2026-09-24T07:06:52.270922+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 371.5,
-    "change": 1.2,
-    "changePct": 0.32,
+    "price": 373.2,
+    "change": 2.9,
+    "changePct": 0.78,
     "asOf": "2026-09-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -75,97 +75,162 @@
   },
   "exportInspections": {
     "available": false,
-    "reason": "已确认的slug失效，退回目录搜索也没能定位到",
+    "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id",
     "debug": {
-      "stage": "连只含'grain'这个词的报告都一个没找到，可能是report_name字段名或数据结构跟预期不同",
-      "totalReportsInCatalog": 1051,
-      "sampleReportEntries": [
+      "stage": "严格条件(export+grain/inspect)一个都没匹配到，退回到只筛'grain'这一个词的候选列表(未自动选择，需人工核对)",
+      "grainRelatedReports": [
         {
-          "slug_id": "1034",
-          "slug_name": "AMS_1034",
-          "report_title": "Dry Whey - Europe",
-          "report_date": "09/07/2026",
-          "published_date": "09/10/2026 09:23:34",
-          "report_status": "Final",
-          "markets": [],
-          "market_types": [
-            "Point of Sale - Dairy"
-          ],
-          "offices": [
-            "Madison"
-          ],
-          "hasCorrectionsInLastThreeDays": false,
-          "sectionNames": []
+          "report_title": "Texas Daily Grain Bids",
+          "slug_id": "2711",
+          "slug_name": "AMS_2711"
         },
         {
-          "slug_id": "1035",
-          "slug_name": "AMS_1035",
-          "report_title": "Skim Milk Powder - Europe",
-          "report_date": "09/07/2026",
-          "published_date": "09/10/2026 09:23:28",
-          "report_status": "Final",
-          "markets": [],
-          "market_types": [
-            "Point of Sale - Dairy"
-          ],
-          "offices": [
-            "Madison"
-          ],
-          "hasCorrectionsInLastThreeDays": false,
-          "sectionNames": []
+          "report_title": "Maryland Grain Bids",
+          "slug_id": "2714",
+          "slug_name": "AMS_2714"
         },
         {
-          "slug_id": "1036",
-          "slug_name": "AMS_1036",
-          "report_title": "Whole Milk Powder - Europe",
-          "report_date": "09/07/2026",
-          "published_date": "09/10/2026 09:23:32",
-          "report_status": "Final",
-          "markets": [],
-          "market_types": [
-            "Point of Sale - Dairy"
-          ],
-          "offices": [
-            "Madison"
-          ],
-          "hasCorrectionsInLastThreeDays": false,
-          "sectionNames": []
+          "report_title": "Montana Daily Elevator Grain Bids",
+          "slug_id": "2771",
+          "slug_name": "AMS_2771"
         },
         {
-          "slug_id": "1038",
-          "slug_name": "AMS_1038",
-          "report_title": "Skim Milk Powder - Oceania",
-          "report_date": "09/07/2026",
-          "published_date": "09/10/2026 08:53:13",
-          "report_status": "Final",
-          "markets": [],
-          "market_types": [
-            "Point of Sale - Dairy"
-          ],
-          "offices": [
-            "Madison"
-          ],
-          "hasCorrectionsInLastThreeDays": false,
-          "sectionNames": []
+          "report_title": "South Carolina Daily Grain Bids",
+          "slug_id": "2787",
+          "slug_name": "AMS_2787"
         },
         {
-          "slug_id": "1039",
-          "slug_name": "AMS_1039",
-          "report_title": "Whole Milk Powder - Oceania",
-          "report_date": "09/07/2026",
-          "published_date": "09/10/2026 08:49:22",
-          "report_status": "Final",
-          "markets": [],
-          "market_types": [
-            "Point of Sale - Dairy"
-          ],
-          "offices": [
-            "Madison"
-          ],
-          "hasCorrectionsInLastThreeDays": false,
-          "sectionNames": []
+          "report_title": "Iowa Daily Cash Grain Bids",
+          "slug_id": "2850",
+          "slug_name": "AMS_2850"
+        },
+        {
+          "report_title": "Ohio Daily Grain Bids",
+          "slug_id": "2851",
+          "slug_name": "AMS_2851"
+        },
+        {
+          "report_title": "Kansas Daily Grain Bids",
+          "slug_id": "2886",
+          "slug_name": "AMS_2886"
+        },
+        {
+          "report_title": "Kentucky Daily Grain Bids",
+          "slug_id": "2892",
+          "slug_name": "AMS_2892"
+        },
+        {
+          "report_title": "Colorado Daily Grain Bids",
+          "slug_id": "2912",
+          "slug_name": "AMS_2912"
+        },
+        {
+          "report_title": "National Weekly Non-GMO/GE Grain Report",
+          "slug_id": "2920",
+          "slug_name": "AMS_2920"
+        },
+        {
+          "report_title": "Mississippi Daily Grain Bids",
+          "slug_id": "2928",
+          "slug_name": "AMS_2928"
+        },
+        {
+          "report_title": "Missouri Daily Grain Bids",
+          "slug_id": "2932",
+          "slug_name": "AMS_2932"
+        },
+        {
+          "report_title": "Arkansas Daily Grain Bids",
+          "slug_id": "2960",
+          "slug_name": "AMS_2960"
+        },
+        {
+          "report_title": "Iowa-Southern Minnesota Barge Terminal Grain Bids",
+          "slug_id": "3043",
+          "slug_name": "AMS_3043"
+        },
+        {
+          "report_title": "Minneapolis Daily Grain Report",
+          "slug_id": "3046",
+          "slug_name": "AMS_3046"
+        },
+        {
+          "report_title": "Southern Minnesota Daily Grain Bids",
+          "slug_id": "3049",
+          "slug_name": "AMS_3049"
+        },
+        {
+          "report_title": "Tennessee Daily Grain Bids",
+          "slug_id": "3088",
+          "slug_name": "AMS_3088"
+        },
+        {
+          "report_title": "Pennsylvania Grain Bids",
+          "slug_id": "3091",
+          "slug_name": "AMS_3091"
+        },
+        {
+          "report_title": "Oklahoma Daily Grain Bids",
+          "slug_id": "3100",
+          "slug_name": "AMS_3100"
+        },
+        {
+          "report_title": "California Grain Bids",
+          "slug_id": "3146",
+          "slug_name": "AMS_3146"
+        },
+        {
+          "report_title": "Portland Daily Grain Bids",
+          "slug_id": "3148",
+          "slug_name": "AMS_3148"
+        },
+        {
+          "report_title": "North Carolina Cash Grain Bids",
+          "slug_id": "3156",
+          "slug_name": "AMS_3156"
+        },
+        {
+          "report_title": "Virginia Daily Grain Bids",
+          "slug_id": "3167",
+          "slug_name": "AMS_3167"
+        },
+        {
+          "report_title": "South Dakota Daily Grain Bids",
+          "slug_id": "3186",
+          "slug_name": "AMS_3186"
+        },
+        {
+          "report_title": "Illinois Grain Bids",
+          "slug_id": "3192",
+          "slug_name": "AMS_3192"
+        },
+        {
+          "report_title": "Nebraska Daily Elevator Grain Bids",
+          "slug_id": "3225",
+          "slug_name": "AMS_3225"
+        },
+        {
+          "report_title": "Wyoming Daily Grain Bids",
+          "slug_id": "3239",
+          "slug_name": "AMS_3239"
+        },
+        {
+          "report_title": "Indiana Grain Bids",
+          "slug_id": "3463",
+          "slug_name": "AMS_3463"
+        },
+        {
+          "report_title": "National Grain and Oilseed Processor Feedstuff Report",
+          "slug_id": "3511",
+          "slug_name": "AMS_3511"
+        },
+        {
+          "report_title": "National Weekly Grain Co-Products Report",
+          "slug_id": "3618",
+          "slug_name": "AMS_3618"
         }
-      ]
+      ],
+      "grainRelatedTotalCount": 33
     }
   },
   "droughtMonitor": {
@@ -6962,15 +7027,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-13 15:00:00",
-        "open": 2853.0,
-        "high": 2854.0,
-        "low": 2846.0,
-        "close": 2847.0,
-        "volume": 167.0,
-        "hold": 672004.0
-      },
-      {
         "datetime": "2026-08-13 22:00:00",
         "open": 2845.0,
         "high": 2847.0,
@@ -8577,9 +8633,18 @@
         "open": 3022.0,
         "high": 3030.0,
         "low": 3019.0,
-        "close": 3021.0,
-        "volume": 10.0,
-        "hold": 857352.0
+        "close": 3020.0,
+        "volume": 94.0,
+        "hold": 857131.0
+      },
+      {
+        "datetime": "2026-09-24 15:00:00",
+        "open": 3020.0,
+        "high": 3029.0,
+        "low": 3019.0,
+        "close": 3028.0,
+        "volume": 444.0,
+        "hold": 854081.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10268,15 +10333,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-13 15:00:00",
-        "open": 3159.0,
-        "high": 3159.0,
-        "low": 3151.0,
-        "close": 3152.0,
-        "volume": 1240.0,
-        "hold": 2287333.0
-      },
-      {
         "datetime": "2026-08-13 22:00:00",
         "open": 3147.0,
         "high": 3153.0,
@@ -11882,10 +11938,19 @@
         "datetime": "2026-09-24 14:15:00",
         "open": 3419.0,
         "high": 3425.0,
+        "low": 3410.0,
+        "close": 3414.0,
+        "volume": 2.0,
+        "hold": 2678108.0
+      },
+      {
+        "datetime": "2026-09-24 15:00:00",
+        "open": 3414.0,
+        "high": 3426.0,
         "low": 3413.0,
-        "close": 3417.0,
-        "volume": 26.0,
-        "hold": 2680209.0
+        "close": 3426.0,
+        "volume": 2140.0,
+        "hold": 2663156.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
