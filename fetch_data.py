@@ -1035,7 +1035,13 @@ def _mars_auth_headers():
 def _find_export_inspections_slug():
     """查MARS的/reports目录(所有已发布报告的清单)，按报告名称动态搜出
     "Grains Inspected for Export"这份周报对应的真正slug_id——不猜、不硬编，
-    因为已经证实硬编的"WA_GR101"是错的。返回(slug_id或None, debug信息)。"""
+    因为已经证实硬编的"WA_GR101"是错的。返回(slug_id或None, debug信息)。
+
+    ★实测过一轮后发现：严格条件(export+grain/inspect同时符合)一个都没匹配到，
+    但目录查询本身是成功的(1051份报告)——说明不是查询失败，是关键字假设跟
+    MARS实际的报告命名对不上。与其继续盲猜关键字组合，改成"严格条件找不到
+    就退回到单一关键字(grain)的宽松搜索，把真实候选的报告名+slug都摊在debug
+    里"，这样能直接看到MARS到底怎么命名这份报告，不用再猜第二次、第三次。"""
     url = f"{MARS_API_BASE}/reports"
     data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
     if data is None:
@@ -1045,23 +1051,53 @@ def _find_export_inspections_slug():
     if not all_reports:
         return None, {"stage": "目录返回数据结构跟预期不同", "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data))}
 
-    # 报告名称里同时含"export"和("grain"或"inspect")才算候选，避免"Export"这个
-    # 太常见的词匹配到一堆不相关的报告(奶制品出口、家畜出口等)。
-    candidates = []
+    def _name_of(r):
+        return str(r.get("report_name") or r.get("slug_name") or "")
+
+    # 第一步：严格条件(report_name里同时含"export"和"grain"或"inspect")
+    strict_candidates = []
     for r in all_reports:
         if not isinstance(r, dict):
             continue
-        name = str(r.get("report_name") or r.get("slug_name") or "").lower()
+        name = _name_of(r).lower()
         if "export" in name and ("grain" in name or "inspect" in name):
-            candidates.append(r)
+            strict_candidates.append(r)
 
-    if len(candidates) == 1:
-        slug = candidates[0].get("slug_id") or candidates[0].get("slug_name")
-        return slug, {"stage": "目录搜索成功", "matchedReport": candidates[0]}
-    if len(candidates) == 0:
-        return None, {"stage": "目录里没有找到匹配'export'+'grain/inspect'的报告", "totalReportsInCatalog": len(all_reports)}
-    # 多于1个候选：全部列出来，不擅自猜选哪个，让实际运行后的debug信息帮助判断该用哪个
-    return None, {"stage": "目录里匹配到多个候选报告，无法自动确定唯一slug", "candidates": candidates}
+    if len(strict_candidates) == 1:
+        slug = strict_candidates[0].get("slug_id") or strict_candidates[0].get("slug_name")
+        return slug, {"stage": "目录搜索成功(严格条件)", "matchedReport": strict_candidates[0]}
+    if len(strict_candidates) > 1:
+        # 多于1个候选：全部列出来，不擅自猜选哪个
+        return None, {
+            "stage": "目录里匹配到多个候选报告(严格条件)，无法自动确定唯一slug",
+            "candidates": strict_candidates,
+        }
+
+    # 第二步：严格条件0命中，退回到只筛"grain"这一个词，把真实候选摊出来看
+    # (最多列30条，避免debug信息过大——1051份报告里含"grain"的应该远少于这个数)
+    grain_candidates = []
+    for r in all_reports:
+        if not isinstance(r, dict):
+            continue
+        if "grain" in _name_of(r).lower():
+            grain_candidates.append({
+                "report_name": r.get("report_name"),
+                "slug_id": r.get("slug_id"),
+                "slug_name": r.get("slug_name"),
+            })
+    if grain_candidates:
+        return None, {
+            "stage": "严格条件(export+grain/inspect)一个都没匹配到，退回到只筛'grain'这一个词的候选列表(未自动选择，需人工核对)",
+            "grainRelatedReports": grain_candidates[:30],
+            "grainRelatedTotalCount": len(grain_candidates),
+        }
+
+    # 连"grain"都筛不到，说明可能连查询本身/字段名都有问题，给出最基本的诊断信息
+    return None, {
+        "stage": "连只含'grain'这个词的报告都一个没找到，可能是report_name字段名或数据结构跟预期不同",
+        "totalReportsInCatalog": len(all_reports),
+        "sampleReportEntries": all_reports[:5],
+    }
 
 
 def fetch_us_export_inspections():

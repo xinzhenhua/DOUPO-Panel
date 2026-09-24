@@ -1818,6 +1818,34 @@ def test_export_inspections_slug_search_multiple_candidates(monkeypatch_fetch):
         fd.MARS_API_KEY = old_key
 
 
+def test_export_inspections_slug_search_falls_back_to_grain_keyword(monkeypatch_fetch):
+    """★真实运行暴露的场景验证：严格条件(export+grain/inspect同时符合)一个都
+    没匹配到时(真实运行里确实发生过，1051份报告里严格条件0命中)，应该退回到
+    只筛"grain"这一个词的宽松搜索，把真实候选的报告名+slug摊在debug里，而不是
+    直接放弃报告"总报告数"这种不够具体的信息——这样能直接看到MARS到底怎么
+    命名这份报告，不用再盲猜第二次关键字组合。"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return {"results": [
+            {"slug_id": "1", "report_name": "Daily Dairy Prices"},  # 不含grain，不该出现在结果里
+            {"slug_id": "2", "report_name": "Weekly Grain Movement Summary"},  # 含grain，但不含export/inspect，严格条件筛不到
+            {"slug_id": "3", "report_name": "Grain Transportation Report"},  # 同样含grain，严格条件筛不到
+        ]}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert "退回到只筛'grain'" in result["debug"]["stage"]
+        assert result["debug"]["grainRelatedTotalCount"] == 2, "★应该找到2条含grain的候选(不含Daily Dairy Prices那条)"
+        names_found = [r["report_name"] for r in result["debug"]["grainRelatedReports"]]
+        assert "Weekly Grain Movement Summary" in names_found and "Grain Transportation Report" in names_found
+        assert "Daily Dairy Prices" not in names_found, "★不含grain的报告不应该混进候选列表"
+        print(f"✅ 严格条件筛不到时，正确退回到grain关键字宽松搜索，摊出{result['debug']['grainRelatedTotalCount']}条真实候选供核对")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
 def test_export_inspections_finds_soybean_record_regardless_of_field_name(monkeypatch_fetch):
     """★核心设计验证：不预设字段名叫commodity还是product，扫描所有字段的值，
     只要有任意一个字段的值包含"soybean"字样(不分大小写)就能定位到，这样即使
@@ -1939,6 +1967,7 @@ if __name__ == "__main__":
               test_brazil_planting_progress_empty_dataframe,
               test_export_inspections_missing_key, test_export_inspections_slug_search_finds_unique_candidate,
               test_export_inspections_slug_search_no_candidate_found, test_export_inspections_slug_search_multiple_candidates,
+              test_export_inspections_slug_search_falls_back_to_grain_keyword,
               test_export_inspections_finds_soybean_record_regardless_of_field_name, test_export_inspections_case_insensitive_matching,
               test_export_inspections_no_soybean_found_gives_diagnostic, test_export_inspections_always_unavailable_in_phase_one,
               test_export_inspections_empty_results_reports_raw_structure,
