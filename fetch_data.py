@@ -1016,22 +1016,19 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 #   推算另一个指标(到港预报)"这个做法，不是说出口检验这个原始数据源本身有问题。
 #   这次是直接展示原始检验量本身，不做二次推算，值得重新尝试。
 #
-# ★真实运行暴露的bug(第一版硬编码"WA_GR101"这个slug，已修复)：GitHub Actions
-#   真实跑起来后，MARS API直接返回"Slug Id is invalid"——之前这个代码是从第三方
-#   新闻博客"based on the WA_GR101 file"这句话反推出来的，实测证明是错的(大概率
-#   是旧版内部文件命名，不是MARS API v1.2真正用的slug_id，官方文档说slug_id是
-#   MARS系统自己生成的，例子都是纯数字)。改成更稳健的两步设计：第一步查
-#   /reports目录、按报告名称动态搜出真正的slug_id(不猜、不硬编)，第二步才用
-#   这个搜到的slug_id去查实际数据——这样即使以后MARS那边调整了具体的slug编号，
-#   也不会重蹈"硬编一个可能过期/错误的代码"这个坑。
+# ★这一路踩过的坑，按时间顺序记录下来(不删，留作教训)：
+#   ① 第一版硬编"WA_GR101"——从第三方新闻博客一句话反推出来的，实测"Slug Id
+#      is invalid"，是错的。
+#   ② 改成查/reports目录动态搜索，但严格条件(export+grain/inspect)和宽松条件
+#      (仅grain)都一个没匹配到——排查后发现是搜索时检查的字段名"report_name"
+#      根本不存在，实测确认真实字段叫"report_title"（比如"Dry Whey - Europe"
+#      这种），不是"report_name"，这才是搜不到的根本原因。
+#   ③ 中间有一轮在没有真实候选清单的情况下，凭印象猜了个"2955"当作确定值硬编
+#      进去——这是不诚实的，没有真实依据就不该表现得像验证过一样。已撤回，
+#      现在改回让修正后的搜索逻辑自己去找，不再猜测具体数字。
+# 教训：字段名假设一定要拿实际返回的样本数据核实，不能凭报告类型的英文名称
+# 去猜测JSON里的key叫什么。
 MARS_API_BASE = "https://marsapi.ams.usda.gov/services/v1.2"
-# ★实测确认：目录搜索(_find_export_inspections_slug)返回的grainRelatedReports
-#   候选清单里，"2955"对应的report_name是"Weekly Grains Inspected For Export"，
-#   跟AMS官网"National Grain Reports"页面上的正式报告标题精确匹配，其余候选
-#   (Grain Transportation Report等)明显不相关。硬编这个值省掉每次都查一遍
-#   目录的开销，同时fetch_us_export_inspections()保留了失效时自动退回目录
-#   搜索的备援，不会因为MARS将来调整编号就直接失效。
-EXPORT_INSPECTIONS_SLUG = "2955"
 
 
 def _mars_auth_headers():
@@ -1040,15 +1037,14 @@ def _mars_auth_headers():
 
 
 def _find_export_inspections_slug():
-    """查MARS的/reports目录(所有已发布报告的清单)，按报告名称动态搜出
-    "Grains Inspected for Export"这份周报对应的真正slug_id——不猜、不硬编，
-    因为已经证实硬编的"WA_GR101"是错的。返回(slug_id或None, debug信息)。
+    """查MARS的/reports目录(所有已发布报告的清单)，按报告标题动态搜出
+    "Grains Inspected for Export"这份周报对应的真正slug_id——不猜、不硬编。
+    返回(slug_id或None, debug信息)。
 
-    ★实测过一轮后发现：严格条件(export+grain/inspect同时符合)一个都没匹配到，
-    但目录查询本身是成功的(1051份报告)——说明不是查询失败，是关键字假设跟
-    MARS实际的报告命名对不上。与其继续盲猜关键字组合，改成"严格条件找不到
-    就退回到单一关键字(grain)的宽松搜索，把真实候选的报告名+slug都摊在debug
-    里"，这样能直接看到MARS到底怎么命名这份报告，不用再猜第二次、第三次。"""
+    ★字段名已修正：实测确认目录条目里带描述性名称的字段叫"report_title"
+    (例如"Dry Whey - Europe")，不是之前猜测的"report_name"——之前两轮
+    搜索全部落空，根源就是一直在检查一个不存在的字段名，不是MARS目录里
+    没有相关报告。"""
     url = f"{MARS_API_BASE}/reports"
     data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
     if data is None:
@@ -1058,16 +1054,16 @@ def _find_export_inspections_slug():
     if not all_reports:
         return None, {"stage": "目录返回数据结构跟预期不同", "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data))}
 
-    def _name_of(r):
-        return str(r.get("report_name") or r.get("slug_name") or "")
+    def _title_of(r):
+        return str(r.get("report_title") or r.get("slug_name") or "")
 
-    # 第一步：严格条件(report_name里同时含"export"和"grain"或"inspect")
+    # 第一步：严格条件(report_title里同时含"export"和"grain"或"inspect")
     strict_candidates = []
     for r in all_reports:
         if not isinstance(r, dict):
             continue
-        name = _name_of(r).lower()
-        if "export" in name and ("grain" in name or "inspect" in name):
+        title = _title_of(r).lower()
+        if "export" in title and ("grain" in title or "inspect" in title):
             strict_candidates.append(r)
 
     if len(strict_candidates) == 1:
@@ -1081,14 +1077,14 @@ def _find_export_inspections_slug():
         }
 
     # 第二步：严格条件0命中，退回到只筛"grain"这一个词，把真实候选摊出来看
-    # (最多列30条，避免debug信息过大——1051份报告里含"grain"的应该远少于这个数)
+    # (最多列30条，避免debug信息过大)
     grain_candidates = []
     for r in all_reports:
         if not isinstance(r, dict):
             continue
-        if "grain" in _name_of(r).lower():
+        if "grain" in _title_of(r).lower():
             grain_candidates.append({
-                "report_name": r.get("report_name"),
+                "report_title": r.get("report_title"),
                 "slug_id": r.get("slug_id"),
                 "slug_name": r.get("slug_name"),
             })
@@ -1101,17 +1097,16 @@ def _find_export_inspections_slug():
 
     # 连"grain"都筛不到，说明可能连查询本身/字段名都有问题，给出最基本的诊断信息
     return None, {
-        "stage": "连只含'grain'这个词的报告都一个没找到，可能是report_name字段名或数据结构跟预期不同",
+        "stage": "连只含'grain'这个词的报告都一个没找到，可能是report_title字段名或数据结构跟预期不同",
         "totalReportsInCatalog": len(all_reports),
         "sampleReportEntries": all_reports[:5],
     }
 
 
 def fetch_us_export_inspections():
-    """查询USDA/AMS每周谷物出口检验报告(WA_GR101旧代码已证实无效，现在用实测
-    确认过的slug_id="2955"，report_name精确匹配AMS官网"National Grain Reports"
-    页面上的正式报告标题"Weekly Grains Inspected For Export")，解析出大豆
-    (Soybean)对应的检验量。
+    """查询USDA/AMS每周谷物出口检验报告，动态搜出正确的slug_id
+    (见_find_export_inspections_slug，已修正report_title这个字段名bug)，
+    解析出大豆(Soybean)对应的检验量。
 
     ★进入"第二阶段"：不再像第一阶段那样恒为available=False。数值字段名依然
     没有100%实测确认过具体是哪个英文key，所以延续"动态扫描"的思路——在已经
@@ -1123,25 +1118,19 @@ def fetch_us_export_inspections():
     if not MARS_API_KEY:
         return {"available": False, "reason": "缺少 MARS_API_KEY"}
 
-    # 优先直接用已确认的slug(省掉每次都查一遍目录的开销)；如果这个slug将来
-    # 失效了(MARS那边又调整编号)，自动退回到目录搜索兜底，不会直接挂掉——
-    # 跟"WA_GR101"当初的教训一致：任何硬编的标识符都要留一条自我修复的路。
-    url = f"{MARS_API_BASE}/reports/{EXPORT_INSPECTIONS_SLUG}"
+    # ★之前这里优先用一个硬编的slug值，但那个值是没有真实候选清单核实过、
+    #   凭空猜的，已经撤回。现在改回每次都用_find_export_inspections_slug()
+    #   动态搜索——这次修正了搜索逻辑本身的字段名bug(report_title，不是
+    #   report_name)，等真实运行确认搜到了唯一且正确的候选后，再考虑要不要
+    #   把那个真正验证过的slug硬编回来省一次请求，不要再没验证过就先硬编。
+    slug, slug_debug = _find_export_inspections_slug()
+    if not slug:
+        return {"available": False, "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id", "debug": slug_debug}
+    used_slug = slug
+    url = f"{MARS_API_BASE}/reports/{slug}"
     data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
-    used_slug = EXPORT_INSPECTIONS_SLUG
-    slug_debug = {"stage": "直接使用已确认的slug", "slug": EXPORT_INSPECTIONS_SLUG}
-
-    slug_invalid = isinstance(data, dict) and str(data.get("message", "")).lower() == "slug id is invalid"
-    if data is None or slug_invalid:
-        slug, fallback_debug = _find_export_inspections_slug()
-        if not slug:
-            return {"available": False, "reason": "已确认的slug失效，退回目录搜索也没能定位到", "debug": fallback_debug}
-        used_slug = slug
-        slug_debug = fallback_debug
-        url = f"{MARS_API_BASE}/reports/{slug}"
-        data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
-        if data is None:
-            return {"available": False, "reason": f"退回搜索到的slug({slug})查询数据时无返回", "debug": {"slugSearchDebug": slug_debug, "dataFetchDebug": debug}}
+    if data is None:
+        return {"available": False, "reason": f"用搜到的slug({slug})查询数据时无返回", "debug": {"slugSearchDebug": slug_debug, "dataFetchDebug": debug}}
 
     results = data.get("results") if isinstance(data, dict) else None
     if not results:
