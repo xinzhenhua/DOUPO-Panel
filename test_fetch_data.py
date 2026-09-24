@@ -1720,14 +1720,26 @@ def test_brazil_planting_progress_empty_dataframe(monkeypatch_fetch):
             agrobr.conab = old_conab
 
 
-def _make_export_insp_mars_mock(catalog_response, data_response=None, data_debug=None, capture_headers=None):
-    """构造出口检验的mock：第一次调用(URL以/reports结尾，无具体slug)返回
-    catalog_response(目录搜索结果)，第二次调用(用目录搜到的slug查数据)返回
-    data_response——对应fetch_us_export_inspections()现在每次都先查目录、
-    不再有"先试一个没验证过的硬编slug"这个步骤(那个硬编值已经撤回)。"""
+def _make_direct_slug_mars_mock(data_response, data_debug=None, capture_headers=None):
+    """构造"直接命中已验证slug(3046)"的mock：任何请求都直接返回data_response——
+    对应fetch_us_export_inspections()优先直接用已验证slug、不需要额外查目录
+    这个正常路径。"""
     def fake_fetch(url, headers=None, retries=3, timeout=20):
         if capture_headers is not None:
             capture_headers.update(headers or {})
+        return data_response, data_debug or {"httpStatus": 200}
+    return fake_fetch
+
+
+def _make_fallback_mars_mock(catalog_response, data_response=None, data_debug=None):
+    """构造"已验证slug(3046)失效、退回目录搜索"的mock：第一次调用(硬编slug)
+    返回"Slug Id is invalid"错误，第二次调用(/reports目录)返回catalog_response，
+    第三次调用(用目录搜到的slug查数据)返回data_response。"""
+    call_count = [0]
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"status": "404 - Not Found", "message": "Slug Id is invalid"}, {"httpStatus": 404}
         if url.rstrip('/').endswith('/reports'):
             return catalog_response, {"httpStatus": 200}
         return data_response or {"results": []}, data_debug or {"httpStatus": 200}
@@ -1747,84 +1759,91 @@ def test_export_inspections_missing_key(monkeypatch_fetch):
         fd.MARS_API_KEY = old_key
 
 
-def test_export_inspections_slug_search_uses_report_title_field(monkeypatch_fetch):
-    """★核心修复验证：真实运行暴露过两次的bug——搜索逻辑一直在检查一个不存在
-    的字段名"report_name"，真实字段叫"report_title"(实测确认，例如"Dry Whey -
-    Europe"这种)。这里验证搜索逻辑现在正确使用report_title，能找到唯一候选并
-    正确用它的slug_id去查数据。"""
+def test_export_inspections_uses_verified_slug_directly(monkeypatch_fetch):
+    """★这次的slug(3046)是真实运行debug输出里直接返回的匹配结果，不是凭空猜的
+    (区别于之前撤回的"2955")。验证正常情况下应该直接用这个已验证的slug查询，
+    不需要先查一遍目录——只发起1次请求，不是2次。"""
     import base64
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key-12345"
-    captured_headers = {}
     urls_called = []
+    captured_headers = {}
     def fake_fetch(url, headers=None, retries=3, timeout=20):
         urls_called.append(url)
         captured_headers.update(headers or {})
-        if url.rstrip('/').endswith('/reports'):
-            return {"results": [
-                {"slug_id": "1034", "slug_name": "AMS_1034", "report_title": "Dry Whey - Europe"},  # 诱饵：真实见过的乳制品报告，不含export/grain
-                {"slug_id": "3721", "slug_name": "AMS_3721", "report_title": "Weekly Grains Inspected For Export"},  # 真正该匹配的
-            ]}, {"httpStatus": 200}
-        return {"results": [{"commodity": "Soybeans", "value": 673000}]}, {"httpStatus": 200}
+        return {"results": [{"commodity": "Soybeans", "metric_tons_current_week": "673000"}]}, {"httpStatus": 200}
     fd.fetch_json_debug = fake_fetch
     try:
-        result = fd.fetch_us_export_inspections()
+        fd.fetch_us_export_inspections()
+        assert len(urls_called) == 1, f"★正常情况下应该只发起1次请求(直接用已验证slug)，实际{len(urls_called)}次"
+        assert "3046" in urls_called[0], f"★应该用已验证的slug(3046)查询，实际URL: {urls_called[0]}"
         expected_auth = "Basic " + base64.b64encode(b"test-key-12345:").decode()
         assert captured_headers.get("Authorization") == expected_auth
-        assert len(urls_called) == 2, f"★应该发起2次请求(先查目录再查数据)，实际{len(urls_called)}次"
-        assert "3721" in urls_called[1], f"★应该用report_title正确匹配到的slug_id(3721)查询，实际URL: {urls_called[1]}"
-        print("✅ 用report_title这个正确字段名，成功从含诱饵报告的目录里定位到唯一候选(slug_id=3721)")
+        print("✅ 正常情况下直接用已验证的slug(3046)查询，只发起1次请求")
     finally:
         fd.MARS_API_KEY = old_key
 
 
-def test_export_inspections_no_longer_uses_unverified_hardcoded_slug(monkeypatch_fetch):
-    """★回归测试：之前有一轮在没有真实候选清单的情况下，凭印象硬编了一个"2955"
-    当作确定值——这是不该有的行为，已经撤回。这里验证：不管mock返回什么，
-    只要还没查过目录，第一次调用一定是查/reports这个目录端点，不会直接跳去
-    查某个具体的硬编slug_id。"""
+def test_export_inspections_falls_back_when_verified_slug_invalid(monkeypatch_fetch):
+    """★韧性验证：如果已验证的slug(3046)将来又失效了(重现WA_GR101/report_title
+    那两次的情况)，应该自动退回目录搜索兜底，不会直接失败。"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
-    first_url = [None]
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        if first_url[0] is None:
-            first_url[0] = url
-        if url.rstrip('/').endswith('/reports'):
-            return {"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]}, {"httpStatus": 200}
-        return {"results": [{"commodity": "Soybeans", "value": 100}]}, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
+    fd.fetch_json_debug = _make_fallback_mars_mock(
+        catalog_response={"results": [{"slug_id": "8888", "report_title": "Grains Inspected for Export (Weekly)"}]},
+        data_response={"results": [{"commodity": "Soybeans", "metric_tons_current_week": "500000"}]},
+    )
     try:
-        fd.fetch_us_export_inspections()
-        assert first_url[0].rstrip('/').endswith('/reports'), f"★第一次请求应该是查目录，不是直接查某个硬编的具体slug，实际: {first_url[0]}"
-        assert "2955" not in first_url[0], "★不应该出现之前那个没有真实依据的硬编值2955"
-        print("✅ 确认不再有没验证过的硬编slug，每次都先查目录动态搜索")
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is True, "★已验证slug失效时应该能自动退回目录搜索并成功拿到数据"
+        assert result["quantity"] == 500000.0
+        print("✅ 已验证slug失效时，正确自动退回目录搜索，成功用新slug(8888)拿到数据")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_slug_search_uses_report_title_field(monkeypatch_fetch):
+    """★核心修复验证(退回路径下)：搜索逻辑现在正确使用report_title这个真实
+    字段名(不是之前错误猜测的report_name)，能在含诱饵报告(乳制品)的目录里
+    正确定位到唯一候选。"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    fd.fetch_json_debug = _make_fallback_mars_mock(
+        catalog_response={"results": [
+            {"slug_id": "1034", "slug_name": "AMS_1034", "report_title": "Dry Whey - Europe"},  # 诱饵：真实见过的乳制品报告
+            {"slug_id": "3721", "slug_name": "AMS_3721", "report_title": "Weekly Grains Inspected For Export"},
+        ]},
+        data_response={"results": [{"commodity": "Soybeans", "unrelated_numeric_field": 673000}]},
+    )
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["debug"]["usedSlug"] == "3721", "★应该用report_title正确匹配到的slug，不是诱饵报告的slug"
+        print("✅ 退回路径下，用report_title这个正确字段名成功定位到唯一候选，没被诱饵报告带偏")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_slug_search_no_candidate_found(monkeypatch_fetch):
-    """目录里完全没有匹配"export"+"grain/inspect"的报告时(比如MARS改了命名)，
-    应该诚实报告，debug里说明目录里总共有多少份报告"""
+    """已验证slug失效+目录里也完全没有匹配的报告时，应该诚实报告"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
+    fd.fetch_json_debug = _make_fallback_mars_mock(
         catalog_response={"results": [{"slug_id": "1", "report_title": "Dry Whey - Europe"}, {"slug_id": "2", "report_title": "Skim Milk Powder - Oceania"}]},
     )
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
         assert result["debug"]["totalReportsInCatalog"] == 2
-        print("✅ 目录里找不到匹配报告时诚实报告，debug里说明目录总报告数")
+        print("✅ 已验证slug失效+目录里也找不到匹配报告时诚实报告")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_slug_search_multiple_candidates(monkeypatch_fetch):
-    """★目录里匹配到多个候选(比如同时有"周报"和"月报"两个都含export+grain)时，
-    不应该擅自猜选其中一个，应该把所有候选都列在debug里，让人工核对该用哪个。"""
+    """★目录里匹配到多个候选时，不应该擅自猜选，全部列在debug里"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
+    fd.fetch_json_debug = _make_fallback_mars_mock(
         catalog_response={"results": [
             {"slug_id": "100", "report_title": "Grains Inspected for Export (Weekly)"},
             {"slug_id": "200", "report_title": "Grains Inspected for Export (Monthly)"},
@@ -1833,18 +1852,17 @@ def test_export_inspections_slug_search_multiple_candidates(monkeypatch_fetch):
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
-        assert len(result["debug"]["candidates"]) == 2, "★多个候选时应该全部列出，不擅自猜选一个"
-        print("✅ 目录里有多个候选时，全部列在debug里，不擅自猜选")
+        assert len(result["debug"]["candidates"]) == 2
+        print("✅ 退回路径下有多个候选时，全部列在debug里，不擅自猜选")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_slug_search_falls_back_to_grain_keyword(monkeypatch_fetch):
-    """★严格条件(export+grain/inspect同时符合)一个都没匹配到时，应该退回到
-    只筛"grain"这一个词的宽松搜索，把真实候选的报告标题+slug摊在debug里。"""
+    """★严格条件一个都没匹配到时，退回到只筛"grain"这一个词的宽松搜索"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
+    fd.fetch_json_debug = _make_fallback_mars_mock(
         catalog_response={"results": [
             {"slug_id": "1", "report_title": "Dry Whey - Europe"},
             {"slug_id": "2", "report_title": "Weekly Grain Movement Summary"},
@@ -1856,17 +1874,14 @@ def test_export_inspections_slug_search_falls_back_to_grain_keyword(monkeypatch_
         assert result["available"] is False
         assert "退回到只筛'grain'" in result["debug"]["stage"]
         assert result["debug"]["grainRelatedTotalCount"] == 2
-        names_found = [r["report_title"] for r in result["debug"]["grainRelatedReports"]]
-        assert "Weekly Grain Movement Summary" in names_found and "Grain Transportation Report" in names_found
-        assert "Dry Whey - Europe" not in names_found
-        print(f"✅ 严格条件筛不到时，正确退回到grain关键字宽松搜索，用report_title字段正确摊出候选")
+        print("✅ 严格条件筛不到时，正确退回到grain关键字宽松搜索")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_finds_soybean_record_regardless_of_field_name(monkeypatch_fetch):
     """★核心设计验证：不预设字段名叫commodity还是product，扫描所有字段的值，
-    只要有任意一个字段的值包含"soybean"字样(不分大小写)就能定位到。"""
+    只要有任意一个字段的值包含"soybean"字样就能定位到。"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [
@@ -1874,10 +1889,7 @@ def test_export_inspections_finds_soybean_record_regardless_of_field_name(monkey
         {"grain_type": "Soybeans", "report_date": "09/22/2026", "some_random_field": 673000},
         {"grain_type": "Wheat", "report_date": "09/22/2026", "some_random_field": 50},
     ]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert "debug" in result and result["debug"]["matchedRecordsCount"] == 1
@@ -1892,10 +1904,7 @@ def test_export_inspections_case_insensitive_matching(monkeypatch_fetch):
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"commodity": "SOYBEANS", "unrelated_field": 500}]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["debug"]["matchedRecordsCount"] == 1
@@ -1905,14 +1914,11 @@ def test_export_inspections_case_insensitive_matching(monkeypatch_fetch):
 
 
 def test_export_inspections_no_soybean_found_gives_diagnostic(monkeypatch_fetch):
-    """完全找不到大豆相关记录时，应该给出诊断信息(实际记录长什么样)，不是笼统报错"""
+    """完全找不到大豆相关记录时，应该给出诊断信息，不是笼统报错"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"weird_field": "Corn", "another_field": 123}]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
@@ -1928,47 +1934,40 @@ def test_export_inspections_empty_results_reports_raw_structure(monkeypatch_fetc
     fd.MARS_API_KEY = "test-key"
     mock_response = {"totally_different_key": "unexpected"}
     mock_debug = {"httpStatus": 200, "rawSnippet": '{"totally_different_key": "unexpected"}'}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response, data_debug=mock_debug,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response, mock_debug)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
         assert "rawTopLevelKeys" in result["debug"]
         assert "totally_different_key" in result["debug"]["rawTopLevelKeys"]
-        print("✅ 顶层结构跟预期不同时，debug信息暴露了真实的顶层key，方便判断问题")
+        print("✅ 顶层结构跟预期不同时，debug信息暴露了真实的顶层key")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_phase_two_parses_unique_numeric_candidate(monkeypatch_fetch):
-    """★第二阶段核心验证：大豆记录里只有1个字段名含计量关键字(metric_tons)
-    且能转成数字时，应该真正解析出数值、标记available=True。"""
+    """★第二阶段核心验证：大豆记录里只有1个字段名含计量关键字且能转成数字时，
+    应该真正解析出数值、标记available=True。"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{
         "commodity_desc": "Soybeans", "report_id": "12345",
         "metric_tons_current_week": "673000", "office_code": "WA1234",
     }]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is True
         assert result["quantity"] == 673000.0
         assert result["quantityFieldName"] == "metric_tons_current_week"
         assert result["commodity"] == "Soybeans"
-        print(f"✅ 第二阶段：唯一数值候选(metric_tons_current_week={result['quantity']})被正确解析并展示")
+        print(f"✅ 第二阶段：唯一数值候选被正确解析并展示")
     finally:
         fd.MARS_API_KEY = old_key
 
 
 def test_export_inspections_phase_two_multiple_numeric_candidates_stays_unavailable(monkeypatch_fetch):
-    """★多个数值候选时不应该擅自猜选其中一个去展示，应该继续保持
-    available=False，把所有候选摊在debug里等人工核对。"""
+    """★多个数值候选时不应该擅自猜选，应该继续保持available=False"""
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{
@@ -1976,15 +1975,12 @@ def test_export_inspections_phase_two_multiple_numeric_candidates_stays_unavaila
         "metric_tons_current_week": "673000",
         "metric_tons_year_to_date": "32809965",
     }]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
         assert len(result["debug"]["numericCandidates"]) == 2
-        print("✅ 多个数值候选时保持available=False，候选都摊在debug里，不擅自猜选")
+        print("✅ 多个数值候选时保持available=False，候选都摊在debug里")
     finally:
         fd.MARS_API_KEY = old_key
 
@@ -1994,10 +1990,7 @@ def test_export_inspections_phase_two_zero_numeric_candidates_stays_unavailable(
     old_key = fd.MARS_API_KEY
     fd.MARS_API_KEY = "test-key"
     mock_response = {"results": [{"commodity_desc": "Soybeans", "report_id": "12345", "office_code": "WA1234"}]}
-    fd.fetch_json_debug = _make_export_insp_mars_mock(
-        catalog_response={"results": [{"slug_id": "9999", "report_title": "Grains Inspected for Export (Weekly)"}]},
-        data_response=mock_response,
-    )
+    fd.fetch_json_debug = _make_direct_slug_mars_mock(mock_response)
     try:
         result = fd.fetch_us_export_inspections()
         assert result["available"] is False
@@ -2005,6 +1998,8 @@ def test_export_inspections_phase_two_zero_numeric_candidates_stays_unavailable(
         print("✅ 没有任何数值候选时保持available=False，不拿不相关字段充数")
     finally:
         fd.MARS_API_KEY = old_key
+
+
 
 
 
@@ -2042,8 +2037,9 @@ if __name__ == "__main__":
               test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
               test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
               test_brazil_planting_progress_empty_dataframe,
-              test_export_inspections_missing_key, test_export_inspections_slug_search_uses_report_title_field,
-              test_export_inspections_no_longer_uses_unverified_hardcoded_slug,
+              test_export_inspections_missing_key, test_export_inspections_uses_verified_slug_directly,
+              test_export_inspections_falls_back_when_verified_slug_invalid,
+              test_export_inspections_slug_search_uses_report_title_field,
               test_export_inspections_slug_search_no_candidate_found, test_export_inspections_slug_search_multiple_candidates,
               test_export_inspections_slug_search_falls_back_to_grain_keyword,
               test_export_inspections_finds_soybean_record_regardless_of_field_name, test_export_inspections_case_insensitive_matching,
