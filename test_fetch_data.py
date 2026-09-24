@@ -1747,6 +1747,135 @@ def test_brazil_planting_progress_empty_dataframe(monkeypatch_fetch):
             agrobr.conab = old_conab
 
 
+def test_export_inspections_missing_key(monkeypatch_fetch):
+    """缺少MARS_API_KEY时应该诚实报告，不崩溃"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = ""
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert "MARS_API_KEY" in result["reason"]
+        print("✅ 缺少MARS_API_KEY时诚实报告，不崩溃")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_basic_auth_header_constructed_correctly(monkeypatch_fetch):
+    """★验证HTTP Basic Auth的Authorization头构造正确(手算验证过base64编码逻辑)，
+    确认发起请求时带了这个头，而不是漏掉验证直接裸请求(会被API拒绝)。"""
+    import base64
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key-12345"
+    captured_headers = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        captured_headers.update(headers or {})
+        return None, {"note": "测试用，不关心具体返回内容"}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        fd.fetch_us_export_inspections()
+        expected_auth = "Basic " + base64.b64encode(b"test-key-12345:").decode()
+        assert captured_headers.get("Authorization") == expected_auth, f"★Authorization头应该正确构造，实际{captured_headers.get('Authorization')}"
+        print("✅ HTTP Basic Auth的Authorization头构造正确")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_finds_soybean_record_regardless_of_field_name(monkeypatch_fetch):
+    """★核心设计验证：不预设字段名叫commodity还是product，扫描所有字段的值，
+    只要有任意一个字段的值包含"soybean"字样(不分大小写)就能定位到，这样即使
+    真实字段名跟猜测的不同，也不会漏掉。"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    # 故意用一个跟常见猜测(commodity)不同的字段名，验证扫描逻辑不依赖特定字段名
+    mock_response = {"results": [
+        {"grain_type": "Corn", "report_date": "09/22/2026", "value": 100},
+        {"grain_type": "Soybeans", "report_date": "09/22/2026", "value": 673000},
+        {"grain_type": "Wheat", "report_date": "09/22/2026", "value": 50},
+    ]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert "debug" in result and result["debug"]["matchedRecordsCount"] == 1, "★应该只匹配到1条(Soybeans那条)，不是全部3条"
+        assert result["debug"]["latestSoybeanRecordSample"]["grain_type"] == "Soybeans"
+        print("✅ 不预设字段名，仅凭值内容包含soybean字样就能正确定位记录")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_case_insensitive_matching(monkeypatch_fetch):
+    """大小写不敏感验证：SOYBEANS/soybean/Soybean都应该能匹配到"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    mock_response = {"results": [{"commodity": "SOYBEANS", "value": 500}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["debug"]["matchedRecordsCount"] == 1
+        print("✅ 全大写SOYBEANS也能正确匹配(大小写不敏感)")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_no_soybean_found_gives_diagnostic(monkeypatch_fetch):
+    """完全找不到大豆相关记录时(比如字段名/值格式跟预期完全不同)，应该给出
+    诊断信息(实际记录长什么样)，不是笼统报错"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    mock_response = {"results": [{"weird_field": "Corn", "another_field": 123}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert "debug" in result and "firstRecordSample" in result["debug"]
+        print("✅ 找不到大豆记录时给出诊断信息(实际记录样本)，不是笼统报错")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_always_unavailable_in_phase_one(monkeypatch_fetch):
+    """★关键设计验证：即使成功找到了疑似大豆记录，第一阶段也应该保持
+    available=False——因为具体数值字段名没有实测确认过，宁可暂不展示数字，
+    也不展示一个可能读错字段、算错的数字。这是这次"两阶段"设计的核心保证。"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    mock_response = {"results": [{"commodity": "Soybeans", "metric_tons": 673000, "report_date": "09/22/2026"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False, "★即使找到了看起来很完整的大豆记录，第一阶段也不应该标记available=True"
+        assert "第一阶段" in result["reason"]
+        print("✅ 第一阶段设计验证：即使找到疑似完整记录，仍保持available=False，不冒险展示未验证过的数字")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
+def test_export_inspections_empty_results_reports_raw_structure(monkeypatch_fetch):
+    """results为空或者不是预期的字典结构时，应该在debug里暴露真实的顶层结构，
+    方便判断是API本身改了返回格式，还是这次查询条件不对"""
+    old_key = fd.MARS_API_KEY
+    fd.MARS_API_KEY = "test-key"
+    mock_response = {"totally_different_key": "unexpected"}
+    def fake_fetch(url, headers=None, retries=3, timeout=20):
+        return mock_response, {"httpStatus": 200, "rawSnippet": '{"totally_different_key": "unexpected"}'}
+    fd.fetch_json_debug = fake_fetch
+    try:
+        result = fd.fetch_us_export_inspections()
+        assert result["available"] is False
+        assert "rawTopLevelKeys" in result["debug"]
+        assert "totally_different_key" in result["debug"]["rawTopLevelKeys"]
+        print("✅ 顶层结构跟预期不同时，debug信息暴露了真实的顶层key，方便判断问题")
+    finally:
+        fd.MARS_API_KEY = old_key
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -1779,6 +1908,10 @@ if __name__ == "__main__":
               test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
               test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
               test_brazil_planting_progress_empty_dataframe,
+              test_export_inspections_missing_key, test_export_inspections_basic_auth_header_constructed_correctly,
+              test_export_inspections_finds_soybean_record_regardless_of_field_name, test_export_inspections_case_insensitive_matching,
+              test_export_inspections_no_soybean_found_gives_diagnostic, test_export_inspections_always_unavailable_in_phase_one,
+              test_export_inspections_empty_results_reports_raw_structure,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,

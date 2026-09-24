@@ -693,13 +693,13 @@ function useAiValue(inputId, value){
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================
-const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析，以下是大豆或者豆粕的一些基本数据，我需要你做一件事。
+const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析,以下是大豆或者豆粕的一些基本数据,我需要你做一件事。
 
-给我最近日期的每个指标的数据，数据一一对应不要多余，也不要遗漏
+给我最近日期的每个指标的数据,数据一一对应不要多余,也不要遗漏
 
 油厂开机率(%)
 豆粕商业库存(万吨)
-现货基差(元/吨，正=现货贵)
+现货基差(元/吨,正=现货贵)
 本月到港预报(万吨)
 猪粮比
 能繁母猪存栏(万头)
@@ -709,7 +709,7 @@ const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析�
 最近一次国储进口大豆拍卖量(万吨)
 对美豆进口关税(%)
 
-我要数据+日期+来源，直接给我表格，所有数据必须是最近日期的，而且必须是全国的`;
+我要数据(纯数值,不能缺失)+日期(年月日)+来源及备注(文字描述),直接给我表格,所有数据必须是最近日期的,必须有数据列(数据列不能包含任何文字),没有数据,就往前一个最近日期找数据,而且必须是全国的`;
 
 function copyPromptToClipboard(){
   const resultEl = document.getElementById('copyPromptResult');
@@ -799,17 +799,40 @@ function parsePastedData(text){
 
     // 比值格式"3.88:1"优先识别，否则取第一个数字(含负号/小数)
     let value = null;
+    let valueEndIdx = -1;
     const ratioMatch = valueSection.match(/(-?\d+\.?\d*)\s*[:：]\s*1/);
     if(ratioMatch){
       value = parseFloat(ratioMatch[1]);
+      valueEndIdx = ratioMatch.index + ratioMatch[0].length;
     } else {
       const numMatch = valueSection.match(/-?\d+\.?\d*/);
-      if(numMatch) value = parseFloat(numMatch[0]);
+      if(numMatch){
+        value = parseFloat(numMatch[0]);
+        valueEndIdx = numMatch.index + numMatch[0].length;
+      }
     }
 
-    const sourceKeywords = ['Mysteel农产品团队','Mysteel','国家粮油信息中心','文华财经','中财网','国家统计局','汇易','钢联','布瑞克','天下粮仓'];
+    // ★已修复：来源及备注不再靠一份写死的机构名单去比对(之前的清单里没有的机构，
+    //   比如"我的钢铁网"，会被漏掉，而且这份清单永远列不完)。改成动态抓取"数值
+    //   之后剩下的文字"——数值和日期都已经从valueSection里定位/挖掉了，剩下的
+    //   自然就是来源及备注这段说明性文字。但数值后面往往还跟着这个指标自己的
+    //   单位文字(比如"68万吨"里的"万吨")、以及对数值的补充说明括号(比如
+    //   "65.73%（全国动态全样本油厂）")，这两层都要先跳过，剩下的才是真正的
+    //   来源，不然"万吨（全国主要油厂）"这种会被误当成来源的一部分。
     let source = null;
-    for(const sk of sourceKeywords){ if(line.includes(sk)){ source=sk; break; } }
+    if(valueEndIdx !== -1){
+      let afterValue = valueSection.slice(valueEndIdx).trimStart();
+      if(matchedUnit && afterValue.startsWith(matchedUnit)){
+        afterValue = afterValue.slice(matchedUnit.length).trimStart();
+      }
+      if(afterValue[0]==='(' || afterValue[0]==='（'){
+        const closeChar = afterValue[0]==='(' ? ')' : '）';
+        const closeIdx = afterValue.indexOf(closeChar);
+        if(closeIdx!==-1) afterValue = afterValue.slice(closeIdx+1);
+      }
+      const cleaned = afterValue.replace(/^[\s|｜%％:：,，、\-–—]+/, '').replace(/[\s|｜]+$/, '').trim();
+      if(cleaned.length > 0) source = cleaned;
+    }
 
     if(value !== null) results[matchedId] = {value, date: dateStr, source, unit: matchedUnit};
   }

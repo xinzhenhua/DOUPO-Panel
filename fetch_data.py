@@ -34,6 +34,7 @@ import json
 import os
 import sys
 import time
+import base64
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -41,6 +42,7 @@ from datetime import datetime, timezone, timedelta
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
+MARS_API_KEY = os.environ.get("MARS_API_KEY", "")  # 单独申请：mymarketnews.ams.usda.gov（跟FAS/NASS都是不同系统，第三套密钥）
 USDA_BASE = "https://api.fas.usda.gov/api"
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "data", "latest.json")
 
@@ -1001,6 +1003,76 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
         "historyWeeksUsed": len(net_series),
         "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
         "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 美国大豆出口检验(Export Inspections)：用USDA/AMS的MyMarketNews(MARS)API。
+# 衡量的是"实际离境的货物"(海关查验放行量)，跟出口销售(ESR，衡量"签了多少合同")
+# 是两个不同的指标——检验量更接近"当下正在发生的真实出货节奏"。
+#
+# ★历史背景：文件顶部注释提到这类数据"之前放弃过"，那次放弃的是"拿这类数据去
+#   推算另一个指标(到港预报)"这个做法，不是说出口检验这个原始数据源本身有问题。
+#   这次是直接展示原始检验量本身，不做二次推算，值得重新尝试。
+#
+# ★诚实说明这次验证的局限：本项目没法在开发环境里用真实API key实测这个接口——
+#   申请key需要真人邮箱走E-Auth验证流程，不是能在这个沙盒里代劳的事。下面的
+#   实现分两个阶段：第一阶段只负责"诚实地找出疑似的大豆记录、把真实字段结构
+#   暴露在debug信息里"，暂不尝试解析出具体数值(因为字段名没有实测确认过，
+#   宁可暂不展示数字，也不展示一个可能算错的数字)。等GitHub Actions第一次
+#   真实运行后，从debug信息里能看到MARS API对这份报告实际返回的字段名，
+#   到时候再补一版精确解析。
+MARS_API_BASE = "https://marsapi.ams.usda.gov/services/v1.2"
+
+
+def fetch_us_export_inspections():
+    """查询USDA/AMS每周谷物出口检验报告(WA_GR101，多个独立信息源交叉确认过
+    这个报告代码)，尝试定位大豆相关的记录。当前处于"第一阶段"：只探测、不解析
+    具体数值，见上方注释。"""
+    if not MARS_API_KEY:
+        return {"available": False, "reason": "缺少 MARS_API_KEY"}
+
+    auth_str = base64.b64encode(f"{MARS_API_KEY}:".encode()).decode()
+    headers = {"Authorization": f"Basic {auth_str}"}
+    url = f"{MARS_API_BASE}/reports/WA_GR101"
+    data, debug = fetch_json_debug(url, headers=headers)
+
+    if data is None:
+        return {"available": False, "reason": "MARS接口无返回数据", "debug": debug}
+
+    results = data.get("results") if isinstance(data, dict) else None
+    if not results:
+        return {
+            "available": False,
+            "reason": "返回数据里没有results字段或为空(可能是API结构跟预期不同)",
+            "debug": {"rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data)), "rawSnippet": debug.get("rawSnippet")},
+        }
+
+    # 扫描所有记录，找出任意字段的值里包含"soybean"字样(不分大小写)的记录——
+    # 不预设字段名叫"commodity"还是"product"还是别的，用这种方式更保险。
+    soybean_records = []
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        for v in r.values():
+            if isinstance(v, str) and "soybean" in v.lower():
+                soybean_records.append(r)
+                break
+
+    if not soybean_records:
+        return {
+            "available": False,
+            "reason": "在返回记录里没能自动定位到大豆相关的行(字段名可能跟预期不同)",
+            "debug": {"totalRecords": len(results), "firstRecordSample": results[0], "allKeysSeen": list(results[0].keys()) if results else []},
+        }
+
+    # ★第一阶段先到这里为止：找到了疑似记录，但数值字段名(是叫quantity/metric_tons/
+    #   还是别的)没有实测确认过，暂不解析成数字、暂不标记available=True，只把
+    #   疑似记录的完整内容放进debug——避免展示一个可能读错字段、算错的数字。
+    return {
+        "available": False,
+        "reason": "找到疑似大豆记录，但具体数值字段名尚未实测确认，暂不展示数字(第一阶段：仅探测结构)",
+        "debug": {"matchedRecordsCount": len(soybean_records), "latestSoybeanRecordSample": soybean_records[0]},
     }
 
 
@@ -2079,6 +2151,7 @@ def main():
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
+        "exportInspections": fetch_us_export_inspections(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),
