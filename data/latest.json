@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-24T08:21:50.121598+00:00",
+  "generatedAt": "2026-09-24T10:28:50.794862+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 375.8,
-    "change": 5.5,
-    "changePct": 1.49,
+    "price": 374.7,
+    "change": 4.4,
+    "changePct": 1.19,
     "asOf": "2026-09-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -44,12 +44,12 @@
       "available": true,
       "contractMonth": 5,
       "mealSymbol": "M2705",
-      "mealPrice": 3011.0,
+      "mealPrice": 3028.0,
       "oilSymbol": "Y2705",
       "oilPrice": 8773.0,
       "beanSymbol": "B2705",
       "beanPrice": 3836.0,
-      "grossMargin": 150.6,
+      "grossMargin": 164.0,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
@@ -58,12 +58,12 @@
       "available": true,
       "contractMonth": 1,
       "mealSymbol": "M2701",
-      "mealPrice": 3404.0,
+      "mealPrice": 3426.0,
       "oilSymbol": "Y2701",
       "oilPrice": 8962.0,
       "beanSymbol": "B2701",
       "beanPrice": 4183.0,
-      "grossMargin": 147.1,
+      "grossMargin": 164.4,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
@@ -5985,7 +5985,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 90,
+    "totalBarsReturned": 91,
     "bars": [
       {
         "date": "2026-05-20",
@@ -6886,6 +6886,16 @@
         "volume": 185474.0,
         "hold": 865938.0,
         "settle": 3016.0
+      },
+      {
+        "date": "2026-09-24",
+        "open": 3010.0,
+        "high": 3030.0,
+        "low": 2997.0,
+        "close": 3028.0,
+        "volume": 178104.0,
+        "hold": 854079.0,
+        "settle": 3013.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -8521,7 +8531,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 167,
+    "totalBarsReturned": 168,
     "bars": [
       {
         "date": "2026-01-19",
@@ -10192,6 +10202,16 @@
         "volume": 1060443.0,
         "hold": 2705731.0,
         "settle": 3414.0
+      },
+      {
+        "date": "2026-09-24",
+        "open": 3404.0,
+        "high": 3426.0,
+        "low": 3385.0,
+        "close": 3426.0,
+        "volume": 1112326.0,
+        "hold": 2662957.0,
+        "settle": 3405.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
