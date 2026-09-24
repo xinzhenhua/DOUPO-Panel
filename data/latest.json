@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-24T03:32:09.625846+00:00",
+  "generatedAt": "2026-09-24T04:32:38.317902+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 371.6,
-    "change": 1.3,
-    "changePct": 0.35,
-    "asOf": "2026-09-24T03:20:58+00:00",
+    "price": 371.7,
+    "change": 1.4,
+    "changePct": 0.38,
+    "asOf": "2026-09-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "cftcManagedMoney": {
@@ -72,6 +72,16 @@
   "brazilPlantingProgress": {
     "available": false,
     "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
+  },
+  "exportInspections": {
+    "available": false,
+    "reason": "MARS接口无返回数据",
+    "debug": {
+      "url": "https://marsapi.ams.usda.gov/services/v1.2/reports/WA_GR101",
+      "httpStatus": 404,
+      "error": "HTTP 404: Not Found",
+      "rawSnippet": "{\"status\":\"404 - Not Found\",\"errorCode\":1101,\"message\":\"Slug Id is invalid\",\"detail\":\"Report has no data\",\"dateTime\":\"2026-09-23T22:32:53.9642689\"}"
+    }
   },
   "droughtMonitor": {
     "available": true,
