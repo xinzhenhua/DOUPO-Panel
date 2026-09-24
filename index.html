@@ -297,6 +297,15 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="cftcContent" class="loading">正在读取同步数据...</div>
 </div>
 
+<div class="stitle">🚢 美国大豆出口检验(实际离境量，非签约量)</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">USDA/AMS周度检验数据</div>
+    <span class="badge" id="exportInspBadge">检查中...</span>
+  </div>
+  <div id="exportInspContent" class="loading">正在读取同步数据...</div>
+</div>
+
 <div class="stitle">⚙️ 压榨利润(盘面毛利，跟随合约切换)</div>
 <div class="card">
   <div class="card-head">
@@ -649,6 +658,7 @@ async function loadSyncedData(){
     renderPsd(data.supplyDemand, data.generatedAt);
     renderCbot(data.cbotPrice, data.generatedAt);
     renderCftc(data.cftcManagedMoney, data.generatedAt);
+    renderExportInspections(data.exportInspections, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
     renderNoaaOutlook(data.noaaOutlook, data.generatedAt);
     renderSoyCond(data.soybeanCondition, data.generatedAt);
@@ -2501,6 +2511,34 @@ function renderCftc(cftc, genAt){
       ${cftc.historyPercentile!=null?`历史百分位：${cftc.historyPercentile}%(基于近${cftc.historyWeeksUsed}周数据，即约${(cftc.historyWeeksUsed/52).toFixed(1)}年)<br>`:''}
       报告日期：${cftc.reportDate} · 市场：${cftc.marketName}<br>来源：${cftc.source}
     </div>
+    </div></details>
+  `;
+}
+
+/** 美国大豆出口检验(Export Inspections)：衡量"实际离境的货物"，跟出口销售
+ *  (ESR，衡量"签了多少合同")是两个不同的指标。目前只有当周绝对数值，没有
+ *  去年同期/环比这类比较基准(不像播种进度那样CONAB自己给了同比)，所以只做
+ *  纯展示，不判断偏多偏空——没有基准硬判断方向是不诚实的，仅供参考，
+ *  不计入综合评分，跟CBOT价格、压榨利润的处理方式一致。*/
+function renderExportInspections(ei, genAt){
+  const badge = document.getElementById('exportInspBadge');
+  const el = document.getElementById('exportInspContent');
+  if(!ei || !ei.available){
+    badge.textContent = '⚪ 暂无数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ei?ei.reason:'未知原因'}</span>USDA/AMS每周一发布，覆盖到当周的检验数据</div>` + renderDebugInfo(ei?ei.debug:null);
+    return;
+  }
+  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
+  badge.className = 'badge badge-auto';
+  el.innerHTML = `
+    <div class="alert-box neutral"><span class="at">${ei.commodity||'大豆'}出口检验量</span>${ei.quantity.toLocaleString()}　仅供参考不计入综合评分</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div style="font-size:10px;color:var(--t3)">
+      数值字段：${ei.quantityFieldName}(单位未100%确认，需要核对原始记录判断是公吨还是蒲式耳)<br>
+      来源：${ei.source}
+    </div>
+    <pre style="font-size:10px;color:var(--t3);white-space:pre-wrap;word-break:break-all;margin-top:6px">${JSON.stringify(ei.rawRecord, null, 2)}</pre>
     </div></details>
   `;
 }

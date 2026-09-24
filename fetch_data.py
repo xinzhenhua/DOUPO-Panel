@@ -1025,6 +1025,13 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 #   这个搜到的slug_id去查实际数据——这样即使以后MARS那边调整了具体的slug编号，
 #   也不会重蹈"硬编一个可能过期/错误的代码"这个坑。
 MARS_API_BASE = "https://marsapi.ams.usda.gov/services/v1.2"
+# ★实测确认：目录搜索(_find_export_inspections_slug)返回的grainRelatedReports
+#   候选清单里，"2955"对应的report_name是"Weekly Grains Inspected For Export"，
+#   跟AMS官网"National Grain Reports"页面上的正式报告标题精确匹配，其余候选
+#   (Grain Transportation Report等)明显不相关。硬编这个值省掉每次都查一遍
+#   目录的开销，同时fetch_us_export_inspections()保留了失效时自动退回目录
+#   搜索的备援，不会因为MARS将来调整编号就直接失效。
+EXPORT_INSPECTIONS_SLUG = "2955"
 
 
 def _mars_auth_headers():
@@ -1101,30 +1108,47 @@ def _find_export_inspections_slug():
 
 
 def fetch_us_export_inspections():
-    """查询USDA/AMS每周谷物出口检验报告，尝试定位大豆相关的记录。
-    第一步动态搜出正确的slug_id(见_find_export_inspections_slug)，第二步用这个
-    slug查真实数据。当前仍处于"探测阶段"：找到疑似大豆记录后只暴露真实字段结构
-    在debug里，暂不解析具体数值(字段名没有实测确认过，宁可暂不展示数字，也不
-    展示一个可能读错字段、算错的数字)。"""
+    """查询USDA/AMS每周谷物出口检验报告(WA_GR101旧代码已证实无效，现在用实测
+    确认过的slug_id="2955"，report_name精确匹配AMS官网"National Grain Reports"
+    页面上的正式报告标题"Weekly Grains Inspected For Export")，解析出大豆
+    (Soybean)对应的检验量。
+
+    ★进入"第二阶段"：不再像第一阶段那样恒为available=False。数值字段名依然
+    没有100%实测确认过具体是哪个英文key，所以延续"动态扫描"的思路——在已经
+    定位到的大豆记录里，找出字段名包含quantity/metric_ton/weight/volume/value/
+    amount这类常见计量词、且值本身是数字的字段，作为"检验量"的候选。只有唯一
+    候选时才真正标记available=True展示出来；找到0个或多个数值候选，都还是
+    暂不展示数字，把候选摊在debug里——宁可暂不展示，也不展示一个可能读错字段、
+    算错的数字。"""
     if not MARS_API_KEY:
         return {"available": False, "reason": "缺少 MARS_API_KEY"}
 
-    slug, slug_debug = _find_export_inspections_slug()
-    if not slug:
-        return {"available": False, "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id", "debug": slug_debug}
-
-    url = f"{MARS_API_BASE}/reports/{slug}"
+    # 优先直接用已确认的slug(省掉每次都查一遍目录的开销)；如果这个slug将来
+    # 失效了(MARS那边又调整编号)，自动退回到目录搜索兜底，不会直接挂掉——
+    # 跟"WA_GR101"当初的教训一致：任何硬编的标识符都要留一条自我修复的路。
+    url = f"{MARS_API_BASE}/reports/{EXPORT_INSPECTIONS_SLUG}"
     data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
+    used_slug = EXPORT_INSPECTIONS_SLUG
+    slug_debug = {"stage": "直接使用已确认的slug", "slug": EXPORT_INSPECTIONS_SLUG}
 
-    if data is None:
-        return {"available": False, "reason": f"用搜到的slug({slug})查询数据时无返回", "debug": {"slugSearchDebug": slug_debug, "dataFetchDebug": debug}}
+    slug_invalid = isinstance(data, dict) and str(data.get("message", "")).lower() == "slug id is invalid"
+    if data is None or slug_invalid:
+        slug, fallback_debug = _find_export_inspections_slug()
+        if not slug:
+            return {"available": False, "reason": "已确认的slug失效，退回目录搜索也没能定位到", "debug": fallback_debug}
+        used_slug = slug
+        slug_debug = fallback_debug
+        url = f"{MARS_API_BASE}/reports/{slug}"
+        data, debug = fetch_json_debug(url, headers=_mars_auth_headers())
+        if data is None:
+            return {"available": False, "reason": f"退回搜索到的slug({slug})查询数据时无返回", "debug": {"slugSearchDebug": slug_debug, "dataFetchDebug": debug}}
 
     results = data.get("results") if isinstance(data, dict) else None
     if not results:
         return {
             "available": False,
             "reason": "返回数据里没有results字段或为空(可能是API结构跟预期不同)",
-            "debug": {"usedSlug": slug, "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data)), "rawSnippet": debug.get("rawSnippet")},
+            "debug": {"usedSlug": used_slug, "rawTopLevelKeys": list(data.keys()) if isinstance(data, dict) else str(type(data)), "rawSnippet": debug.get("rawSnippet")},
         }
 
     # 扫描所有记录，找出任意字段的值里包含"soybean"字样(不分大小写)的记录——
@@ -1142,16 +1166,40 @@ def fetch_us_export_inspections():
         return {
             "available": False,
             "reason": "在返回记录里没能自动定位到大豆相关的行(字段名可能跟预期不同)",
-            "debug": {"usedSlug": slug, "totalRecords": len(results), "firstRecordSample": results[0], "allKeysSeen": list(results[0].keys()) if results else []},
+            "debug": {"usedSlug": used_slug, "totalRecords": len(results), "firstRecordSample": results[0], "allKeysSeen": list(results[0].keys()) if results else []},
         }
 
-    # ★第一阶段先到这里为止：找到了疑似记录，但数值字段名(是叫quantity/metric_tons/
-    #   还是别的)没有实测确认过，暂不解析成数字、暂不标记available=True，只把
-    #   疑似记录的完整内容放进debug——避免展示一个可能读错字段、算错的数字。
+    latest = soybean_records[0]
+    # ★第二阶段的数值定位：字段名包含这些计量类关键字、且值本身能转成数字，
+    #   才算候选——避免把report_id、office_code这类"看着是数字但不是检验量"
+    #   的字段误当成检验量。
+    quantity_keywords = ("quantity", "metric_ton", "weight", "volume", "value", "amount", "bushel")
+    numeric_candidates = {}
+    for k, v in latest.items():
+        if not any(kw in k.lower() for kw in quantity_keywords):
+            continue
+        try:
+            numeric_candidates[k] = float(v)
+        except (TypeError, ValueError):
+            continue
+
+    if len(numeric_candidates) == 1:
+        field_name, qty_value = next(iter(numeric_candidates.items()))
+        return {
+            "available": True,
+            "quantity": qty_value,
+            "quantityFieldName": field_name,
+            "commodity": next((v for v in latest.values() if isinstance(v, str) and "soybean" in v.lower()), None),
+            "rawRecord": latest,
+            "source": "USDA/AMS MyMarketNews(MARS)API，Weekly Grains Inspected For Export报告",
+            "sourceUrl": "https://mymarketnews.ams.usda.gov/",
+        }
+
+    # 0个或多个数值候选：还不够把握直接展示，继续探测模式，把候选摊出来核对
     return {
         "available": False,
-        "reason": "找到疑似大豆记录，但具体数值字段名尚未实测确认，暂不展示数字(第一阶段：仅探测结构)",
-        "debug": {"usedSlug": slug, "matchedRecordsCount": len(soybean_records), "latestSoybeanRecordSample": soybean_records[0]},
+        "reason": f"找到大豆记录，但数值字段{'一个候选都没' if not numeric_candidates else '有多个候选，无法唯一确定'}，暂不展示数字",
+        "debug": {"usedSlug": used_slug, "matchedRecordsCount": len(soybean_records), "latestSoybeanRecordSample": latest, "numericCandidates": numeric_candidates},
     }
 
 
