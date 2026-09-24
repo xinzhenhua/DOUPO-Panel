@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-24T07:06:52.270922+00:00",
+  "generatedAt": "2026-09-24T07:38:37.691601+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 373.2,
-    "change": 2.9,
-    "changePct": 0.78,
+    "price": 372.9,
+    "change": 2.6,
+    "changePct": 0.7,
     "asOf": "2026-09-24T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -75,162 +75,31 @@
   },
   "exportInspections": {
     "available": false,
-    "reason": "没能在MARS报告目录里定位到出口检验报告的slug_id",
+    "reason": "找到大豆记录，但数值字段一个候选都没，暂不展示数字",
     "debug": {
-      "stage": "严格条件(export+grain/inspect)一个都没匹配到，退回到只筛'grain'这一个词的候选列表(未自动选择，需人工核对)",
-      "grainRelatedReports": [
-        {
-          "report_title": "Texas Daily Grain Bids",
-          "slug_id": "2711",
-          "slug_name": "AMS_2711"
-        },
-        {
-          "report_title": "Maryland Grain Bids",
-          "slug_id": "2714",
-          "slug_name": "AMS_2714"
-        },
-        {
-          "report_title": "Montana Daily Elevator Grain Bids",
-          "slug_id": "2771",
-          "slug_name": "AMS_2771"
-        },
-        {
-          "report_title": "South Carolina Daily Grain Bids",
-          "slug_id": "2787",
-          "slug_name": "AMS_2787"
-        },
-        {
-          "report_title": "Iowa Daily Cash Grain Bids",
-          "slug_id": "2850",
-          "slug_name": "AMS_2850"
-        },
-        {
-          "report_title": "Ohio Daily Grain Bids",
-          "slug_id": "2851",
-          "slug_name": "AMS_2851"
-        },
-        {
-          "report_title": "Kansas Daily Grain Bids",
-          "slug_id": "2886",
-          "slug_name": "AMS_2886"
-        },
-        {
-          "report_title": "Kentucky Daily Grain Bids",
-          "slug_id": "2892",
-          "slug_name": "AMS_2892"
-        },
-        {
-          "report_title": "Colorado Daily Grain Bids",
-          "slug_id": "2912",
-          "slug_name": "AMS_2912"
-        },
-        {
-          "report_title": "National Weekly Non-GMO/GE Grain Report",
-          "slug_id": "2920",
-          "slug_name": "AMS_2920"
-        },
-        {
-          "report_title": "Mississippi Daily Grain Bids",
-          "slug_id": "2928",
-          "slug_name": "AMS_2928"
-        },
-        {
-          "report_title": "Missouri Daily Grain Bids",
-          "slug_id": "2932",
-          "slug_name": "AMS_2932"
-        },
-        {
-          "report_title": "Arkansas Daily Grain Bids",
-          "slug_id": "2960",
-          "slug_name": "AMS_2960"
-        },
-        {
-          "report_title": "Iowa-Southern Minnesota Barge Terminal Grain Bids",
-          "slug_id": "3043",
-          "slug_name": "AMS_3043"
-        },
-        {
-          "report_title": "Minneapolis Daily Grain Report",
-          "slug_id": "3046",
-          "slug_name": "AMS_3046"
-        },
-        {
-          "report_title": "Southern Minnesota Daily Grain Bids",
-          "slug_id": "3049",
-          "slug_name": "AMS_3049"
-        },
-        {
-          "report_title": "Tennessee Daily Grain Bids",
-          "slug_id": "3088",
-          "slug_name": "AMS_3088"
-        },
-        {
-          "report_title": "Pennsylvania Grain Bids",
-          "slug_id": "3091",
-          "slug_name": "AMS_3091"
-        },
-        {
-          "report_title": "Oklahoma Daily Grain Bids",
-          "slug_id": "3100",
-          "slug_name": "AMS_3100"
-        },
-        {
-          "report_title": "California Grain Bids",
-          "slug_id": "3146",
-          "slug_name": "AMS_3146"
-        },
-        {
-          "report_title": "Portland Daily Grain Bids",
-          "slug_id": "3148",
-          "slug_name": "AMS_3148"
-        },
-        {
-          "report_title": "North Carolina Cash Grain Bids",
-          "slug_id": "3156",
-          "slug_name": "AMS_3156"
-        },
-        {
-          "report_title": "Virginia Daily Grain Bids",
-          "slug_id": "3167",
-          "slug_name": "AMS_3167"
-        },
-        {
-          "report_title": "South Dakota Daily Grain Bids",
-          "slug_id": "3186",
-          "slug_name": "AMS_3186"
-        },
-        {
-          "report_title": "Illinois Grain Bids",
-          "slug_id": "3192",
-          "slug_name": "AMS_3192"
-        },
-        {
-          "report_title": "Nebraska Daily Elevator Grain Bids",
-          "slug_id": "3225",
-          "slug_name": "AMS_3225"
-        },
-        {
-          "report_title": "Wyoming Daily Grain Bids",
-          "slug_id": "3239",
-          "slug_name": "AMS_3239"
-        },
-        {
-          "report_title": "Indiana Grain Bids",
-          "slug_id": "3463",
-          "slug_name": "AMS_3463"
-        },
-        {
-          "report_title": "National Grain and Oilseed Processor Feedstuff Report",
-          "slug_id": "3511",
-          "slug_name": "AMS_3511"
-        },
-        {
-          "report_title": "National Weekly Grain Co-Products Report",
-          "slug_id": "3618",
-          "slug_name": "AMS_3618"
-        }
-      ],
-      "grainRelatedTotalCount": 33
+      "usedSlug": "3046",
+      "matchedRecordsCount": 4,
+      "latestSoybeanRecordSample": {
+        "office_name": "Minneapolis, MN",
+        "office_code": "LS-MN",
+        "office_city": "Minneapolis",
+        "office_state": "MN",
+        "report_begin_date": "03/10/2023",
+        "report_end_date": "03/10/2023",
+        "published_date": "03/10/2023 13:09:30",
+        "market_location_name": "N/A",
+        "market_location_city": "N/A",
+        "market_location_state": "N/A",
+        "market_type": "Point of Sale - Grain",
+        "slug_id": 3046,
+        "slug_name": "AMS_3046",
+        "report_title": "Minneapolis Daily Grain Report",
+        "final_ind": "Final",
+        "report_date": "03/10/2023",
+        "special_notes": null,
+        "report_narrative": "**Addition of soybean processors bids**\nToday's  wheat receipts on the Exchange Floor were 13 cars and 2 trains.  Last year's receipts were 30 cars and 0 trains.\nPrices Reflect No. 1 Milling Quality Only.  Milling Quality is defined as 300 or better Falling Numbers; 58 lbs or better \ntest weight; 13.5 pct or less Moisture; 1.5 Pct or less Damage; 1.5 Pct or less Dockage and 2.0 ppm or less vomitoxin."
+      },
+      "numericCandidates": {}
     }
   },
   "droughtMonitor": {
