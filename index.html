@@ -341,7 +341,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <button class="ai-use-btn" style="width:100%;margin-top:8px;padding:8px;font-size:12px" onclick="parseAndFillPastedData()">📥 解析并填充到下方对应字段</button>
   <div id="parseResult" style="margin-top:8px;font-size:11px;color:var(--t3)"></div>
   <div style="font-size:10px;color:var(--t3);margin-top:6px">
-    💡 支持识别：开机率/商业库存/基差/到港预报/猪粮比/能繁母猪/进口量/肉鸡养殖利润/豆菜粕价差，共9个指标<br>
+    💡 支持识别：开机率/商业库存/基差/到港预报/猪粮比/能繁母猪/进口量/肉鸡养殖利润/豆菜粕价差/国储拍卖量/对美豆关税，共11个指标<br>
     💡 每行格式大致为"指标名 数值 日期 来源"，顺序、间距、括号里的补充说明都不影响识别<br>
     💡 纯本地文本解析，不联网、不调用任何AI，你粘贴什么就严格按什么解析
   </div>
@@ -350,7 +350,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 </details>
 
 <details class="tier-details big-collapse">
-<summary>📦 手动指标字段（开机率/库存/基差/到港预报/猪粮比/能繁母猪/进口量）▸</summary>
+<summary>📦 手动指标字段（开机率/库存/基差/到港预报/猪粮比/能繁母猪/进口量/国储拍卖/关税，共11项）▸</summary>
 <div class="tier-body">
 <div class="stitle">📦 国内供需 · 每周更新</div>
 <div class="card">
@@ -380,6 +380,16 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
       <label>本月到港预报(万吨)</label>
       <div class="ai-suggest" id="ai_arrival"></div>
       <input class="minput" id="m_arrival" type="number" placeholder="如1100" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
+    </div>
+    <div class="mfield">
+      <label>最近一次国储进口大豆拍卖量(万吨，没有就填0)</label>
+      <div class="ai-suggest" id="ai_reserve"></div>
+      <input class="minput" id="m_reserve" type="number" placeholder="如54.3" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_reserve"></span>
+    </div>
+    <div class="mfield">
+      <label>对美豆进口关税(%，仅供参考，不计入评分)</label>
+      <div class="ai-suggest" id="ai_tariff"></div>
+      <input class="minput" id="m_tariff" type="number" step="0.1" placeholder="如13" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_tariff"></span>
     </div>
   </div>
 </div>
@@ -696,6 +706,8 @@ const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析�
 上月中国大豆月度进口量(万吨)
 白羽肉鸡养殖利润(元/只)
 豆菜粕价差(元/吨)
+最近一次国储进口大豆拍卖量(万吨)
+对美豆进口关税(%)
 
 我要数据+日期+来源，直接给我表格，所有数据必须是最近日期的，而且必须是全国的`;
 
@@ -738,6 +750,8 @@ const PASTE_INDICATOR_PATTERNS = [
   {id: 'm_import', unit: '万吨', keywords: ['进口量']},
   {id: 'm_poultry', unit: '元/只', keywords: ['肉鸡养殖利润', '白羽肉鸡利润', '毛鸡养殖利润', '肉鸡利润']},
   {id: 'm_rmspread', unit: '元/吨', keywords: ['豆菜粕价差', '豆粕菜粕价差', '菜粕价差']},
+  {id: 'm_reserve', unit: '万吨', keywords: ['最近一次国储进口大豆拍卖量', '国储进口大豆拍卖量', '国储拍卖量', '国储大豆拍卖']},
+  {id: 'm_tariff', unit: '%', keywords: ['对美豆进口关税', '美豆进口关税', '美国大豆关税', '美豆关税']},
 ];
 
 function _pasteExtractValueSection(line, matchedKeyword){
@@ -811,10 +825,10 @@ function parseAndFillPastedData(){
   const parsed = parsePastedData(text);
   const idToElId = {m_crush:'ai_crush', m_stock:'ai_stock', m_basis:'ai_basis', m_arrival:'ai_arrival',
                      m_hogratio:'ai_hogratio', m_sows:'ai_sows', m_import:'ai_import', m_poultry:'ai_poultry',
-                     m_rmspread:'ai_rmspread'};
+                     m_rmspread:'ai_rmspread', m_reserve:'ai_reserve', m_tariff:'ai_tariff'};
   const idToLabel = {m_crush:'开机率', m_stock:'商业库存', m_basis:'现货基差', m_arrival:'到港预报',
                       m_hogratio:'猪粮比', m_sows:'能繁母猪', m_import:'进口量', m_poultry:'肉鸡养殖利润',
-                      m_rmspread:'豆菜粕价差'};
+                      m_rmspread:'豆菜粕价差', m_reserve:'国储拍卖量', m_tariff:'对美豆关税'};
 
   let recognized = [];
   for(const [fieldId, elId] of Object.entries(idToElId)){
@@ -2491,8 +2505,15 @@ function renderCrushMargin(margin, genAt){
   // 不适合直接拿来跟其他有明确阈值依据的指标同等对待。
   const cls = gm>0?'bear':gm<0?'bull':'neutral';
   const text = gm>0?'盘面毛利为正 — 油厂开机动力较强，偏空参考':gm<0?'盘面毛利为负 — 油厂挺价惜售动力强，偏多参考':'盘面毛利接近盈亏平衡';
+  // ★关税是手动填的纯资讯栏位(m_tariff)，不参与评分——豆二盘面价格本身已经包含了
+  // 市场对当前关税成本的定价，公式里不需要再叠加一层；这里只是把关税数字摆出来，
+  // 帮助理解"美豆对比南美豆到底贵在哪"，不是要在榨利公式里再算一遍。
+  const tariffEl = document.getElementById('m_tariff');
+  const tariffVal = tariffEl ? parseFloat(tariffEl.value) : NaN;
+  const tariffNote = !isNaN(tariffVal) ? `<div style="font-size:10px;color:var(--t3);margin:4px 0">💡 当前对美豆进口关税：${tariffVal}%(仅供参考，豆二盘面价格本身已包含关税成本，不重复计入公式)</div>` : '';
   el.innerHTML = `
     <div class="alert-box ${cls}"><span class="at">${text}</span>${gm>0?'+':''}${gm}元/吨(毛利，未扣加工费)　仅供参考不计入综合评分</div>
+    ${tariffNote}
     <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="grid2">
       <div class="stat"><span class="sv neutral">${margin.mealPrice}</span><div class="sl">豆粕${margin.mealSymbol}(元/吨)</div></div>
@@ -2568,11 +2589,12 @@ function loadManual(){
   updateOverallAlert(); // 恢复上次填写的数值后，立刻显示对应颜色指示，不用等用户重新输入才触发
 }
 function saveManualAndRefresh(){
-  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry','m_rmspread'];
+  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry','m_rmspread','m_reserve','m_tariff'];
   const data = {};
   ids.forEach(id=>{ data[id] = document.getElementById(id).value; });
   localStorage.setItem('soymeal_manual', JSON.stringify(data));
   updateOverallAlert();
+  refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // ★关税是手动输入的，改了要让压榨利润卡片里的关税提示跟着更新，不用等页面刷新
 }
 
 function setInd(id, dir, text){
@@ -2593,11 +2615,12 @@ function updateOverallAlert(){
   const cnImport = parseFloat(document.getElementById('m_import').value);
   const poultryProfit = parseFloat(document.getElementById('m_poultry').value);
   const rmSpread = parseFloat(document.getElementById('m_rmspread').value);
+  const reserveAuction = parseFloat(document.getElementById('m_reserve').value);
 
   let score = 0;
   const notes = [];
   // 追踪7个手动指标各自的信号值(1/-1/0/null)，供状态点图使用
-  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null;
+  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null, sigReserve=null;
 
   if(!isNaN(crush)){
     if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
@@ -2664,6 +2687,17 @@ function updateOverallAlert(){
     else if(rmSpread > 700){ score-=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空'); setInd('ind_rmspread',-1,'→ 偏空'); sigRmSpread=-1; }
     else{ setInd('ind_rmspread',0,'→ 中性'); sigRmSpread=0; notes.push('豆菜粕价差'+rmSpread+'元/吨（中性区间）'); }
   } else setInd('ind_rmspread', null);
+
+  // ★国储进口大豆拍卖：这个动作本身几乎总是偏空的(国家主动向市场投放供给，
+  // 不管成交率高低，都是在增加短期流通量)，不是那种"高了偏多、低了偏空"的双向阈值指标，
+  // 所以只在"量比较大"时才标记偏空，量小或没有拍卖时是中性(不代表偏多——没有拍卖只是
+  // "没有额外的空头催化"，不等于"看多")。40万吨这个门槛参考的是文华财经文章里
+  // 实际报道的拍卖规模(54.3万吨被描述为一次常规规模的拍卖)，留了一点余量不卡在这个
+  // 具体数字上。
+  if(!isNaN(reserveAuction)){
+    if(reserveAuction >= 40){ score-=1; notes.push('国储拍卖'+reserveAuction+'万吨（规模较大）→ 供给端主动增投，偏空'); setInd('ind_reserve',-1,'→ 偏空'); sigReserve=-1; }
+    else{ setInd('ind_reserve',0,'→ 中性'); sigReserve=0; notes.push(reserveAuction>0?('国储拍卖'+reserveAuction+'万吨（规模较小），影响有限'):'近期无国储拍卖，无新增供给压力'); }
+  } else setInd('ind_reserve', null);
 
   // ★ 已改进：之前天气/干旱监测/NOAA展望/美豆优良率这4个指标各自独立投票(最多±4分)，
   //   但这4个本质上都在测"这个生长季天气好不好"，只是时间尺度不同(7天/现在/1个月/本周报告)。
@@ -2776,7 +2810,7 @@ function updateOverallAlert(){
   // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
   // 1月合约现在有南美综合信号(之前没有)+收获进度+巴西播种进度(新增)，上限从14变成15
   // 5月合约多了播种进度+雷亚尔汇率这2项，上限15
-  const maxVotes = contract === 'jan' ? 15 : contract === 'may' ? 15 : 13;
+  const maxVotes = contract === 'jan' ? 16 : contract === 'may' ? 16 : 14;
   const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
   // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
   const supplyItems = [];
@@ -2785,6 +2819,7 @@ function updateOverallAlert(){
     {label:'库存消费比', signal:window._psdSignal}, {label:'开机率', signal:sigCrush},
     {label:'商业库存', signal:sigStock}, {label:'到港预报', signal:sigArrival},
     {label:'进口量', signal:sigImport}, {label:'人民币汇率', signal:window._fxSignal},
+    {label:'国储拍卖', signal:sigReserve},
   );
   if(contract === 'may'){
     supplyItems.push(
