@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-25T07:28:49.579886+00:00",
+  "generatedAt": "2026-09-25T07:53:14.259595+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 367.5,
-    "change": -8.6,
-    "changePct": -2.29,
+    "price": 366.7,
+    "change": -9.4,
+    "changePct": -2.5,
     "asOf": "2026-09-25T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -74,14 +74,12 @@
     "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
   },
   "exportInspections": {
-    "available": false,
-    "reason": "agtransport接口无返回数据",
-    "debug": {
-      "url": "https://agtransport.usda.gov/resource/sruw-w49i.json?%24where=grain%3D%27SOYBEANS%27&%24order=week_ending_date+DESC&%24limit=50",
-      "httpStatus": 400,
-      "error": "HTTP 400: Bad Request",
-      "rawSnippet": "{\"message\":\"Query coordinator error: query.soql.no-such-column; No such column: week_ending_date; position: Map(row -> 1, column -> 588, line -> \\\"SELECT `date`, `cert_date`, `week`, `month`, `quarter`, `year`, `type_shipm`, `type_carrier`, `type_carrier_text`, `carrier_name`, `grain`, `grade`, `class`, `subclass`, `destination`, `port`, `ams_reg`, `fgis_reg`, `state`, `mt`, `pounds`, `field_office` ORDER BY `cert_date` DESC NULL LAST |> SELECT `date`, `cert_date`, `week`, `month`, `quarter`, `y"
-    }
+    "available": true,
+    "weekEndingDate": "2026-09-17",
+    "quantityMetricTons": 379190.0,
+    "recordCountThisWeek": 50,
+    "source": "USDA AMS Federal Grain Inspection Service，经agtransport.usda.gov(Socrata开放数据平台)获取",
+    "sourceUrl": "https://agtransport.usda.gov/Exports/Grain-Inspections/sruw-w49i"
   },
   "droughtMonitor": {
     "available": false,
