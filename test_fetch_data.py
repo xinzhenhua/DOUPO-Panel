@@ -15,6 +15,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import fetch_data as fd
 
+# ★保存"真正原始"的fetch_json_debug引用——整个测试文件里很多测试函数会直接
+#   给fd.fetch_json_debug赋值成各自的mock版本，且没有机制在测试结束后自动
+#   恢复。绝大多数测试不关心这个（它们本来就是想替换掉网络请求那部分），
+#   但少数像下面这样需要验证"fetch_json_debug函数本身的内部逻辑"的测试，
+#   必须用这个模块加载时刻保存下来的引用，而不是fd.fetch_json_debug这个
+#   随时可能已经被前面某个测试污染过的属性。
+_REAL_FETCH_JSON_DEBUG = fd.fetch_json_debug
+
 # ---- 模拟 ESR commodities 列表返回 ----
 MOCK_ESR_COMMODITIES = [
     {"commodityCode": 107, "commodityName": "All Wheat"},
@@ -1591,12 +1599,12 @@ def test_dce_kline_missing_akshare_gives_clear_reason(monkeypatch_fetch):
 def make_monkeypatch():
     """一个简化的手动 monkeypatch 工具，替换 fetch_json / fetch_json_debug 让它们返回预设的模拟数据。"""
     def _patch(url_map):
-        def fake_fetch_json(url, headers=None, retries=3, timeout=20):
+        def fake_fetch_json(url, headers=None, retries=3, timeout=20, post_data=None):
             for key, val in url_map.items():
                 if key in url:
                     return val
             return None
-        def fake_fetch_json_debug(url, headers=None, retries=3, timeout=20):
+        def fake_fetch_json_debug(url, headers=None, retries=3, timeout=20, post_data=None):
             for key, val in url_map.items():
                 if key in url:
                     return val, {"url": url, "note": "来自测试模拟数据"}
@@ -1825,6 +1833,145 @@ def test_export_inspections_no_network_response(monkeypatch_fetch):
 
 
 
+def test_mysteel_crush_rate_parsing_real_content(monkeypatch_fetch):
+    """★用户实测抓包确认过的真实content格式(2026-09-22那条)，验证正则提取正确。"""
+    mock_response = {
+        "resultCode": 0, "resultMsg": "succeed!", "total": 750,
+        "dataList": [
+            {
+                "content": "9月22日成交方面，全国主要油厂豆粕成交10.70万吨，较前一交易日减1.54万吨，其中现货成交8.85万吨，较前一交易日减1.49万吨，远月基差成交1.85万吨，较前一交易日减0.05万吨。\r\n开机方面，今日全国动态全样本油厂开机率为69.98%，较前一日持平。",
+                "publishTime": "2026-09-22 18:20", "id": "4883044",
+            },
+        ],
+    }
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is True
+    assert result["value"] == 69.98, f"★应该正确提取69.98，实际{result['value']}"
+    assert result["date"] == "2026-09-22"
+    print(f"✅ 真实content格式解析正确：开机率{result['value']}%")
+
+
+def test_mysteel_crush_rate_missing_linebreak_still_parses(monkeypatch_fetch):
+    """★用户实测抓包里9月11日那条缺少\\r\\n换行符(跟其他条格式略有出入)，
+    验证正则不依赖这个换行符，核心句式匹配依然稳。"""
+    mock_response = {
+        "resultCode": 0,
+        "dataList": [
+            {"content": "9月11日成交方面，全国主要油厂豆粕成交20.63万吨，较前一交易日增10.64万吨，其中现货成交7.63万吨，较前一交易日持平，远月基差成交13.00万吨，较前一交易日增10.64万吨。开机方面，今日全国动态全样本油厂开机率为61.52%，较前一日上升0.41%。",
+             "publishTime": "2026-09-11 18:42"},
+        ],
+    }
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is True
+    assert result["value"] == 61.52
+    print("✅ 缺少换行符的记录依然能正确解析(不依赖\\r\\n这种次要格式)")
+
+
+def test_mysteel_crush_rate_skips_non_matching_items(monkeypatch_fetch):
+    """★如果排在最前面的记录碰巧不含"开机率为"这个句式(比如被关键字模糊匹配
+    进来的不相关新闻)，应该跳过继续找下一条，不是直接放弃或者报错。"""
+    mock_response = {
+        "resultCode": 0,
+        "dataList": [
+            {"content": "这是一条不相关的新闻，没有提到开机率", "publishTime": "2026-09-24 10:00"},
+            {"content": "开机方面，今日全国动态全样本油厂开机率为68.84%，较前一日下降1.14%。", "publishTime": "2026-09-23 18:08"},
+        ],
+    }
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is True
+    assert result["value"] == 68.84, "★应该跳过第1条不匹配的，用第2条能匹配的"
+    assert result["date"] == "2026-09-23"
+    print("✅ 第一条不匹配时正确跳过，继续找下一条能匹配的记录")
+
+
+def test_mysteel_crush_rate_token_and_post_data_sent_correctly(monkeypatch_fetch):
+    """★验证token(实测值-1)和查询关键词都正确发送"""
+    captured = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        captured["headers"] = headers
+        captured["post_data"] = post_data
+        captured["url"] = url
+        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    fd.fetch_mysteel_crush_rate()
+    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchFlashNews"
+    assert captured["headers"]["token"] == "-1", "★token应该固定发送实测确认过的占位值-1"
+    assert captured["post_data"]["query"] == "全国动态全样本油厂开机率"
+    print("✅ 正确用POST发送查询关键词，token正确设为实测确认的占位值-1")
+
+
+def test_mysteel_crush_rate_no_matching_content_gives_diagnostic(monkeypatch_fetch):
+    """如果搜索结果里所有记录都没有"开机率为XX%"这个格式(比如措辞真的变了)，
+    应该诚实报告，debug里带上第一条记录的实际内容方便排查"""
+    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is False
+    assert "firstItemContent" in result["debug"]
+    print("✅ 没有任何记录匹配时诚实报告，debug带上实际内容方便排查")
+
+
+def test_mysteel_crush_rate_empty_result_list(monkeypatch_fetch):
+    """搜索结果完全为空时应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is False
+    assert "为空" in result["reason"]
+    print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
+def test_mysteel_crush_rate_bad_result_code(monkeypatch_fetch):
+    """resultCode不是0(接口返回了错误状态)时应该诚实报告，不假装成功"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 1, "resultMsg": "token invalid"}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_crush_rate()
+    assert result["available"] is False
+    assert "resultCode=1" in result["reason"]
+    print("✅ resultCode非0时诚实报告，不假装成功")
+
+
+def test_fetch_json_debug_post_mode_backward_compatible(monkeypatch_fetch):
+    """★向后兼容验证：不传post_data参数时(所有既有15+个调用方都是这样用的)，
+    fetch_json_debug应该完全保持GET请求的既有行为，不受这次扩充影响。
+    ★用_REAL_FETCH_JSON_DEBUG(模块加载时保存的原始引用)而不是fd.fetch_json_debug，
+    因为跑到这个测试之前，前面好几个测试已经把fd.fetch_json_debug替换成了
+    各自的mock版本，直接用fd.fetch_json_debug测不到真正的函数实现。"""
+    import urllib.request
+    captured_reqs = []
+    original_urlopen = urllib.request.urlopen
+    class FakeResp:
+        status = 200
+        def read(self): return b'{"ok": true}'
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    def fake_urlopen(req, timeout=20):
+        captured_reqs.append(req)
+        return FakeResp()
+    urllib.request.urlopen = fake_urlopen
+    try:
+        data, debug = _REAL_FETCH_JSON_DEBUG("https://example.com/test")
+        assert len(captured_reqs) > 0, "★fake_urlopen应该被调用到——如果这里是0，说明测的不是真正的fetch_json_debug实现"
+        assert captured_reqs[0].data is None, "★不传post_data时，请求体应该是None(GET请求)，不应该被这次扩充意外改成POST"
+        assert data == {"ok": True}
+        print("✅ 不传post_data时完全保持向后兼容(GET请求，body为None)")
+    finally:
+        urllib.request.urlopen = original_urlopen
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -1871,7 +2018,11 @@ if __name__ == "__main__":
               test_psd_fuzzy_matching, test_psd_debug_on_field_mismatch, test_drought_monitor_parsing,
               test_drought_uses_fips_code_not_postal_abbreviation, test_psd_real_world_attributeId_schema,
               test_psd_attribute_lookup_fails_gracefully, test_drought_area_to_percentage_conversion,
-              test_drought_missing_none_field_fallback]
+              test_drought_missing_none_field_fallback,
+              test_mysteel_crush_rate_parsing_real_content, test_mysteel_crush_rate_missing_linebreak_still_parses,
+              test_mysteel_crush_rate_skips_non_matching_items, test_mysteel_crush_rate_token_and_post_data_sent_correctly,
+              test_mysteel_crush_rate_no_matching_content_gives_diagnostic, test_mysteel_crush_rate_empty_result_list,
+              test_mysteel_crush_rate_bad_result_code, test_fetch_json_debug_post_mode_backward_compatible]
     failed = 0
     for t in tests:
         try:

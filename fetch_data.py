@@ -32,6 +32,7 @@
 
 import json
 import os
+import re
 import sys
 import time
 import base64
@@ -109,12 +110,17 @@ def fetch_jsonp_debug(url, headers=None, retries=3, timeout=20):
     return None, debug
 
 
-def fetch_json_debug(url, headers=None, retries=3, timeout=20):
+def fetch_json_debug(url, headers=None, retries=3, timeout=20, post_data=None):
     """
     跟 fetch_json 一样，但额外返回诊断信息 (data, debug)。
     debug 里包含：实际请求的url、HTTP状态码、响应体前500字符、异常信息。
     这样接口返回的东西跟预期不一致时，不需要去翻GitHub Actions运行日志，
     直接看 data/latest.json 里的诊断字段就知道真实情况是什么。
+
+    ★新增post_data参数(向后兼容，默认None=GET，不影响任何既有调用方)：
+    传入一个dict时，改用POST方法+JSON body发送(Mysteel快讯搜索接口这类需要
+    POST的场景要用到)，dict会被json.dumps()编码成请求体，自动补上
+    Content-Type: application/json;charset=UTF-8(不覆盖调用方自己传的同名头)。
     """
     headers = dict(headers or {})
     # 防御性修复：很多网站/API服务(包括Groq)会挡掉Python urllib默认的User-Agent
@@ -122,9 +128,13 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
     # 这里统一给个正常浏览器UA垫底，调用方传入的headers仍可以覆盖它。
     headers.setdefault("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
     debug = {"url": url}
+    body_bytes = None
+    if post_data is not None:
+        headers.setdefault("Content-Type", "application/json;charset=UTF-8")
+        body_bytes = json.dumps(post_data, ensure_ascii=False).encode("utf-8")
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(url, headers=headers, data=body_bytes)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read().decode("utf-8", errors="replace")
                 debug["httpStatus"] = resp.status
@@ -896,6 +906,81 @@ def fetch_cbot_price():
         }
     except (KeyError, IndexError, TypeError) as e:
         return {"available": False, "reason": f"数据解析失败: {e}", "debug": {"note": "接口返回的JSON结构和预期不一致", "sampleRawRow": data}}
+
+
+# ---------------------------------------------------------------------------
+# 油厂开机率：改自动抓取，用Mysteel(钢联)的快讯搜索接口。
+#
+# ★实测确认过程(不是猜的，是用户实际抓包+我逐条核对过的)：
+#   ① 接口: POST https://search.mysteel.com/searchapi/search/searchFlashNews
+#      查询关键词"全国动态全样本油厂开机率"，回传按日期新到旧排序的快讯列表。
+#   ② 逐条核对了2026年9月9日到9月23日共12个交易日的真实content字段，
+#      核心句式100%一致："...开机方面，今日全国动态全样本油厂开机率为
+#      XX.XX%，较前一日[上升/下降/持平]..."——用正则提取"开机率为(数字)%"
+#      这个模式应该可靠，不依赖换行符等次要格式(实测有一条记录缺了\r\n
+#      换行符，但核心句式不受影响)。
+#   ③ 请求头里的token字段实测值是字面量"-1"，看起来是"匿名/未登录"的
+#      占位值，不是需要破解的动态签名——直接固定发送这个值。
+#   ④ 没法在开发环境里实测这个接口(域名不在网络白名单里)，这次的实现要靠
+#      GitHub Actions真实跑一次来验证——跟其他好几个数据源一样的路子。
+MYSTEEL_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchFlashNews"
+
+
+def fetch_mysteel_crush_rate():
+    """通过Mysteel快讯搜索"全国动态全样本油厂开机率"这个关键词，从最新一条
+    包含"开机率为"字样的快讯正文里，用正则提取百分比数值。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)  # 转成北京时间
+    start_bj = now_bj - timedelta(days=14)  # 抓最近2周，肯定能覆盖到最新一条(平常交易日基本天天发)
+    payload = {
+        "query": "全国动态全样本油厂开机率",
+        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+        "sortType": "complex",
+        "platform": "pc",
+        "pageNo": 1,
+        "pageSize": 20,
+    }
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    data, debug = fetch_json_debug(MYSTEEL_SEARCH_URL, headers=headers, post_data=payload)
+
+    if data is None:
+        return {"available": False, "reason": "Mysteel接口无返回数据", "debug": debug}
+    if not isinstance(data, dict) or data.get("resultCode") != 0:
+        return {
+            "available": False,
+            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+            "debug": {"rawSnippet": debug.get("rawSnippet")},
+        }
+
+    data_list = data.get("dataList") or []
+    if not data_list:
+        return {"available": False, "reason": "搜索结果为空(最近14天内没有匹配的快讯)", "debug": {"total": data.get("total")}}
+
+    # 逐条找第一条能提取出"开机率为XX.XX%"的记录(不假设一定是第0条，
+    # 万一排序方式或者某条记录格式有出入，逐条尝试更稳)
+    for item in data_list:
+        content = item.get("content") or ""
+        m = re.search(r"开机率为(\d+\.?\d*)%", content)
+        if m:
+            return {
+                "available": True,
+                "value": float(m.group(1)),
+                "date": item.get("publishTime", "")[:10],
+                "rawContent": content,
+                "source": "Mysteel快讯(全国动态全样本油厂开机率)",
+                "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+            }
+
+    return {
+        "available": False,
+        "reason": "搜索结果里没有一条能提取出'开机率为XX.XX%'这个格式(可能措辞变了)",
+        "debug": {"firstItemContent": data_list[0].get("content"), "totalItemsChecked": len(data_list)},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -2149,6 +2234,7 @@ def main():
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
+        "mysteelCrushRate": fetch_mysteel_crush_rate(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),

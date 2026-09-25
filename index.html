@@ -671,6 +671,7 @@ async function loadSyncedData(){
     refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
     refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // 压榨利润同样要在数据到达后按当前合约重新渲染一次
     refreshBrazilPlantingDisplay(); // ★必须在下面的updateOverallAlert()之前调用，否则评分逻辑读到的window._brazilPlantingSignal还是上一次的旧值(或者undefined)
+    refreshMysteelCrushRate(); // 开机率自动抓取，欄位是空的就自动填入，已经有值就只提示不强制覆盖
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -700,6 +701,28 @@ function renderParsedInfo(elId, parsed, unit){
 function useAiValue(inputId, value){
   const el = document.getElementById(inputId);
   if(el){ el.value = value; saveManualAndRefresh(); }
+}
+
+/** 油厂开机率：原本是9个手动指标之一，现在改自动抓取(Mysteel快讯搜索)。
+ *  设计上尊重用户已经手动填过的值——欄位是空的才自动填入，已经有值时
+ *  只在旁边提示"自动抓取到XX%"+一个"采用"按钮，不强制覆盖用户自己的输入。*/
+function refreshMysteelCrushRate(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_crush');
+  if(!data || !badge) return;
+  const mc = data.mysteelCrushRate;
+  if(!mc || !mc.available){
+    return; // 抓取失败时不覆盖既有提示内容(可能是之前贴过的解析结果)，也不报错
+  }
+  const inputEl = document.getElementById('m_crush');
+  if(inputEl && !inputEl.value){
+    inputEl.value = mc.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${mc.value}%</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_crush', ${mc.value})">采用</button><br>
+    日期：${mc.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================
