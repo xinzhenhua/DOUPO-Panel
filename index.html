@@ -906,7 +906,7 @@ function renderDebugInfo(debug){
     let entryHtml = '';
     if(d.httpStatus) entryHtml += `[${key}] HTTP状态码: ${d.httpStatus}<br>`;
     if(d.error) entryHtml += `[${key}] 错误: ${esc(d.error)}<br>`;
-    if(d.rawSnippet) entryHtml += `[${key}] 返回内容片段: ${esc(d.rawSnippet.slice(0,200))}${d.rawSnippet.length>200?'...':''}<br>`;
+    if(d.rawSnippet) entryHtml += `[${key}] 返回内容片段: ${esc(d.rawSnippet.slice(0,1500))}${d.rawSnippet.length>1500?'...':''}<br>`;
     if(d.note) entryHtml += `[${key}] ${esc(d.note)}<br>`;
     if(entryHtml){ bodyHtml += `<div style="margin-bottom:4px">${entryHtml}</div>`; }
   });

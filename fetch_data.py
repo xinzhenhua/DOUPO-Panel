@@ -94,7 +94,7 @@ def fetch_jsonp_debug(url, headers=None, retries=3, timeout=20):
         except urllib.error.HTTPError as e:
             body = ""
             try:
-                body = e.read().decode("utf-8", errors="replace")[:500]
+                body = e.read().decode("utf-8", errors="replace")[:2000]
             except Exception:  # noqa: BLE001
                 pass
             debug["httpStatus"] = e.code
@@ -138,7 +138,13 @@ def fetch_json_debug(url, headers=None, retries=3, timeout=20):
         except urllib.error.HTTPError as e:
             body = ""
             try:
-                body = e.read().decode("utf-8", errors="replace")[:500]
+                # ★已放宽(原500)：agtransport那次SoQL报错("No such column")里，
+                #   Socrata会把整个数据集的字段清单回显出来帮助排查，之前500字符
+                #   截断把这份清单切掉了大半，只看到"date, cert_date, week, month,
+                #   quarter..."就没了——看不到真正需要确认的grain/mt这些字段
+                #   到底叫什么。放宽到2000字符，留足空间容纳这类"字段清单"级别
+                #   的错误信息，不需要真的运行了才发现被截断、还得再等一轮。
+                body = e.read().decode("utf-8", errors="replace")[:2000]
             except Exception:  # noqa: BLE001
                 pass
             debug["httpStatus"] = e.code
@@ -1046,10 +1052,25 @@ AGTRANSPORT_GRAIN_INSPECTIONS_URL = "https://agtransport.usda.gov/resource/sruw-
 def fetch_us_export_inspections():
     """查询agtransport.usda.gov(USDA AMS的Socrata开放数据平台)的Grain
     Inspections数据集，筛选大豆(SOYBEANS)最新一周的检验量(单位：MT，公吨)。
-    不需要API key(公开数据集)。"""
+    不需要API key(公开数据集)。
+
+    ★真实运行暴露的字段名问题(已修正一部分)：CSV表头显示的是"Week Ending
+    Date"这种人类可读的显示名称，但Socrata的SoQL查询用的是"API Field Name"，
+    两者不是简单的小写化关系——实测报错(No such column: week_ending_date)
+    时，Socrata在错误信息里回显了真实字段清单开头"date, cert_date, week,
+    month, quarter..."，这才发现"Week Ending Date"对应的真实字段名是简短的
+    "date"，不是逐字小写化的"week_ending_date"。已经把$order和后续所有引用
+    都改成"date"。
+    ★"grain"和"mt"这两个字段名还没有被这次报错直接证实(错误信息在提到
+    "quarter"后被截断，看不到完整清单)——从已确认的"week"/"month"/"quarter"
+    这几个单一词汇字段看，单一词汇似乎是直接小写化(不是替换成别的缩写)，所以
+    "Grain"很可能就是"grain"，但"MT"这种已经是缩写的字段是否也遵循这个规律
+    没有直接证据。已经把debug信息的截断长度从500/200放宽到2000/1500字符，
+    如果这次"grain"或"mt"还是错的，下一轮的报错信息应该能展示完整字段清单，
+    不用再猜第三次。"""
     params = {
         "$where": "grain='SOYBEANS'",
-        "$order": "week_ending_date DESC",
+        "$order": "date DESC",
         "$limit": "50",
     }
     url = f"{AGTRANSPORT_GRAIN_INSPECTIONS_URL}?{urllib.parse.urlencode(params)}"
@@ -1060,23 +1081,23 @@ def fetch_us_export_inspections():
     if not isinstance(data, list):
         return {
             "available": False,
-            "reason": "返回数据不是预期的列表结构(可能字段名grain猜错了，或者Socrata查询语法有出入)",
+            "reason": "返回数据不是预期的列表结构(可能字段名grain/date猜错了，或者Socrata查询语法有出入)",
             "debug": {"rawType": str(type(data)), "rawSnippet": debug.get("rawSnippet")},
         }
     if len(data) == 0:
         return {"available": False, "reason": "筛选grain='SOYBEANS'后没有查到任何记录(字段名或值的大小写可能跟预期不同)", "debug": debug}
 
-    # 按最新一周(week_ending_date)加总当周全部记录的MT(不同记录是不同港口/目的地/
-    # 承运方式的明细，同一周的所有明细加总才是当周总检验量)
-    latest_week = data[0].get("week_ending_date")
+    # 按最新一周(date，即"Week Ending Date")加总当周全部记录的MT(不同记录是
+    # 不同港口/目的地/承运方式的明细，同一周的所有明细加总才是当周总检验量)
+    latest_week = data[0].get("date")
     if not latest_week:
         return {
             "available": False,
-            "reason": "返回记录里没有week_ending_date字段(字段名可能跟预期不同)",
+            "reason": "返回记录里没有date字段(字段名可能跟预期不同)",
             "debug": {"sampleRecord": data[0], "actualKeysSeen": list(data[0].keys())},
         }
 
-    same_week_records = [r for r in data if r.get("week_ending_date") == latest_week]
+    same_week_records = [r for r in data if r.get("date") == latest_week]
     total_mt = 0.0
     parse_failures = 0
     for r in same_week_records:

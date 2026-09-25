@@ -1732,16 +1732,16 @@ def _make_grain_inspections_mock(records, capture_url=None):
 
 def test_export_inspections_url_uses_correct_dataset_and_filter(monkeypatch_fetch):
     """★验证请求的是正确的数据集id(sruw-w49i，多个独立来源交叉确认过)，
-    并且用grain='SOYBEANS'筛选、按week_ending_date降序排列。"""
+    并且用grain='SOYBEANS'筛选、按date(即Week Ending Date)降序排列。"""
     urls_called = []
     fd.fetch_json_debug = _make_grain_inspections_mock([
-        {"week_ending_date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000"},
+        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000"},
     ], capture_url=urls_called)
     result = fd.fetch_us_export_inspections()
     assert len(urls_called) == 1
     assert "sruw-w49i" in urls_called[0], f"★应该请求Grain Inspections数据集(sruw-w49i)，实际URL: {urls_called[0]}"
     assert "SOYBEANS" in urls_called[0] and "grain" in urls_called[0].lower()
-    assert "week_ending_date" in urls_called[0]
+    assert "date" in urls_called[0] and "%24order" in urls_called[0]
     print("✅ 请求了正确的数据集(sruw-w49i)，用grain='SOYBEANS'筛选并按周次降序排列")
 
 
@@ -1749,9 +1749,9 @@ def test_export_inspections_aggregates_same_week_multiple_ports(monkeypatch_fetc
     """★核心逻辑验证(手算验证过)：同一周的记录按港口/目的地拆分成多条，
     必须把同一周的所有记录加总才是当周总检验量，不能只取第一条。"""
     records = [
-        {"week_ending_date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000", "port": "MISSISSIPPI R."},
-        {"week_ending_date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "223000", "port": "COLUMBIA R."},
-        {"week_ending_date": "2026-09-14T00:00:00.000", "grain": "SOYBEANS", "mt": "380000", "port": "MISSISSIPPI R."},
+        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000", "port": "MISSISSIPPI R."},
+        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "223000", "port": "COLUMBIA R."},
+        {"date": "2026-09-14T00:00:00.000", "grain": "SOYBEANS", "mt": "380000", "port": "MISSISSIPPI R."},
     ]
     fd.fetch_json_debug = _make_grain_inspections_mock(records)
     result = fd.fetch_us_export_inspections()
@@ -1784,22 +1784,22 @@ def test_export_inspections_non_list_response_gives_diagnostic(monkeypatch_fetch
     print("✅ 返回非列表结构时给出诊断信息，不假设结构直接崩溃")
 
 
-def test_export_inspections_missing_week_ending_date_field(monkeypatch_fetch):
-    """如果记录里没有week_ending_date这个字段(字段名猜错了)，应该给出诊断信息
+def test_export_inspections_missing_date_field(monkeypatch_fetch):
+    """如果记录里没有date这个字段(字段名猜错了)，应该给出诊断信息
     (实际有哪些字段)，不是KeyError崩溃"""
     fd.fetch_json_debug = _make_grain_inspections_mock([{"grain": "SOYBEANS", "some_other_field": "123"}])
     result = fd.fetch_us_export_inspections()
     assert result["available"] is False
     assert "actualKeysSeen" in result["debug"]
     assert "some_other_field" in result["debug"]["actualKeysSeen"]
-    print("✅ 缺少week_ending_date字段时给出诊断信息(实际有哪些字段)，不崩溃")
+    print("✅ 缺少date字段时给出诊断信息(实际有哪些字段)，不崩溃")
 
 
 def test_export_inspections_mt_field_unparseable(monkeypatch_fetch):
     """如果mt字段值没法解析成数字(字段名可能不叫mt，或者值本身格式有问题)，
     应该诚实报告，不是把0当成真实检验量展示出来"""
     fd.fetch_json_debug = _make_grain_inspections_mock([
-        {"week_ending_date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "not-a-number"},
+        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "not-a-number"},
     ])
     result = fd.fetch_us_export_inspections()
     assert result["available"] is False
@@ -1859,7 +1859,7 @@ if __name__ == "__main__":
               test_export_inspections_url_uses_correct_dataset_and_filter,
               test_export_inspections_aggregates_same_week_multiple_ports,
               test_export_inspections_empty_list_gives_diagnostic, test_export_inspections_non_list_response_gives_diagnostic,
-              test_export_inspections_missing_week_ending_date_field, test_export_inspections_mt_field_unparseable,
+              test_export_inspections_missing_date_field, test_export_inspections_mt_field_unparseable,
               test_export_inspections_no_network_response,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
