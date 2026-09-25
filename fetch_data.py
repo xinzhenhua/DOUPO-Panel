@@ -984,6 +984,89 @@ def fetch_mysteel_crush_rate():
 
 
 # ---------------------------------------------------------------------------
+# 白羽肉鸡养殖利润：改自动抓取，用Mysteel(钢联)的"文章"搜索接口
+# (跟开机率用的"快讯"搜索是不同的接口——文章搜索适合这种周度、篇幅更长的
+# 分析报告，快讯搜索适合开机率这种每日短讯)。
+#
+# ★实测确认过程：用户提供了4条真实内容样本，发现措辞比开机率那次多样得多——
+#   "平均理论养殖亏损"/"养殖端理论亏损"/"全面亏损，平均理论亏损"/"平均理论
+#   养殖盈利"这几种不同写法混杂出现，不是单一固定句式。正则没有照抄某一句
+#   完整话术，改成更贴近核心的"盈利或亏损"紧跟"数字+元/只"这个模式——手算
+#   验证过这个设计能正确跳过"全面亏损，"这种后面紧跟逗号、没有数字的
+#   "假信号"，继续找到真正带数字的那一次"亏损"出现(比如"全面亏损，平均
+#   理论亏损1.06元/只"这句里，"亏损"出现了两次，只有第二次后面直接跟着
+#   数字，实测正则确实取到了第二次而不是被第一次干扰)。
+#
+# ★这个指标本身可能是负数(亏损)，跟开机率(恒为正的百分比)不同，正则设计
+#   上要靠"盈利"/"亏损"这两个关键词本身来决定正负号，不能只提取数字本身。
+#
+# ★字段名不假设一定叫"content"——这次是"文章"搜索，字段结构未必跟"快讯"
+#   搜索一样，扫描记录里所有字符串字段的值找匹配，而不是硬编一个字段名。
+MYSTEEL_ARTICLE_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchArticle"
+MYSTEEL_POULTRY_PATTERN = re.compile(r"(盈利|亏损)(\d+\.?\d*)元/只")
+
+
+def fetch_mysteel_poultry_profit():
+    """通过Mysteel文章搜索"白羽肉鸡养殖利润"这个关键词，从最新一条能匹配
+    "盈利/亏损...元/只"这个模式的文章里，提取数值(盈利为正、亏损为负)。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    start_bj = now_bj - timedelta(days=21)  # 这是周度指标(不是每天发布)，回看窗口比开机率那次宽一些
+    payload = {
+        "query": "白羽肉鸡养殖利润",
+        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+        "sortType": "complex",
+        "platform": "pc",
+        "pageNo": 1,
+        "pageSize": 20,
+    }
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+
+    if data is None:
+        return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+    if not isinstance(data, dict) or data.get("resultCode") != 0:
+        return {
+            "available": False,
+            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+            "debug": {"rawSnippet": debug.get("rawSnippet")},
+        }
+
+    data_list = data.get("dataList") or []
+    if not data_list:
+        return {"available": False, "reason": "搜索结果为空(最近21天内没有匹配的文章)", "debug": {"total": data.get("total")}}
+
+    for item in data_list:
+        if not isinstance(item, dict):
+            continue
+        for v in item.values():
+            if not isinstance(v, str):
+                continue
+            m = MYSTEEL_POULTRY_PATTERN.search(v)
+            if m:
+                sign = 1 if m.group(1) == "盈利" else -1
+                return {
+                    "available": True,
+                    "value": round(sign * float(m.group(2)), 2),
+                    "date": item.get("publishTime", "")[:10],
+                    "matchedText": v,
+                    "source": "Mysteel文章(白羽肉鸡养殖利润)",
+                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+                }
+
+    return {
+        "available": False,
+        "reason": "搜索结果里没有一条能提取出'盈利/亏损XX元/只'这个格式(可能措辞变了)",
+        "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
 # 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
 # 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
@@ -2235,6 +2318,7 @@ def main():
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "mysteelCrushRate": fetch_mysteel_crush_rate(),
+        "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),

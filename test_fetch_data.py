@@ -1972,6 +1972,94 @@ def test_fetch_json_debug_post_mode_backward_compatible(monkeypatch_fetch):
         urllib.request.urlopen = original_urlopen
 
 
+def test_mysteel_poultry_profit_loss_cases_real_examples(monkeypatch_fetch):
+    """★用户实测抓包提供的4条真实内容样本，措辞各不相同，验证正则都能正确
+    提取(含正确处理正负号)。"""
+    examples_and_expected = [
+        ("本周白羽肉鸡平均理论养殖亏损4.18元/只", -4.18),
+        ("本周白羽肉鸡养殖端理论亏损2.23元/只", -2.23),
+        ("本周白羽肉鸡养殖全面亏损，平均理论亏损1.06元/只。", -1.06),  # ★陷阱案例：亏损出现两次
+        ("本周白羽肉鸡平均理论养殖盈利0.56元/只", 0.56),
+    ]
+    for content, expected in examples_and_expected:
+        mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-24 10:00"}]}
+        def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+            return mock_response, {"httpStatus": 200}
+        fd.fetch_json_debug = fake_fetch
+        result = fd.fetch_mysteel_poultry_profit()
+        assert result["available"] is True, f"应该能解析: {content}"
+        assert result["value"] == expected, f"★内容'{content}'应该提取到{expected}，实际{result['value']}"
+    print("✅ 4条真实措辞各异的样本(含陷阱案例)全部正确提取，正负号处理正确")
+
+
+def test_mysteel_poultry_profit_trap_case_skips_false_lead(monkeypatch_fetch):
+    """★专门验证"陷阱"案例：'亏损'这个词出现两次，第一次后面紧跟逗号(不是
+    数字)，第二次才紧跟真正的数值——必须正确跳过第一次的假信号，取第二次。"""
+    mock_response = {"resultCode": 0, "dataList": [
+        {"content": "本周白羽肉鸡养殖全面亏损，平均理论亏损1.06元/只。", "publishTime": "2026-09-24"},
+    ]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_poultry_profit()
+    assert result["available"] is True
+    assert result["value"] == -1.06, f"★应该跳过'全面亏损，'这个假信号(后面是逗号不是数字)，取真正带数值的第二次'亏损'，实际{result['value']}"
+    print("✅ 正确跳过'亏损'第一次出现(后面紧跟逗号)的假信号，取到第二次(带真实数值)")
+
+
+def test_mysteel_poultry_profit_does_not_assume_content_field_name(monkeypatch_fetch):
+    """★这次是"文章"搜索，不是"快讯"搜索，字段结构可能不一样——验证不管
+    这个匹配上的字段叫什么名字(不一定是"content")，都能扫描到并正确提取。"""
+    mock_response = {"resultCode": 0, "dataList": [
+        {"articleBody": "白羽肉鸡平均理论养殖盈利0.71元/只", "publishTime": "2026-05-01", "title": "行业周报"},
+    ]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_poultry_profit()
+    assert result["available"] is True, "★不该假设字段名一定叫content，应该扫描到articleBody这个字段"
+    assert result["value"] == 0.71
+    print("✅ 不预设字段名(这次匹配到的是articleBody而不是content)，扫描所有字符串字段都能正确提取")
+
+
+def test_mysteel_poultry_profit_query_uses_correct_endpoint(monkeypatch_fetch):
+    """★验证请求的是searchArticle这个端点(不是开机率用的searchFlashNews)，
+    查询关键词也对应换成"白羽肉鸡养殖利润"。"""
+    captured = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        captured["url"] = url
+        captured["post_data"] = post_data
+        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    fd.fetch_mysteel_poultry_profit()
+    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert captured["post_data"]["query"] == "白羽肉鸡养殖利润"
+    print("✅ 正确请求searchArticle端点，查询关键词正确设为'白羽肉鸡养殖利润'")
+
+
+def test_mysteel_poultry_profit_no_matching_content_gives_diagnostic(monkeypatch_fetch):
+    """完全没有匹配的记录时应该诚实报告，debug带上第一条样本方便排查"""
+    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_poultry_profit()
+    assert result["available"] is False
+    assert "firstItemSample" in result["debug"]
+    print("✅ 没有任何记录匹配时诚实报告，debug带上第一条样本方便排查")
+
+
+def test_mysteel_poultry_profit_empty_result(monkeypatch_fetch):
+    """搜索结果为空时应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_poultry_profit()
+    assert result["available"] is False
+    assert "为空" in result["reason"]
+    print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2022,7 +2110,10 @@ if __name__ == "__main__":
               test_mysteel_crush_rate_parsing_real_content, test_mysteel_crush_rate_missing_linebreak_still_parses,
               test_mysteel_crush_rate_skips_non_matching_items, test_mysteel_crush_rate_token_and_post_data_sent_correctly,
               test_mysteel_crush_rate_no_matching_content_gives_diagnostic, test_mysteel_crush_rate_empty_result_list,
-              test_mysteel_crush_rate_bad_result_code, test_fetch_json_debug_post_mode_backward_compatible]
+              test_mysteel_crush_rate_bad_result_code, test_fetch_json_debug_post_mode_backward_compatible,
+              test_mysteel_poultry_profit_loss_cases_real_examples, test_mysteel_poultry_profit_trap_case_skips_false_lead,
+              test_mysteel_poultry_profit_does_not_assume_content_field_name, test_mysteel_poultry_profit_query_uses_correct_endpoint,
+              test_mysteel_poultry_profit_no_matching_content_gives_diagnostic, test_mysteel_poultry_profit_empty_result]
     failed = 0
     for t in tests:
         try:

@@ -672,6 +672,7 @@ async function loadSyncedData(){
     refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // 压榨利润同样要在数据到达后按当前合约重新渲染一次
     refreshBrazilPlantingDisplay(); // ★必须在下面的updateOverallAlert()之前调用，否则评分逻辑读到的window._brazilPlantingSignal还是上一次的旧值(或者undefined)
     refreshMysteelCrushRate(); // 开机率自动抓取，欄位是空的就自动填入，已经有值就只提示不强制覆盖
+    refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -723,6 +724,29 @@ function refreshMysteelCrushRate(){
   badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${mc.value}%</b>
     <button class="ai-use-btn" onclick="useAiValue('m_crush', ${mc.value})">采用</button><br>
     日期：${mc.date}`;
+}
+
+/** 白羽肉鸡养殖利润：同样改自动抓取(Mysteel文章搜索)，跟开机率同一套
+ *  "欄位为空自动填入、已有值只提示"的设计。这个值可能是负数(亏损)，
+ *  显示上要带上正负号，不能假设恒为正。*/
+function refreshMysteelPoultryProfit(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_poultry');
+  if(!data || !badge) return;
+  const mp = data.mysteelPoultryProfit;
+  if(!mp || !mp.available){
+    return;
+  }
+  const inputEl = document.getElementById('m_poultry');
+  if(inputEl && !inputEl.value){
+    inputEl.value = mp.value;
+    saveManualAndRefresh();
+  }
+  const sign = mp.value > 0 ? '+' : '';
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${sign}${mp.value}元/只</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_poultry', ${mp.value})">采用</button><br>
+    日期：${mp.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================
