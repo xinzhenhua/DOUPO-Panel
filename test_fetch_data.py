@@ -2078,6 +2078,98 @@ def test_mysteel_poultry_profit_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
+def test_mysteel_rmspread_range_format_real_examples(monkeypatch_fetch):
+    """★用户实测抓包提供的6条真实"区间"格式样本，验证都能正确取中点，
+    而且没有被同一句话里的"涨跌幅度"区间干扰(只取价差本身的区间)。"""
+    examples_and_expected = [
+        ("2026年7月9日，国内沿海地区豆菜粕现货价差下跌，区间为480-520元/吨，较前一日跌10-20元/吨。具体表现为豆粕现货价格下跌10-20元/吨，而菜粕现货价格保持稳定。", 500.0),
+        ("2026年7月8日，国内沿海地区豆菜粕现货价差上涨，价差在490-540元/吨，涨20元/吨。具体来看，今日豆粕现货价格涨10-30元/吨，菜粕现货价格涨跌互现。", 515.0),
+        ("2026年7月7日，国内沿海地区豆菜粕现货价差收窄至490-520元/吨，较前一交易日下跌10元/吨。当日豆粕现货价格小幅上涨10元/吨，菜粕现货价格涨幅略高，上涨10-20元/吨。受菜粕涨幅大于豆粕影响，两者价差呈现下行趋势。", 505.0),
+        ("2026年7月6日，国内沿海地区豆菜粕现货价差走阔，区间为490-530元/吨，较前一交易日上涨20元/吨。分项来看，豆粕现货价格上调40-50元/吨，菜粕现货价格上调10-40元/吨。豆粕涨幅高于菜粕，驱动价差进一步扩大。", 510.0),
+        ("截至2025年11月25日，国内沿海地区豆菜粕现货价差下跌，价差在410-570元/吨之间，跌10元/吨具体来看，今日豆粕现货价格稳定，菜粕今日市场价格涨10元/吨连粕主力01合约震荡运行，油厂豆粕库存高企，下游饲料企业库存充", 490.0),
+        ("截至2025年11月20日，国内沿海地区豆菜粕现货价差上涨，价差在470-570元/吨之间，涨10-20元/吨具体来看，今日豆粕现货价格跌10元/吨，菜粕今日市场价格跌20元/吨连粕主力01合约震荡下跌，豆粕现货价格下跌，", 520.0),
+    ]
+    for content, expected_mid in examples_and_expected:
+        mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-07-09 15:34"}]}
+        def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+            return mock_response, {"httpStatus": 200}
+        fd.fetch_json_debug = fake_fetch
+        result = fd.fetch_mysteel_rmspread()
+        assert result["available"] is True, f"应该能解析: {content[:30]}"
+        assert result["value"] == expected_mid, f"★内容'{content[:30]}...'应该取中点{expected_mid}，实际{result['value']}"
+        assert result["formatUsed"] == "区间中点"
+    print("✅ 6条真实区间格式样本全部正确取中点，没有被涨跌幅度区间干扰")
+
+
+def test_mysteel_rmspread_city_specific_format_real_example(monkeypatch_fetch):
+    """★用户实测抓包提供的第7条(8月28日)样本，是完全不同的"分城市单值"格式，
+    验证能正确识别并取多城市平均值(不是误判成区间格式)。"""
+    content = ("2026年8月28日，国内主要市场豆菜粕价差整体持稳。广东地区豆粕3190元/吨，"
+               "菜粕2450元/吨，价差740元/吨；广西地区豆粕3170元/吨，菜粕2460元/吨，"
+               "价差710元/吨；南通地区豆粕3190元/吨，菜粕2380元/吨，价差810元/吨。"
+               "近期各区域价差波动幅度较小，市场表现相对平稳。")
+    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-08-28 15:45"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_rmspread()
+    assert result["available"] is True
+    assert result["formatUsed"] == "多城市单值平均", f"★应该识别为多城市单值格式，实际{result.get('formatUsed')}"
+    expected_avg = round((740 + 710 + 810) / 3, 1)
+    assert result["value"] == expected_avg, f"★应该是740/710/810三个城市的平均值{expected_avg}，实际{result['value']}"
+    assert result["citySamples"] == [740.0, 710.0, 810.0]
+    print(f"✅ 分城市单值格式正确识别，三城市平均值{result['value']}元/吨计算正确")
+
+
+def test_mysteel_rmspread_two_formats_mutually_exclusive(monkeypatch_fetch):
+    """★核心设计验证：两种格式的正则不会交叉误判——区间格式的正则对
+    "分城市单值"样本应该完全匹配不到(没有横线区间)，单值格式的正则对
+    "区间"样本也应该完全匹配不到(价差后面不是直接跟数字)。"""
+    range_content = "国内沿海地区豆菜粕现货价差下跌，区间为480-520元/吨，较前一日跌10-20元/吨。"
+    city_content = "广东地区豆粕3190元/吨，菜粕2450元/吨，价差740元/吨；广西地区豆粕3170元/吨，菜粕2460元/吨，价差710元/吨。"
+
+    assert fd.MYSTEEL_RMSPREAD_RANGE_PATTERN.search(city_content) is None, "★区间正则不应该在分城市单值样本里意外匹配到东西"
+    assert fd.MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(range_content) == [], "★单值正则不应该在区间样本里意外抓到480或520这类数字"
+    print("✅ 两种格式的正则确认互斥，不会交叉误判")
+
+
+def test_mysteel_rmspread_query_uses_correct_keyword(monkeypatch_fetch):
+    """验证查询关键词正确设为'豆菜粕价差'，用的是文章搜索端点"""
+    captured = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        captured["url"] = url
+        captured["post_data"] = post_data
+        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    fd.fetch_mysteel_rmspread()
+    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert captured["post_data"]["query"] == "豆菜粕价差"
+    print("✅ 正确请求searchArticle端点，查询关键词正确设为'豆菜粕价差'")
+
+
+def test_mysteel_rmspread_no_matching_content_gives_diagnostic(monkeypatch_fetch):
+    """完全没有匹配的记录时应该诚实报告，debug带上第一条样本方便排查"""
+    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_rmspread()
+    assert result["available"] is False
+    assert "firstItemSample" in result["debug"]
+    print("✅ 没有任何记录匹配时诚实报告，debug带上第一条样本方便排查")
+
+
+def test_mysteel_rmspread_empty_result(monkeypatch_fetch):
+    """搜索结果为空时应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_rmspread()
+    assert result["available"] is False
+    assert "为空" in result["reason"]
+    print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2132,7 +2224,10 @@ if __name__ == "__main__":
               test_mysteel_poultry_profit_loss_cases_real_examples, test_mysteel_poultry_profit_trap_case_skips_false_lead,
               test_mysteel_poultry_profit_connector_word_allowance_excludes_punctuation,
               test_mysteel_poultry_profit_does_not_assume_content_field_name, test_mysteel_poultry_profit_query_uses_correct_endpoint,
-              test_mysteel_poultry_profit_no_matching_content_gives_diagnostic, test_mysteel_poultry_profit_empty_result]
+              test_mysteel_poultry_profit_no_matching_content_gives_diagnostic, test_mysteel_poultry_profit_empty_result,
+              test_mysteel_rmspread_range_format_real_examples, test_mysteel_rmspread_city_specific_format_real_example,
+              test_mysteel_rmspread_two_formats_mutually_exclusive, test_mysteel_rmspread_query_uses_correct_keyword,
+              test_mysteel_rmspread_no_matching_content_gives_diagnostic, test_mysteel_rmspread_empty_result]
     failed = 0
     for t in tests:
         try:

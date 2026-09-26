@@ -673,6 +673,7 @@ async function loadSyncedData(){
     refreshBrazilPlantingDisplay(); // ★必须在下面的updateOverallAlert()之前调用，否则评分逻辑读到的window._brazilPlantingSignal还是上一次的旧值(或者undefined)
     refreshMysteelCrushRate(); // 开机率自动抓取，欄位是空的就自动填入，已经有值就只提示不强制覆盖
     refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
+    refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -747,6 +748,32 @@ function refreshMysteelPoultryProfit(){
   badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${sign}${mp.value}元/只</b>
     <button class="ai-use-btn" onclick="useAiValue('m_poultry', ${mp.value})">采用</button><br>
     日期：${mp.date}`;
+}
+
+/** 豆菜粕价差：同样改自动抓取(Mysteel文章搜索)，但这次原始文章里价差有
+ *  两种表述方式(区间中点/多城市单值平均)，提示区里把用了哪种格式+对应的
+ *  原始明细(区间范围或各城市数值)也摆出来，方便核对这个平均值到底是怎么
+ *  算出来的，不是只给一个孤零零的数字。*/
+function refreshMysteelRmSpread(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_rmspread');
+  if(!data || !badge) return;
+  const rs = data.mysteelRmSpread;
+  if(!rs || !rs.available){
+    return;
+  }
+  const inputEl = document.getElementById('m_rmspread');
+  if(inputEl && !inputEl.value){
+    inputEl.value = rs.value;
+    saveManualAndRefresh();
+  }
+  const detail = rs.formatUsed === '区间中点'
+    ? `区间${rs.rangeLow}-${rs.rangeHigh}元/吨的中点`
+    : `${rs.citySamples.length}个城市(${rs.citySamples.join('/')}元/吨)的平均值`;
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${rs.value}元/吨</b>(${detail})
+    <button class="ai-use-btn" onclick="useAiValue('m_rmspread', ${rs.value})">采用</button><br>
+    日期：${rs.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================

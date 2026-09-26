@@ -1074,6 +1074,108 @@ def fetch_mysteel_poultry_profit():
 
 
 # ---------------------------------------------------------------------------
+# 豆菜粕价差：同样改自动抓取(Mysteel文章搜索)，但这次比开机率/养殖利润都
+# 麻烦——用户提供的7条真实内容样本里，出现了两种完全不同的表述格式：
+#
+#   格式A(6条，多数情况)："区间"格式：豆菜粕现货价差本身是一个区间，比如
+#   "价差在490-540元/吨"——取这个区间的中点(均值)当代表值。
+#   ★这种格式还有个坑：同一句话里经常会**同时**出现两个"数字-数字元/吨"
+#   模式——一个是价差本身的区间(我要的)，另一个是"较前一日涨/跌XX-YY元/吨"
+#   这种当日变动幅度的区间(我不要的)。正则锚定在"价差"这个词后面紧跟
+#   (允许少量连接字符)的第一个区间，不是全文里随便抓一个区间——手算验证过
+#   6条真实样本全部正确抓到"价差"本身的区间，没有被"涨跌XX-YY元/吨"这种
+#   变动幅度干扰。
+#
+#   格式B(1条，8月28日那条)："分城市单值"格式：不是一个统一区间，而是列出
+#   多个城市各自的价差单值，比如"广东地区...价差740元/吨；广西地区...
+#   价差710元/吨；南通地区...价差810元/吨"——这种情况下取全部城市数值的
+#   算术平均。
+#
+# ★两种格式的正则设计上互斥，不会交叉误判：格式A要求价差后面是"数字-数字"
+#   (带横线)，格式B要求价差后面直接是单个数字(不带横线)——手算验证过格式A
+#   的正则对格式B样本完全匹配不到(因为没有横线区间)，格式B的正则对格式A
+#   样本也完全匹配不到(因为"价差"后面紧跟的不是数字，是"下跌，区间为"这类
+#   连接文字)。处理顺序上先试格式A(更常见)，格式A没匹配到才试格式B。
+MYSTEEL_RMSPREAD_RANGE_PATTERN = re.compile(r"价差.{0,8}?(\d+)-(\d+)元/吨")
+MYSTEEL_RMSPREAD_SINGLE_PATTERN = re.compile(r"价差(\d+)元/吨")
+
+
+def fetch_mysteel_rmspread():
+    """通过Mysteel文章搜索"豆菜粕价差"这个关键词，从最新一条能提取出价差
+    数值的文章里提取(格式A的区间取中点，格式B的多城市单值取平均)。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    start_bj = now_bj - timedelta(days=7)  # 这是日度/准日度指标，回看窗口不用太宽
+    payload = {
+        "query": "豆菜粕价差",
+        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+        "sortType": "complex",
+        "platform": "pc",
+        "pageNo": 1,
+        "pageSize": 20,
+    }
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+
+    if data is None:
+        return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+    if not isinstance(data, dict) or data.get("resultCode") != 0:
+        return {
+            "available": False,
+            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+            "debug": {"rawSnippet": debug.get("rawSnippet")},
+        }
+
+    data_list = data.get("dataList") or []
+    if not data_list:
+        return {"available": False, "reason": "搜索结果为空(最近7天内没有匹配的文章)", "debug": {"total": data.get("total")}}
+
+    for item in data_list:
+        if not isinstance(item, dict):
+            continue
+        for v in item.values():
+            if not isinstance(v, str):
+                continue
+            # 先试格式A(区间中点)
+            m = MYSTEEL_RMSPREAD_RANGE_PATTERN.search(v)
+            if m:
+                low, high = float(m.group(1)), float(m.group(2))
+                return {
+                    "available": True,
+                    "value": round((low + high) / 2, 1),
+                    "rangeLow": low, "rangeHigh": high,
+                    "date": item.get("publishTime", "")[:10],
+                    "matchedText": v, "formatUsed": "区间中点",
+                    "source": "Mysteel文章(豆菜粕价差)",
+                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+                }
+            # 格式A没匹配到，试格式B(多城市单值平均)
+            singles = MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(v)
+            if singles:
+                values = [float(x) for x in singles]
+                return {
+                    "available": True,
+                    "value": round(sum(values) / len(values), 1),
+                    "citySamples": values,
+                    "date": item.get("publishTime", "")[:10],
+                    "matchedText": v, "formatUsed": "多城市单值平均",
+                    "source": "Mysteel文章(豆菜粕价差)",
+                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+                }
+
+    return {
+        "available": False,
+        "reason": "搜索结果里没有一条能提取出价差数值(区间格式或多城市单值格式都没匹配到，可能措辞变了)",
+        "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
 # 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
 # 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
@@ -2326,6 +2428,7 @@ def main():
         "cbotPrice": fetch_cbot_price(),
         "mysteelCrushRate": fetch_mysteel_crush_rate(),
         "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
+        "mysteelRmSpread": fetch_mysteel_rmspread(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
