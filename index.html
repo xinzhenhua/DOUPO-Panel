@@ -675,6 +675,7 @@ async function loadSyncedData(){
     refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
     refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
     refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
+    refreshMysteelMealStock(); // 豆粕商业库存同样改自动抓取
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -821,6 +822,31 @@ function refreshMysteelArrivalForecast(){
     <button class="ai-use-btn" onclick="useAiValue('m_arrival', ${af.value})">采用</button><br>
     ⚠️ 请核对这是不是你需要的月份(到港预报一般发布下个月的数据，不一定是当月)<br>
     发布日期：${af.date}`;
+}
+
+/** 豆粕商业库存：同样改自动抓取(Mysteel文章搜索)，跟前四项同一套设计模式
+ *  (欄位为空自动填入、已有值只提示、失败时显示明确原因+完整debug信息)。*/
+function refreshMysteelMealStock(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_stock');
+  if(!data || !badge) return;
+  const ms = data.mysteelMealStock;
+  if(!ms || !ms.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${ms?ms.reason:'未知原因'}` + renderDebugInfo(ms?ms.debug:null);
+    }
+    return;
+  }
+  const inputEl = document.getElementById('m_stock');
+  if(inputEl && !inputEl.value){
+    inputEl.value = ms.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_stock', ${ms.value})">采用</button><br>
+    日期：${ms.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================

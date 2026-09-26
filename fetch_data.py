@@ -1271,6 +1271,80 @@ def fetch_mysteel_arrival_forecast():
 
 
 # ---------------------------------------------------------------------------
+# 豆粕商业库存：同样改自动抓取(Mysteel文章搜索)。
+#
+# ★这次直接吸取到港预报那次的教训，从一开始就不去穷举"库存"和数字之间
+#   具体是"为"、"约"、"达到"哪个连接词——到港预报那次因为死板要求"共计约"
+#   或"预计达"这种具体连接词，被第三种真实写法("到港约XXX万吨")直接打穿，
+#   这次直接用"限定字符数上限、中间随便什么词都行"这个更宽松的策略，
+#   一步到位：库存后面允许最多10个任意字符，只要在这个范围内找到数字+万吨
+#   就算数。手算验证过多种常见写法("库存约XX万吨"/"库存为XX万吨"/"库存
+#   达到XX万吨"/"库存XX万吨"不带任何连接词)都能正确匹配，且"库存"这个词
+#   在原文里通常只出现一次(库存数值本身)，不会被"较上周增加XX万吨"这种
+#   变动幅度数字干扰(那句前面没有"库存"这个词紧邻)。
+MYSTEEL_MEAL_STOCK_PATTERN = re.compile(r"豆粕(?:商业)?库存.{0,10}?(\d+\.?\d*)万吨")
+
+
+def fetch_mysteel_meal_stock():
+    """通过Mysteel文章搜索"豆粕商业库存"这个关键词，从最新一条能提取出
+    库存数值的文章里提取(单位：万吨)。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    start_bj = now_bj - timedelta(days=14)  # 这是周度指标，回看窗口给足2周
+    payload = {
+        "query": "豆粕商业库存",
+        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+        "sortType": "complex",
+        "platform": "pc",
+        "pageNo": 1,
+        "pageSize": 20,
+    }
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+
+    if data is None:
+        return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+    if not isinstance(data, dict) or data.get("resultCode") != 0:
+        return {
+            "available": False,
+            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+            "debug": {"rawSnippet": debug.get("rawSnippet")},
+        }
+
+    data_list = data.get("dataList") or []
+    if not data_list:
+        return {"available": False, "reason": "搜索结果为空(最近14天内没有匹配的文章)", "debug": {"total": data.get("total")}}
+
+    for item in data_list:
+        if not isinstance(item, dict):
+            continue
+        for v in item.values():
+            if not isinstance(v, str):
+                continue
+            m = MYSTEEL_MEAL_STOCK_PATTERN.search(v)
+            if m:
+                return {
+                    "available": True,
+                    "value": float(m.group(1)),
+                    "date": item.get("publishTime", "")[:10],
+                    "matchedText": v,
+                    "source": "Mysteel文章(豆粕商业库存)",
+                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+                }
+
+    return {
+        "available": False,
+        "reason": "搜索结果里没有一条能提取出'豆粕库存XX万吨'这个格式(可能措辞变了)",
+        "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
 # 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
 # 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
@@ -2525,6 +2599,7 @@ def main():
         "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
+        "mysteelMealStock": fetch_mysteel_meal_stock(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),

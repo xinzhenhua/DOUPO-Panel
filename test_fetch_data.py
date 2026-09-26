@@ -2267,6 +2267,77 @@ def test_mysteel_arrival_forecast_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
+def test_mysteel_meal_stock_various_phrasings(monkeypatch_fetch):
+    """★验证多种常见措辞变体都能正确提取(不穷举具体连接词，用宽松间隔策略——
+    直接吸取到港预报那次因为死板要求具体连接词而被打穿的教训)。"""
+    examples_and_expected = [
+        ("Mysteel调研：本周(9月19日)全国重点油厂豆粕商业库存约65.32万吨，较上周增加3.15万吨。", 65.32),
+        ("本周豆粕库存为58.90万吨，环比减少2.40万吨。", 58.90),
+        ("截至9月19日当周，全国豆粕商业库存达到72.15万吨，创近三个月新高。", 72.15),
+        ("本周全国豆粕库存63万吨，与上周基本持平。", 63.0),
+    ]
+    for content, expected in examples_and_expected:
+        mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-19 15:00"}]}
+        def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+            return mock_response, {"httpStatus": 200}
+        fd.fetch_json_debug = fake_fetch
+        result = fd.fetch_mysteel_meal_stock()
+        assert result["available"] is True, f"应该能解析: {content}"
+        assert result["value"] == expected, f"★内容'{content}'应该提取到{expected}，实际{result['value']}"
+    print("✅ 多种常见措辞变体(约/为/达到/不带连接词)全部正确提取")
+
+
+def test_mysteel_meal_stock_not_confused_by_change_amount(monkeypatch_fetch):
+    """★验证不会被同一句话里的"较上周增加/减少XX万吨"这种变动幅度数字干扰——
+    "库存"这个词只紧邻库存绝对值本身，变动幅度数字前面没有"库存"这个词。"""
+    content = "本周豆粕库存为58.90万吨，较上周大幅增加12.40万吨，环比上升26.7%。"
+    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-19"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_meal_stock()
+    assert result["available"] is True
+    assert result["value"] == 58.90, f"★应该取58.90(库存本身)，不是12.40(变动幅度)，实际{result['value']}"
+    print("✅ 正确取库存绝对值(58.90万吨)，没有被'增加12.40万吨'这个变动幅度干扰")
+
+
+def test_mysteel_meal_stock_query_uses_correct_keyword(monkeypatch_fetch):
+    """验证查询关键词正确设为'豆粕商业库存'，用的是文章搜索端点"""
+    captured = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        captured["url"] = url
+        captured["post_data"] = post_data
+        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    fd.fetch_mysteel_meal_stock()
+    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert captured["post_data"]["query"] == "豆粕商业库存"
+    print("✅ 正确请求searchArticle端点，查询关键词正确设为'豆粕商业库存'")
+
+
+def test_mysteel_meal_stock_no_matching_content_gives_diagnostic(monkeypatch_fetch):
+    """完全没有匹配的记录时应该诚实报告，debug带上第一条样本方便排查"""
+    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_meal_stock()
+    assert result["available"] is False
+    assert "firstItemSample" in result["debug"]
+    print("✅ 没有任何记录匹配时诚实报告，debug带上第一条样本方便排查")
+
+
+def test_mysteel_meal_stock_empty_result(monkeypatch_fetch):
+    """搜索结果为空时应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_meal_stock()
+    assert result["available"] is False
+    assert "为空" in result["reason"]
+    print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2328,7 +2399,10 @@ if __name__ == "__main__":
               test_mysteel_arrival_forecast_five_standard_examples, test_mysteel_arrival_forecast_cascade_format_real_example,
               test_mysteel_arrival_forecast_third_variant_real_example,
               test_mysteel_arrival_forecast_query_uses_correct_keyword, test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic,
-              test_mysteel_arrival_forecast_empty_result]
+              test_mysteel_arrival_forecast_empty_result,
+              test_mysteel_meal_stock_various_phrasings, test_mysteel_meal_stock_not_confused_by_change_amount,
+              test_mysteel_meal_stock_query_uses_correct_keyword, test_mysteel_meal_stock_no_matching_content_gives_diagnostic,
+              test_mysteel_meal_stock_empty_result]
     failed = 0
     for t in tests:
         try:
