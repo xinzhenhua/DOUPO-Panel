@@ -1192,13 +1192,21 @@ def fetch_mysteel_rmspread():
 #        到港预报"，不管什么时候看仪表盘都清楚这个数字对应哪个月，不会被
 #        误导成"当月"。
 #
-# ★原始文本有两种完全不同的措辞风格(手算验证过全部6条真实样本)：
-#   标准格式(5条)："YYYY年M月份...到港(预估)?...共计约XXX万吨"
-#   级联格式(1条，预测未来3个月那条)："YYYY年M月...到港量预计达XXX万吨"，
-#   只取这条里的第一个(最近月)数字，不尝试解析后面提到的"8月预估.../9月
-#   预计..."这类次要月份(格式不统一，且价值有限——见上面①的说明)。
-MYSTEEL_ARRIVAL_STANDARD_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月份.*?到港.*?共计约(\d+\.?\d*)万吨")
-MYSTEEL_ARRIVAL_CASCADE_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月.*?到港量?预计达(\d+\.?\d*)万吨")
+# ★原始文本目前已知有三种不同的措辞风格(手算验证过全部7条真实样本，
+#   含GitHub Actions真实运行后新发现的第三种)：
+#   ①"YYYY年M月份...到港...共计约XXX万吨"(5条)
+#   ②"YYYY年M月...到港量预计达XXX万吨"(1条，预测未来3个月那条，只取最近月)
+#   ③"YYYY年M月...到港约XXX万吨"(1条，真实运行后新发现——"月"后面没有"份"字，
+#     "到港"和数字之间只有一个"约"字，原本要求"共计约"或"预计达"这种具体
+#     连接词的正则完全对不上这种更简短的写法)
+#   一开始用两个各自死板的正则(要求具体连接词"共计约"/"预计达")去应对①②，
+#   真实运行后③直接把两个正则都打穿了——教训是穷举具体连接词这种做法太脆弱，
+#   连接词的变体没法预先枚举完。改成更宽松的策略：不再尝试猜"到港"和数字
+#   之间具体是哪几个字，而是限定一个合理的字符数上限(15个)，中间随便是什么
+#   字都行，只要在这个范围内找到"数字+万吨"就算数——手算验证过这样反而更
+#   稳健，全部7条真实样本(3种措辞风格)都能正确提取，且限定了长度上限，
+#   不会跳到句子里更远处的其他数字(比如分区域细分数据、或者后续月份的数字)。
+MYSTEEL_ARRIVAL_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月份?.{0,20}?到港.{0,15}?(\d+\.?\d*)万吨")
 
 
 def fetch_mysteel_arrival_forecast():
@@ -1242,11 +1250,7 @@ def fetch_mysteel_arrival_forecast():
         for v in item.values():
             if not isinstance(v, str):
                 continue
-            m = MYSTEEL_ARRIVAL_STANDARD_PATTERN.search(v)
-            format_used = "标准格式"
-            if not m:
-                m = MYSTEEL_ARRIVAL_CASCADE_PATTERN.search(v)
-                format_used = "级联格式(仅取最近月)"
+            m = MYSTEEL_ARRIVAL_PATTERN.search(v)
             if m:
                 return {
                     "available": True,
@@ -1254,7 +1258,7 @@ def fetch_mysteel_arrival_forecast():
                     "forecastMonth": int(m.group(2)),
                     "value": float(m.group(3)),
                     "date": item.get("publishTime", "")[:10],
-                    "matchedText": v, "formatUsed": format_used,
+                    "matchedText": v,
                     "source": "Mysteel文章(大豆到港预报)",
                     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
                 }

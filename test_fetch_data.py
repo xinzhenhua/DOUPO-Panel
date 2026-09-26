@@ -2170,9 +2170,9 @@ def test_mysteel_rmspread_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
-def test_mysteel_arrival_forecast_standard_format_real_examples(monkeypatch_fetch):
-    """★用户实测抓包提供的5条真实"标准格式"样本，验证都能正确提取出
-    年份+月份+万吨数值。"""
+def test_mysteel_arrival_forecast_five_standard_examples(monkeypatch_fetch):
+    """★用户实测抓包提供的5条真实"标准格式"样本(月份+份字+共计约XXX万吨)，
+    验证都能正确提取出年份+月份+万吨数值。"""
     examples = [
         ("Mysteel农产品团队预估，2026年6月份国内全样本油厂大豆到港165.2船，共计约1073.80万吨（本月船重按6.5万吨计）。", 2026, 6, 1073.80),
         ("Mysteel农产品团队预估，2026年5月份国内全样本油厂大豆到港152.1船，共计约988.65万吨（本月船重按6.5万吨计）。", 2026, 5, 988.65),
@@ -2189,14 +2189,13 @@ def test_mysteel_arrival_forecast_standard_format_real_examples(monkeypatch_fetc
         assert result["available"] is True, f"应该能解析: {content[:30]}"
         assert result["forecastYear"] == exp_year and result["forecastMonth"] == exp_month, f"★年月应该是{exp_year}年{exp_month}月，实际{result['forecastYear']}年{result['forecastMonth']}月"
         assert result["value"] == exp_value, f"★数值应该是{exp_value}，实际{result['value']}"
-        assert result["formatUsed"] == "标准格式"
-    print("✅ 5条真实标准格式样本全部正确提取年份+月份+万吨数值")
+    print("✅ 5条真实'月份+共计约'样本全部正确提取年份+月份+万吨数值")
 
 
 def test_mysteel_arrival_forecast_cascade_format_real_example(monkeypatch_fetch):
-    """★用户实测抓包提供的第6条(预测未来3个月)样本，验证只取最近月(7月)的
-    数值，不尝试解析后面提到的8月/9月次要数据(格式不统一，且原文自己标注
-    远月数据可靠性存疑)。"""
+    """★用户实测抓包提供的第6条(预测未来3个月，"预计达"措辞)样本，验证只取
+    最近月(7月)的数值，不尝试解析后面提到的8月/9月次要数据(格式不统一，且
+    原文自己标注远月数据可靠性存疑)。"""
     content = ("2026年7月国内油厂进口大豆到港量预计达1064万吨，环比略有增长。分区域看，"
                "华东地区到港量占比最高，山东及华北次之。8月预估到港1050万吨，"
                "9月预计回落至930万吨。远月到港数据仍存修正可能，需持续跟踪船期变化。")
@@ -2208,8 +2207,27 @@ def test_mysteel_arrival_forecast_cascade_format_real_example(monkeypatch_fetch)
     assert result["available"] is True
     assert result["forecastYear"] == 2026 and result["forecastMonth"] == 7, f"★应该识别为2026年7月(最近月)，实际{result['forecastYear']}年{result['forecastMonth']}月"
     assert result["value"] == 1064.0, f"★应该取1064(最近月的数值)，不是1050或930(次要月份)，实际{result['value']}"
-    assert result["formatUsed"] == "级联格式(仅取最近月)"
-    print(f"✅ 级联格式(预测未来3个月)正确只取最近月(7月，1064万吨)，不解析次要的8月/9月数据")
+    print(f"✅ '预计达'措辞(预测未来3个月)正确只取最近月(7月，1064万吨)，不解析次要的8月/9月数据")
+
+
+def test_mysteel_arrival_forecast_third_variant_real_example(monkeypatch_fetch):
+    """★真实运行后新发现的第三种措辞变体："YYYY年M月"(没有"份"字)+"到港约XXX万吨"
+    (不是"共计约"也不是"预计达"，只是简单的"约")——这条曾经把之前两个各自
+    死板的正则都打穿过，是这次改成"限定字符数上限、不穷举具体连接词"这个
+    更宽松策略的直接触发案例。"""
+    content = ("Mysteel预估2026年10月国内全样本油厂大豆到港约854.10万吨，11月预计870万吨，"
+               "12月950万吨。10月分区域看：东北约71.50万吨；华北（含西北）约130.00万吨；"
+               "山东（含河南）约185.25万吨；华东地区（含沿江）约272.35万吨；福建约32.50万吨；"
+               "广西（含海南/云南）约52.00万吨；广东约110.50万吨。远月数据后期可能修正。")
+    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-24 17:36", "title": "Mysteel数据：2026年10月国内油厂进口大豆船期及11月-12月到港预报"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_arrival_forecast()
+    assert result["available"] is True, "★这条真实内容之前会解析失败，这是这次修复要解决的真实案例"
+    assert result["forecastYear"] == 2026 and result["forecastMonth"] == 10, f"★应该识别为2026年10月，实际{result['forecastYear']}年{result['forecastMonth']}月"
+    assert result["value"] == 854.10, f"★应该取854.10(最近月/10月的数值)，不是870(11月)、950(12月)，也不是71.50这类分区域细分数字，实际{result['value']}"
+    print(f"✅ 第三种措辞变体('到港约XXX万吨'，无'份'字)正确提取，没有被后续月份或分区域数据干扰")
 
 
 def test_mysteel_arrival_forecast_query_uses_correct_keyword(monkeypatch_fetch):
@@ -2307,7 +2325,8 @@ if __name__ == "__main__":
               test_mysteel_rmspread_range_format_real_examples, test_mysteel_rmspread_city_specific_format_real_example,
               test_mysteel_rmspread_two_formats_mutually_exclusive, test_mysteel_rmspread_query_uses_correct_keyword,
               test_mysteel_rmspread_no_matching_content_gives_diagnostic, test_mysteel_rmspread_empty_result,
-              test_mysteel_arrival_forecast_standard_format_real_examples, test_mysteel_arrival_forecast_cascade_format_real_example,
+              test_mysteel_arrival_forecast_five_standard_examples, test_mysteel_arrival_forecast_cascade_format_real_example,
+              test_mysteel_arrival_forecast_third_variant_real_example,
               test_mysteel_arrival_forecast_query_uses_correct_keyword, test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic,
               test_mysteel_arrival_forecast_empty_result]
     failed = 0
