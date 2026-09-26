@@ -715,7 +715,17 @@ function refreshMysteelCrushRate(){
   if(!data || !badge) return;
   const mc = data.mysteelCrushRate;
   if(!mc || !mc.available){
-    return; // 抓取失败时不覆盖既有提示内容(可能是之前贴过的解析结果)，也不报错
+    // ★已修复：之前这里直接return、完全不碰这个区域，导致renderParsedInfo
+    //   设置的"💡 尚未粘贴数据"这句默认文字一直留着，让人误以为自动抓取
+    //   根本没有尝试过。现在只在这个区域还没有"真正内容"(className不是fresh，
+    //   也就是既没有粘贴解析成功过，也没有Mysteel抓取成功过)时才主动显示
+    //   明确的失败原因；如果已经有真正内容(比如用户刚手动贴过)，才保留原样
+    //   不覆盖。
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${mc?mc.reason:'未知原因'}`;
+    }
+    return;
   }
   const inputEl = document.getElementById('m_crush');
   if(inputEl && !inputEl.value){
@@ -737,6 +747,10 @@ function refreshMysteelPoultryProfit(){
   if(!data || !badge) return;
   const mp = data.mysteelPoultryProfit;
   if(!mp || !mp.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${mp?mp.reason:'未知原因'}`;
+    }
     return;
   }
   const inputEl = document.getElementById('m_poultry');
@@ -761,6 +775,10 @@ function refreshMysteelRmSpread(){
   if(!data || !badge) return;
   const rs = data.mysteelRmSpread;
   if(!rs || !rs.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${rs?rs.reason:'未知原因'}`;
+    }
     return;
   }
   const inputEl = document.getElementById('m_rmspread');
@@ -787,6 +805,10 @@ function refreshMysteelArrivalForecast(){
   if(!data || !badge) return;
   const af = data.mysteelArrivalForecast;
   if(!af || !af.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${af?af.reason:'未知原因'}`;
+    }
     return;
   }
   const inputEl = document.getElementById('m_arrival');
