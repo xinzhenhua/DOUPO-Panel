@@ -674,6 +674,7 @@ async function loadSyncedData(){
     refreshMysteelCrushRate(); // 开机率自动抓取，欄位是空的就自动填入，已经有值就只提示不强制覆盖
     refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
     refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
+    refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -774,6 +775,30 @@ function refreshMysteelRmSpread(){
   badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${rs.value}元/吨</b>(${detail})
     <button class="ai-use-btn" onclick="useAiValue('m_rmspread', ${rs.value})">采用</button><br>
     日期：${rs.date}`;
+}
+
+/** 到港预报：同样改自动抓取(Mysteel文章搜索)，但这项跟前三项不一样——
+ *  到港预报一般月底发布，预测的是"下个月"，不是"当月"，所以不能简单假设
+ *  抓到的数字就是"本月"。这里刻意醒目地标注"这是X年X月的预报"，不管什么
+ *  时候看仪表盘都清楚这个数字对应哪个月，避免被误导成"当月"。*/
+function refreshMysteelArrivalForecast(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_arrival');
+  if(!data || !badge) return;
+  const af = data.mysteelArrivalForecast;
+  if(!af || !af.available){
+    return;
+  }
+  const inputEl = document.getElementById('m_arrival');
+  if(inputEl && !inputEl.value){
+    inputEl.value = af.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${af.forecastYear}年${af.forecastMonth}月到港${af.value}万吨</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_arrival', ${af.value})">采用</button><br>
+    ⚠️ 请核对这是不是你需要的月份(到港预报一般发布下个月的数据，不一定是当月)<br>
+    发布日期：${af.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================

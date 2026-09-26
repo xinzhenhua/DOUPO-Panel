@@ -2170,6 +2170,85 @@ def test_mysteel_rmspread_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
+def test_mysteel_arrival_forecast_standard_format_real_examples(monkeypatch_fetch):
+    """★用户实测抓包提供的5条真实"标准格式"样本，验证都能正确提取出
+    年份+月份+万吨数值。"""
+    examples = [
+        ("Mysteel农产品团队预估，2026年6月份国内全样本油厂大豆到港165.2船，共计约1073.80万吨（本月船重按6.5万吨计）。", 2026, 6, 1073.80),
+        ("Mysteel农产品团队预估，2026年5月份国内全样本油厂大豆到港152.1船，共计约988.65万吨（本月船重按6.5万吨计）。", 2026, 5, 988.65),
+        ("Mysteel农产品团队预估，2026年3月份国内全样本油厂大豆到港103.5船，共计约672.75万吨（本月船重按6.5万吨计）。", 2026, 3, 672.75),
+        ("2025年12月份国内全样本油厂大豆到港预估139.2船，共计约904.8万吨（本月船重按6.5万吨计）其中东北13船约84.5万吨；华北（京津冀）18船约117万吨；陕西2船约13万吨；", 2025, 12, 904.8),
+        ("2025年10月份国内全样本油厂大豆到港预估146船，共计约949万吨（本月船重按6.5万吨计）其中东北14.5船约94.25万吨；华北（京津冀）20船约130万吨；", 2025, 10, 949.0),
+    ]
+    for content, exp_year, exp_month, exp_value in examples:
+        mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-06-26 17:53"}]}
+        def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+            return mock_response, {"httpStatus": 200}
+        fd.fetch_json_debug = fake_fetch
+        result = fd.fetch_mysteel_arrival_forecast()
+        assert result["available"] is True, f"应该能解析: {content[:30]}"
+        assert result["forecastYear"] == exp_year and result["forecastMonth"] == exp_month, f"★年月应该是{exp_year}年{exp_month}月，实际{result['forecastYear']}年{result['forecastMonth']}月"
+        assert result["value"] == exp_value, f"★数值应该是{exp_value}，实际{result['value']}"
+        assert result["formatUsed"] == "标准格式"
+    print("✅ 5条真实标准格式样本全部正确提取年份+月份+万吨数值")
+
+
+def test_mysteel_arrival_forecast_cascade_format_real_example(monkeypatch_fetch):
+    """★用户实测抓包提供的第6条(预测未来3个月)样本，验证只取最近月(7月)的
+    数值，不尝试解析后面提到的8月/9月次要数据(格式不统一，且原文自己标注
+    远月数据可靠性存疑)。"""
+    content = ("2026年7月国内油厂进口大豆到港量预计达1064万吨，环比略有增长。分区域看，"
+               "华东地区到港量占比最高，山东及华北次之。8月预估到港1050万吨，"
+               "9月预计回落至930万吨。远月到港数据仍存修正可能，需持续跟踪船期变化。")
+    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-06-26 17:53"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_arrival_forecast()
+    assert result["available"] is True
+    assert result["forecastYear"] == 2026 and result["forecastMonth"] == 7, f"★应该识别为2026年7月(最近月)，实际{result['forecastYear']}年{result['forecastMonth']}月"
+    assert result["value"] == 1064.0, f"★应该取1064(最近月的数值)，不是1050或930(次要月份)，实际{result['value']}"
+    assert result["formatUsed"] == "级联格式(仅取最近月)"
+    print(f"✅ 级联格式(预测未来3个月)正确只取最近月(7月，1064万吨)，不解析次要的8月/9月数据")
+
+
+def test_mysteel_arrival_forecast_query_uses_correct_keyword(monkeypatch_fetch):
+    """验证查询关键词正确设为'大豆到港预报'，用的是文章搜索端点"""
+    captured = {}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        captured["url"] = url
+        captured["post_data"] = post_data
+        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    fd.fetch_mysteel_arrival_forecast()
+    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert captured["post_data"]["query"] == "大豆到港预报"
+    print("✅ 正确请求searchArticle端点，查询关键词正确设为'大豆到港预报'")
+
+
+def test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic(monkeypatch_fetch):
+    """完全没有匹配的记录时应该诚实报告，debug带上第一条样本方便排查"""
+    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_arrival_forecast()
+    assert result["available"] is False
+    assert "firstItemSample" in result["debug"]
+    print("✅ 没有任何记录匹配时诚实报告，debug带上第一条样本方便排查")
+
+
+def test_mysteel_arrival_forecast_empty_result(monkeypatch_fetch):
+    """搜索结果为空时应该诚实报告，不崩溃"""
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_arrival_forecast()
+    assert result["available"] is False
+    assert "为空" in result["reason"]
+    print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2227,7 +2306,10 @@ if __name__ == "__main__":
               test_mysteel_poultry_profit_no_matching_content_gives_diagnostic, test_mysteel_poultry_profit_empty_result,
               test_mysteel_rmspread_range_format_real_examples, test_mysteel_rmspread_city_specific_format_real_example,
               test_mysteel_rmspread_two_formats_mutually_exclusive, test_mysteel_rmspread_query_uses_correct_keyword,
-              test_mysteel_rmspread_no_matching_content_gives_diagnostic, test_mysteel_rmspread_empty_result]
+              test_mysteel_rmspread_no_matching_content_gives_diagnostic, test_mysteel_rmspread_empty_result,
+              test_mysteel_arrival_forecast_standard_format_real_examples, test_mysteel_arrival_forecast_cascade_format_real_example,
+              test_mysteel_arrival_forecast_query_uses_correct_keyword, test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic,
+              test_mysteel_arrival_forecast_empty_result]
     failed = 0
     for t in tests:
         try:

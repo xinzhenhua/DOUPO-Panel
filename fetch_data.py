@@ -1176,6 +1176,97 @@ def fetch_mysteel_rmspread():
 
 
 # ---------------------------------------------------------------------------
+# 到港预报：同样改自动抓取(Mysteel文章搜索)。
+#
+# ★这项在设计上跟前三项(开机率/养殖利润/价差)不一样，值得专门说明：
+#   用户提出了一个重要问题——到港预报一般在月底那一周发布，预测的是"下个月"
+#   (偶尔是未来3个月)，不是"当月"。实测查证了用户提供的6条真实样本，发现：
+#     ① 6条里只有1条(预测7/8/9三个月的那条)是"未来3个月"格式，其余5条都
+#        只预测下一个月——这个"3个月"格式并不常见，而且原文自己就说"远月
+#        到港数据仍存修正可能"，连数据来源自己都不认为远月数字够可靠。
+#     ② 基于此，没有做成3个固定指标(下月/下2月/下3月)——后两个大概率经常
+#        是空的，而且就算有数据，可靠性也存疑，硬做成3个评分指标等于把
+#        噪音引入综合评分。
+#     ③ 改成一个指标，但不再简单假设"抓到的数字就是本月"——而是把"具体是
+#        哪一年哪个月"和"多少万吨"一起提取出来，前端老实展示"这是X月的
+#        到港预报"，不管什么时候看仪表盘都清楚这个数字对应哪个月，不会被
+#        误导成"当月"。
+#
+# ★原始文本有两种完全不同的措辞风格(手算验证过全部6条真实样本)：
+#   标准格式(5条)："YYYY年M月份...到港(预估)?...共计约XXX万吨"
+#   级联格式(1条，预测未来3个月那条)："YYYY年M月...到港量预计达XXX万吨"，
+#   只取这条里的第一个(最近月)数字，不尝试解析后面提到的"8月预估.../9月
+#   预计..."这类次要月份(格式不统一，且价值有限——见上面①的说明)。
+MYSTEEL_ARRIVAL_STANDARD_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月份.*?到港.*?共计约(\d+\.?\d*)万吨")
+MYSTEEL_ARRIVAL_CASCADE_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月.*?到港量?预计达(\d+\.?\d*)万吨")
+
+
+def fetch_mysteel_arrival_forecast():
+    """通过Mysteel文章搜索"大豆到港预报"这个关键词，从最新一条能提取出
+    "哪年哪月+多少万吨"的文章里提取(标准格式优先，级联格式兜底)。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    start_bj = now_bj - timedelta(days=35)  # 这是月度指标，回看窗口给足一个月以上
+    payload = {
+        "query": "大豆到港预报",
+        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+        "sortType": "complex",
+        "platform": "pc",
+        "pageNo": 1,
+        "pageSize": 20,
+    }
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+
+    if data is None:
+        return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+    if not isinstance(data, dict) or data.get("resultCode") != 0:
+        return {
+            "available": False,
+            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+            "debug": {"rawSnippet": debug.get("rawSnippet")},
+        }
+
+    data_list = data.get("dataList") or []
+    if not data_list:
+        return {"available": False, "reason": "搜索结果为空(最近35天内没有匹配的文章)", "debug": {"total": data.get("total")}}
+
+    for item in data_list:
+        if not isinstance(item, dict):
+            continue
+        for v in item.values():
+            if not isinstance(v, str):
+                continue
+            m = MYSTEEL_ARRIVAL_STANDARD_PATTERN.search(v)
+            format_used = "标准格式"
+            if not m:
+                m = MYSTEEL_ARRIVAL_CASCADE_PATTERN.search(v)
+                format_used = "级联格式(仅取最近月)"
+            if m:
+                return {
+                    "available": True,
+                    "forecastYear": int(m.group(1)),
+                    "forecastMonth": int(m.group(2)),
+                    "value": float(m.group(3)),
+                    "date": item.get("publishTime", "")[:10],
+                    "matchedText": v, "formatUsed": format_used,
+                    "source": "Mysteel文章(大豆到港预报)",
+                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+                }
+
+    return {
+        "available": False,
+        "reason": "搜索结果里没有一条能提取出'哪年哪月+多少万吨'这个格式(可能措辞变了)",
+        "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
+    }
+
+
+# ---------------------------------------------------------------------------
 # CFTC持仓报告(COT)：CBOT豆粕合约里Managed Money(基金/投机资金)的净多空持仓+周变化。
 # 这是美国版的"龙虎榜"——跟大商所会员持仓排名是同一个概念的海外对照，Managed Money
 # 这一类是CFTC自己划分的"投机资金"分类，最接近用户想追踪的"外资/资金动向"。
@@ -2429,6 +2520,7 @@ def main():
         "mysteelCrushRate": fetch_mysteel_crush_rate(),
         "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
         "mysteelRmSpread": fetch_mysteel_rmspread(),
+        "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
