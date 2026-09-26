@@ -1973,13 +1973,14 @@ def test_fetch_json_debug_post_mode_backward_compatible(monkeypatch_fetch):
 
 
 def test_mysteel_poultry_profit_loss_cases_real_examples(monkeypatch_fetch):
-    """★用户实测抓包提供的4条真实内容样本，措辞各不相同，验证正则都能正确
+    """★用户实测抓包提供的5条真实内容样本，措辞各不相同，验证正则都能正确
     提取(含正确处理正负号)。"""
     examples_and_expected = [
         ("本周白羽肉鸡平均理论养殖亏损4.18元/只", -4.18),
         ("本周白羽肉鸡养殖端理论亏损2.23元/只", -2.23),
         ("本周白羽肉鸡养殖全面亏损，平均理论亏损1.06元/只。", -1.06),  # ★陷阱案例：亏损出现两次
         ("本周白羽肉鸡平均理论养殖盈利0.56元/只", 0.56),
+        ("本周毛鸡平均理论养殖盈利在0.82元/只", 0.82),  # ★第二轮实测发现的新变体："盈利"和数字间隔了"在"字
     ]
     for content, expected in examples_and_expected:
         mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-24 10:00"}]}
@@ -1989,7 +1990,7 @@ def test_mysteel_poultry_profit_loss_cases_real_examples(monkeypatch_fetch):
         result = fd.fetch_mysteel_poultry_profit()
         assert result["available"] is True, f"应该能解析: {content}"
         assert result["value"] == expected, f"★内容'{content}'应该提取到{expected}，实际{result['value']}"
-    print("✅ 4条真实措辞各异的样本(含陷阱案例)全部正确提取，正负号处理正确")
+    print("✅ 5条真实措辞各异的样本(含陷阱案例+带连接词案例)全部正确提取，正负号处理正确")
 
 
 def test_mysteel_poultry_profit_trap_case_skips_false_lead(monkeypatch_fetch):
@@ -2005,6 +2006,23 @@ def test_mysteel_poultry_profit_trap_case_skips_false_lead(monkeypatch_fetch):
     assert result["available"] is True
     assert result["value"] == -1.06, f"★应该跳过'全面亏损，'这个假信号(后面是逗号不是数字)，取真正带数值的第二次'亏损'，实际{result['value']}"
     print("✅ 正确跳过'亏损'第一次出现(后面紧跟逗号)的假信号，取到第二次(带真实数值)")
+
+
+def test_mysteel_poultry_profit_connector_word_allowance_excludes_punctuation(monkeypatch_fetch):
+    """★第二轮修复后新增的边界验证：正则放宽到允许"在/为/约"这类连接词后，
+    要确认标点符号依然被排除在允许范围外——构造一个更极端的案例(亏损后面
+    直接跟逗号+一段不相关文字，再出现一次真正带数值的亏损)，确认不会因为
+    放宽后误吞了标点导致提前匹配到错误位置。"""
+    mock_response = {"resultCode": 0, "dataList": [
+        {"content": "今日市场全面亏损，情绪低迷，不过白羽肉鸡平均理论养殖亏损约3.50元/只。", "publishTime": "2026-09-24"},
+    ]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_poultry_profit()
+    assert result["available"] is True
+    assert result["value"] == -3.50, f"★逗号依然应该被排除在连接词允许范围外，正确取到带'约'字的那次亏损，实际{result['value']}"
+    print("✅ 放宽连接词允许范围后，标点符号依然被正确排除，没有引入新的误判")
 
 
 def test_mysteel_poultry_profit_does_not_assume_content_field_name(monkeypatch_fetch):
@@ -2112,6 +2130,7 @@ if __name__ == "__main__":
               test_mysteel_crush_rate_no_matching_content_gives_diagnostic, test_mysteel_crush_rate_empty_result_list,
               test_mysteel_crush_rate_bad_result_code, test_fetch_json_debug_post_mode_backward_compatible,
               test_mysteel_poultry_profit_loss_cases_real_examples, test_mysteel_poultry_profit_trap_case_skips_false_lead,
+              test_mysteel_poultry_profit_connector_word_allowance_excludes_punctuation,
               test_mysteel_poultry_profit_does_not_assume_content_field_name, test_mysteel_poultry_profit_query_uses_correct_endpoint,
               test_mysteel_poultry_profit_no_matching_content_gives_diagnostic, test_mysteel_poultry_profit_empty_result]
     failed = 0

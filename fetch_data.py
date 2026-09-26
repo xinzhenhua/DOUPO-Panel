@@ -1002,8 +1002,15 @@ def fetch_mysteel_crush_rate():
 #
 # ★字段名不假设一定叫"content"——这次是"文章"搜索，字段结构未必跟"快讯"
 #   搜索一样，扫描记录里所有字符串字段的值找匹配，而不是硬编一个字段名。
+#
+# ★真实运行中发现的第二种措辞变体(已修正)："本周毛鸡平均理论养殖盈利在
+#   0.82元/只"——"盈利"和数字之间多了个"在"字，原本要求紧邻数字的正则
+#   匹配不到。改成允许中间有0-2个"在/为/约"这类常见连接词字符，但不包含
+#   标点符号——手算验证过这样既能覆盖新案例，又不会破坏"全面亏损，平均
+#   理论亏损1.06元/只"这个陷阱案例的正确处理(逗号不在允许清单里，第一次
+#   "亏损"依然会被正确跳过)。
 MYSTEEL_ARTICLE_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchArticle"
-MYSTEEL_POULTRY_PATTERN = re.compile(r"(盈利|亏损)(\d+\.?\d*)元/只")
+MYSTEEL_POULTRY_PATTERN = re.compile(r"(盈利|亏损)[在为约]{0,2}(\d+\.?\d*)元/只")
 
 
 def fetch_mysteel_poultry_profit():
