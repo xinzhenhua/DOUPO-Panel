@@ -723,7 +723,7 @@ function refreshMysteelCrushRate(){
     //   不覆盖。
     if(badge.className !== 'ai-suggest fresh'){
       badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${mc?mc.reason:'未知原因'}`;
+      badge.innerHTML = `🤖 自动抓取失败：${mc?mc.reason:'未知原因'}` + renderDebugInfo(mc?mc.debug:null);
     }
     return;
   }
@@ -749,7 +749,7 @@ function refreshMysteelPoultryProfit(){
   if(!mp || !mp.available){
     if(badge.className !== 'ai-suggest fresh'){
       badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${mp?mp.reason:'未知原因'}`;
+      badge.innerHTML = `🤖 自动抓取失败：${mp?mp.reason:'未知原因'}` + renderDebugInfo(mp?mp.debug:null);
     }
     return;
   }
@@ -777,7 +777,7 @@ function refreshMysteelRmSpread(){
   if(!rs || !rs.available){
     if(badge.className !== 'ai-suggest fresh'){
       badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${rs?rs.reason:'未知原因'}`;
+      badge.innerHTML = `🤖 自动抓取失败：${rs?rs.reason:'未知原因'}` + renderDebugInfo(rs?rs.debug:null);
     }
     return;
   }
@@ -807,7 +807,7 @@ function refreshMysteelArrivalForecast(){
   if(!af || !af.available){
     if(badge.className !== 'ai-suggest fresh'){
       badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${af?af.reason:'未知原因'}`;
+      badge.innerHTML = `🤖 自动抓取失败：${af?af.reason:'未知原因'}` + renderDebugInfo(af?af.debug:null);
     }
     return;
   }

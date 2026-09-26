@@ -33,4 +33,29 @@ testOneIndicator('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'mys
 testOneIndicator('豆菜粕价差', refreshMysteelRmSpread, 'ai_rmspread', 'mysteelRmSpread');
 testOneIndicator('到港预报', refreshMysteelArrivalForecast, 'ai_arrival', 'mysteelArrivalForecast');
 
+// ===================== ★新增修复验证：失败时应该展示完整debug信息 =====================
+// 之前的问题：只显示reason这句话，看不到实际的debug内容(比如firstItemSample)，
+// 没法判断真实文章内容长什么样、正则具体哪里没对上。
+function testDebugInfoShown(name, refreshFn, badgeId, dataKey){
+  const badge = makeEl(badgeId);
+  badge.className = 'ai-suggest unavailable';
+  badge.innerHTML = '💡 尚未粘贴数据';
+  window._syncedData = {
+    generatedAt: new Date().toISOString(),
+    [dataKey]: {
+      available: false,
+      reason: '搜索结果里没有一条能提取出格式(可能措辞变了)',
+      debug: {firstItemSample: {content: '这是真实文章的完整内容样本', publishTime: '2026-09-24'}, totalItemsChecked: 20},
+    },
+  };
+  refreshFn();
+  check(`★${name}: 失败时应该展示完整debug信息(能看到真实文章内容)`, badge.innerHTML.includes('这是真实文章的完整内容样本'));
+  check(`★${name}: debug信息应该包含🔍诊断信息这个标题`, badge.innerHTML.includes('诊断信息'));
+}
+
+testDebugInfoShown('开机率', refreshMysteelCrushRate, 'ai_crush', 'mysteelCrushRate');
+testDebugInfoShown('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'mysteelPoultryProfit');
+testDebugInfoShown('豆菜粕价差', refreshMysteelRmSpread, 'ai_rmspread', 'mysteelRmSpread');
+testDebugInfoShown('到港预报', refreshMysteelArrivalForecast, 'ai_arrival', 'mysteelArrivalForecast');
+
 H.printSummary();
