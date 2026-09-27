@@ -2301,8 +2301,31 @@ def test_mysteel_meal_stock_not_confused_by_change_amount(monkeypatch_fetch):
     print("✅ 正确取库存绝对值(58.90万吨)，没有被'增加12.40万吨'这个变动幅度干扰")
 
 
+def test_mysteel_meal_stock_real_article_content(monkeypatch_fetch):
+    """★用户实测抓包提供的真实文章("Mysteel数据：全国主要区域大豆及豆粕库存
+    统计")完整内容，验证在这句话同时包含大豆库存/豆粕库存/未执行合同/表观
+    消费量四个不同的万吨数值时，能正确取到豆粕库存这一个，不被其他三个
+    干扰(尤其是排在最前面的"大豆库存856.85万吨"，"大豆"跟"豆粕"前缀不同，
+    不会被误判)。"""
+    content = ("2026年第38周全国主要油厂大豆库存上升，豆粕库存上升，未执行合同下降。"
+               "其中大豆库存856.85万吨，较上周增加24.66万吨；豆粕库存117.32万吨，"
+               "较上周增加6.33万吨；未执行合同459.91万吨，较上周减少78.76万吨；"
+               "豆粕表观消费量178.08万吨，较上周减少4.19万吨。")
+    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-21 16:02"}]}
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        return mock_response, {"httpStatus": 200}
+    fd.fetch_json_debug = fake_fetch
+    result = fd.fetch_mysteel_meal_stock()
+    assert result["available"] is True
+    assert result["value"] == 117.32, f"★应该取117.32(豆粕库存)，不是856.85(大豆库存)、459.91(未执行合同)或178.08(表观消费量)，实际{result['value']}"
+    assert result["date"] == "2026-09-21"
+    print(f"✅ 真实文章(同时含4个不同万吨数值)正确只取豆粕库存(117.32万吨)")
+
+
 def test_mysteel_meal_stock_query_uses_correct_keyword(monkeypatch_fetch):
-    """验证查询关键词正确设为'豆粕商业库存'，用的是文章搜索端点"""
+    """★验证查询关键词正确设为'豆粕库存'——真实运行暴露过这个bug：原本用
+    '豆粕商业库存'搜索完全找不到任何文章(total:0)，真实的Mysteel文章标题
+    和内容里根本没有'商业'这两个字，只写'豆粕库存'。"""
     captured = {}
     def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
         captured["url"] = url
@@ -2311,8 +2334,8 @@ def test_mysteel_meal_stock_query_uses_correct_keyword(monkeypatch_fetch):
     fd.fetch_json_debug = fake_fetch
     fd.fetch_mysteel_meal_stock()
     assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
-    assert captured["post_data"]["query"] == "豆粕商业库存"
-    print("✅ 正确请求searchArticle端点，查询关键词正确设为'豆粕商业库存'")
+    assert captured["post_data"]["query"] == "豆粕库存", f"★查询关键词应该是'豆粕库存'(不带'商业')，实际{captured['post_data']['query']}"
+    print("✅ 正确请求searchArticle端点，查询关键词正确设为'豆粕库存'(不再是搜不到任何结果的'豆粕商业库存')")
 
 
 def test_mysteel_meal_stock_no_matching_content_gives_diagnostic(monkeypatch_fetch):
@@ -2336,6 +2359,158 @@ def test_mysteel_meal_stock_empty_result(monkeypatch_fetch):
     assert result["available"] is False
     assert "为空" in result["reason"]
     print("✅ 搜索结果为空时诚实报告，不崩溃")
+
+
+def test_hog_ratio_parsing_with_sort(monkeypatch_fetch):
+    """★用akshare确认过的真实字段结构(date/value)模拟猪粮比价DataFrame，
+    验证正确按date排序后取最新一行(不假设接口返回顺序就是"最新在后")。"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    mock_df = pd.DataFrame({
+        "date": ["2026-09-22", "2026-09-01", "2026-09-15", "2026-09-08"],  # 故意打乱顺序
+        "value": [8.22, 8.15, 7.98, 8.05],
+    })
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            assert symbol == "猪粮比价"
+            return mock_df
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is True
+        assert result["value"] == 8.22, f"★排序后最新日期(09-22)对应的值应该是8.22，不是数组里最后一个位置的8.05，实际{result['value']}"
+        assert result["date"] == "2026-09-22"
+        print(f"✅ 猪粮比正确按date排序后取最新值(8.22，对应2026-09-22)，没有被打乱的原始顺序误导")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_sow_inventory_parsing_with_sort(monkeypatch_fetch):
+    """★用akshare确认过的真实字段结构(周期/能繁母猪存栏/猪肉产量/生猪存栏/
+    生猪出栏)模拟生猪产能DataFrame，验证只取能繁母猪存栏这一项，且正确
+    按周期排序后取最新一行。"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    mock_df = pd.DataFrame({
+        "周期": ["202608", "202606", "202607"],  # 故意打乱顺序
+        "能繁母猪存栏": [4045.8, 4050.5, 4048.2],
+        "猪肉产量": [505.3, 500.1, 510.2],
+        "生猪存栏": [41600, 42000, 41800],
+        "生猪出栏": [6850, 6800, 6900],
+    })
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            assert symbol == "生猪产能"
+            return mock_df
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_sow_inventory()
+        assert result["available"] is True
+        assert result["value"] == 4045.8, f"★排序后最新周期(202608)对应的能繁母猪存栏应该是4045.8，实际{result['value']}"
+        assert result["date"] == "202608"
+        print(f"✅ 能繁母猪存栏正确按周期排序后取最新值(4045.8，对应202608)，正确只取这一项(不是猪肉产量等其他三项)")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_hog_ratio_missing_akshare_library(monkeypatch_fetch):
+    """akshare库未安装时应该诚实报告，不崩溃"""
+    import fetch_data as fd_module
+    import sys
+    import builtins
+
+    original_import = builtins.__import__
+    def fake_import_no_akshare(name, *args, **kwargs):
+        if name == 'akshare':
+            raise ImportError("No module named 'akshare'")
+        return original_import(name, *args, **kwargs)
+
+    builtins.__import__ = fake_import_no_akshare
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "未安装akshare库" in result["reason"]
+        print("✅ akshare库未安装时诚实报告，不崩溃")
+    finally:
+        builtins.__import__ = original_import
+
+
+def test_hog_ratio_akshare_call_raises_exception(monkeypatch_fetch):
+    """akshare接口调用抛出异常(比如网络问题)时应该诚实报告，debug带上
+    异常类型方便排查"""
+    import fetch_data as fd_module
+    import sys
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            raise ValueError("模拟的网络异常")
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "模拟的网络异常" in result["reason"]
+        assert result["debug"]["errorType"] == "ValueError"
+        print("✅ akshare接口调用异常时诚实报告，debug带上异常类型")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_sow_inventory_empty_dataframe(monkeypatch_fetch):
+    """akshare返回空DataFrame时应该诚实报告，不崩溃"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            return pd.DataFrame()
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_sow_inventory()
+        assert result["available"] is False
+        assert "空数据" in result["reason"]
+        print("✅ 返回空DataFrame时诚实报告，不崩溃")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_hog_ratio_field_mismatch_gives_diagnostic(monkeypatch_fetch):
+    """如果接口改了字段名(比如"value"变成别的)，应该给出诊断信息
+    (实际字段名+样本行)，不是笼统报错"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    mock_df = pd.DataFrame({"date": ["2026-09-22"], "某个改名后的字段": [8.22]})
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            return mock_df
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "actualColumns" in result["debug"]
+        assert "某个改名后的字段" in result["debug"]["actualColumns"]
+        print("✅ 字段名对不上时给出诊断信息(实际字段名列表)，不是笼统报错")
+    finally:
+        del sys.modules['akshare']
 
 
 if __name__ == "__main__":
@@ -2401,8 +2576,12 @@ if __name__ == "__main__":
               test_mysteel_arrival_forecast_query_uses_correct_keyword, test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic,
               test_mysteel_arrival_forecast_empty_result,
               test_mysteel_meal_stock_various_phrasings, test_mysteel_meal_stock_not_confused_by_change_amount,
+              test_mysteel_meal_stock_real_article_content,
               test_mysteel_meal_stock_query_uses_correct_keyword, test_mysteel_meal_stock_no_matching_content_gives_diagnostic,
-              test_mysteel_meal_stock_empty_result]
+              test_mysteel_meal_stock_empty_result,
+              test_hog_ratio_parsing_with_sort, test_sow_inventory_parsing_with_sort,
+              test_hog_ratio_missing_akshare_library, test_hog_ratio_akshare_call_raises_exception,
+              test_sow_inventory_empty_dataframe, test_hog_ratio_field_mismatch_gives_diagnostic]
     failed = 0
     for t in tests:
         try:

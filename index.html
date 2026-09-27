@@ -676,6 +676,8 @@ async function loadSyncedData(){
     refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
     refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
     refreshMysteelMealStock(); // 豆粕商业库存同样改自动抓取
+    refreshHogRatio(); // 猪粮比改自动抓取(akshare/玄田数据)
+    refreshSowInventory(); // 能繁母猪存栏改自动抓取(akshare/玄田数据)
   }catch(e){
     ['esr','psd','cbot','drought','noaaOutlook','soyCond','saPsd','planting','harvest','kline'].forEach(k=>{
       document.getElementById(k+'Badge').textContent = '⚪ 尚未同步';
@@ -847,6 +849,55 @@ function refreshMysteelMealStock(){
   badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>
     <button class="ai-use-btn" onclick="useAiValue('m_stock', ${ms.value})">采用</button><br>
     日期：${ms.date}`;
+}
+
+/** 猪粮比 + 能繁母猪存栏：改自动抓取(akshare的futures_hog_supply接口，
+ *  数据源玄田数据)，跟Mysteel那五项同一套设计模式(欄位为空自动填入、
+ *  已有值只提示、失败时显示明确原因+完整debug信息)。*/
+function refreshHogRatio(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_hogratio');
+  if(!data || !badge) return;
+  const hr = data.hogRatio;
+  if(!hr || !hr.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${hr?hr.reason:'未知原因'}` + renderDebugInfo(hr?hr.debug:null);
+    }
+    return;
+  }
+  const inputEl = document.getElementById('m_hogratio');
+  if(inputEl && !inputEl.value){
+    inputEl.value = hr.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${hr.value}</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_hogratio', ${hr.value})">采用</button><br>
+    日期：${hr.date}`;
+}
+
+function refreshSowInventory(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_sows');
+  if(!data || !badge) return;
+  const si = data.sowInventory;
+  if(!si || !si.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${si?si.reason:'未知原因'}` + renderDebugInfo(si?si.debug:null);
+    }
+    return;
+  }
+  const inputEl = document.getElementById('m_sows');
+  if(inputEl && !inputEl.value){
+    inputEl.value = si.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${si.value}万头</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_sows', ${si.value})">采用</button><br>
+    周期：${si.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================

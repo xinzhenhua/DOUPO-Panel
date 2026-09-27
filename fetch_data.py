@@ -1282,6 +1282,14 @@ def fetch_mysteel_arrival_forecast():
 #   达到XX万吨"/"库存XX万吨"不带任何连接词)都能正确匹配，且"库存"这个词
 #   在原文里通常只出现一次(库存数值本身)，不会被"较上周增加XX万吨"这种
 #   变动幅度数字干扰(那句前面没有"库存"这个词紧邻)。
+#
+# ★真实运行暴露的bug(已修复)：查询关键词原本用的是"豆粕商业库存"，但
+#   真实运行时搜索结果是total:0(完全没有匹配的文章)——用户贴出了真实存在
+#   的相关文章("Mysteel数据：全国主要区域大豆及豆粕库存统计")，内容里
+#   写的是"豆粕库存117.32万吨"，从头到尾都没有出现"商业"这两个字。问题
+#   出在搜索关键词本身，不是正则(正则的(?:商业)?本来就设计成可选，这部分
+#   没问题，问题是连"搜索"这一步都因为关键词里多了"商业"这两个字而找不到
+#   任何文章)。已经把查询关键词改成"豆粕库存"(跟Mysteel文章实际用词一致)。
 MYSTEEL_MEAL_STOCK_PATTERN = re.compile(r"豆粕(?:商业)?库存.{0,10}?(\d+\.?\d*)万吨")
 
 
@@ -1291,7 +1299,7 @@ def fetch_mysteel_meal_stock():
     now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
     start_bj = now_bj - timedelta(days=14)  # 这是周度指标，回看窗口给足2周
     payload = {
-        "query": "豆粕商业库存",
+        "query": "豆粕库存",
         "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
         "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
         "sortType": "complex",
@@ -1342,6 +1350,100 @@ def fetch_mysteel_meal_stock():
         "reason": "搜索结果里没有一条能提取出'豆粕库存XX万吨'这个格式(可能措辞变了)",
         "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
     }
+
+
+# ---------------------------------------------------------------------------
+# 猪粮比 + 能繁母猪存栏：改自动抓取，用akshare的futures_hog_supply接口
+# (数据源：玄田数据，https://zhujia.zhuwang.com.cn)。
+#
+# ★实测确认过程：这次用户直接给了函数名，没有照搬——先pip install akshare，
+#   确认了ak.futures_hog_supply这个函数真实存在，docstring里明确列出的
+#   symbol选项("猪粮比价"/"生猪产能")跟用户说的一致。实际调用测试时，沙盒
+#   连不上底层真实API域名(跟DCE K线数据一样的沙盒网络限制)，改成跟处理
+#   agrobr(巴西播种进度)那次一样的方法——直接读akshare这个函数的源码。
+#
+# ★源码读出来两个关键发现：
+#   ① 真实的底层URL是https://xt.yangzhu.vip/data/getmapdata(不是docstring
+#      写的zhujia.zhuwang.com.cn，那只是这个数据服务对外的门户网站)，用
+#      ptype这个参数区分具体取哪类数据(猪粮比价=11，生猪产能=7)。
+#   ② "生猪产能"这个symbol的返回结构里，除了"能繁母猪存栏"这一项，还
+#      同时带了"猪肉产量"/"生猪存栏"/"生猪出栏"三项——这次实现只取
+#      能繁母猪存栏这一项(仪表盘目前的手动指标只对应这一项)。
+#
+# ★没有自己重新实现底层HTTP+JSON解析逻辑(跟处理Mysteel/agtransport不同的
+#   决定)：因为akshare源码里"temp_df.columns = [...]"这一行是**事后**按位置
+#   重新命名DataFrame的欄位，不是原始JSON的真实键名——原始JSON的字段结构
+#   要么是没有键名的list-of-lists，要么是键名跟"date"/"value"完全不同的
+#   list-of-dicts，源码本身看不出是哪一种，而沙盒又连不上真实API去实测
+#   确认。与其自己猜一份可能出错的JSON解析逻辑，不如直接调用akshare这个
+#   函数本身(反正已经装了这个库)，让pandas/akshare处理这部分，只需要在
+#   拿到DataFrame之后处理"取最新一行"这一步。
+def _fetch_akshare_hog_df(symbol):
+    """共用逻辑：调用ak.futures_hog_supply(symbol=...)，处理import/调用异常。
+    返回(df, None)成功，或(None, error_dict)失败——调用方失败时直接return
+    error_dict。"""
+    try:
+        import akshare as ak
+    except ImportError:
+        return None, {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
+    try:
+        df = ak.futures_hog_supply(symbol=symbol)
+    except Exception as e:
+        return None, {"available": False, "reason": f"akshare猪粮比/生猪产能接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
+    if df is None or len(df) == 0:
+        return None, {"available": False, "reason": f"接口调用成功但返回空数据(symbol={symbol})", "debug": {"symbol": symbol}}
+    return df, None
+
+
+def fetch_hog_ratio():
+    """猪粮比：用akshare的futures_hog_supply(symbol="猪粮比价")接口(数据源：
+    玄田数据)，取最新一期的数值。★按date列排序后取最后一行，不直接假设
+    接口返回的顺序就是"最新在后"(源码本身没有明确排序逻辑，稳妥起见自己排)。"""
+    df, err = _fetch_akshare_hog_df("猪粮比价")
+    if err:
+        return err
+    try:
+        df_sorted = df.sort_values("date")
+        latest = df_sorted.iloc[-1]
+        return {
+            "available": True,
+            "value": float(latest["value"]),
+            "date": str(latest["date"]),
+            "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
+            "sourceUrl": "https://zhujia.zhuwang.com.cn",
+        }
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}(接口可能改了字段名)",
+            "debug": {"actualColumns": list(df.columns), "sampleLastRow": df.iloc[-1].to_dict() if len(df) else None},
+        }
+
+
+def fetch_sow_inventory():
+    """能繁母猪存栏：用akshare的futures_hog_supply(symbol="生猪产能")接口
+    (数据源：玄田数据)。这个symbol会同时返回能繁母猪存栏/猪肉产量/生猪存栏/
+    生猪出栏四项数据，这里只取能繁母猪存栏这一项(仪表盘目前的手动指标只
+    对应这一项)。★按周期列排序后取最后一行，理由同上。"""
+    df, err = _fetch_akshare_hog_df("生猪产能")
+    if err:
+        return err
+    try:
+        df_sorted = df.sort_values("周期")
+        latest = df_sorted.iloc[-1]
+        return {
+            "available": True,
+            "value": float(latest["能繁母猪存栏"]),
+            "date": str(latest["周期"]),
+            "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
+            "sourceUrl": "https://zhujia.zhuwang.com.cn",
+        }
+    except (KeyError, ValueError, TypeError) as e:
+        return {
+            "available": False,
+            "reason": f"字段解析失败: {e}(接口可能改了字段名)",
+            "debug": {"actualColumns": list(df.columns), "sampleLastRow": df.iloc[-1].to_dict() if len(df) else None},
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -2600,6 +2702,8 @@ def main():
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": fetch_mysteel_meal_stock(),
+        "hogRatio": fetch_hog_ratio(),
+        "sowInventory": fetch_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
