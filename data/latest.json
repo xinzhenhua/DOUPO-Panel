@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-27T03:02:45.629380+00:00",
+  "generatedAt": "2026-09-27T04:09:47.295059+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 373.9,
-    "change": -2.2,
-    "changePct": -0.58,
+    "price": 371.0,
+    "change": -5.1,
+    "changePct": -1.36,
     "asOf": "2026-09-25T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -57,20 +57,18 @@
     "sourceUrl": "https://search.mysteel.com/fastcomment.html"
   },
   "hogRatio": {
-    "available": false,
-    "reason": "akshare猪粮比/生猪产能接口调用失败: HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getmapdata?ptype=11&areano=-1 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f3bb38cf950>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-    "debug": {
-      "symbol": "猪粮比价",
-      "errorType": "ConnectTimeout"
-    }
+    "available": true,
+    "value": 4.55,
+    "date": "2026-08-19",
+    "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
+    "sourceUrl": "https://zhujia.zhuwang.com.cn"
   },
   "sowInventory": {
-    "available": false,
-    "reason": "akshare猪粮比/生猪产能接口调用失败: HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getmapdata?ptype=7&areano=-1 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f3bb38a94d0>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-    "debug": {
-      "symbol": "生猪产能",
-      "errorType": "ConnectTimeout"
-    }
+    "available": true,
+    "value": 4043.0,
+    "date": "2025年二季度（末）",
+    "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
+    "sourceUrl": "https://zhujia.zhuwang.com.cn"
   },
   "cftcManagedMoney": {
     "available": true,
