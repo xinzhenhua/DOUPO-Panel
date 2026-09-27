@@ -1430,15 +1430,41 @@ def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_sec
     return None, {"available": False, "reason": f"接口调用成功但返回空数据(已重试{retries}次，symbol={symbol})", "debug": {"symbol": symbol, "retriesAttempted": retries}}
 
 
+def _period_sort_key(period_str):
+    """★真实运行暴露的排序bug(已修复)：能繁母猪存栏这个接口真实返回的
+    "周期"字段是"2025年二季度（末）"这种中文季度格式，不是当初测试时假设
+    的"202608"纯数字月份格式。直接对这种字符串排序会出错——中文数字"二"
+    (unicode码点U+4E8C=20108)比"三"(U+4E09=19977)大，导致同一年份内"二
+    季度"和"三季度"的字符串排序顺序跟真实时间顺序相反，`.iloc[-1]`可能
+    选到的不是真正最新的一期。
+
+    这个函数把"年份+季度/月份/日"统一解析成一个数值tuple来排序，不管是
+    "2025年二季度（末）"这种中文季度格式、"2026-08-19"这种完整日期、还是
+    "202608"这种纯数字年月，都能正确按时间顺序排列。解析失败时返回
+    (0,0,0)，确保这种异常数据排在最前面、不会被误判成"最新"。"""
+    quarter_map = {"一": 1, "二": 2, "三": 3, "四": 4}
+    s = str(period_str)
+    m = re.search(r"(\d{4})年([一二三四])季度", s)
+    if m:
+        return (int(m.group(1)), quarter_map[m.group(2)] * 3, 0)
+    m2 = re.search(r"(\d{4})[年\-](\d{1,2})[月\-](\d{1,2})", s)
+    if m2:
+        return (int(m2.group(1)), int(m2.group(2)), int(m2.group(3)))
+    m3 = re.search(r"(\d{4})[年\-]?(\d{1,2})月?$", s)
+    if m3:
+        return (int(m3.group(1)), int(m3.group(2)), 0)
+    return (0, 0, 0)
+
+
 def fetch_hog_ratio():
     """猪粮比：用akshare的futures_hog_supply(symbol="猪粮比价")接口(数据源：
-    玄田数据)，取最新一期的数值。★按date列排序后取最后一行，不直接假设
-    接口返回的顺序就是"最新在后"(源码本身没有明确排序逻辑，稳妥起见自己排)。"""
+    玄田数据)，取最新一期的数值。★按_period_sort_key排序后取最后一行，
+    不直接对字符串排序、也不假设接口返回的顺序就是"最新在后"。"""
     df, err = _fetch_akshare_hog_df("猪粮比价")
     if err:
         return err
     try:
-        df_sorted = df.sort_values("date")
+        df_sorted = df.sort_values("date", key=lambda col: col.map(_period_sort_key))
         latest = df_sorted.iloc[-1]
         return {
             "available": True,
@@ -1459,12 +1485,14 @@ def fetch_sow_inventory():
     """能繁母猪存栏：用akshare的futures_hog_supply(symbol="生猪产能")接口
     (数据源：玄田数据)。这个symbol会同时返回能繁母猪存栏/猪肉产量/生猪存栏/
     生猪出栏四项数据，这里只取能繁母猪存栏这一项(仪表盘目前的手动指标只
-    对应这一项)。★按周期列排序后取最后一行，理由同上。"""
+    对应这一项)。★按_period_sort_key排序后取最后一行——真实运行暴露过
+    这个"周期"字段是中文季度格式("2025年二季度（末）")这个事实，之前对
+    这种字符串直接排序有bug(见_period_sort_key的说明)，已修复。"""
     df, err = _fetch_akshare_hog_df("生猪产能")
     if err:
         return err
     try:
-        df_sorted = df.sort_values("周期")
+        df_sorted = df.sort_values("周期", key=lambda col: col.map(_period_sort_key))
         latest = df_sorted.iloc[-1]
         return {
             "available": True,

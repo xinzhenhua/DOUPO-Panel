@@ -2592,6 +2592,70 @@ def test_hog_df_socket_timeout_always_restored(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
+def test_sow_inventory_chinese_quarter_sort_bug_fixed(monkeypatch_fetch):
+    """★真实运行暴露的排序bug：用户反馈能繁母猪存栏显示"2025年二季度（末）"，
+    比预期滞后很多。排查后发现真实的"周期"字段是中文季度格式(不是当初
+    假设的"202608"纯数字月份格式)，而中文数字"二"(unicode码点U+4E8C)比
+    "三"(U+4E09)大，直接对这种字符串排序会导致同一年份内"二季度"排在
+    "三季度"后面——如果数据库里最新一期恰好排序错乱，`.iloc[-1]`可能选到
+    不是真正最新的一期。这个测试专门验证修复后能正确选到真正最新的季度。"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    # 包含用户真实反馈里出现的"2025年二季度"，以及更新的几期数据——
+    # 修复前的简单字符串排序会因为"二"/"三"这两个字的unicode顺序问题，
+    # 可能选不到真正最新的2026年二季度
+    mock_df = pd.DataFrame({
+        "周期": ["2025年二季度（末）", "2025年三季度（末）", "2025年四季度（末）",
+                 "2026年一季度（末）", "2026年二季度（末）"],
+        "能繁母猪存栏": [4043.0, 4050.0, 4055.0, 4048.0, 4060.0],
+        "猪肉产量": [500.0]*5, "生猪存栏": [42000.0]*5, "生猪出栏": [6800.0]*5,
+    })
+
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            return mock_df
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        result = fd_module.fetch_sow_inventory()
+        assert result["available"] is True
+        assert result["date"] == "2026年二季度（末）", f"★应该选到真正最新的2026年二季度，不是排序错乱后停在2025年二季度，实际{result['date']}"
+        assert result["value"] == 4060.0, f"★对应的能繁母猪存栏应该是4060.0，实际{result['value']}"
+        print(f"✅ 中文季度格式排序bug已修复：正确选到真正最新的2026年二季度(4060.0万头)，不再错误停在2025年二季度")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_period_sort_key_handles_multiple_formats(monkeypatch_fetch):
+    """★验证_period_sort_key这个共用排序函数能正确处理三种不同的周期/日期
+    格式(中文季度/完整日期/纯数字年月)，且解析失败时返回(0,0,0)不会崩溃。"""
+    import fetch_data as fd_module
+
+    # 中文季度格式：同一年份内，季度数字大的应该排序key更大
+    key_q2 = fd_module._period_sort_key("2025年二季度（末）")
+    key_q3 = fd_module._period_sort_key("2025年三季度（末）")
+    assert key_q3 > key_q2, f"★三季度的排序key应该大于二季度，实际q2={key_q2}, q3={key_q3}"
+
+    # 完整日期格式
+    key_date1 = fd_module._period_sort_key("2026-08-19")
+    key_date2 = fd_module._period_sort_key("2026-09-22")
+    assert key_date2 > key_date1
+
+    # 纯数字年月格式
+    key_ym1 = fd_module._period_sort_key("202608")
+    key_ym2 = fd_module._period_sort_key("202609")
+    assert key_ym2 > key_ym1
+
+    # 解析失败时不应该崩溃，应该返回(0,0,0)
+    assert fd_module._period_sort_key("完全无法解析的内容") == (0, 0, 0)
+    assert fd_module._period_sort_key(None) == (0, 0, 0)
+
+    print("✅ _period_sort_key正确处理中文季度/完整日期/纯数字年月三种格式，解析失败时安全返回(0,0,0)")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2662,7 +2726,8 @@ if __name__ == "__main__":
               test_hog_ratio_missing_akshare_library, test_hog_ratio_akshare_call_raises_exception,
               test_sow_inventory_empty_dataframe, test_hog_ratio_field_mismatch_gives_diagnostic,
               test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
-              test_hog_df_socket_timeout_always_restored]
+              test_hog_df_socket_timeout_always_restored,
+              test_sow_inventory_chinese_quarter_sort_bug_fixed, test_period_sort_key_handles_multiple_formats]
     failed = 0
     for t in tests:
         try:
