@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T04:39:58.124915+00:00",
+  "generatedAt": "2026-09-27T13:27:51.035976+00:00",
   "cbotPrice": {
     "available": true,
     "price": 371.0,
@@ -57,11 +57,11 @@
     "sourceUrl": "https://search.mysteel.com/fastcomment.html"
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.55,
-    "date": "2026-08-19",
-    "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn"
+    "available": false,
+    "reason": "列表页里没有找到任何指向详情页(带tId参数)的链接(可能页面结构变了)",
+    "debug": {
+      "htmlSnippet": "<!DOCTYPE html><html  lang=\"zh-cn\" data-capo=\"\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, height=device-height, initial-scale=0.3, minimum-scale=0.3, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover\">\n<title>中华人民共和国国家发展和改革委员会 - 监测信息-生猪出场价与玉米价格周报</title>\n<style>@charset \"UTF-8\";/*! tailwindcss v3.4.7 | MIT License | https://tailwindcss.com*/*,:after,:before{border:0 solid;box-sizing:border-box}:after,:before{--tw-content:\"\"}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-tap-highlight-color:transparent}body{line-height:inherit}hr{border-top-width:1px;color:inherit;height:0}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-size:1em;font-variation-settings:normal}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{border-collapse:collapse;border-color:inherit;text-indent:0}button,input,optgroup,select,textarea{"
+    }
   },
   "sowInventory": {
     "available": true,
