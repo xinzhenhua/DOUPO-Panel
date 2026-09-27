@@ -2361,35 +2361,6 @@ def test_mysteel_meal_stock_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
-def test_hog_ratio_parsing_with_sort(monkeypatch_fetch):
-    """★用akshare确认过的真实字段结构(date/value)模拟猪粮比价DataFrame，
-    验证正确按date排序后取最新一行(不假设接口返回顺序就是"最新在后")。"""
-    import pandas as pd
-    import fetch_data as fd_module
-    import sys
-
-    mock_df = pd.DataFrame({
-        "date": ["2026-09-22", "2026-09-01", "2026-09-15", "2026-09-08"],  # 故意打乱顺序
-        "value": [8.22, 8.15, 7.98, 8.05],
-    })
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            assert symbol == "猪粮比价"
-            return mock_df
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is True
-        assert result["value"] == 8.22, f"★排序后最新日期(09-22)对应的值应该是8.22，不是数组里最后一个位置的8.05，实际{result['value']}"
-        assert result["date"] == "2026-09-22"
-        print(f"✅ 猪粮比正确按date排序后取最新值(8.22，对应2026-09-22)，没有被打乱的原始顺序误导")
-    finally:
-        del sys.modules['akshare']
-
-
 def test_sow_inventory_parsing_with_sort(monkeypatch_fetch):
     """★用akshare确认过的真实字段结构(周期/能繁母猪存栏/猪肉产量/生猪存栏/
     生猪出栏)模拟生猪产能DataFrame，验证只取能繁母猪存栏这一项，且正确
@@ -2423,50 +2394,6 @@ def test_sow_inventory_parsing_with_sort(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
-def test_hog_ratio_missing_akshare_library(monkeypatch_fetch):
-    """akshare库未安装时应该诚实报告，不崩溃"""
-    import fetch_data as fd_module
-    import sys
-    import builtins
-
-    original_import = builtins.__import__
-    def fake_import_no_akshare(name, *args, **kwargs):
-        if name == 'akshare':
-            raise ImportError("No module named 'akshare'")
-        return original_import(name, *args, **kwargs)
-
-    builtins.__import__ = fake_import_no_akshare
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "未安装akshare库" in result["reason"]
-        print("✅ akshare库未安装时诚实报告，不崩溃")
-    finally:
-        builtins.__import__ = original_import
-
-
-def test_hog_ratio_akshare_call_raises_exception(monkeypatch_fetch):
-    """akshare接口调用抛出异常(比如网络问题)时应该诚实报告，debug带上
-    异常类型方便排查"""
-    import fetch_data as fd_module
-    import sys
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            raise ValueError("模拟的网络异常")
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "模拟的网络异常" in result["reason"]
-        assert result["debug"]["errorType"] == "ValueError"
-        print("✅ akshare接口调用异常时诚实报告，debug带上异常类型")
-    finally:
-        del sys.modules['akshare']
-
-
 def test_sow_inventory_empty_dataframe(monkeypatch_fetch):
     """akshare返回空DataFrame时应该诚实报告，不崩溃"""
     import pandas as pd
@@ -2484,31 +2411,6 @@ def test_sow_inventory_empty_dataframe(monkeypatch_fetch):
         assert result["available"] is False
         assert "空数据" in result["reason"]
         print("✅ 返回空DataFrame时诚实报告，不崩溃")
-    finally:
-        del sys.modules['akshare']
-
-
-def test_hog_ratio_field_mismatch_gives_diagnostic(monkeypatch_fetch):
-    """如果接口改了字段名(比如"value"变成别的)，应该给出诊断信息
-    (实际字段名+样本行)，不是笼统报错"""
-    import pandas as pd
-    import fetch_data as fd_module
-    import sys
-
-    mock_df = pd.DataFrame({"date": ["2026-09-22"], "某个改名后的字段": [8.22]})
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            return mock_df
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "actualColumns" in result["debug"]
-        assert "某个改名后的字段" in result["debug"]["actualColumns"]
-        print("✅ 字段名对不上时给出诊断信息(实际字段名列表)，不是笼统报错")
     finally:
         del sys.modules['akshare']
 
@@ -2656,6 +2558,132 @@ def test_period_sort_key_handles_multiple_formats(monkeypatch_fetch):
     print("✅ _period_sort_key正确处理中文季度/完整日期/纯数字年月三种格式，解析失败时安全返回(0,0,0)")
 
 
+def _make_ndrc_fake_urlopen(list_html, detail_html_map):
+    """构造发改委两步抓取(列表页+详情页)的mock：list_html是列表页的原始
+    HTML；detail_html_map是{url: html}这个字典，url访问到哪个详情页就
+    返回对应的HTML。"""
+    class FakeResp:
+        def __init__(self, content):
+            self._content = content.encode("utf-8")
+        def read(self):
+            return self._content
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+    def fake_urlopen(req, timeout=20):
+        url = req.full_url if hasattr(req, "full_url") else req
+        if "list?" in url:
+            return FakeResp(list_html)
+        for key, html in detail_html_map.items():
+            if key in url:
+                return FakeResp(html)
+        return FakeResp("<html></html>")
+    return fake_urlopen
+
+
+def test_hog_ratio_ndrc_full_flow(monkeypatch_fetch):
+    """★验证发改委两步抓取的完整流程：先从列表页找到最新一篇的链接(tId=
+    2099999999999999999排在最前面，应该被选中，不是列表里排第二的那篇)，
+    再从详情页表格里正确解析出猪粮比价和日期。"""
+    import urllib.request
+    import fetch_data as fd_module
+
+    list_html = """<html><body><ul>
+    <li><a href="/detail?clmId=1836667772799598593&tId=2099999999999999999">最新一篇</a></li>
+    <li><a href="/detail?clmId=1836667772799598593&tId=2068974823767326722">较早一篇</a></li>
+    </ul></body></html>"""
+    detail_html = """<html><body><table>
+    <tr><th>日期</th><th>生猪价格</th><th>玉米价格</th><th>猪粮比价</th></tr>
+    <tr><td>9月16日</td><td>10.20</td><td>2.44</td><td>4.18</td></tr>
+    <tr><td>比9月9日涨跌</td><td>1.5%</td><td>0%</td><td>1.5%</td></tr>
+    </table></body></html>"""
+
+    fake_fetch_json = fd_module.fetch_json_debug
+    def fake_fetch_json_debug_returns_none(url, headers=None, retries=3, timeout=20, post_data=None):
+        return None, {"rawSnippet": "非JSON内容(HTML页面)"}
+    fd_module.fetch_json_debug = fake_fetch_json_debug_returns_none
+
+    original_urlopen = urllib.request.urlopen
+    urllib.request.urlopen = _make_ndrc_fake_urlopen(list_html, {"tId=2099999999999999999": detail_html})
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is True, f"应该解析成功，实际: {result}"
+        assert result["value"] == 4.18, f"★应该提取到4.18，实际{result.get('value')}"
+        assert result["date"] == "9月16日"
+        assert "2099999999999999999" in result["sourceUrl"], "★应该用列表里排第一(最新)的那篇，不是排第二的"
+        print(f"✅ 发改委两步抓取完整流程正确：选中最新一篇，正确解析出猪粮比{result['value']}({result['date']})")
+    finally:
+        urllib.request.urlopen = original_urlopen
+        fd_module.fetch_json_debug = fake_fetch_json
+
+
+def test_hog_ratio_ndrc_no_links_found_gives_diagnostic(monkeypatch_fetch):
+    """★如果列表页里完全找不到任何带tId的链接(页面结构变了)，应该诚实
+    报告，debug里带上实际抓到的HTML片段方便排查，不是笼统报错。"""
+    import urllib.request
+    import fetch_data as fd_module
+
+    fake_fetch_json = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"rawSnippet": ""})
+
+    original_urlopen = urllib.request.urlopen
+    urllib.request.urlopen = _make_ndrc_fake_urlopen("<html><body>完全没有相关链接的页面</body></html>", {})
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "htmlSnippet" in result["debug"]
+        print("✅ 列表页找不到链接时诚实报告，debug带上实际HTML片段")
+    finally:
+        urllib.request.urlopen = original_urlopen
+        fd_module.fetch_json_debug = fake_fetch_json
+
+
+def test_hog_ratio_ndrc_table_not_found_gives_diagnostic(monkeypatch_fetch):
+    """★如果详情页里找不到包含'猪粮比价'这一列的表格(页面结构变了)，应该
+    诚实报告，不是笼统报错。"""
+    import urllib.request
+    import fetch_data as fd_module
+
+    list_html = '<html><body><a href="/detail?clmId=1&tId=123">文章</a></body></html>'
+    detail_html = "<html><body><table><tr><td>完全不相关的表格</td></tr></table></body></html>"
+
+    fake_fetch_json = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"rawSnippet": ""})
+
+    original_urlopen = urllib.request.urlopen
+    urllib.request.urlopen = _make_ndrc_fake_urlopen(list_html, {"tId=123": detail_html})
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "tablesFound" in result["debug"]
+        print("✅ 详情页找不到猪粮比价表格时诚实报告")
+    finally:
+        urllib.request.urlopen = original_urlopen
+        fd_module.fetch_json_debug = fake_fetch_json
+
+
+def test_hog_ratio_ndrc_bs4_missing_gives_diagnostic(monkeypatch_fetch):
+    """beautifulsoup4库未安装时应该诚实报告，不崩溃"""
+    import fetch_data as fd_module
+    import builtins
+
+    original_import = builtins.__import__
+    def fake_import_no_bs4(name, *args, **kwargs):
+        if name == "bs4":
+            raise ImportError("No module named 'bs4'")
+        return original_import(name, *args, **kwargs)
+
+    builtins.__import__ = fake_import_no_bs4
+    try:
+        result = fd_module.fetch_hog_ratio()
+        assert result["available"] is False
+        assert "beautifulsoup4" in result["reason"]
+        print("✅ beautifulsoup4未安装时诚实报告，不崩溃")
+    finally:
+        builtins.__import__ = original_import
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2722,12 +2750,12 @@ if __name__ == "__main__":
               test_mysteel_meal_stock_real_article_content,
               test_mysteel_meal_stock_query_uses_correct_keyword, test_mysteel_meal_stock_no_matching_content_gives_diagnostic,
               test_mysteel_meal_stock_empty_result,
-              test_hog_ratio_parsing_with_sort, test_sow_inventory_parsing_with_sort,
-              test_hog_ratio_missing_akshare_library, test_hog_ratio_akshare_call_raises_exception,
-              test_sow_inventory_empty_dataframe, test_hog_ratio_field_mismatch_gives_diagnostic,
+              test_sow_inventory_parsing_with_sort, test_sow_inventory_empty_dataframe,
               test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
               test_hog_df_socket_timeout_always_restored,
-              test_sow_inventory_chinese_quarter_sort_bug_fixed, test_period_sort_key_handles_multiple_formats]
+              test_sow_inventory_chinese_quarter_sort_bug_fixed, test_period_sort_key_handles_multiple_formats,
+              test_hog_ratio_ndrc_full_flow, test_hog_ratio_ndrc_no_links_found_gives_diagnostic,
+              test_hog_ratio_ndrc_table_not_found_gives_diagnostic, test_hog_ratio_ndrc_bs4_missing_gives_diagnostic]
     failed = 0
     for t in tests:
         try:

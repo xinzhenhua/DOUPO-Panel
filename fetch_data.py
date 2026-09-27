@@ -1456,29 +1456,109 @@ def _period_sort_key(period_str):
     return (0, 0, 0)
 
 
+# ---------------------------------------------------------------------------
+# 猪粮比：改用国家发改委价格监测中心官网(权威原始来源)，不再用akshare/
+# 玄田数据——用户反馈玄田数据这条线滞后5-6周(日期停在很久以前)，主动搜索
+# 后确认发改委官网(jgjcndrc.org.cn)有一个专门独立的"生猪出场价与玉米价格
+# 周报"栏目，每周更新，滞后约1周(实测确认2026年9月9日的数据在2026年9月
+# 16日发布)，比玄田数据的时效性好得多。
+#
+# ★这是"两步抓取"：先访问列表页找到最新一篇文章的链接(tId这个参数每篇
+#   文章不同、没有规律可循，没法直接拼URL，必须先看列表页)，再用这个链接
+#   访问详情页解析表格里的"猪粮比价"这一列。
+#
+# ★诚实说明这次验证的局限：这个域名不在开发环境的网络白名单里，没法在
+#   沙盒里实测这两步抓取能不能真的跑通——通过web_search+web_fetch工具
+#   交叉核对了多篇历史文章的真实URL和表格内容(2025年12月、2026年3-6月
+#   等好几期)，确认了详情页URL模式(clmId固定、tId每篇不同)和表格结构
+#   (日期/生猪价格/玉米价格/猪粮比价四列，第一行数值、第二行涨跌幅)，
+#   但列表页本身的原始HTML结构(具体哪个标签、哪个class包着链接)没有
+#   实测确认过——这次用相对宽松的方式解析(找所有href包含"tId="的链接，
+#   取第一个)，如果列表页的真实结构跟预期不同，会诚实报告、把实际抓到的
+#   HTML片段放进debug里，不是假装解析成功。
+NDRC_HOG_RATIO_LIST_URL = "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593"
+NDRC_HOG_RATIO_BASE = "https://www.jgjcndrc.org.cn"
+
+
 def fetch_hog_ratio():
-    """猪粮比：用akshare的futures_hog_supply(symbol="猪粮比价")接口(数据源：
-    玄田数据)，取最新一期的数值。★按_period_sort_key排序后取最后一行，
-    不直接对字符串排序、也不假设接口返回的顺序就是"最新在后"。"""
-    df, err = _fetch_akshare_hog_df("猪粮比价")
-    if err:
-        return err
+    """猪粮比：从国家发改委价格监测中心官网抓取最新一期"生猪出场价与玉米
+    价格周报"，解析出猪粮比价数值。"""
     try:
-        df_sorted = df.sort_values("date", key=lambda col: col.map(_period_sort_key))
-        latest = df_sorted.iloc[-1]
-        return {
-            "available": True,
-            "value": float(latest["value"]),
-            "date": str(latest["date"]),
-            "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
-            "sourceUrl": "https://zhujia.zhuwang.com.cn",
-        }
-    except (KeyError, ValueError, TypeError) as e:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return {"available": False, "reason": "未安装beautifulsoup4库，请检查GitHub Actions是否执行了pip install beautifulsoup4"}
+
+    list_data, list_debug = fetch_json_debug(NDRC_HOG_RATIO_LIST_URL)
+    # ★这里故意不检查list_data是不是合法JSON——这个页面本来就是HTML，不是
+    #   JSON，fetch_json_debug会在JSON解析失败时把原始HTML存进debug的
+    #   rawSnippet里，我们直接从这个原始内容里取html来解析，两种情况都能处理。
+    list_html = list_debug.get("rawSnippet") if list_data is None else None
+    if list_html is None and list_data is None:
+        return {"available": False, "reason": "发改委列表页无返回内容", "debug": list_debug}
+
+    try:
+        # rawSnippet可能被截断(fetch_json_debug默认截前2000字符)，为了保险
+        # 起见这里单独用urllib重新请求一次完整HTML，不复用截断过的片段
+        req = urllib.request.Request(NDRC_HOG_RATIO_LIST_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            full_list_html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        return {"available": False, "reason": f"发改委列表页请求失败: {e}", "debug": {"errorType": type(e).__name__}}
+
+    soup = BeautifulSoup(full_list_html, "html.parser")
+    detail_links = [a.get("href") for a in soup.find_all("a", href=True) if "tId=" in a.get("href", "")]
+    if not detail_links:
         return {
             "available": False,
-            "reason": f"字段解析失败: {e}(接口可能改了字段名)",
-            "debug": {"actualColumns": list(df.columns), "sampleLastRow": df.iloc[-1].to_dict() if len(df) else None},
+            "reason": "列表页里没有找到任何指向详情页(带tId参数)的链接(可能页面结构变了)",
+            "debug": {"htmlSnippet": full_list_html[:1500]},
         }
+    latest_url = urllib.parse.urljoin(NDRC_HOG_RATIO_BASE, detail_links[0])
+
+    detail_data, detail_debug = fetch_json_debug(latest_url)
+    try:
+        req2 = urllib.request.Request(latest_url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"})
+        with urllib.request.urlopen(req2, timeout=20) as resp2:
+            detail_html = resp2.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        return {"available": False, "reason": f"发改委详情页({latest_url})请求失败: {e}", "debug": {"errorType": type(e).__name__, "detailUrl": latest_url}}
+
+    detail_soup = BeautifulSoup(detail_html, "html.parser")
+    tables = detail_soup.find_all("table")
+    for table in tables:
+        rows = table.find_all("tr")
+        if not rows:
+            continue
+        header_cells = [c.get_text(strip=True) for c in rows[0].find_all(["th", "td"])]
+        if "猪粮比价" not in header_cells:
+            continue
+        col_idx = header_cells.index("猪粮比价")
+        if len(rows) < 2:
+            continue
+        value_cells = [c.get_text(strip=True) for c in rows[1].find_all(["th", "td"])]
+        date_cells = [c.get_text(strip=True) for c in rows[1].find_all(["th", "td"])]
+        if col_idx >= len(value_cells):
+            continue
+        try:
+            value = float(value_cells[col_idx])
+        except ValueError:
+            continue
+        date_idx = header_cells.index("日期") if "日期" in header_cells else 0
+        report_date = value_cells[date_idx] if date_idx < len(date_cells) else ""
+        return {
+            "available": True,
+            "value": value,
+            "date": report_date,
+            "source": "国家发改委价格监测中心(生猪出场价与玉米价格周报)",
+            "sourceUrl": latest_url,
+        }
+
+    return {
+        "available": False,
+        "reason": "详情页里没有找到包含'猪粮比价'这一列的表格(可能页面结构变了)",
+        "debug": {"detailUrl": latest_url, "tablesFound": len(tables), "htmlSnippet": detail_html[:1500]},
+    }
+
 
 
 def fetch_sow_inventory():
