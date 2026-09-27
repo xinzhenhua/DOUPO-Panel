@@ -35,6 +35,7 @@ import os
 import re
 import sys
 import time
+import socket
 import base64
 import urllib.request
 import urllib.error
@@ -1378,21 +1379,55 @@ def fetch_mysteel_meal_stock():
 #   确认。与其自己猜一份可能出错的JSON解析逻辑，不如直接调用akshare这个
 #   函数本身(反正已经装了这个库)，让pandas/akshare处理这部分，只需要在
 #   拿到DataFrame之后处理"取最新一行"这一步。
-def _fetch_akshare_hog_df(symbol):
+def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_seconds=2):
     """共用逻辑：调用ak.futures_hog_supply(symbol=...)，处理import/调用异常。
     返回(df, None)成功，或(None, error_dict)失败——调用方失败时直接return
-    error_dict。"""
+    error_dict。
+
+    ★真实运行暴露的问题(已加固)：akshare这个函数内部直接调用
+    `requests.post(url, params=params)`，没有传timeout参数——真实运行时
+    遇到过`ConnectTimeoutError`(连接xt.yangzhu.vip超时)，因为没有显式
+    timeout，卡了很久才失败，拖累了同一批次里其他20多个数据源的抓取。
+    没法直接修改akshare内部的requests.post()调用(它是第三方库，没有暴露
+    timeout参数给调用方)，改用`socket.setdefaulttimeout()`这个全局设置
+    间接给这次调用加上超时限制——用完之后必须在finally里恢复原值，避免
+    影响同一个Python进程里其他部分的网络请求(这个文件里还有很多其他函数
+    也在发网络请求)。同时加了重试(默认2次)，因为连接超时也可能只是这次
+    运行偶发的网络波动，不一定是这个数据源本身长期不可达。
+    ★retry_delay_seconds单独作为参数暴露出来(不是写死在函数体内)，方便
+    单元测试时传0跳过真正的等待，不用为了测"重试耗尽"这种场景真的等上
+    好几秒。"""
     try:
         import akshare as ak
     except ImportError:
         return None, {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
-    try:
-        df = ak.futures_hog_supply(symbol=symbol)
-    except Exception as e:
-        return None, {"available": False, "reason": f"akshare猪粮比/生猪产能接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
-    if df is None or len(df) == 0:
-        return None, {"available": False, "reason": f"接口调用成功但返回空数据(symbol={symbol})", "debug": {"symbol": symbol}}
-    return df, None
+
+    last_error_msg = None
+    last_error_type = None
+    for attempt in range(retries):
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(timeout_seconds)
+        try:
+            df = ak.futures_hog_supply(symbol=symbol)
+        except Exception as e:
+            last_error_msg = str(e)
+            last_error_type = type(e).__name__
+            df = None
+        finally:
+            socket.setdefaulttimeout(old_timeout)  # ★必须恢复，这是进程级全局设置
+
+        if df is not None and len(df) > 0:
+            return df, None
+        if attempt < retries - 1:
+            time.sleep(retry_delay_seconds)  # 重试前等一下，给网络一点恢复时间
+
+    if last_error_msg is not None:
+        return None, {
+            "available": False,
+            "reason": f"akshare猪粮比/生猪产能接口调用失败(已重试{retries}次): {last_error_msg}",
+            "debug": {"symbol": symbol, "errorType": last_error_type, "retriesAttempted": retries},
+        }
+    return None, {"available": False, "reason": f"接口调用成功但返回空数据(已重试{retries}次，symbol={symbol})", "debug": {"symbol": symbol, "retriesAttempted": retries}}
 
 
 def fetch_hog_ratio():

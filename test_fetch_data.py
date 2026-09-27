@@ -2513,6 +2513,85 @@ def test_hog_ratio_field_mismatch_gives_diagnostic(monkeypatch_fetch):
         del sys.modules['akshare']
 
 
+def test_hog_df_retries_and_succeeds_on_second_attempt(monkeypatch_fetch):
+    """★真实运行遇到过ConnectTimeoutError，验证重试机制：第一次调用失败
+    (模拟连接超时)，第二次成功时，应该正确返回成功结果，不是直接放弃。
+    用retry_delay_seconds=0跳过真正的等待，测试能快速跑完。"""
+    import pandas as pd
+    import fetch_data as fd_module
+    import sys
+
+    call_count = [0]
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise ConnectionError("模拟第一次连接超时")
+            return pd.DataFrame({"date": ["2026-09-22"], "value": [8.22]})
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        df, err = fd_module._fetch_akshare_hog_df("猪粮比价", retry_delay_seconds=0)
+        assert err is None, f"★第二次成功后应该返回成功结果，不应该有错误，实际{err}"
+        assert df is not None and len(df) == 1
+        assert call_count[0] == 2, f"★应该恰好调用2次(第一次失败+第二次重试成功)，实际{call_count[0]}次"
+        print("✅ 第一次连接超时、第二次成功时，重试机制正确工作")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_hog_df_exhausts_retries_reports_honestly(monkeypatch_fetch):
+    """★如果重试次数用完依然失败(比如xt.yangzhu.vip持续连接超时)，应该
+    诚实报告，debug里带上重试次数和真实错误类型，不是笼统报错。"""
+    import fetch_data as fd_module
+    import sys
+
+    call_count = [0]
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            call_count[0] += 1
+            raise ConnectionError("Connection to xt.yangzhu.vip timed out")
+
+    sys.modules['akshare'] = FakeAkshare()
+    try:
+        df, err = fd_module._fetch_akshare_hog_df("猪粮比价", retries=2, retry_delay_seconds=0)
+        assert df is None
+        assert call_count[0] == 2, f"★应该恰好重试2次后放弃，实际调用了{call_count[0]}次"
+        assert "已重试2次" in err["reason"]
+        assert "xt.yangzhu.vip" in err["reason"], "★应该保留真实的错误信息，方便判断是不是网络连接问题"
+        assert err["debug"]["retriesAttempted"] == 2
+        assert err["debug"]["errorType"] == "ConnectionError"
+        print("✅ 重试次数用完后诚实报告，debug带上重试次数和真实错误类型")
+    finally:
+        del sys.modules['akshare']
+
+
+def test_hog_df_socket_timeout_always_restored(monkeypatch_fetch):
+    """★关键验证：socket.setdefaulttimeout()是进程级全局设置，用完必须
+    恢复原值——不管成功还是失败(重试耗尽)，都不能影响同一进程里其他部分
+    的网络请求超时设置。"""
+    import socket
+    import fetch_data as fd_module
+    import sys
+
+    original_timeout = socket.getdefaulttimeout()
+
+    class FakeAkshareAlwaysFail:
+        @staticmethod
+        def futures_hog_supply(symbol):
+            raise ConnectionError("模拟持续失败")
+
+    sys.modules['akshare'] = FakeAkshareAlwaysFail()
+    try:
+        fd_module._fetch_akshare_hog_df("猪粮比价", retries=2, retry_delay_seconds=0)
+        assert socket.getdefaulttimeout() == original_timeout, "★即使全部重试都失败，socket超时设置也必须恢复原值"
+        print("✅ 即使全部重试失败，socket全局超时设置依然正确恢复，不会污染后续其他网络请求")
+    finally:
+        del sys.modules['akshare']
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2581,7 +2660,9 @@ if __name__ == "__main__":
               test_mysteel_meal_stock_empty_result,
               test_hog_ratio_parsing_with_sort, test_sow_inventory_parsing_with_sort,
               test_hog_ratio_missing_akshare_library, test_hog_ratio_akshare_call_raises_exception,
-              test_sow_inventory_empty_dataframe, test_hog_ratio_field_mismatch_gives_diagnostic]
+              test_sow_inventory_empty_dataframe, test_hog_ratio_field_mismatch_gives_diagnostic,
+              test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
+              test_hog_df_socket_timeout_always_restored]
     failed = 0
     for t in tests:
         try:
