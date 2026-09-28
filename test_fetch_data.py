@@ -2267,100 +2267,6 @@ def test_mysteel_arrival_forecast_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
-def test_mysteel_meal_stock_various_phrasings(monkeypatch_fetch):
-    """★验证多种常见措辞变体都能正确提取(不穷举具体连接词，用宽松间隔策略——
-    直接吸取到港预报那次因为死板要求具体连接词而被打穿的教训)。"""
-    examples_and_expected = [
-        ("Mysteel调研：本周(9月19日)全国重点油厂豆粕商业库存约65.32万吨，较上周增加3.15万吨。", 65.32),
-        ("本周豆粕库存为58.90万吨，环比减少2.40万吨。", 58.90),
-        ("截至9月19日当周，全国豆粕商业库存达到72.15万吨，创近三个月新高。", 72.15),
-        ("本周全国豆粕库存63万吨，与上周基本持平。", 63.0),
-    ]
-    for content, expected in examples_and_expected:
-        mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-19 15:00"}]}
-        def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-            return mock_response, {"httpStatus": 200}
-        fd.fetch_json_debug = fake_fetch
-        result = fd.fetch_mysteel_meal_stock()
-        assert result["available"] is True, f"应该能解析: {content}"
-        assert result["value"] == expected, f"★内容'{content}'应该提取到{expected}，实际{result['value']}"
-    print("✅ 多种常见措辞变体(约/为/达到/不带连接词)全部正确提取")
-
-
-def test_mysteel_meal_stock_not_confused_by_change_amount(monkeypatch_fetch):
-    """★验证不会被同一句话里的"较上周增加/减少XX万吨"这种变动幅度数字干扰——
-    "库存"这个词只紧邻库存绝对值本身，变动幅度数字前面没有"库存"这个词。"""
-    content = "本周豆粕库存为58.90万吨，较上周大幅增加12.40万吨，环比上升26.7%。"
-    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-19"}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_mysteel_meal_stock()
-    assert result["available"] is True
-    assert result["value"] == 58.90, f"★应该取58.90(库存本身)，不是12.40(变动幅度)，实际{result['value']}"
-    print("✅ 正确取库存绝对值(58.90万吨)，没有被'增加12.40万吨'这个变动幅度干扰")
-
-
-def test_mysteel_meal_stock_real_article_content(monkeypatch_fetch):
-    """★用户实测抓包提供的真实文章("Mysteel数据：全国主要区域大豆及豆粕库存
-    统计")完整内容，验证在这句话同时包含大豆库存/豆粕库存/未执行合同/表观
-    消费量四个不同的万吨数值时，能正确取到豆粕库存这一个，不被其他三个
-    干扰(尤其是排在最前面的"大豆库存856.85万吨"，"大豆"跟"豆粕"前缀不同，
-    不会被误判)。"""
-    content = ("2026年第38周全国主要油厂大豆库存上升，豆粕库存上升，未执行合同下降。"
-               "其中大豆库存856.85万吨，较上周增加24.66万吨；豆粕库存117.32万吨，"
-               "较上周增加6.33万吨；未执行合同459.91万吨，较上周减少78.76万吨；"
-               "豆粕表观消费量178.08万吨，较上周减少4.19万吨。")
-    mock_response = {"resultCode": 0, "dataList": [{"content": content, "publishTime": "2026-09-21 16:02"}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_mysteel_meal_stock()
-    assert result["available"] is True
-    assert result["value"] == 117.32, f"★应该取117.32(豆粕库存)，不是856.85(大豆库存)、459.91(未执行合同)或178.08(表观消费量)，实际{result['value']}"
-    assert result["date"] == "2026-09-21"
-    print(f"✅ 真实文章(同时含4个不同万吨数值)正确只取豆粕库存(117.32万吨)")
-
-
-def test_mysteel_meal_stock_query_uses_correct_keyword(monkeypatch_fetch):
-    """★验证查询关键词正确设为'豆粕库存'——真实运行暴露过这个bug：原本用
-    '豆粕商业库存'搜索完全找不到任何文章(total:0)，真实的Mysteel文章标题
-    和内容里根本没有'商业'这两个字，只写'豆粕库存'。"""
-    captured = {}
-    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-        captured["url"] = url
-        captured["post_data"] = post_data
-        return {"resultCode": 0, "dataList": []}, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
-    fd.fetch_mysteel_meal_stock()
-    assert captured["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
-    assert captured["post_data"]["query"] == "豆粕库存", f"★查询关键词应该是'豆粕库存'(不带'商业')，实际{captured['post_data']['query']}"
-    print("✅ 正确请求searchArticle端点，查询关键词正确设为'豆粕库存'(不再是搜不到任何结果的'豆粕商业库存')")
-
-
-def test_mysteel_meal_stock_no_matching_content_gives_diagnostic(monkeypatch_fetch):
-    """完全没有匹配的记录时应该诚实报告，debug带上第一条样本方便排查"""
-    mock_response = {"resultCode": 0, "dataList": [{"content": "完全不相关的内容", "publishTime": "2026-09-24"}]}
-    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-        return mock_response, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_mysteel_meal_stock()
-    assert result["available"] is False
-    assert "firstItemSample" in result["debug"]
-    print("✅ 没有任何记录匹配时诚实报告，debug带上第一条样本方便排查")
-
-
-def test_mysteel_meal_stock_empty_result(monkeypatch_fetch):
-    """搜索结果为空时应该诚实报告，不崩溃"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
-        return {"resultCode": 0, "dataList": [], "total": 0}, {"httpStatus": 200}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_mysteel_meal_stock()
-    assert result["available"] is False
-    assert "为空" in result["reason"]
-    print("✅ 搜索结果为空时诚实报告，不崩溃")
-
-
 def test_hog_df_retries_and_succeeds_on_second_attempt(monkeypatch_fetch):
     """★真实运行遇到过ConnectTimeoutError，验证重试机制：第一次调用失败
     (模拟连接超时)，第二次成功时，应该正确返回成功结果，不是直接放弃。
@@ -2888,6 +2794,250 @@ def test_sow_inventory_next_quarter_takes_over_once_published(monkeypatch_fetch)
     print("✅ 三季度末数据发布后自动成为最新；发布之前(季度末还没到)不会被提前采用")
 
 
+def _run_mysteel_fn(fn_name, items):
+    """用给定的文章列表(每篇是dict)模拟Mysteel搜索接口，运行指定的抓取函数。"""
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: ({"resultCode": 0, "total": len(items), "dataList": items}, {"httpStatus": 200})
+    try:
+        return getattr(fd_module, fn_name)()
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def test_plausibility_helpers(monkeypatch_fetch):
+    import fetch_data as fd_module
+    assert fd_module._plausibility_problem("mealStock", 117.32) is None
+    assert "超出合理范围" in fd_module._plausibility_problem("mealStock", 0.7)
+    assert "无效" in fd_module._plausibility_problem("mealStock", float("nan"))
+    assert fd_module._looks_like_change("较上周增加") and fd_module._looks_like_change("周环比下降")
+    assert not fd_module._looks_like_change("为") and not fd_module._looks_like_change("降至") and not fd_module._looks_like_change("约")
+    print("✅ 合理范围判断和变动量识别正确(\"降至\"这种到达某水平的写法不算变动量)")
+
+
+def test_crush_rate_out_of_range_rejected(monkeypatch_fetch):
+    for text in ["今日全国动态全样本油厂开机率为1.14%", "开机率为150%"]:
+        r = _run_mysteel_fn("fetch_mysteel_crush_rate", [{"content": text, "publishTime": "2026-09-28 18:00"}])
+        assert r["available"] is False and "不合理" in r["reason"], r
+    ok = _run_mysteel_fn("fetch_mysteel_crush_rate", [{"content": "开机率为1.14%", "publishTime": "2026-09-28"}, {"content": "开机方面，今日全国动态全样本油厂开机率为68.84%，较前一日下降1.14%。", "publishTime": "2026-09-23"}])
+    assert ok["available"] is True and ok["value"] == 68.84
+    print("✅ 开机率超出10~100%合理范围时丢弃，后面合理的仍能取到")
+
+
+def test_poultry_profit_out_of_range_rejected(monkeypatch_fetch):
+    r = _run_mysteel_fn("fetch_mysteel_poultry_profit", [{"content": "白羽肉鸡平均理论养殖亏损99元/只", "publishTime": "2026-09-24"}])
+    assert r["available"] is False and "不合理" in r["reason"], r
+    ok = _run_mysteel_fn("fetch_mysteel_poultry_profit", [{"content": "亏损99元/只", "publishTime": "2026-09-24"}, {"content": "本周白羽肉鸡平均理论养殖亏损4.18元/只", "publishTime": "2026-09-17"}])
+    assert ok["available"] is True and ok["value"] == -4.18
+    print("✅ 养殖利润超出±20元/只时丢弃，后面合理的仍能取到")
+
+
+def test_rmspread_change_range_not_mistaken_for_spread(monkeypatch_fetch):
+    """★"价差下跌，较前一日跌10-20元/吨"里的10-20是变动幅度，中点15不是价差(合理范围100~3000)；
+    多城市格式里个别离谱的城市值单独丢掉，不拉偏平均值。"""
+    r = _run_mysteel_fn("fetch_mysteel_rmspread", [{"content": "豆菜粕现货价差下跌，较前一日跌10-20元/吨。", "publishTime": "2026-09-28"}])
+    assert r["available"] is False and "不合理" in r["reason"], r
+    ok = _run_mysteel_fn("fetch_mysteel_rmspread", [{"content": "豆菜粕现货价差下跌，较前一日跌10-20元/吨。", "publishTime": "2026-09-28"},
+                                                    {"content": "现货价差下跌，区间为480-520元/吨，较前一日跌10-20元/吨。", "publishTime": "2026-09-27"}])
+    assert ok["available"] is True and ok["value"] == 500.0, ok
+    city = _run_mysteel_fn("fetch_mysteel_rmspread", [{"content": "广东价差740元/吨；广西价差10元/吨；南通价差810元/吨。", "publishTime": "2026-09-28"}])
+    assert city["available"] is True and city["citySamples"] == [740.0, 810.0] and city["value"] == 775.0, city
+    print("✅ 变动幅度区间(10-20)不被当成价差；离谱的单个城市值被剔除，不拉偏平均")
+
+
+def test_arrival_forecast_change_and_out_of_range_rejected(monkeypatch_fetch):
+    """"到港较上月减少300万吨"是变动量；"到港30万吨"超出合理范围(200~2000)。"""
+    for text in ["2026年10月国内全样本油厂大豆到港较上月减少300万吨", "2026年10月国内全样本油厂大豆到港30万吨"]:
+        r = _run_mysteel_fn("fetch_mysteel_arrival_forecast", [{"content": text, "publishTime": "2026-09-24"}])
+        assert r["available"] is False and "不合理" in r["reason"], f"{text}: {r}"
+    ok = _run_mysteel_fn("fetch_mysteel_arrival_forecast", [{"content": "2026年10月国内全样本油厂大豆到港较上月减少300万吨", "publishTime": "2026-09-25"},
+                                                            {"content": "Mysteel预估2026年10月国内全样本油厂大豆到港约854.10万吨", "publishTime": "2026-09-24"}])
+    assert ok["available"] is True and ok["value"] == 854.10
+    print("✅ 到港的变动量/超范围数值被丢弃，后面真正的到港预报仍能取到")
+
+
+def test_export_inspections_limit_raised_and_truncation_detected(monkeypatch_fetch):
+    """★审计发现：$limit=50，用户页面上"当周记录数"正好是50，当周总量被截断。现在上限放到5000；
+    记录数触达上限且全部属于同一周时拒绝展示；加总结果也要过合理范围。"""
+    import fetch_data as fd_module
+    urls = []
+    real = fd_module.fetch_json_debug
+    def fake(url, headers=None, retries=3, timeout=20, post_data=None):
+        urls.append(url)
+        return [{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "1000"}] * fd_module.EXPORT_INSPECTIONS_LIMIT, {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake
+    try:
+        r = fd_module.fetch_us_export_inspections()
+    finally:
+        fd_module.fetch_json_debug = real
+    assert "limit=5000" in urls[0].replace("%24", "$").replace("$limit", "limit"), urls[0]
+    assert r["available"] is False and "触达查询上限" in r["reason"], r
+    tiny = _run_export([{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "10"}])
+    assert tiny["available"] is False and "不合理" in tiny["reason"], tiny
+    ok = _run_export([{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "450000"}, {"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "223000"}])
+    assert ok["available"] is True and ok["quantityMetricTons"] == 673000.0
+    print("✅ 出口检验查询上限放宽到5000，触达上限时拒绝展示；加总结果异常小时拒绝；正常情况不受影响")
+
+
+def _run_export(rows):
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (rows, {"httpStatus": 200})
+    try:
+        return fd_module.fetch_us_export_inspections()
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def test_hog_ratio_each_price_must_be_plausible(monkeypatch_fetch):
+    """比值本身在合理范围，但两个价格取错了(比如取错序列)时也要拒绝：
+    生猪价格45元/公斤、玉米10000元/吨 → 比值4.5看起来正常，但两个价格都荒谬。"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026, 9, 27)], "value": [45.0]})
+    cost = pd.DataFrame({"date": [dt.date(2026, 9, 27)], "value": [10000.0]})
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is False and "生猪价格" in result["reason"], result
+    print("✅ 猪粮比：比值正常但价格荒谬时也拒绝(可能取错了序列)")
+
+
+def test_frontend_and_backend_plausible_ranges_are_identical(monkeypatch_fetch):
+    """★前端SANITY_RANGES和后端PLAUSIBLE_RANGES是同一张表的两份拷贝，必须一致——以后改了一边
+    忘了另一边，这个测试会直接报错(否则两层防线的判断标准不一样，会出现后端放行前端拦截的怪事)。"""
+    import json, os, re
+    import fetch_data as fd_module
+    html = open(os.path.join(os.path.dirname(__file__), "index.html"), encoding="utf-8").read()
+    m = re.search(r"const SANITY_RANGES = (\{.*?\});", html, re.S)
+    assert m, "index.html里找不到SANITY_RANGES"
+    frontend = json.loads(m.group(1))
+    backend = {k: [v[0], v[1], v[2]] for k, v in fd_module.PLAUSIBLE_RANGES.items()}
+    assert set(frontend) == set(backend), (set(frontend) ^ set(backend))
+    for k in backend:
+        assert [float(frontend[k][0]), float(frontend[k][1]), frontend[k][2]] == backend[k], f"{k}: 前端{frontend[k]} 后端{backend[k]}"
+    print(f"✅ 前后端合理范围表完全一致({len(backend)}个指标)")
+
+
+import datetime as _meal_dt
+_MEAL_TEST_TODAY = _meal_dt.date(2026, 9, 28)   # 固定"今天"(这次对话的真实日期)，测试不随真实日期变化
+_REAL_MEAL_CONTENT = ("据Mysteel数据，2026年第38周全国主要油厂大豆库存上升，豆粕库存上升，未执行合同下降。其中大豆库存856.85万吨，"
+                      "较上周增加24.66万吨；豆粕库存117.32万吨，较上周增加6.33万吨；未执行合同459.91万吨，较上周减少78.76万吨；"
+                      "豆粕表观消费量178.08万吨，较上周减少4.19万吨。")
+_MEAL_TITLE = "Mysteel数据：全国主要区域大豆及豆粕库存统计"
+
+
+def _meal_item(content, publish, title=_MEAL_TITLE):
+    return {"content": content, "publishTime": publish, "title": title, "url": "https://ncp.mysteel.com/a/meal.html"}
+
+
+def _weekly_meal_article(week, stock, publish):
+    """仿照用户贴的真实文章格式造一期每周统计(只改周数、库存、发布日期)。"""
+    return _meal_item(f"据Mysteel数据，2026年第{week}周全国主要油厂大豆库存上升，豆粕库存上升，未执行合同下降。其中大豆库存856.85万吨，"
+                      f"较上周增加24.66万吨；豆粕库存{stock}万吨，较上周增加6.33万吨；未执行合同459.91万吨，较上周减少78.76万吨。", publish + " 16:02")
+
+
+def _run_meal_with_pages(pages, capture=None, today=None):
+    """pages是{pageNo: 响应dict}，按请求里的pageNo返回对应页；today默认固定为2026-09-28。"""
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        if capture is not None:
+            capture.append({"url": url, "headers": headers, "post_data": post_data})
+        return pages.get((post_data or {}).get("pageNo", 1), _sow_resp([])), {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake_fetch
+    try:
+        return fd_module.fetch_mysteel_meal_stock(today=today or _MEAL_TEST_TODAY)
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def test_meal_stock_real_weekly_article(monkeypatch_fetch):
+    """★用户贴的真实文章("全国主要区域大豆及豆粕库存统计"，2026-09-21发布)：同一段话里有大豆库存856.85、
+    豆粕库存117.32、未执行合同459.91、豆粕表观消费量178.08四个数，必须只取豆粕库存117.32。"""
+    r = _run_meal_with_pages({1: _sow_resp([_meal_item(_REAL_MEAL_CONTENT, "2026-09-21 16:02")])})
+    assert r["available"] is True, r
+    assert r["value"] == 117.32 and r["date"] == "2026-09-21" and r["weekLabel"] == "2026年第38周", r
+    print("✅ 真实文章正确取到豆粕库存117.32万吨(2026年第38周)，没有被大豆库存/合同/表观消费量干扰")
+
+
+def test_meal_stock_takes_latest_article_across_pages_not_first_match(monkeypatch_fetch):
+    """★一年窗口搜出几十篇每周一期的文章，排序是按相关度不是时间：最新一期(第38周117.32)放在第3页，
+    前两页全是旧的周报——必须翻页收齐后按发布日期取最新，不能取"第一个匹配"(旧版的做法)。"""
+    old = [_weekly_meal_article(i % 52 + 1, 100 + i, (_meal_dt.date(2025, 10, 6) + _meal_dt.timedelta(days=7 * i)).isoformat()) for i in range(40)]
+    latest = [_weekly_meal_article(36, 112.0, "2026-09-07"), _weekly_meal_article(38, 117.32, "2026-09-21"), _weekly_meal_article(37, 110.99, "2026-09-14")]
+    captured = []
+    r = _run_meal_with_pages({1: _sow_resp(old[:20], 43), 2: _sow_resp(old[20:], 43), 3: _sow_resp(latest, 43)}, capture=captured)
+    assert [c["post_data"]["pageNo"] for c in captured] == [1, 2, 3]
+    assert r["available"] is True and r["value"] == 117.32 and r["date"] == "2026-09-21", r
+    print("✅ 翻页收齐3页，最新一期在第3页也能选中(按发布日期，不是第一个匹配)")
+
+
+def test_meal_stock_stale_data_rejected(monkeypatch_fetch):
+    """★新鲜度限制(周度数据，最多21天)：只搜到旧数据时拒绝；边界：21天前接受，22天前拒绝。"""
+    def run(publish):
+        return _run_meal_with_pages({1: _sow_resp([_weekly_meal_article(30, 105.0, publish)])})
+    assert run("2026-09-07")["available"] is True                      # 21天前：接受
+    r22 = run("2026-09-06")                                            # 22天前：拒绝
+    assert r22["available"] is False and "新鲜度限制" in r22["reason"] and "22天前" in r22["reason"], r22
+    old = run("2025-10-06")                                            # 一年前的旧一期
+    assert old["available"] is False and "新鲜度限制" in old["reason"]
+    print("✅ 新鲜度限制生效：21天内接受，22天和一年前的旧数据拒绝并说明原因")
+
+
+def test_meal_stock_requires_national_scope(monkeypatch_fetch):
+    """标题和正文都没有"全国"字样时不确认是全国口径，拒绝；标题有"全国"就放行。"""
+    body = "豆粕库存117.32万吨，较上周增加6.33万吨。"
+    no_scope = _run_meal_with_pages({1: _sow_resp([_meal_item(body, "2026-09-21 16:02", title="某篇文章")])})
+    assert no_scope["available"] is False and "全国" in no_scope["reason"], no_scope
+    with_scope = _run_meal_with_pages({1: _sow_resp([_meal_item(body, "2026-09-21 16:02")])})
+    assert with_scope["available"] is True and with_scope["value"] == 117.32
+    print("✅ 没有'全国'字样时拒绝，标题有'全国'时放行")
+
+
+def test_meal_stock_region_other_subject_and_change_rejected(monkeypatch_fetch):
+    """★区域数据("华东地区豆粕库存25万吨")、别的指标("豆粕库存上升，大豆库存856.85万吨")、变动量
+    ("豆粕库存较上周增加0.7万吨"，用户遇到的真实错误)都不能被当成全国豆粕库存。"""
+    for bad in ["华东地区豆粕库存25万吨。", "全国豆粕库存上升，大豆库存856.85万吨。", "全国豆粕库存较上周增加0.7万吨。", "全国豆粕库存0.7万吨。"]:
+        r = _run_meal_with_pages({1: _sow_resp([_meal_item(bad, "2026-09-21 16:02")])})
+        assert r["available"] is False and r["debug"]["rejectedImplausible"], f"「{bad}」: {r}"
+    mixed = _run_meal_with_pages({1: _sow_resp([_meal_item("全国豆粕库存较上周增加0.7万吨。", "2026-09-24 10:00"), _meal_item(_REAL_MEAL_CONTENT, "2026-09-21 16:02")])})
+    assert mixed["available"] is True and mixed["value"] == 117.32, mixed
+    print("✅ 区域数据/别的指标/变动量(0.7)都被丢弃，后面真正的全国库存(117.32)仍能取到")
+
+
+def test_meal_stock_request_matches_user_capture(monkeypatch_fetch):
+    """★请求跟用户抓包逐项对照：query="全国主要区域大豆"、sortType=complex、platform=pc、pageNo=1、
+    pageSize=20，字段集合完全一致；一年窗口(2025-09-28到2026-09-28=365天)；token=-1；不足一页时不多翻页。"""
+    import datetime as dt
+    captured = []
+    _run_meal_with_pages({1: _sow_resp([_meal_item(_REAL_MEAL_CONTENT, "2026-09-21 16:02")])}, capture=captured)
+    assert len(captured) == 1
+    c = captured[0]; p = c["post_data"]
+    assert c["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert set(p) == {"query", "startTime", "endTime", "sortType", "platform", "pageNo", "pageSize"}, set(p)
+    assert (p["query"], p["sortType"], p["platform"], p["pageNo"], p["pageSize"]) == ("全国主要区域大豆", "complex", "pc", 1, 20)
+    days = (dt.datetime.strptime(p["endTime"][:10], "%Y-%m-%d") - dt.datetime.strptime(p["startTime"][:10], "%Y-%m-%d")).days
+    assert days == 365 and p["startTime"] == "2025-09-28 00:00:00", (days, p["startTime"])
+    assert c["headers"]["token"] == "-1"
+    print("✅ 请求逐项对照抓包一致：端点/关键词/排序/平台/分页/字段集合/一年窗口(起点2025-09-28)/token")
+
+
+def test_meal_stock_failure_modes_give_diagnostics(monkeypatch_fetch):
+    import fetch_data as fd_module
+    empty = _run_meal_with_pages({1: _sow_resp([])})
+    assert empty["available"] is False and "为空" in empty["reason"]
+    bad = _run_meal_with_pages({1: {"resultCode": 1, "resultMsg": "err"}})
+    assert bad["available"] is False and "resultCode=1" in bad["reason"]
+    nothing = _run_meal_with_pages({1: _sow_resp([_meal_item("完全不相关的内容", "2026-09-21 16:02")])})
+    assert nothing["available"] is False and nothing["debug"]["itemsChecked"] == 1 and "firstItemSample" in nothing["debug"]
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"httpStatus": None, "error": "连接超时"})
+    try:
+        none_resp = fd_module.fetch_mysteel_meal_stock()
+    finally:
+        fd_module.fetch_json_debug = real
+    assert none_resp["available"] is False and "无返回" in none_resp["reason"]
+    print("✅ 空结果/接口异常/无可提取内容/网络无响应都诚实报告")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2950,10 +3100,6 @@ if __name__ == "__main__":
               test_mysteel_arrival_forecast_third_variant_real_example,
               test_mysteel_arrival_forecast_query_uses_correct_keyword, test_mysteel_arrival_forecast_no_matching_content_gives_diagnostic,
               test_mysteel_arrival_forecast_empty_result,
-              test_mysteel_meal_stock_various_phrasings, test_mysteel_meal_stock_not_confused_by_change_amount,
-              test_mysteel_meal_stock_real_article_content,
-              test_mysteel_meal_stock_query_uses_correct_keyword, test_mysteel_meal_stock_no_matching_content_gives_diagnostic,
-              test_mysteel_meal_stock_empty_result,
               test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
               test_hog_df_socket_timeout_always_restored,
               test_hog_ratio_xuantian_real_screenshot_case, test_hog_ratio_uses_latest_common_date_not_last_row,
@@ -2964,7 +3110,10 @@ if __name__ == "__main__":
               test_sow_inventory_mysteel_real_sample, test_sow_inventory_picks_latest_quarter_across_articles, test_sow_inventory_q4_newer_than_q3_in_same_year, test_sow_inventory_infer_quarter_year_from_publish_date, test_sow_inventory_forecast_and_target_values_ignored, test_sow_inventory_change_amount_not_mistaken_for_stock, test_sow_inventory_paginates_until_exhausted, test_sow_inventory_request_shape, test_sow_inventory_failure_modes_give_diagnostics,
               test_sow_inventory_eight_real_articles_all_recognized, test_sow_inventory_other_indicators_not_mistaken_for_sow, test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected, test_sow_inventory_full_flow_with_eight_real_articles, test_sow_inventory_next_quarter_takes_over_once_published,
               test_sow_inventory_stale_old_data_is_rejected_not_shown, test_sow_inventory_falls_back_to_previous_quarter_only,
-              test_sow_inventory_acceptance_window_rolls_with_calendar, test_latest_completed_quarter_helper]
+              test_sow_inventory_acceptance_window_rolls_with_calendar, test_latest_completed_quarter_helper,
+              test_plausibility_helpers, test_crush_rate_out_of_range_rejected, test_poultry_profit_out_of_range_rejected, test_rmspread_change_range_not_mistaken_for_spread, test_arrival_forecast_change_and_out_of_range_rejected, test_export_inspections_limit_raised_and_truncation_detected, test_hog_ratio_each_price_must_be_plausible,
+              test_frontend_and_backend_plausible_ranges_are_identical,
+              test_meal_stock_real_weekly_article, test_meal_stock_takes_latest_article_across_pages_not_first_match, test_meal_stock_stale_data_rejected, test_meal_stock_requires_national_scope, test_meal_stock_region_other_subject_and_change_rejected, test_meal_stock_request_matches_user_capture, test_meal_stock_failure_modes_give_diagnostics]
     failed = 0
     for t in tests:
         try:

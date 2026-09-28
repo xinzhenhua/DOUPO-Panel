@@ -58,4 +58,16 @@ try {
   check('★window._syncedData为空时不应该报错', false);
 }
 
+
+// ===================== 第N周标注(新版后端"全国主要区域大豆及豆粕库存统计"每周一期) =====================
+resetStockFields();
+window._syncedData = {generatedAt: new Date().toISOString(), mysteelMealStock: {available: true, value: 117.32, date: '2026-09-21', weekLabel: '2026年第38周'}};
+refreshMysteelMealStock();
+check('★提示区应该标出是第几周的库存统计(2026年第38周)', makeEl('ai_stock').innerHTML.includes('2026年第38周'));
+check('提示区应该显示文章发布日期', makeEl('ai_stock').innerHTML.includes('2026-09-21'));
+resetStockFields();
+window._syncedData = {generatedAt: new Date().toISOString(), mysteelMealStock: {available: true, value: 117.32, date: '2026-09-21', weekLabel: null}};
+refreshMysteelMealStock();
+check('★没有weekLabel时不应该出现null/undefined', !makeEl('ai_stock').innerHTML.includes('null') && !makeEl('ai_stock').innerHTML.includes('undefined'));
+
 H.printSummary();

@@ -928,6 +928,47 @@ def fetch_cbot_price():
 MYSTEEL_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchFlashNews"
 
 
+# ---------------------------------------------------------------------------
+# ★数据合理性防线(用户发现豆粕库存抓到"0.7万吨"后加的)：从文章里用正则提取数字，最
+#   大的风险是提取到"变动量"或"别的指标的数"而不是指标本身——例如"豆粕库存较上周增加
+#   0.7万吨"被当成库存0.7万吨。这张表给每个指标一个宽松但不荒谬的合理范围：抓到
+#   范围之外的数值一律丢弃(继续找下一个候选)，全部被丢弃就诚实报告失败，宁可显示
+#   "抓取失败"也不显示荒谬的数字。前端index.html里有同一张表(SANITY_RANGES)兜底，
+#   有测试保证两边一致。范围故意放宽(比如开机率10~100)，只挡明显荒谬的值，不是
+#   要替用户判断行情好坏。
+PLAUSIBLE_RANGES = {
+    "crushRate": (10.0, 100.0, "%"),            # 油厂开机率
+    "poultryProfit": (-20.0, 20.0, "元/只"),     # 白羽肉鸡养殖利润(可为负)
+    "rmSpread": (100.0, 3000.0, "元/吨"),        # 豆菜粕现货价差(变动幅度一般只有几十，会被挡掉)
+    "arrivalForecast": (200.0, 2000.0, "万吨"),  # 月度大豆到港预报
+    "mealStock": (10.0, 600.0, "万吨"),          # 豆粕商业库存
+    "hogRatio": (1.0, 20.0, ""),                # 猪粮比
+    "pigPrice": (3.0, 40.0, "元/公斤"),          # 外三元生猪价格
+    "cornPricePerTon": (1000.0, 6000.0, "元/吨"),  # 玉米价格
+    "sowInventory": (1000.0, 10000.0, "万头"),   # 能繁母猪存栏
+    "exportInspectionsMt": (1000.0, 6000000.0, "公吨"),  # 美豆周度出口检验量
+}
+_CHANGE_WORDS = ("较", "比", "减", "降", "增", "升", "下滑", "回落")
+_LEVEL_VERB_RE = re.compile(r"(?:下降|上升|减少|增加|增长|回落|降|减|增|升)[至到]")
+
+
+def _plausibility_problem(key, value):
+    """数值在合理范围内返回None，否则返回一句说明(用于日志/诊断信息)。"""
+    lo, hi, unit = PLAUSIBLE_RANGES[key]
+    if value is None or value != value:
+        return "数值无效(NaN)"
+    if not (lo <= value <= hi):
+        return f"{value:g}{unit}超出合理范围({lo:g}~{hi:g}{unit})"
+    return None
+
+
+def _looks_like_change(gap):
+    """指标名和数字之间的这段文字是不是在描述"变动量"(较上周增加/同比下降…)。
+    "降至/增至/升至"是到达某个水平，不算变动量。"""
+    return any(w in _LEVEL_VERB_RE.sub("", gap) for w in _CHANGE_WORDS)
+
+
+
 def fetch_mysteel_crush_rate():
     """通过Mysteel快讯搜索"全国动态全样本油厂开机率"这个关键词，从最新一条
     包含"开机率为"字样的快讯正文里，用正则提取百分比数值。"""
@@ -965,19 +1006,27 @@ def fetch_mysteel_crush_rate():
 
     # 逐条找第一条能提取出"开机率为XX.XX%"的记录(不假设一定是第0条，
     # 万一排序方式或者某条记录格式有出入，逐条尝试更稳)
+    rejected = []
     for item in data_list:
         content = item.get("content") or ""
-        m = re.search(r"开机率为(\d+\.?\d*)%", content)
-        if m:
+        for m in re.finditer(r"开机率为(\d+\.?\d*)%", content):
+            value = float(m.group(1))
+            problem = _plausibility_problem("crushRate", value)
+            if problem:
+                rejected.append(problem)
+                continue
             return {
                 "available": True,
-                "value": float(m.group(1)),
+                "value": value,
                 "date": item.get("publishTime", "")[:10],
                 "rawContent": content,
                 "source": "Mysteel快讯(全国动态全样本油厂开机率)",
                 "sourceUrl": "https://search.mysteel.com/fastcomment.html",
             }
 
+    if rejected:
+        return {"available": False, "reason": f"提取到的开机率数值都不合理，已丢弃: {'; '.join(rejected[:3])}",
+                "debug": {"rejectedImplausible": rejected[:10], "firstItemContent": data_list[0].get("content")}}
     return {
         "available": False,
         "reason": "搜索结果里没有一条能提取出'开机率为XX.XX%'这个格式(可能措辞变了)",
@@ -1050,24 +1099,32 @@ def fetch_mysteel_poultry_profit():
     if not data_list:
         return {"available": False, "reason": "搜索结果为空(最近21天内没有匹配的文章)", "debug": {"total": data.get("total")}}
 
+    rejected = []
     for item in data_list:
         if not isinstance(item, dict):
             continue
         for v in item.values():
             if not isinstance(v, str):
                 continue
-            m = MYSTEEL_POULTRY_PATTERN.search(v)
-            if m:
+            for m in MYSTEEL_POULTRY_PATTERN.finditer(v):
                 sign = 1 if m.group(1) == "盈利" else -1
+                value = round(sign * float(m.group(2)), 2)
+                problem = _plausibility_problem("poultryProfit", value)
+                if problem:
+                    rejected.append(problem)
+                    continue
                 return {
                     "available": True,
-                    "value": round(sign * float(m.group(2)), 2),
+                    "value": value,
                     "date": item.get("publishTime", "")[:10],
                     "matchedText": v,
                     "source": "Mysteel文章(白羽肉鸡养殖利润)",
                     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
                 }
 
+    if rejected:
+        return {"available": False, "reason": f"提取到的养殖利润数值都不合理，已丢弃: {'; '.join(rejected[:3])}",
+                "debug": {"rejectedImplausible": rejected[:10], "firstItemSample": data_list[0]}}
     return {
         "available": False,
         "reason": "搜索结果里没有一条能提取出'盈利/亏损XX元/只'这个格式(可能措辞变了)",
@@ -1137,19 +1194,25 @@ def fetch_mysteel_rmspread():
     if not data_list:
         return {"available": False, "reason": "搜索结果为空(最近7天内没有匹配的文章)", "debug": {"total": data.get("total")}}
 
+    rejected = []
     for item in data_list:
         if not isinstance(item, dict):
             continue
         for v in item.values():
             if not isinstance(v, str):
                 continue
-            # 先试格式A(区间中点)
-            m = MYSTEEL_RMSPREAD_RANGE_PATTERN.search(v)
-            if m:
+            # 先试格式A(区间中点)。★"较前一日跌10-20元/吨"这种变动幅度区间中点只有15，
+            #   过不了合理范围(100~3000)，会被丢弃而不是当成价差
+            for m in MYSTEEL_RMSPREAD_RANGE_PATTERN.finditer(v):
                 low, high = float(m.group(1)), float(m.group(2))
+                mid = round((low + high) / 2, 1)
+                problem = f"区间{low:g}-{high:g}上下限颠倒" if low > high else _plausibility_problem("rmSpread", mid)
+                if problem:
+                    rejected.append(problem)
+                    continue
                 return {
                     "available": True,
-                    "value": round((low + high) / 2, 1),
+                    "value": mid,
                     "rangeLow": low, "rangeHigh": high,
                     "date": item.get("publishTime", "")[:10],
                     "matchedText": v, "formatUsed": "区间中点",
@@ -1157,9 +1220,14 @@ def fetch_mysteel_rmspread():
                     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
                 }
             # 格式A没匹配到，试格式B(多城市单值平均)
-            singles = MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(v)
-            if singles:
-                values = [float(x) for x in singles]
+            values = []
+            for x in MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(v):
+                problem = _plausibility_problem("rmSpread", float(x))
+                if problem:
+                    rejected.append(problem)  # 个别城市的离谱值单独丢掉，不拉偏平均值
+                else:
+                    values.append(float(x))
+            if values:
                 return {
                     "available": True,
                     "value": round(sum(values) / len(values), 1),
@@ -1170,6 +1238,9 @@ def fetch_mysteel_rmspread():
                     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
                 }
 
+    if rejected:
+        return {"available": False, "reason": f"提取到的价差数值都不合理，已丢弃: {'; '.join(rejected[:3])}",
+                "debug": {"rejectedImplausible": rejected[:10], "firstItemSample": data_list[0]}}
     return {
         "available": False,
         "reason": "搜索结果里没有一条能提取出价差数值(区间格式或多城市单值格式都没匹配到，可能措辞变了)",
@@ -1208,7 +1279,7 @@ def fetch_mysteel_rmspread():
 #   字都行，只要在这个范围内找到"数字+万吨"就算数——手算验证过这样反而更
 #   稳健，全部7条真实样本(3种措辞风格)都能正确提取，且限定了长度上限，
 #   不会跳到句子里更远处的其他数字(比如分区域细分数据、或者后续月份的数字)。
-MYSTEEL_ARRIVAL_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月份?.{0,20}?到港.{0,15}?(\d+\.?\d*)万吨")
+MYSTEEL_ARRIVAL_PATTERN = re.compile(r"(\d{4})年(\d{1,2})月份?.{0,20}?到港(.{0,15}?)(\d+\.?\d*)万吨")
 
 
 def fetch_mysteel_arrival_forecast():
@@ -1246,25 +1317,33 @@ def fetch_mysteel_arrival_forecast():
     if not data_list:
         return {"available": False, "reason": "搜索结果为空(最近35天内没有匹配的文章)", "debug": {"total": data.get("total")}}
 
+    rejected = []
     for item in data_list:
         if not isinstance(item, dict):
             continue
         for v in item.values():
             if not isinstance(v, str):
                 continue
-            m = MYSTEEL_ARRIVAL_PATTERN.search(v)
-            if m:
+            for m in MYSTEEL_ARRIVAL_PATTERN.finditer(v):
+                value = float(m.group(4))
+                problem = "到港后面是变动量(较上月增减)，不是到港总量" if _looks_like_change(m.group(3)) else _plausibility_problem("arrivalForecast", value)
+                if problem:
+                    rejected.append(problem)
+                    continue
                 return {
                     "available": True,
                     "forecastYear": int(m.group(1)),
                     "forecastMonth": int(m.group(2)),
-                    "value": float(m.group(3)),
+                    "value": value,
                     "date": item.get("publishTime", "")[:10],
                     "matchedText": v,
                     "source": "Mysteel文章(大豆到港预报)",
                     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
                 }
 
+    if rejected:
+        return {"available": False, "reason": f"提取到的到港数值都不合理，已丢弃: {'; '.join(rejected[:3])}",
+                "debug": {"rejectedImplausible": rejected[:10], "firstItemSample": data_list[0]}}
     return {
         "available": False,
         "reason": "搜索结果里没有一条能提取出'哪年哪月+多少万吨'这个格式(可能措辞变了)",
@@ -1292,66 +1371,145 @@ def fetch_mysteel_arrival_forecast():
 #   出在搜索关键词本身，不是正则(正则的(?:商业)?本来就设计成可选，这部分
 #   没问题，问题是连"搜索"这一步都因为关键词里多了"商业"这两个字而找不到
 #   任何文章)。已经把查询关键词改成"豆粕库存"(跟Mysteel文章实际用词一致)。
-MYSTEEL_MEAL_STOCK_PATTERN = re.compile(r"豆粕(?:商业)?库存.{0,10}?(\d+\.?\d*)万吨")
+MYSTEEL_MEAL_STOCK_PATTERN = re.compile(r"豆粕(?:商业)?库存(.{0,10}?)(\d+\.?\d*)万吨")
 
 
-def fetch_mysteel_meal_stock():
-    """通过Mysteel文章搜索"豆粕商业库存"这个关键词，从最新一条能提取出
-    库存数值的文章里提取(单位：万吨)。"""
-    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
-    start_bj = now_bj - timedelta(days=14)  # 这是周度指标，回看窗口给足2周
-    payload = {
-        "query": "豆粕库存",
-        "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
-        "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
-        "sortType": "complex",
-        "platform": "pc",
-        "pageNo": 1,
-        "pageSize": 20,
-    }
+# ★第三版(用户改了搜索关键词)：查询词改成"全国主要区域大豆"——搜出来的是Mysteel每周一期的
+#   "全国主要区域大豆及豆粕库存统计"(例如2026-09-21那篇："2026年第38周全国主要油厂大豆库存
+#   上升，豆粕库存上升…其中大豆库存856.85万吨…豆粕库存117.32万吨，较上周增加6.33万吨")，
+#   比原来用"豆粕库存"搜到各种零散文章准确。用户抓包的请求：startTime=2025-09-28、
+#   endTime=2026-09-28(一年窗口)、pageNo=1、pageSize=20、platform=pc、sortType=complex。
+#
+# ★一年窗口会搜出几十篇每周一期的文章，而排序是按相关度(complex)不是按时间——如果还像
+#   旧版那样"取第一个匹配"，很可能取到去年10月的旧一期。所以：①翻页收齐(最多5页)；②所有
+#   文章里提取到的库存都收集起来，按**发布日期取最新的一篇**；③新鲜度限制：周度数据，
+#   最新一期距今超过21天就拒绝(宁可显示失败也不显示旧数据)——跟能繁母猪存栏那次同样的教训。
+#
+# ★这篇文章里同一句话同时有"大豆库存856.85万吨""豆粕库存117.32万吨""未执行合同459.91万吨"
+#   "豆粕表观消费量178.08万吨"四个数，取错一个就是错的：①"豆粕库存"和数字之间出现大豆/菜粕/
+#   未执行合同等别的指标名就拒绝(防止"豆粕库存上升，大豆库存856.85万吨"取到大豆库存)；②间隔里
+#   出现较/比/增/减等词是变动量，拒绝(0.7万吨那次的教训)；③"豆粕库存"前面是华东/山东/沿海等
+#   地区名，是区域数据不是全国库存，拒绝；④整篇文章(标题或正文)必须出现"全国"字样；⑤数值
+#   要在合理范围内(10~600万吨)。
+MEAL_STOCK_MAX_AGE_DAYS = 21
+_MEAL_REGION_WORDS = ("华东", "华南", "华北", "华中", "东北", "西南", "西北", "山东", "广东", "广西", "江苏", "沿海", "沿江")
+_MEAL_OTHER_SUBJECTS = ("大豆", "菜粕", "未执行合同", "表观消费", "压榨", "进口")
+_MEAL_WEEK_RE = re.compile(r"(\d{4})年第(\d{1,2})周")
+
+
+def _extract_meal_stock_values(text):
+    """从一段文本里提取"豆粕库存XX万吨"，返回(合格数值列表, 被丢弃的说明列表)。"""
+    good, rejected = [], []
+    for m in MYSTEEL_MEAL_STOCK_PATTERN.finditer(text):
+        gap, value = m.group(1), float(m.group(2))
+        before = text[max(0, m.start() - 6):m.start()]
+        if any(w in before for w in _MEAL_REGION_WORDS):
+            rejected.append(f"{value:g}万吨: 前面是地区名，是区域数据不是全国库存")
+        elif any(w in gap for w in _MEAL_OTHER_SUBJECTS):
+            rejected.append(f"{value:g}万吨: 间隔里出现别的指标名(大豆/合同等)，可能不是豆粕库存")
+        elif _looks_like_change(gap):
+            rejected.append(f"{value:g}万吨: 库存后面是变动量(较上周增减)，不是库存量")
+        else:
+            problem = _plausibility_problem("mealStock", value)
+            if problem:
+                rejected.append(problem)
+            else:
+                good.append(value)
+    return good, rejected
+
+
+def fetch_mysteel_meal_stock(today=None):
+    """通过Mysteel文章搜索"全国主要区域大豆"(每周一期的全国大豆及豆粕库存统计)，翻页收齐后
+    取发布日期最新的一篇里的豆粕库存(万吨)。today参数只给测试用。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)  # 跟用户抓包验证过的请求一致(一年窗口)
     headers = {
         "token": "-1",
         "Origin": "https://search.mysteel.com",
         "Referer": "https://search.mysteel.com/fastcomment.html",
         "X-Requested-With": "XMLHttpRequest",
     }
-    data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+    page_size, max_pages = 20, 5
+    candidates = []  # (发布日期, 库存, item)
+    rejected_all = []
+    items_checked = 0
+    first_item = None
 
-    if data is None:
-        return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
-    if not isinstance(data, dict) or data.get("resultCode") != 0:
-        return {
-            "available": False,
-            "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
-            "debug": {"rawSnippet": debug.get("rawSnippet")},
+    for page in range(1, max_pages + 1):
+        payload = {
+            "query": "全国主要区域大豆",
+            "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+            "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+            "sortType": "complex",
+            "platform": "pc",
+            "pageNo": page,
+            "pageSize": page_size,
         }
-
-    data_list = data.get("dataList") or []
-    if not data_list:
-        return {"available": False, "reason": "搜索结果为空(最近14天内没有匹配的文章)", "debug": {"total": data.get("total")}}
-
-    for item in data_list:
-        if not isinstance(item, dict):
-            continue
-        for v in item.values():
-            if not isinstance(v, str):
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False,
+                        "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break  # 后面的页失败：用已经拿到的
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
                 continue
-            m = MYSTEEL_MEAL_STOCK_PATTERN.search(v)
-            if m:
-                return {
-                    "available": True,
-                    "value": float(m.group(1)),
-                    "date": item.get("publishTime", "")[:10],
-                    "matchedText": v,
-                    "source": "Mysteel文章(豆粕商业库存)",
-                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
-                }
+            items_checked += 1
+            if first_item is None:
+                first_item = item
+            try:
+                pub_date = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue  # 没有发布日期就没法判断新鲜度，跳过
+            title, content = str(item.get("title") or ""), str(item.get("content") or "")
+            national = "全国" in title or "全国" in content
+            for text in (content, title):
+                good, rejected = _extract_meal_stock_values(text)
+                rejected_all.extend(rejected)
+                if good and not national:
+                    rejected_all.append(f"{good[0]:g}万吨: 文章标题和正文都没有'全国'字样，不确认是全国口径")
+                elif good:
+                    candidates.append((pub_date, good[0], item))
+                    break  # 一篇文章只取一个库存值
+        total = data.get("total") or 0
+        if len(data_list) < page_size or page * page_size >= total:
+            break
 
+    if not candidates:
+        if rejected_all:
+            return {"available": False, "reason": f"提取到的库存数值都不合理，已丢弃: {'; '.join(rejected_all[:3])}",
+                    "debug": {"rejectedImplausible": rejected_all[:10], "itemsChecked": items_checked, "firstItemSample": first_item}}
+        return {"available": False,
+                "reason": "搜索结果里没有一条能提取出'豆粕库存XX万吨'这个格式(可能措辞变了)",
+                "debug": {"itemsChecked": items_checked, "firstItemSample": first_item}}
+
+    pub_date, value, item = max(candidates, key=lambda c: c[0])
+    age = (today - pub_date).days
+    if age > MEAL_STOCK_MAX_AGE_DAYS:
+        return {"available": False,
+                "reason": f"只找到了{age}天前({pub_date.isoformat()})的库存数据，超过{MEAL_STOCK_MAX_AGE_DAYS}天的新鲜度限制，为避免把旧数据当成最新值，不采用",
+                "debug": {"latestArticleDate": pub_date.isoformat(), "latestValue": value, "candidates": len(candidates), "itemsChecked": items_checked}}
+    wm = _MEAL_WEEK_RE.search(str(item.get("content") or "") + str(item.get("title") or ""))
     return {
-        "available": False,
-        "reason": "搜索结果里没有一条能提取出'豆粕库存XX万吨'这个格式(可能措辞变了)",
-        "debug": {"firstItemSample": data_list[0], "totalItemsChecked": len(data_list)},
+        "available": True,
+        "value": value,
+        "date": pub_date.isoformat(),
+        "weekLabel": f"{wm.group(1)}年第{int(wm.group(2))}周" if wm else None,
+        "articleTitle": item.get("title"),
+        "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
+        "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
     }
+
 
 
 # ---------------------------------------------------------------------------
@@ -1516,6 +1674,11 @@ def fetch_hog_ratio():
             "reason": f"计算出的猪粮比{ratio}超出合理范围(1~20)，可能是单位或字段对错了",
             "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price},
         }
+    for key, val, label in (("pigPrice", pig_price, "生猪价格"), ("cornPricePerTon", corn_per_kg * 1000.0, "玉米价格")):
+        problem = _plausibility_problem(key, val)
+        if problem:
+            return {"available": False, "reason": f"{label}{problem}，可能取错了序列或单位变了",
+                    "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price, "ratio": ratio}}
     return {
         "available": True,
         "value": ratio,
@@ -1912,6 +2075,10 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 #   保留合理的防御性：如果猜测的字段名查询失败，debug信息里会带上实际请求的
 #   URL和收到的原始响应，不会静默失败。
 AGTRANSPORT_GRAIN_INSPECTIONS_URL = "https://agtransport.usda.gov/resource/sruw-w49i.json"
+# ★原来$limit写死50，用户页面上显示的"当周记录数"正好是50——这个数据集每周按港口/目的地/
+#   承运方式拆成几百条明细，50条只是最新一周的一小部分，加总出来的"当周检验量"严重偏小。
+#   现在放宽到5000条，并且在记录数触达上限、且全部属于同一周时拒绝展示(总量可能不完整)。
+EXPORT_INSPECTIONS_LIMIT = 5000
 
 
 def fetch_us_export_inspections():
@@ -1936,7 +2103,7 @@ def fetch_us_export_inspections():
     params = {
         "$where": "grain='SOYBEANS'",
         "$order": "date DESC",
-        "$limit": "50",
+        "$limit": str(EXPORT_INSPECTIONS_LIMIT),
     }
     url = f"{AGTRANSPORT_GRAIN_INSPECTIONS_URL}?{urllib.parse.urlencode(params)}"
     data, debug = fetch_json_debug(url)
@@ -1963,6 +2130,12 @@ def fetch_us_export_inspections():
         }
 
     same_week_records = [r for r in data if r.get("date") == latest_week]
+    if len(data) >= EXPORT_INSPECTIONS_LIMIT and len(same_week_records) == len(data):
+        return {
+            "available": False,
+            "reason": f"返回的{len(data)}条记录全部属于最新一周且触达查询上限，当周总量可能不完整，不展示",
+            "debug": {"limit": EXPORT_INSPECTIONS_LIMIT, "recordsReturned": len(data), "latestWeek": latest_week},
+        }
     total_mt = 0.0
     parse_failures = 0
     for r in same_week_records:
@@ -1978,6 +2151,13 @@ def fetch_us_export_inspections():
             "debug": {"sampleRecord": same_week_records[0], "actualKeysSeen": list(same_week_records[0].keys())},
         }
 
+    problem = _plausibility_problem("exportInspectionsMt", total_mt)
+    if problem:
+        return {
+            "available": False,
+            "reason": f"当周检验量加总结果不合理: {problem}",
+            "debug": {"weekEndingDate": str(latest_week)[:10], "recordCountThisWeek": len(same_week_records), "totalMt": total_mt},
+        }
     return {
         "available": True,
         "weekEndingDate": latest_week[:10] if isinstance(latest_week, str) else str(latest_week),

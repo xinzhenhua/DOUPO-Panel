@@ -704,6 +704,30 @@ function renderParsedInfo(elId, parsed, unit){
     日期：${parsed.date||'未识别'}${parsed.source?` · 来源：${parsed.source}`:''}`;
 }
 
+/** ★数据合理性兜底(第二层防线)：后端fetch_data.py里有同一张PLAUSIBLE_RANGES表，抓取时就会丢弃荒谬的
+ *  数值；这里再检查一次——防止后端逻辑出错、或者拿到别的版本生成的旧数据时，把明显荒谬的数字
+ *  (比如"豆粕库存0.7万吨"，其实是"较上周增加0.7万吨"里的变动量)自动填进输入框。范围故意放宽，
+ *  只挡明显荒谬的值。两边的表必须一致(有测试保证)。*/
+const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
+function sanityProblem(key, value){
+  const r = SANITY_RANGES[key];
+  if(!r) return null;
+  const v = Number(value);
+  if(!isFinite(v)) return `数值无效(${value})`;
+  if(v < r[0] || v > r[1]) return `${v}${r[2]}超出合理范围(${r[0]}~${r[1]}${r[2]})`;
+  return null;
+}
+/** 数值不合理时：不自动填入、不显示"采用"按钮，只显示警告(如果这个区域已经有真正的内容就不覆盖)。返回true表示已拦截。*/
+function blockIfImplausible(badge, key, value, label){
+  const problem = sanityProblem(key, value);
+  if(!problem) return false;
+  if(badge.className !== 'ai-suggest fresh'){
+    badge.className = 'ai-suggest unavailable';
+    badge.innerHTML = `⚠️ ${label}抓取到的数值不合理，已忽略(没有自动填入)：${problem}。请到来源核对，或手动填写。`;
+  }
+  return true;
+}
+
 function useAiValue(inputId, value){
   const el = document.getElementById(inputId);
   if(el){ el.value = value; saveManualAndRefresh(); }
@@ -730,6 +754,7 @@ function refreshMysteelCrushRate(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'crushRate', mc.value, '油厂开机率')) return;
   const inputEl = document.getElementById('m_crush');
   if(inputEl && !inputEl.value){
     inputEl.value = mc.value;
@@ -756,6 +781,7 @@ function refreshMysteelPoultryProfit(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'poultryProfit', mp.value, '养殖利润')) return;
   const inputEl = document.getElementById('m_poultry');
   if(inputEl && !inputEl.value){
     inputEl.value = mp.value;
@@ -784,6 +810,7 @@ function refreshMysteelRmSpread(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'rmSpread', rs.value, '豆菜粕价差')) return;
   const inputEl = document.getElementById('m_rmspread');
   if(inputEl && !inputEl.value){
     inputEl.value = rs.value;
@@ -814,6 +841,7 @@ function refreshMysteelArrivalForecast(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'arrivalForecast', af.value, '到港预报')) return;
   const inputEl = document.getElementById('m_arrival');
   if(inputEl && !inputEl.value){
     inputEl.value = af.value;
@@ -840,15 +868,16 @@ function refreshMysteelMealStock(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'mealStock', ms.value, '豆粕商业库存')) return;
   const inputEl = document.getElementById('m_stock');
   if(inputEl && !inputEl.value){
     inputEl.value = ms.value;
     saveManualAndRefresh();
   }
   badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>${ms.weekLabel?`(${ms.weekLabel})`:''}
     <button class="ai-use-btn" onclick="useAiValue('m_stock', ${ms.value})">采用</button><br>
-    日期：${ms.date}`;
+    文章发布日期：${ms.date}`;
 }
 
 /** 猪粮比 + 能繁母猪存栏：改自动抓取(akshare的futures_hog_supply接口，
@@ -866,6 +895,7 @@ function refreshHogRatio(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'hogRatio', hr.value, '猪粮比')) return;
   const inputEl = document.getElementById('m_hogratio');
   if(inputEl && !inputEl.value){
     inputEl.value = hr.value;
@@ -903,6 +933,7 @@ function refreshSowInventory(){
     }
     return;
   }
+  if(blockIfImplausible(badge, 'sowInventory', si.value, '能繁母猪存栏')) return;
   const inputEl = document.getElementById('m_sows');
   if(inputEl && !inputEl.value){
     inputEl.value = si.value;
