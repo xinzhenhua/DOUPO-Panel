@@ -63,4 +63,19 @@ try {
   check('★window._syncedData为空时两个函式都不应该报错', false);
 }
 
+
+// ===================== 猪粮比：展示计算依据(外三元价格÷玉米价格) =====================
+reset('m_hogratio', 'ai_hogratio', 'ind_hogratio');
+window._syncedData = {generatedAt: new Date().toISOString(), hogRatio: {available: true, value: 4.4, date: '2026-09-27', pigPrice: 10.37, cornPricePerTon: 2358}};
+refreshHogRatio();
+check('★猪粮比提示区应该展示计算依据：外三元10.37元/公斤', makeEl('ai_hogratio').innerHTML.includes('外三元10.37元/公斤'));
+check('★猪粮比提示区应该展示计算依据：玉米2358元/吨', makeEl('ai_hogratio').innerHTML.includes('玉米2358元/吨'));
+check('猪粮比数值和日期依然正常显示', makeEl('ai_hogratio').innerHTML.includes('4.4') && makeEl('ai_hogratio').innerHTML.includes('2026-09-27'));
+
+// 没有计算依据字段时(老数据)不应该显示undefined
+reset('m_hogratio', 'ai_hogratio', 'ind_hogratio');
+window._syncedData = {generatedAt: new Date().toISOString(), hogRatio: {available: true, value: 4.4, date: '2026-09-27'}};
+refreshHogRatio();
+check('★没有计算依据字段时不应该出现undefined', !makeEl('ai_hogratio').innerHTML.includes('undefined'));
+
 H.printSummary();

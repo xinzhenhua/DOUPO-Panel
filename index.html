@@ -872,7 +872,10 @@ function refreshHogRatio(){
     saveManualAndRefresh();
   }
   badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${hr.value}</b>
+  // 把计算依据(外三元价格÷玉米价格)也摆出来，方便核对这个比值是怎么算出来的
+  const basis = (hr.pigPrice && hr.cornPricePerTon)
+    ? `(外三元${hr.pigPrice}元/公斤 ÷ 玉米${hr.cornPricePerTon}元/吨)` : '';
+  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${hr.value}</b>${basis}
     <button class="ai-use-btn" onclick="useAiValue('m_hogratio', ${hr.value})">采用</button><br>
     日期：${hr.date}`;
 }

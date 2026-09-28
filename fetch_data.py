@@ -1379,7 +1379,7 @@ def fetch_mysteel_meal_stock():
 #   确认。与其自己猜一份可能出错的JSON解析逻辑，不如直接调用akshare这个
 #   函数本身(反正已经装了这个库)，让pandas/akshare处理这部分，只需要在
 #   拿到DataFrame之后处理"取最新一行"这一步。
-def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_seconds=2):
+def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_seconds=2, func_name="futures_hog_supply"):
     """共用逻辑：调用ak.futures_hog_supply(symbol=...)，处理import/调用异常。
     返回(df, None)成功，或(None, error_dict)失败——调用方失败时直接return
     error_dict。
@@ -1408,7 +1408,7 @@ def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_sec
         old_timeout = socket.getdefaulttimeout()
         socket.setdefaulttimeout(timeout_seconds)
         try:
-            df = ak.futures_hog_supply(symbol=symbol)
+            df = getattr(ak, func_name)(symbol=symbol)
         except Exception as e:
             last_error_msg = str(e)
             last_error_type = type(e).__name__
@@ -1457,108 +1457,101 @@ def _period_sort_key(period_str):
 
 
 # ---------------------------------------------------------------------------
-# 猪粮比：改用国家发改委价格监测中心官网(权威原始来源)，不再用akshare/
-# 玄田数据——用户反馈玄田数据这条线滞后5-6周(日期停在很久以前)，主动搜索
-# 后确认发改委官网(jgjcndrc.org.cn)有一个专门独立的"生猪出场价与玉米价格
-# 周报"栏目，每周更新，滞后约1周(实测确认2026年9月9日的数据在2026年9月
-# 16日发布)，比玄田数据的时效性好得多。
+# 猪粮比：用玄田数据(中国养猪网旗下)的每日"生猪价格(外三元)"和"玉米价格"
+# 两个序列自己计算——猪粮比 = 生猪价格(元/公斤) ÷ 玉米价格(元/公斤)。
 #
-# ★这是"两步抓取"：先访问列表页找到最新一篇文章的链接(tId这个参数每篇
-#   文章不同、没有规律可循，没法直接拼URL，必须先看列表页)，再用这个链接
-#   访问详情页解析表格里的"猪粮比价"这一列。
+# ★这次的方案来自用户提供的技术文档，但文档里有两处经核对后不采用/修正：
+#   ① 文档给的"占位请求体 type=1&days=365"是错的(15个字符，跟文档自己说的
+#      抓包content-length:28对不上)。akshare源码里的真实参数是
+#      ptype=X&areano=-1&datetype=0，恰好28个字符——跟抓包互相印证。
+#   ② 文档说"生猪价格和玉米价格在同一个响应里(pigprice/pricedate/maizeprice
+#      三个字段)"，被akshare源码否定：getzhujiahitsdata每个ptype只返回一个
+#      序列(值+日期两列)——外三元是ptype=1、玉米是ptype=4，要请求两次。
+#   文档里对的部分：接口就是getzhujiahitsdata；猪粮比=生猪价÷玉米价(玉米
+#   元/吨要除以1000)；用户截图里2026-09-27的10.37÷2.358=4.40跟页面一致。
 #
-# ★诚实说明这次验证的局限：这个域名不在开发环境的网络白名单里，没法在
-#   沙盒里实测这两步抓取能不能真的跑通——通过web_search+web_fetch工具
-#   交叉核对了多篇历史文章的真实URL和表格内容(2025年12月、2026年3-6月
-#   等好几期)，确认了详情页URL模式(clmId固定、tId每篇不同)和表格结构
-#   (日期/生猪价格/玉米价格/猪粮比价四列，第一行数值、第二行涨跌幅)，
-#   但列表页本身的原始HTML结构(具体哪个标签、哪个class包着链接)没有
-#   实测确认过——这次用相对宽松的方式解析(找所有href包含"tId="的链接，
-#   取第一个)，如果列表页的真实结构跟预期不同，会诚实报告、把实际抓到的
-#   HTML片段放进debug里，不是假装解析成功。
-NDRC_HOG_RATIO_LIST_URL = "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593"
-NDRC_HOG_RATIO_BASE = "https://www.jgjcndrc.org.cn"
+# ★不自己重新实现HTTP/JSON解析，直接调用akshare已经封装好的
+#   futures_hog_core("外三元")(ptype=1)和futures_hog_cost("玉米")(ptype=4)，
+#   复用_fetch_akshare_hog_df里已有的超时+重试。两个序列的最新日期不一定
+#   相同，所以取两边**共同的最新一天**来算，不假设最后一行就是同一天。
+def _hog_series_to_dict(df):
+    """把akshare返回的[date, value]两列DataFrame转成{'YYYY-MM-DD': float}，
+    丢掉日期解析失败(NaT/None)或数值为NaN的行——akshare内部用
+    errors="coerce"转换，异常行会变成NaT/NaN而不是报错。"""
+    import re as _re
+    out = {}
+    for d, v in zip(df["date"], df["value"]):
+        key = str(d)
+        if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", key):
+            continue
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            continue
+        if fv != fv:  # NaN
+            continue
+        out[key] = fv
+    return out
 
 
 def fetch_hog_ratio():
-    """猪粮比：从国家发改委价格监测中心官网抓取最新一期"生猪出场价与玉米
-    价格周报"，解析出猪粮比价数值。"""
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        return {"available": False, "reason": "未安装beautifulsoup4库，请检查GitHub Actions是否执行了pip install beautifulsoup4"}
-
-    list_data, list_debug = fetch_json_debug(NDRC_HOG_RATIO_LIST_URL)
-    # ★这里故意不检查list_data是不是合法JSON——这个页面本来就是HTML，不是
-    #   JSON，fetch_json_debug会在JSON解析失败时把原始HTML存进debug的
-    #   rawSnippet里，我们直接从这个原始内容里取html来解析，两种情况都能处理。
-    list_html = list_debug.get("rawSnippet") if list_data is None else None
-    if list_html is None and list_data is None:
-        return {"available": False, "reason": "发改委列表页无返回内容", "debug": list_debug}
+    """猪粮比：外三元生猪价格(元/公斤) ÷ 玉米价格(元/公斤)，取两个序列共同的
+    最新一天。"""
+    pig_df, err = _fetch_akshare_hog_df("外三元", func_name="futures_hog_core")
+    if err:
+        return {**err, "reason": f"生猪价格(外三元)获取失败: {err['reason']}"}
+    corn_df, err = _fetch_akshare_hog_df("玉米", func_name="futures_hog_cost")
+    if err:
+        return {**err, "reason": f"玉米价格获取失败: {err['reason']}"}
 
     try:
-        # rawSnippet可能被截断(fetch_json_debug默认截前2000字符)，为了保险
-        # 起见这里单独用urllib重新请求一次完整HTML，不复用截断过的片段
-        req = urllib.request.Request(NDRC_HOG_RATIO_LIST_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            full_list_html = resp.read().decode("utf-8", errors="replace")
-    except Exception as e:
-        return {"available": False, "reason": f"发改委列表页请求失败: {e}", "debug": {"errorType": type(e).__name__}}
-
-    soup = BeautifulSoup(full_list_html, "html.parser")
-    detail_links = [a.get("href") for a in soup.find_all("a", href=True) if "tId=" in a.get("href", "")]
-    if not detail_links:
+        pig = _hog_series_to_dict(pig_df)
+        corn = _hog_series_to_dict(corn_df)
+    except (KeyError, TypeError) as e:
         return {
             "available": False,
-            "reason": "列表页里没有找到任何指向详情页(带tId参数)的链接(可能页面结构变了)",
-            "debug": {"htmlSnippet": full_list_html[:1500]},
+            "reason": f"字段解析失败: {e}(接口可能改了字段名)",
+            "debug": {"pigColumns": list(pig_df.columns), "cornColumns": list(corn_df.columns)},
         }
-    latest_url = urllib.parse.urljoin(NDRC_HOG_RATIO_BASE, detail_links[0])
 
-    detail_data, detail_debug = fetch_json_debug(latest_url)
-    try:
-        req2 = urllib.request.Request(latest_url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"})
-        with urllib.request.urlopen(req2, timeout=20) as resp2:
-            detail_html = resp2.read().decode("utf-8", errors="replace")
-    except Exception as e:
-        return {"available": False, "reason": f"发改委详情页({latest_url})请求失败: {e}", "debug": {"errorType": type(e).__name__, "detailUrl": latest_url}}
-
-    detail_soup = BeautifulSoup(detail_html, "html.parser")
-    tables = detail_soup.find_all("table")
-    for table in tables:
-        rows = table.find_all("tr")
-        if not rows:
-            continue
-        header_cells = [c.get_text(strip=True) for c in rows[0].find_all(["th", "td"])]
-        if "猪粮比价" not in header_cells:
-            continue
-        col_idx = header_cells.index("猪粮比价")
-        if len(rows) < 2:
-            continue
-        value_cells = [c.get_text(strip=True) for c in rows[1].find_all(["th", "td"])]
-        date_cells = [c.get_text(strip=True) for c in rows[1].find_all(["th", "td"])]
-        if col_idx >= len(value_cells):
-            continue
-        try:
-            value = float(value_cells[col_idx])
-        except ValueError:
-            continue
-        date_idx = header_cells.index("日期") if "日期" in header_cells else 0
-        report_date = value_cells[date_idx] if date_idx < len(date_cells) else ""
+    common = sorted(set(pig) & set(corn))
+    if not common:
         return {
-            "available": True,
-            "value": value,
-            "date": report_date,
-            "source": "国家发改委价格监测中心(生猪出场价与玉米价格周报)",
-            "sourceUrl": latest_url,
+            "available": False,
+            "reason": "生猪价格和玉米价格没有任何共同的日期，没法计算猪粮比",
+            "debug": {
+                "pigLatestDate": max(pig) if pig else None, "pigRows": len(pig),
+                "cornLatestDate": max(corn) if corn else None, "cornRows": len(corn),
+            },
         }
 
+    latest = common[-1]
+    pig_price = pig[latest]
+    corn_price = corn[latest]
+    # 玉米价格正常是元/吨(2358这种量级)；如果哪天接口改成元/公斤(2.358这种
+    # 量级)，不再除以1000，避免算出一个小1000倍的荒谬结果。
+    corn_per_kg = corn_price / 1000.0 if corn_price > 100 else corn_price
+    if corn_per_kg <= 0:
+        return {"available": False, "reason": f"玉米价格异常({corn_price})，没法计算猪粮比", "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price}}
+    ratio = round(pig_price / corn_per_kg, 2)
+    # 单位/字段搞错时(比如取错了序列)算出来的结果会离谱，宁可不展示也不展示错数字
+    if not (1.0 <= ratio <= 20.0):
+        return {
+            "available": False,
+            "reason": f"计算出的猪粮比{ratio}超出合理范围(1~20)，可能是单位或字段对错了",
+            "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price},
+        }
     return {
-        "available": False,
-        "reason": "详情页里没有找到包含'猪粮比价'这一列的表格(可能页面结构变了)",
-        "debug": {"detailUrl": latest_url, "tablesFound": len(tables), "htmlSnippet": detail_html[:1500]},
+        "available": True,
+        "value": ratio,
+        "date": latest,
+        "pigPrice": pig_price,
+        "cornPricePerTon": round(corn_per_kg * 1000.0, 1),
+        "pigLatestDate": max(pig),
+        "cornLatestDate": max(corn),
+        "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
+        "sourceUrl": "https://zhujia.zhuwang.com.cn",
     }
-
 
 
 def fetch_sow_inventory():

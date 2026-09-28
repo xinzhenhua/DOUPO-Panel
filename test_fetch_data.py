@@ -2558,130 +2558,139 @@ def test_period_sort_key_handles_multiple_formats(monkeypatch_fetch):
     print("✅ _period_sort_key正确处理中文季度/完整日期/纯数字年月三种格式，解析失败时安全返回(0,0,0)")
 
 
-def _make_ndrc_fake_urlopen(list_html, detail_html_map):
-    """构造发改委两步抓取(列表页+详情页)的mock：list_html是列表页的原始
-    HTML；detail_html_map是{url: html}这个字典，url访问到哪个详情页就
-    返回对应的HTML。"""
-    class FakeResp:
-        def __init__(self, content):
-            self._content = content.encode("utf-8")
-        def read(self):
-            return self._content
-        def __enter__(self):
-            return self
-        def __exit__(self, *a):
-            return False
-    def fake_urlopen(req, timeout=20):
-        url = req.full_url if hasattr(req, "full_url") else req
-        if "list?" in url:
-            return FakeResp(list_html)
-        for key, html in detail_html_map.items():
-            if key in url:
-                return FakeResp(html)
-        return FakeResp("<html></html>")
-    return fake_urlopen
+def _install_fake_hog_akshare(core_df, cost_df, core_exc=None, cost_exc=None):
+    """安装一个假的akshare：futures_hog_core/futures_hog_cost分别返回给定的
+    DataFrame(或抛出给定异常)，同时记录被调用时的symbol参数。"""
+    import sys
+    calls = []
+    class FakeAkshare:
+        @staticmethod
+        def futures_hog_core(symbol):
+            calls.append(("futures_hog_core", symbol))
+            if core_exc: raise core_exc
+            return core_df
+        @staticmethod
+        def futures_hog_cost(symbol):
+            calls.append(("futures_hog_cost", symbol))
+            if cost_exc: raise cost_exc
+            return cost_df
+    sys.modules['akshare'] = FakeAkshare()
+    return calls
 
 
-def test_hog_ratio_ndrc_full_flow(monkeypatch_fetch):
-    """★验证发改委两步抓取的完整流程：先从列表页找到最新一篇的链接(tId=
-    2099999999999999999排在最前面，应该被选中，不是列表里排第二的那篇)，
-    再从详情页表格里正确解析出猪粮比价和日期。"""
-    import urllib.request
+def _run_hog_ratio_with_fake(core_df, cost_df, **kw):
+    """跑fetch_hog_ratio并保证：清理假akshare、跳过重试等待(不真的sleep)。"""
+    import sys
     import fetch_data as fd_module
-
-    list_html = """<html><body><ul>
-    <li><a href="/detail?clmId=1836667772799598593&tId=2099999999999999999">最新一篇</a></li>
-    <li><a href="/detail?clmId=1836667772799598593&tId=2068974823767326722">较早一篇</a></li>
-    </ul></body></html>"""
-    detail_html = """<html><body><table>
-    <tr><th>日期</th><th>生猪价格</th><th>玉米价格</th><th>猪粮比价</th></tr>
-    <tr><td>9月16日</td><td>10.20</td><td>2.44</td><td>4.18</td></tr>
-    <tr><td>比9月9日涨跌</td><td>1.5%</td><td>0%</td><td>1.5%</td></tr>
-    </table></body></html>"""
-
-    fake_fetch_json = fd_module.fetch_json_debug
-    def fake_fetch_json_debug_returns_none(url, headers=None, retries=3, timeout=20, post_data=None):
-        return None, {"rawSnippet": "非JSON内容(HTML页面)"}
-    fd_module.fetch_json_debug = fake_fetch_json_debug_returns_none
-
-    original_urlopen = urllib.request.urlopen
-    urllib.request.urlopen = _make_ndrc_fake_urlopen(list_html, {"tId=2099999999999999999": detail_html})
+    calls = _install_fake_hog_akshare(core_df, cost_df, **kw)
+    real_sleep = fd_module.time.sleep
+    fd_module.time.sleep = lambda s: None
     try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is True, f"应该解析成功，实际: {result}"
-        assert result["value"] == 4.18, f"★应该提取到4.18，实际{result.get('value')}"
-        assert result["date"] == "9月16日"
-        assert "2099999999999999999" in result["sourceUrl"], "★应该用列表里排第一(最新)的那篇，不是排第二的"
-        print(f"✅ 发改委两步抓取完整流程正确：选中最新一篇，正确解析出猪粮比{result['value']}({result['date']})")
+        return fd_module.fetch_hog_ratio(), calls
     finally:
-        urllib.request.urlopen = original_urlopen
-        fd_module.fetch_json_debug = fake_fetch_json
+        fd_module.time.sleep = real_sleep
+        del sys.modules['akshare']
 
 
-def test_hog_ratio_ndrc_no_links_found_gives_diagnostic(monkeypatch_fetch):
-    """★如果列表页里完全找不到任何带tId的链接(页面结构变了)，应该诚实
-    报告，debug里带上实际抓到的HTML片段方便排查，不是笼统报错。"""
-    import urllib.request
-    import fetch_data as fd_module
-
-    fake_fetch_json = fd_module.fetch_json_debug
-    fd_module.fetch_json_debug = lambda *a, **k: (None, {"rawSnippet": ""})
-
-    original_urlopen = urllib.request.urlopen
-    urllib.request.urlopen = _make_ndrc_fake_urlopen("<html><body>完全没有相关链接的页面</body></html>", {})
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "htmlSnippet" in result["debug"]
-        print("✅ 列表页找不到链接时诚实报告，debug带上实际HTML片段")
-    finally:
-        urllib.request.urlopen = original_urlopen
-        fd_module.fetch_json_debug = fake_fetch_json
+def test_hog_ratio_xuantian_real_screenshot_case(monkeypatch_fetch):
+    """★用户截图里的真实数据(猪价系统首页2026-09-27：外三元10.37、玉米2358、
+    猪粮比4.40:1)：验证10.37÷(2358/1000)算出4.4，并确认两次调用用的是
+    akshare源码里外三元=futures_hog_core、玉米=futures_hog_cost这两个函数。"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,25), dt.date(2026,9,26), dt.date(2026,9,27)], "value": [10.45, 10.41, 10.37]})
+    cost = pd.DataFrame({"date": [dt.date(2026,9,25), dt.date(2026,9,26), dt.date(2026,9,27)], "value": [2354.0, 2354.0, 2358.0]})
+    result, calls = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is True, result
+    assert result["value"] == 4.4, f"★10.37÷2.358应该是4.4(页面4.40:1)，实际{result['value']}"
+    assert result["date"] == "2026-09-27" and result["pigPrice"] == 10.37 and result["cornPricePerTon"] == 2358.0
+    assert calls == [("futures_hog_core", "外三元"), ("futures_hog_cost", "玉米")], calls
+    print("✅ 截图真实数据算出猪粮比4.4(页面显示4.40:1)，且正确调用外三元+玉米两个序列")
 
 
-def test_hog_ratio_ndrc_table_not_found_gives_diagnostic(monkeypatch_fetch):
-    """★如果详情页里找不到包含'猪粮比价'这一列的表格(页面结构变了)，应该
-    诚实报告，不是笼统报错。"""
-    import urllib.request
-    import fetch_data as fd_module
-
-    list_html = '<html><body><a href="/detail?clmId=1&tId=123">文章</a></body></html>'
-    detail_html = "<html><body><table><tr><td>完全不相关的表格</td></tr></table></body></html>"
-
-    fake_fetch_json = fd_module.fetch_json_debug
-    fd_module.fetch_json_debug = lambda *a, **k: (None, {"rawSnippet": ""})
-
-    original_urlopen = urllib.request.urlopen
-    urllib.request.urlopen = _make_ndrc_fake_urlopen(list_html, {"tId=123": detail_html})
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "tablesFound" in result["debug"]
-        print("✅ 详情页找不到猪粮比价表格时诚实报告")
-    finally:
-        urllib.request.urlopen = original_urlopen
-        fd_module.fetch_json_debug = fake_fetch_json
+def test_hog_ratio_uses_latest_common_date_not_last_row(monkeypatch_fetch):
+    """★两个序列的最新日期可能不同(玉米当天还没更新)，且行顺序不一定升序——
+    必须取两边共同的最新一天，不能假设最后一行就是同一天。"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,27), dt.date(2026,9,25), dt.date(2026,9,26)], "value": [10.37, 10.45, 10.41]})  # 故意乱序
+    cost = pd.DataFrame({"date": [dt.date(2026,9,26), dt.date(2026,9,25)], "value": [2354.0, 2350.0]})  # 玉米只到9-26
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is True
+    assert result["date"] == "2026-09-26", f"★应该取共同的最新一天9-26，实际{result['date']}"
+    assert result["value"] == round(10.41 / 2.354, 2)
+    assert result["pigLatestDate"] == "2026-09-27" and result["cornLatestDate"] == "2026-09-26"
+    print("✅ 取两个序列共同的最新一天(9-26)，不被乱序行或单边更新的日期误导")
 
 
-def test_hog_ratio_ndrc_bs4_missing_gives_diagnostic(monkeypatch_fetch):
-    """beautifulsoup4库未安装时应该诚实报告，不崩溃"""
-    import fetch_data as fd_module
-    import builtins
+def test_hog_ratio_skips_nan_and_bad_dates(monkeypatch_fetch):
+    """akshare内部用errors="coerce"转换，异常行会变成NaN/NaT而不是报错——
+    这类行必须被丢掉，不能当成"最新一天"。"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,26), dt.date(2026,9,27), pd.NaT], "value": [10.41, float("nan"), 99.0]})
+    cost = pd.DataFrame({"date": [dt.date(2026,9,26), dt.date(2026,9,27)], "value": [2354.0, 2358.0]})
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is True
+    assert result["date"] == "2026-09-26", f"★9-27生猪价是NaN、NaT那行日期无效，都应该被丢掉，实际{result['date']}"
+    print("✅ NaN价格和NaT日期的行被正确丢弃")
 
-    original_import = builtins.__import__
-    def fake_import_no_bs4(name, *args, **kwargs):
-        if name == "bs4":
-            raise ImportError("No module named 'bs4'")
-        return original_import(name, *args, **kwargs)
 
-    builtins.__import__ = fake_import_no_bs4
-    try:
-        result = fd_module.fetch_hog_ratio()
-        assert result["available"] is False
-        assert "beautifulsoup4" in result["reason"]
-        print("✅ beautifulsoup4未安装时诚实报告，不崩溃")
-    finally:
-        builtins.__import__ = original_import
+def test_hog_ratio_corn_already_per_kg_not_divided_twice(monkeypatch_fetch):
+    """如果玉米价格哪天改成元/公斤(2.358)，不能再除以1000(否则算出4398这种荒谬值)"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [10.37]})
+    cost = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [2.358]})
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is True and result["value"] == 4.4
+    print("✅ 玉米价格已是元/公斤量级时不重复除以1000")
+
+
+def test_hog_ratio_absurd_result_rejected(monkeypatch_fetch):
+    """单位/序列取错导致算出离谱的猪粮比时，宁可不展示也不展示错数字"""
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [10.37]})
+    cost = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [90000.0]})  # 玉米价格荒谬
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is False
+    assert "超出合理范围" in result["reason"] and "cornPrice" in result["debug"]
+    print("✅ 算出离谱猪粮比时诚实报告，不展示错数字")
+
+
+def test_hog_ratio_no_common_dates_gives_diagnostic(monkeypatch_fetch):
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [10.37]})
+    cost = pd.DataFrame({"date": [dt.date(2026,8,1)], "value": [2358.0]})
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is False
+    assert result["debug"]["pigLatestDate"] == "2026-09-27" and result["debug"]["cornLatestDate"] == "2026-08-01"
+    print("✅ 两个序列没有共同日期时诚实报告，debug带上各自的最新日期")
+
+
+def test_hog_ratio_pig_fetch_failure_reports_which_series(monkeypatch_fetch):
+    import pandas as pd
+    result, calls = _run_hog_ratio_with_fake(pd.DataFrame(), pd.DataFrame(), core_exc=ConnectionError("模拟连接超时"))
+    assert result["available"] is False
+    assert "生猪价格(外三元)获取失败" in result["reason"] and "模拟连接超时" in result["reason"]
+    assert all(c[0] == "futures_hog_core" for c in calls), "★生猪序列失败后不应该再去请求玉米"
+    print("✅ 生猪价格序列获取失败时明确指出是哪个序列，且不继续请求玉米")
+
+
+def test_hog_ratio_corn_fetch_failure_reports_which_series(monkeypatch_fetch):
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [10.37]})
+    result, _ = _run_hog_ratio_with_fake(core, pd.DataFrame(), cost_exc=ConnectionError("模拟玉米接口超时"))
+    assert result["available"] is False
+    assert "玉米价格获取失败" in result["reason"] and "模拟玉米接口超时" in result["reason"]
+    print("✅ 玉米价格序列获取失败时明确指出是哪个序列")
+
+
+def test_hog_ratio_field_mismatch_gives_column_diagnostic(monkeypatch_fetch):
+    import datetime as dt, pandas as pd
+    core = pd.DataFrame({"某个改名的字段": [1.0]})
+    cost = pd.DataFrame({"date": [dt.date(2026,9,27)], "value": [2358.0]})  # 玉米序列本身要合法，才能走到生猪序列的字段检查
+    result, _ = _run_hog_ratio_with_fake(core, cost)
+    assert result["available"] is False
+    assert "pigColumns" in result["debug"] and "某个改名的字段" in result["debug"]["pigColumns"]
+    print("✅ 字段名对不上时给出实际列名，方便排查")
+
 
 
 if __name__ == "__main__":
@@ -2754,8 +2763,11 @@ if __name__ == "__main__":
               test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
               test_hog_df_socket_timeout_always_restored,
               test_sow_inventory_chinese_quarter_sort_bug_fixed, test_period_sort_key_handles_multiple_formats,
-              test_hog_ratio_ndrc_full_flow, test_hog_ratio_ndrc_no_links_found_gives_diagnostic,
-              test_hog_ratio_ndrc_table_not_found_gives_diagnostic, test_hog_ratio_ndrc_bs4_missing_gives_diagnostic]
+              test_hog_ratio_xuantian_real_screenshot_case, test_hog_ratio_uses_latest_common_date_not_last_row,
+              test_hog_ratio_skips_nan_and_bad_dates, test_hog_ratio_corn_already_per_kg_not_divided_twice,
+              test_hog_ratio_absurd_result_rejected, test_hog_ratio_no_common_dates_gives_diagnostic,
+              test_hog_ratio_pig_fetch_failure_reports_which_series, test_hog_ratio_corn_fetch_failure_reports_which_series,
+              test_hog_ratio_field_mismatch_gives_column_diagnostic]
     failed = 0
     for t in tests:
         try:
