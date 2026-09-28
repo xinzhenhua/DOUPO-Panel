@@ -942,6 +942,7 @@ PLAUSIBLE_RANGES = {
     "rmSpread": (100.0, 3000.0, "元/吨"),        # 豆菜粕现货价差(变动幅度一般只有几十，会被挡掉)
     "arrivalForecast": (200.0, 2000.0, "万吨"),  # 月度大豆到港预报
     "mealStock": (10.0, 600.0, "万吨"),          # 豆粕商业库存
+    "soyImport": (200.0, 2000.0, "万吨"),        # 中国大豆月度进口量(2026年最低401.9，最高约1400)
     "hogRatio": (1.0, 20.0, ""),                # 猪粮比
     "pigPrice": (3.0, 40.0, "元/公斤"),          # 外三元生猪价格
     "cornPricePerTon": (1000.0, 6000.0, "元/吨"),  # 玉米价格
@@ -1587,6 +1588,147 @@ def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_sec
             "debug": {"symbol": symbol, "errorType": last_error_type, "retriesAttempted": retries},
         }
     return None, {"available": False, "reason": f"接口调用成功但返回空数据(已重试{retries}次，symbol={symbol})", "debug": {"symbol": symbol, "retriesAttempted": retries}}
+
+
+# ---------------------------------------------------------------------------
+# 上月中国大豆月度进口量：改用Mysteel文章搜索(沿用前面几个指标的思路)。用户在文档里贴了真实响应
+# (查询"海关总署中国大豆进口量"，一年窗口，共24条，展开了20条完整正文)，看到的写法很杂：
+#   官方快讯 "2026年7月中国大豆进口量为1147.7万吨"；"中国2026年4月大豆进口847.8万吨"；
+#   "中国2026年5月进口大豆1179.1万吨"(顺序反过来)；一篇里合并发布1月+2月；
+#   市场早报里没写年份的 "8月中国大豆进口1214.14万吨"。
+#
+# ★同一篇文章里还有一堆"长得像月度进口量、其实不是"的数，逐个防：
+#   ① 累计数："今年1-7月累计进口大豆6151.1万吨"、"上半年累计进口大豆5015.4万吨"、
+#      "2025年1－12月中国累计进口大豆总量为11183.3万吨"、"中国2026年1-4月大豆进口2515.1万吨"——
+#      要求"X月"后面**紧跟**"大豆进口"/"进口大豆"(中间不许有"累计")，并且"X月"前面不能是"1-"/"1－"
+#      这种区间横线(否则"1－2月大豆进口1254.7万吨"会被当成2月，而2月真实值是597.6)；
+#   ② 年度数："2025年全年中国大豆进口量共11181.89万吨"——没有"X月"，不匹配；
+#   ③ 变动量："环比12月进口减少147.3万吨"——"进口"后面是"减少"不是"大豆"，不匹配；
+#   ④ 预测："7月预计1100万吨"(到港预估)——前面出现预计/预估等词就丢，且没有"大豆进口"紧邻；
+#   ⑤ 没写数值的："8月大豆进口同比增1.1%"、"国内大豆进口量增加"——必须有"X万吨"。
+#   年份没写时按发布日期推断(8月的数在9月发布→当年；12月的数在1月发布→上一年)。
+#
+# ★新鲜度：只接受"今天的上个月"和"再上一个月"两期(海关快讯一般在次月7号前后发布，所以月初上个月的
+#   数据可能还没出，要允许退到上上个月；但更旧的一律不采用)。2026-09-28：接受8月，找不到才退到7月。
+MYSTEEL_SOY_IMPORT_PATTERN = re.compile(
+    r"(?<![-－—~至\d])(?:(\d{4})年)?(\d{1,2})月(?:份)?(?:中国|我国|全国)?"
+    r"(?:大豆进口(?:量)?(?:为)?|进口大豆(?:量)?(?:为)?)\s*(\d+\.?\d*)\s*万吨")
+_IMPORT_FORECAST_WORDS = ("预计", "预期", "预估", "预测", "有望", "将", "计划")
+
+
+def _prev_month(year, month):
+    return (year, month - 1) if month > 1 else (year - 1, 12)
+
+
+def _extract_soy_import_candidates(text, pub_date, today):
+    """从一段文本里提取所有(年, 月, 进口量万吨)候选。"""
+    out = []
+    latest_done = _prev_month(today.year, today.month)
+    for m in MYSTEEL_SOY_IMPORT_PATTERN.finditer(text):
+        month = int(m.group(2))
+        if not (1 <= month <= 12):
+            continue
+        if any(w in text[max(0, m.start() - 8):m.start()] for w in _IMPORT_FORECAST_WORDS):
+            continue  # 预测值
+        value = float(m.group(3))
+        if _plausibility_problem("soyImport", value):
+            continue
+        year = int(m.group(1)) if m.group(1) else (pub_date.year if month <= pub_date.month else pub_date.year - 1)
+        if (year, month) > latest_done:
+            continue  # 当月及以后的月份不可能已有进口数据
+        out.append((year, month, value))
+    return out
+
+
+def fetch_mysteel_soy_import(today=None):
+    """通过Mysteel文章搜索"海关总署中国大豆进口量"，翻页收齐后取最新的一个月度进口量(万吨)。
+    today参数只给测试用。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)  # 跟用户抓包的请求一致(2025-09-28到2026-09-28)
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    page_size, max_pages = 20, 5  # 实测total=24(2页)，上限放到5页留余量
+    candidates = []  # (年, 月, 发布日期, 进口量, item)
+    items_checked = 0
+    first_item = None
+
+    for page in range(1, max_pages + 1):
+        payload = {
+            "query": "海关总署中国大豆进口量",
+            "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+            "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+            "sortType": "complex",
+            "platform": "pc",
+            "pageNo": page,
+            "pageSize": page_size,
+        }
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False,
+                        "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            items_checked += 1
+            if first_item is None:
+                first_item = item
+            try:
+                pub_date = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                pub_date = today
+            for v in item.values():
+                if not isinstance(v, str):
+                    continue
+                for year, month, value in _extract_soy_import_candidates(v, pub_date, today):
+                    candidates.append((year, month, pub_date, value, item))
+        total = data.get("total") or 0
+        if len(data_list) < page_size or page * page_size >= total:
+            break
+
+    if not candidates:
+        return {"available": False,
+                "reason": "搜索结果里没有一条能提取出'X月中国大豆进口XXXX万吨'这个格式(可能措辞变了，或者上个月的数据还没发布)",
+                "debug": {"itemsChecked": items_checked, "firstItemSample": first_item}}
+
+    label = lambda ym: f"{ym[0]}年{ym[1]}月"
+    months_seen = sorted({(c[0], c[1]) for c in candidates}, reverse=True)
+    latest_done = _prev_month(today.year, today.month)
+    allowed = {latest_done, _prev_month(*latest_done)}
+    fresh = [c for c in candidates if (c[0], c[1]) in allowed]
+    if not fresh:
+        return {"available": False,
+                "reason": (f"只找到了较旧的月度数据(最新一期是{label(months_seen[0])})，已超出允许的滞后范围"
+                           f"(今天的上个月是{label(latest_done)}，只接受{label(latest_done)}和{label(_prev_month(*latest_done))})，"
+                           f"为避免把旧数据当成最新值，不采用"),
+                "debug": {"monthsSeen": [label(x) for x in months_seen], "itemsChecked": items_checked}}
+
+    year, month, pub_date, value, item = max(fresh, key=lambda c: (c[0], c[1], c[2]))
+    return {
+        "available": True,
+        "value": value,
+        "monthLabel": label((year, month)),
+        "date": pub_date.isoformat(),
+        "articleTitle": item.get("title"),
+        "monthsSeen": [label(x) for x in months_seen],
+        "source": "Mysteel文章(海关总署中国大豆进口量)",
+        "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -3199,6 +3341,7 @@ def main():
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": fetch_mysteel_meal_stock(),
+        "mysteelSoyImport": fetch_mysteel_soy_import(),
         "hogRatio": fetch_hog_ratio(),
         "sowInventory": fetch_mysteel_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),

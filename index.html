@@ -676,6 +676,7 @@ async function loadSyncedData(){
     refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
     refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
     refreshMysteelMealStock(); // 豆粕商业库存同样改自动抓取
+    refreshMysteelSoyImport(); // 上月大豆进口量同样改自动抓取
     refreshHogRatio(); // 猪粮比改自动抓取(akshare/玄田数据)
     refreshSowInventory(); // 能繁母猪存栏改自动抓取(akshare/玄田数据)
   }catch(e){
@@ -708,7 +709,7 @@ function renderParsedInfo(elId, parsed, unit){
  *  数值；这里再检查一次——防止后端逻辑出错、或者拿到别的版本生成的旧数据时，把明显荒谬的数字
  *  (比如"豆粕库存0.7万吨"，其实是"较上周增加0.7万吨"里的变动量)自动填进输入框。范围故意放宽，
  *  只挡明显荒谬的值。两边的表必须一致(有测试保证)。*/
-const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
+const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"soyImport":[200,2000,"万吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
 function sanityProblem(key, value){
   const r = SANITY_RANGES[key];
   if(!r) return null;
@@ -878,6 +879,33 @@ function refreshMysteelMealStock(){
   badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>${ms.weekLabel?`(${ms.weekLabel})`:''}
     <button class="ai-use-btn" onclick="useAiValue('m_stock', ${ms.value})">采用</button><br>
     文章发布日期：${ms.date}`;
+}
+
+/** 上月中国大豆月度进口量：改自动抓取(Mysteel文章搜索"海关总署中国大豆进口量")。后端已经按"上个月/
+ *  再上一个月"做了新鲜度限制，这里标出是哪个月的数(下个月数据发布之前，这就是最新的)，
+ *  并沿用同一套"合理范围兜底"。*/
+function refreshMysteelSoyImport(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_import');
+  if(!data || !badge) return;
+  const si = data.mysteelSoyImport;
+  if(!si || !si.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${si?si.reason:'未知原因'}` + renderDebugInfo(si?si.debug:null);
+    }
+    return;
+  }
+  if(blockIfImplausible(badge, 'soyImport', si.value, '大豆月度进口量')) return;
+  const inputEl = document.getElementById('m_import');
+  if(inputEl && !inputEl.value){
+    inputEl.value = si.value;
+    saveManualAndRefresh();
+  }
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel/海关总署)：<b>${si.value}万吨</b>${si.monthLabel?`(${si.monthLabel})`:''}
+    <button class="ai-use-btn" onclick="useAiValue('m_import', ${si.value})">采用</button><br>
+    文章发布日期：${si.date}`;
 }
 
 /** 猪粮比 + 能繁母猪存栏：改自动抓取(akshare的futures_hog_supply接口，

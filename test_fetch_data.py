@@ -3038,6 +3038,194 @@ def test_meal_stock_failure_modes_give_diagnostics(monkeypatch_fetch):
     print("✅ 空结果/接口异常/无可提取内容/网络无响应都诚实报告")
 
 
+import datetime as _soy_dt
+_SD = _soy_dt.date
+# (名称, 发布日期, 标题, 正文, 期望提取结果[(年,月,万吨)])——全部来自用户文档里的真实Mysteel响应
+_SOY_SAMPLES = [
+ ("样本0 7月官方快讯(含1-7月累计)", _SD(2026,8,7), "海关总署：2026年7月中国大豆进口量为1147.7万吨 同比减少1.62%",
+  "海关总署数据显示，2026年7月中国大豆进口量为1147.7万吨，同比减少1.62%，环比减少15.28%。今年1-7月累计进口大豆6151.1万吨，较去年同期增长0.7%。整体来看，月度进口量有所回落，但年初至今累计进口量仍保持微幅增长态势。",
+  [(2026,7,1147.7)]),
+ ("样本1 4月(含1-4月累计)", _SD(2026,5,9), "海关总署：2026年4月中国大豆进口量为847.8万吨 同比增39.42%",
+  "据海关总署数据显示 ：中国2026年4月大豆进口847.8万吨，环比3月增加445.90万吨，增110.95% ；较2025年4月进口量同比增加239.70万吨，增幅39.42% 中国2026年1-4月大豆进口2515.1 万吨，同比2025年1－4月进口量多196.2万吨，增幅8.46% 。",
+  [(2026,4,847.8)]),
+ ("样本2 6月(含上半年累计)", _SD(2026,7,14), "海关总署：2026年6月中国大豆进口量为1354.7万吨 同比增加10.46%",
+  "海关总署数据显示，2026年6月中国大豆进口量为1354.7万吨，同比增长10.46%，环比增长14.89%。上半年累计进口大豆5015.4万吨，较去年同期4938.9万吨增长1.5%。整体呈现稳步上涨态势，供应保持充足。",
+  [(2026,6,1354.7)]),
+ ("样本3 3月(标题漏了月字，含1-3月累计)", _SD(2026,4,15), "海关总署：2026年3中国大豆进口量为401.9万吨 同比增14.7%",
+  "据海关总署数据显示 ：中国2026年3月大豆进口401.9万吨，环比2月减少195.7万吨，降32.8% ；较2025年3月进口量同比增加51.6万吨，增幅14.7% 中国2026年1-3月大豆进口1656.6 万吨，同比2025年1－3月进口量少54.7万吨，降幅3.1% 。",
+  [(2026,3,401.9)]),
+ ("样本4 5月(写法：进口大豆X万吨)", _SD(2026,6,9), "海关总署：2026年5月中国大豆进口量为1179.1万吨 同比减少15.28%",
+  "据海关总署数据显示 ：中国2026年5月进口大豆1179.1万吨，同比减少15.28%，环比增长39.08% 中国2026年1-5月大豆进口3694.2万吨，去年同期1-5月进口3710.6万吨，同比减少0.4% 。",
+  [(2026,5,1179.1)]),
+ ("样本5 1月+2月合并发布(含1－2月累计，全角横线)", _SD(2026,3,10), "海关总署：2026年1－2月中国大豆进口量为1254.7万吨 同比降7.8％",
+  "据海关总署数据显示 ：中国2026年1月大豆进口657.1万吨，环比12月进口减少147.3万吨，较2025年1月进口量同比减少120.9万吨，降幅15.54% 中国2026年2月大豆进口597.6万吨，环比1月进口减少59.5万吨，较2025年2月进口量同比增加14.6万吨，增幅2.5% 中国2026年1－2月大豆进口1254.7万吨，同比2025年１－２月进口量少106.3万吨，降幅7.8%。",
+  [(2026,1,657.1),(2026,2,597.6)]),
+ ("样本6 2025年12月(含全年累计)", _SD(2026,1,14), "海关总署：2025年12月中国大豆进口量为804.4万吨 同比增加1.3％",
+  "据海关总署数据显示 ：中国2025年12月大豆进口804.4万吨，环比11月进口减少6.3万吨，较2024年12月进口量同比增加10.3万吨，增幅为1.3%2025年1－12月中国累计进口大豆总量为11183.3万吨，同比增678.82万吨，增幅为6.46% 。",
+  [(2025,12,804.4)]),
+ ("样本7 2025年11月(含1-11月累计)", _SD(2025,12,8), "海关总署：2025年11月中国大豆进口量为810.7万吨 同比增加13.32％",
+  "据海关总署数据显示 ：中国2025年11月大豆进口810.7万吨，环比10月进口减少137.30万吨，较2024年11月进口量同比增加95.30万吨，增幅为13.32%2025年1-11月中国累计进口大豆总量为10378.14万吨，同比增668.72万吨，增幅为6.89% 。",
+  [(2025,11,810.7)]),
+ ("样本8 2025年10月", _SD(2025,11,7), "海关总署：2025年10月中国大豆进口量为948.2万吨 同比增加17.25%",
+  "据海关总署数据显示 ：中国2025年10月大豆进口948.2万吨，环比9月进口减少338.7万吨，较2024年10月进口量同比增加139.5万吨，增幅为17.25%2025年1-10月中国累计进口大豆总量为9568.2万吨，同比增574.5万吨，增幅为6.39% 。",
+  [(2025,10,948.2)]),
+ ("样本9 2025年9月", _SD(2025,10,13), "海关总署：2025年9月中国大豆进口量为1286.9万吨 同比增加13.17%",
+  "据海关总署数据显示 ：中国2025年9月大豆进口1286.9万吨，环比8月进口增加59万吨，较2024年9月进口量同比增加149.8万吨，增幅为13.17%2025年1-9月中国累计进口大豆总量为8618万吨，同比增433.1万吨，增幅为5.29% 。",
+  [(2025,9,1286.9)]),
+ ("样本10 9-9早报(没写年份：8月中国大豆进口X万吨)", _SD(2026,9,9), "Mysteel早报：华北市场豆粕价格或小幅下调（20260909）",
+  "华北豆粕现货前日上涨至3300-3330元/吨。夜盘连粕下跌，CBOT大豆上涨，市场等待USDA报告。8月中国大豆进口1214.14万吨，同比增1.1%。巴西开始新季大豆播种，美豆优良率58%符合预期。华北油厂开机率84.55%，库存下降，可售量少，下游采购积极性好转。预计今日豆粕现货价格小幅下调至3280-3320元/吨区间运行。",
+  [(2026,8,1214.14)]),
+ ("样本11 9-9早报川渝", _SD(2026,9,9), "Mysteel早报：川渝豆粕市场报价震荡运行（20260909）",
+  "昨日川渝豆粕现货价格上调至3350-3440元/吨，油厂开机率41%。夜盘连粕下跌，CBOT大豆上涨，市场等待USDA报告。8月中国大豆进口1214.14万吨，同比增1.1%；巴西开始新季播种，美豆优良率58%符合预期。目前川渝油厂开机持稳，库存小幅增加，终端刚需补库。预计今日川渝市场豆粕价格将震荡运行。",
+  [(2026,8,1214.14)]),
+ ("样本12 棉粕日报(只说进口量增加，无数值)", _SD(2026,9,9), "Mysteel日报：棉粕市场价格暂无变化（20260909）",
+  "棉粕市场供应偏紧，厂商挺价惜售，但下游需求平淡，替代优势不明显，预计短期维持窄幅偏强震荡。新疆及山东46%蛋白棉粕报价在2550-3070元/吨。豆粕方面，连盘高位震荡，成本支撑强劲，但国内大豆进口量增加，现货供给充裕，基差承压。沿海现货价格3250-3290元/吨，下游补库意愿略有回升。后市需关注新季棉籽上市节奏、USDA报告及豆粕走势。",
+  []),
+ ("样本13 豆粕日报(8月大豆进口量大增，无数值)", _SD(2026,9,9), "Mysteel日报：全国油厂开机及豆粕成交量统计（20260909）",
+  "9月9日国内豆粕现货价格涨跌互现，连粕主力合约报3425元/吨。全国油厂豆粕成交13.71万吨，开机率62.34%。虽进口大豆到港成本攀升支撑盘面，但8月大豆进口量大增致供应充裕，基差承压。短期盘面受成本主导呈高位震荡，参考区间3380-3430元/吨。需关注美豆天气溢价收窄背景下，9月USDA报告单产调整及下游补库节奏变化。",
+  []),
+ ("样本14 快讯(8月大豆进口同比增1.1%，无数值)", _SD(2026,9,9), "Mysteel快讯：美豆等待USDA报告指引 国内豆粕区间震荡",
+  "美豆受高温干旱及出口需求支撑，主力合约持稳1310美分上方，市场静待USDA报告指引。国内豆粕高位震荡，区间参考3380-3430元/吨。进口成本攀升夯实底部，但8月大豆进口同比增1.1%，供应充裕致基差承压至-110至-150元/吨。下游补库意愿回升，短期盘面由成本主导，需关注USDA单产调整及补库节奏。",
+  []),
+ ("样本15 5-29解读(4月进口+到港预估：7月预计1100万吨，8月1050万吨)", _SD(2026,5,29), "Mysteel解读：供应宽松格局明确 6月豆粕仍将承压",
+  "据海关总署数据显示 ：中国2026年4月大豆进口847.8万吨，环比3月增加445.90万吨，增110.95%；较2025年4月进口量同比增加239.70万吨，增幅39.42% 据Mysteel农产品团队预估，2026年5月份国内全样本油厂大豆到港共计约988.65万吨6月份国内全样本油厂大豆到港共计约1073.80万吨此外，根据船期及调研初步预估，7月预计1100万吨，8月1050万吨集中到港窗口已正式开启，供应压力从港口逐步传导至油厂加工端。",
+  [(2026,4,847.8)]),
+ ("样本16 2025全年进口量(年度数，不是月度)", _SD(2026,2,6), "Mysteel解读 ：中央一号文件给豆粕市场释放哪些信号？",
+  "目前我国大豆进口依存度较高，单一来源地过度集中可能带来供应链风险进口多元化包括来源地多元、品种多元与渠道多元，据海关总署数据统计显示：2025年全年中国大豆进口量共11181.89万吨，同比增加678.35万吨，增幅6.45%进口主要来源国为巴西，这一点延续近几年趋势，中国大豆进口来源 “巴西化” 的格局已经非常稳固巴西凭借其广阔的耕地面积和持续增长的产量，已超越美国，成为中国最可靠、最主要的大豆供应国。",
+  []),
+ ("样本17 分国别统计(2025年11月)", _SD(2025,12,22), "2025年11月份大豆海关进口数据统计（分国别）",
+  "据海关总署数据显示 ：中国2025年11月大豆进口810.7万吨，环比10月进口减少137.30万吨，较2024年11月进口量同比增加95.30万吨，增幅为13.32%2025年1-11月中国累计进口大豆总量为10378.14万吨，同比增668.72万吨，增幅为6.89% 。",
+  [(2025,11,810.7)]),
+]
+
+
+_SOY_TEST_TODAY = _soy_dt.date(2026, 9, 28)
+
+
+def _run_soy_with_pages(pages, capture=None, today=None):
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        if capture is not None:
+            capture.append({"url": url, "headers": headers, "post_data": post_data})
+        return pages.get((post_data or {}).get("pageNo", 1), _sow_resp([])), {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake_fetch
+    try:
+        return fd_module.fetch_mysteel_soy_import(today=today or _SOY_TEST_TODAY)
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def _soy_items(predicate=lambda name: True):
+    return [{"content": content, "title": title, "publishTime": pub.isoformat() + " 12:00", "url": "https://ncp.mysteel.com/a/soy.html"}
+            for name, pub, title, content, _ in _SOY_SAMPLES if predicate(name)]
+
+
+def test_soy_import_real_articles_all_recognized(monkeypatch_fetch):
+    """★用户文档里的18条真实Mysteel文章(标题+正文都扫)，逐条验证提取结果。这些文章里有大量"长得像月度
+    进口量、其实不是"的数：累计数(1-7月累计进口大豆6151.1万吨、上半年累计…、1-4月大豆进口2515.1万吨)、
+    年度数(2025年全年11181.89万吨)、变动量(环比12月进口减少147.3万吨)、预测(7月预计1100万吨)、
+    没数值的(8月大豆进口同比增1.1%)；还有1月+2月合并发布(不能把"1－2月大豆进口1254.7万吨"当成2月)、
+    "进口大豆X万吨"的反序写法、没写年份的市场早报。"""
+    import fetch_data as fd_module
+    for name, pub, title, content, expected in _SOY_SAMPLES:
+        got = []
+        for text in (content, title):
+            for c in fd_module._extract_soy_import_candidates(text, pub, _SOY_TEST_TODAY):
+                if c not in got:
+                    got.append(c)
+        assert got == expected, f"★{name}: 期望{expected}，实际{got}"
+    print(f"✅ {len(_SOY_SAMPLES)}条真实文章全部正确识别(累计数/年度数/变动量/预测值/区间横线/无数值全部没被误认)")
+
+
+def test_soy_import_full_flow_picks_august_2026(monkeypatch_fetch):
+    """★端到端：真实文章(最新的官方快讯只到7月，8月的数只出现在9-9的市场早报里)，今天2026-09-28
+    应该选出上个月(8月)的1214.14万吨，标注"2026年8月"。"""
+    r = _run_soy_with_pages({1: _sow_resp(_soy_items(), 24)})
+    assert r["available"] is True, r
+    assert r["value"] == 1214.14 and r["monthLabel"] == "2026年8月" and r["date"] == "2026-09-09", r
+    assert r["monthsSeen"][0] == "2026年8月" and "2026年7月" in r["monthsSeen"], r["monthsSeen"]
+    print("✅ 真实文章端到端：选出2026年8月大豆进口1214.14万吨(来自9-9市场早报)")
+
+
+def test_soy_import_falls_back_to_previous_month_when_latest_not_published(monkeypatch_fetch):
+    """海关快讯一般次月7号前后发布——上个月的数还没出时，允许退到上上个月，但不能更旧。
+    去掉所有提到8月的文章：2026-09-28应退到7月的1147.7；今天换成2026-11-05(接受10月/9月)则拒绝。"""
+    no_aug = _soy_items(lambda name: not name.startswith(("样本10", "样本11")))
+    r = _run_soy_with_pages({1: _sow_resp(no_aug)})
+    assert r["available"] is True and r["monthLabel"] == "2026年7月" and r["value"] == 1147.7, r
+    stale = _run_soy_with_pages({1: _sow_resp(no_aug)}, today=_soy_dt.date(2026, 11, 5))
+    assert stale["available"] is False and "较旧" in stale["reason"] and "2026年10月" in stale["reason"], stale
+    print("✅ 8月数据没出时退到7月(1147.7)；更旧(今天11月、只有8月及以前)时拒绝并说明原因")
+
+
+def test_soy_import_acceptance_window_rolls_with_calendar(monkeypatch_fetch):
+    """接受窗口随日历滚动：10月2日(9月数据还没出)接受8月；次年1月中旬只有8月数据就太旧了。"""
+    aug_only = _soy_items(lambda name: name.startswith(("样本10",)))
+    assert _run_soy_with_pages({1: _sow_resp(aug_only)}, today=_soy_dt.date(2026, 10, 2))["monthLabel"] == "2026年8月"
+    assert _run_soy_with_pages({1: _sow_resp(aug_only)}, today=_soy_dt.date(2026, 11, 2))["available"] is False
+    print("✅ 接受窗口随日历滚动(10月初接受8月，11月起8月就太旧)")
+
+
+def test_soy_import_year_inference_and_future_months(monkeypatch_fetch):
+    """没写年份时按发布日期推断；当月及以后的月份不可能已有进口数据。"""
+    import fetch_data as fd_module
+    D = _soy_dt.date
+    f = lambda text, pub, today: fd_module._extract_soy_import_candidates(text, pub, today)
+    assert f("8月中国大豆进口1214.14万吨", D(2026, 9, 9), D(2026, 9, 28)) == [(2026, 8, 1214.14)]
+    assert f("12月中国大豆进口804.4万吨", D(2027, 1, 12), D(2027, 1, 20)) == [(2026, 12, 804.4)]   # 1月发布提到12月=去年
+    assert f("9月中国大豆进口1000万吨", D(2026, 9, 9), D(2026, 9, 28)) == []                       # 当月不可能已有数据
+    print("✅ 年份按发布日期推断(跨年的12月、当月都处理对了)")
+
+
+def test_soy_import_synthetic_traps_rejected(monkeypatch_fetch):
+    """合成的陷阱句(真实样本里没出现，但很可能出现)：预测值、超范围、各种累计写法、变动量。"""
+    import fetch_data as fd_module
+    D = _soy_dt.date
+    f = lambda text: fd_module._extract_soy_import_candidates(text, D(2026, 9, 9), D(2026, 9, 28))
+    assert f("预计8月中国大豆进口1300万吨") == []                 # 预测
+    assert f("8月中国大豆进口12万吨") == []                        # 超出合理范围(200~2000)
+    assert f("1-8月累计进口大豆7365万吨") == []                    # 累计
+    assert f("中国2026年1－8月大豆进口7365万吨") == []              # 区间(全角横线)
+    assert f("中国2026年1-8月大豆进口7365万吨") == []              # 区间(半角横线)
+    assert f("前8月中国累计进口大豆总量为7365万吨") == []           # 累计总量
+    assert f("较去年8月进口量同比减少30万吨") == []                # 变动量
+    assert f("8月我国大豆进口量为1214万吨") == [(2026, 8, 1214.0)]  # 换个说法仍能识别
+    print("✅ 预测/超范围/累计/区间横线/变动量都被丢弃，换成\"我国…进口量为\"的说法仍能识别")
+
+
+def test_soy_import_paginates_and_request_matches_user_capture(monkeypatch_fetch):
+    """★请求跟用户抓包逐项对照(query=海关总署中国大豆进口量、sortType=complex、platform=pc、pageNo=1、
+    pageSize=20，字段集合一致，一年窗口起点2025-09-28)；用户实测total=24(两页)，8月的数只在第2页时也能取到。"""
+    import datetime as dt
+    page1 = [{"content": f"无关文章{i}", "publishTime": "2026-09-01 09:00", "title": "无关"} for i in range(20)]
+    page2 = _soy_items(lambda name: name.startswith("样本10"))
+    captured = []
+    r = _run_soy_with_pages({1: _sow_resp(page1, 24), 2: _sow_resp(page2, 24)}, capture=captured)
+    assert [c["post_data"]["pageNo"] for c in captured] == [1, 2] and r["value"] == 1214.14, r
+    p = captured[0]["post_data"]
+    assert set(p) == {"query", "startTime", "endTime", "sortType", "platform", "pageNo", "pageSize"}
+    assert (p["query"], p["sortType"], p["platform"], p["pageSize"]) == ("海关总署中国大豆进口量", "complex", "pc", 20)
+    days = (dt.datetime.strptime(p["endTime"][:10], "%Y-%m-%d") - dt.datetime.strptime(p["startTime"][:10], "%Y-%m-%d")).days
+    assert days == 365 and p["startTime"] == "2025-09-28 00:00:00" and captured[0]["headers"]["token"] == "-1"
+    print("✅ 请求逐项对照抓包一致；total=24分两页，只在第2页出现的8月数据也能取到")
+
+
+def test_soy_import_failure_modes_give_diagnostics(monkeypatch_fetch):
+    import fetch_data as fd_module
+    assert "为空" in _run_soy_with_pages({1: _sow_resp([])})["reason"]
+    assert "resultCode=1" in _run_soy_with_pages({1: {"resultCode": 1}})["reason"]
+    nothing = _run_soy_with_pages({1: _sow_resp([{"content": "完全不相关", "publishTime": "2026-09-09 08:00"}])})
+    assert nothing["available"] is False and nothing["debug"]["itemsChecked"] == 1 and "firstItemSample" in nothing["debug"]
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"httpStatus": None, "error": "连接超时"})
+    try:
+        assert "无返回" in fd_module.fetch_mysteel_soy_import()["reason"]
+    finally:
+        fd_module.fetch_json_debug = real
+    print("✅ 空结果/接口异常/无可提取内容/网络无响应都诚实报告")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -3113,7 +3301,8 @@ if __name__ == "__main__":
               test_sow_inventory_acceptance_window_rolls_with_calendar, test_latest_completed_quarter_helper,
               test_plausibility_helpers, test_crush_rate_out_of_range_rejected, test_poultry_profit_out_of_range_rejected, test_rmspread_change_range_not_mistaken_for_spread, test_arrival_forecast_change_and_out_of_range_rejected, test_export_inspections_limit_raised_and_truncation_detected, test_hog_ratio_each_price_must_be_plausible,
               test_frontend_and_backend_plausible_ranges_are_identical,
-              test_meal_stock_real_weekly_article, test_meal_stock_takes_latest_article_across_pages_not_first_match, test_meal_stock_stale_data_rejected, test_meal_stock_requires_national_scope, test_meal_stock_region_other_subject_and_change_rejected, test_meal_stock_request_matches_user_capture, test_meal_stock_failure_modes_give_diagnostics]
+              test_meal_stock_real_weekly_article, test_meal_stock_takes_latest_article_across_pages_not_first_match, test_meal_stock_stale_data_rejected, test_meal_stock_requires_national_scope, test_meal_stock_region_other_subject_and_change_rejected, test_meal_stock_request_matches_user_capture, test_meal_stock_failure_modes_give_diagnostics,
+              test_soy_import_real_articles_all_recognized, test_soy_import_full_flow_picks_august_2026, test_soy_import_falls_back_to_previous_month_when_latest_not_published, test_soy_import_acceptance_window_rolls_with_calendar, test_soy_import_year_inference_and_future_months, test_soy_import_synthetic_traps_rejected, test_soy_import_paginates_and_request_matches_user_capture, test_soy_import_failure_modes_give_diagnostics]
     failed = 0
     for t in tests:
         try:
