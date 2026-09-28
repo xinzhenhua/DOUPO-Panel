@@ -32,16 +32,18 @@ check('★猪粮比失败时应该替换掉默认文字，显示明确原因', !
 
 // ===================== 能繁母猪存栏：欄位为空自动填入 =====================
 reset('m_sows', 'ai_sows', 'ind_sows');
-window._syncedData = {generatedAt: new Date().toISOString(), sowInventory: {available: true, value: 4045.8, date: '202608', source: '玄田数据'}};
+window._syncedData = {generatedAt: new Date().toISOString(), sowInventory: {available: true, value: 3780, date: '2026-09-24', quarterLabel: '2026年二季度末', source: 'Mysteel文章'}};
 refreshSowInventory();
-check('★能繁母猪存栏欄位是空的时应该自动填入', makeEl('m_sows').value == '4045.8');
-check('★提示区应该显示万头单位', makeEl('ai_sows').innerHTML.includes('4045.8万头'));
-check('提示区应该显示周期(202608)而不是"日期"字样误导(这是周期不是具体日期)', makeEl('ai_sows').innerHTML.includes('周期') && makeEl('ai_sows').innerHTML.includes('202608'));
+check('★能繁母猪存栏欄位是空的时应该自动填入', makeEl('m_sows').value == '3780');
+check('★提示区应该显示万头单位', makeEl('ai_sows').innerHTML.includes('3780万头'));
+check('★提示区应该明确标出是哪个季度末(2026年二季度末)', makeEl('ai_sows').innerHTML.includes('2026年二季度末'));
+check('★提示区应该标出文章发布日期', makeEl('ai_sows').innerHTML.includes('2026-09-24'));
+check('提示区应该标注来源是Mysteel，不再是玄田数据', makeEl('ai_sows').innerHTML.includes('Mysteel') && !makeEl('ai_sows').innerHTML.includes('玄田数据'));
 
 // 已有值时不覆盖
 reset('m_sows', 'ai_sows', 'ind_sows');
 makeEl('m_sows').value = '4000';
-window._syncedData = {generatedAt: new Date().toISOString(), sowInventory: {available: true, value: 4045.8, date: '202608'}};
+window._syncedData = {generatedAt: new Date().toISOString(), sowInventory: {available: true, value: 3780, date: '2026-09-24', quarterLabel: '2026年二季度末'}};
 refreshSowInventory();
 check('★能繁母猪存栏欄位已有值时不应该被覆盖', makeEl('m_sows').value === '4000');
 

@@ -898,9 +898,11 @@ function refreshSowInventory(){
     saveManualAndRefresh();
   }
   badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${si.value}万头</b>
+  // 季度末数据：明确标出是哪个季度末(下一个季度末数据发布之前，这就是最新的)，
+  // 以及是哪天发布的文章
+  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${si.value}万头</b>(${si.quarterLabel||si.date})
     <button class="ai-use-btn" onclick="useAiValue('m_sows', ${si.value})">采用</button><br>
-    周期：${si.date}`;
+    季度末数据 · 文章发布日期：${si.date}`;
 }
 
 // ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================

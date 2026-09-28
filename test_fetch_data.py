@@ -2361,60 +2361,6 @@ def test_mysteel_meal_stock_empty_result(monkeypatch_fetch):
     print("✅ 搜索结果为空时诚实报告，不崩溃")
 
 
-def test_sow_inventory_parsing_with_sort(monkeypatch_fetch):
-    """★用akshare确认过的真实字段结构(周期/能繁母猪存栏/猪肉产量/生猪存栏/
-    生猪出栏)模拟生猪产能DataFrame，验证只取能繁母猪存栏这一项，且正确
-    按周期排序后取最新一行。"""
-    import pandas as pd
-    import fetch_data as fd_module
-    import sys
-
-    mock_df = pd.DataFrame({
-        "周期": ["202608", "202606", "202607"],  # 故意打乱顺序
-        "能繁母猪存栏": [4045.8, 4050.5, 4048.2],
-        "猪肉产量": [505.3, 500.1, 510.2],
-        "生猪存栏": [41600, 42000, 41800],
-        "生猪出栏": [6850, 6800, 6900],
-    })
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            assert symbol == "生猪产能"
-            return mock_df
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_sow_inventory()
-        assert result["available"] is True
-        assert result["value"] == 4045.8, f"★排序后最新周期(202608)对应的能繁母猪存栏应该是4045.8，实际{result['value']}"
-        assert result["date"] == "202608"
-        print(f"✅ 能繁母猪存栏正确按周期排序后取最新值(4045.8，对应202608)，正确只取这一项(不是猪肉产量等其他三项)")
-    finally:
-        del sys.modules['akshare']
-
-
-def test_sow_inventory_empty_dataframe(monkeypatch_fetch):
-    """akshare返回空DataFrame时应该诚实报告，不崩溃"""
-    import pandas as pd
-    import fetch_data as fd_module
-    import sys
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            return pd.DataFrame()
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_sow_inventory()
-        assert result["available"] is False
-        assert "空数据" in result["reason"]
-        print("✅ 返回空DataFrame时诚实报告，不崩溃")
-    finally:
-        del sys.modules['akshare']
-
-
 def test_hog_df_retries_and_succeeds_on_second_attempt(monkeypatch_fetch):
     """★真实运行遇到过ConnectTimeoutError，验证重试机制：第一次调用失败
     (模拟连接超时)，第二次成功时，应该正确返回成功结果，不是直接放弃。
@@ -2492,70 +2438,6 @@ def test_hog_df_socket_timeout_always_restored(monkeypatch_fetch):
         print("✅ 即使全部重试失败，socket全局超时设置依然正确恢复，不会污染后续其他网络请求")
     finally:
         del sys.modules['akshare']
-
-
-def test_sow_inventory_chinese_quarter_sort_bug_fixed(monkeypatch_fetch):
-    """★真实运行暴露的排序bug：用户反馈能繁母猪存栏显示"2025年二季度（末）"，
-    比预期滞后很多。排查后发现真实的"周期"字段是中文季度格式(不是当初
-    假设的"202608"纯数字月份格式)，而中文数字"二"(unicode码点U+4E8C)比
-    "三"(U+4E09)大，直接对这种字符串排序会导致同一年份内"二季度"排在
-    "三季度"后面——如果数据库里最新一期恰好排序错乱，`.iloc[-1]`可能选到
-    不是真正最新的一期。这个测试专门验证修复后能正确选到真正最新的季度。"""
-    import pandas as pd
-    import fetch_data as fd_module
-    import sys
-
-    # 包含用户真实反馈里出现的"2025年二季度"，以及更新的几期数据——
-    # 修复前的简单字符串排序会因为"二"/"三"这两个字的unicode顺序问题，
-    # 可能选不到真正最新的2026年二季度
-    mock_df = pd.DataFrame({
-        "周期": ["2025年二季度（末）", "2025年三季度（末）", "2025年四季度（末）",
-                 "2026年一季度（末）", "2026年二季度（末）"],
-        "能繁母猪存栏": [4043.0, 4050.0, 4055.0, 4048.0, 4060.0],
-        "猪肉产量": [500.0]*5, "生猪存栏": [42000.0]*5, "生猪出栏": [6800.0]*5,
-    })
-
-    class FakeAkshare:
-        @staticmethod
-        def futures_hog_supply(symbol):
-            return mock_df
-
-    sys.modules['akshare'] = FakeAkshare()
-    try:
-        result = fd_module.fetch_sow_inventory()
-        assert result["available"] is True
-        assert result["date"] == "2026年二季度（末）", f"★应该选到真正最新的2026年二季度，不是排序错乱后停在2025年二季度，实际{result['date']}"
-        assert result["value"] == 4060.0, f"★对应的能繁母猪存栏应该是4060.0，实际{result['value']}"
-        print(f"✅ 中文季度格式排序bug已修复：正确选到真正最新的2026年二季度(4060.0万头)，不再错误停在2025年二季度")
-    finally:
-        del sys.modules['akshare']
-
-
-def test_period_sort_key_handles_multiple_formats(monkeypatch_fetch):
-    """★验证_period_sort_key这个共用排序函数能正确处理三种不同的周期/日期
-    格式(中文季度/完整日期/纯数字年月)，且解析失败时返回(0,0,0)不会崩溃。"""
-    import fetch_data as fd_module
-
-    # 中文季度格式：同一年份内，季度数字大的应该排序key更大
-    key_q2 = fd_module._period_sort_key("2025年二季度（末）")
-    key_q3 = fd_module._period_sort_key("2025年三季度（末）")
-    assert key_q3 > key_q2, f"★三季度的排序key应该大于二季度，实际q2={key_q2}, q3={key_q3}"
-
-    # 完整日期格式
-    key_date1 = fd_module._period_sort_key("2026-08-19")
-    key_date2 = fd_module._period_sort_key("2026-09-22")
-    assert key_date2 > key_date1
-
-    # 纯数字年月格式
-    key_ym1 = fd_module._period_sort_key("202608")
-    key_ym2 = fd_module._period_sort_key("202609")
-    assert key_ym2 > key_ym1
-
-    # 解析失败时不应该崩溃，应该返回(0,0,0)
-    assert fd_module._period_sort_key("完全无法解析的内容") == (0, 0, 0)
-    assert fd_module._period_sort_key(None) == (0, 0, 0)
-
-    print("✅ _period_sort_key正确处理中文季度/完整日期/纯数字年月三种格式，解析失败时安全返回(0,0,0)")
 
 
 def _install_fake_hog_akshare(core_df, cost_df, core_exc=None, cost_exc=None):
@@ -2693,6 +2575,268 @@ def test_hog_ratio_field_mismatch_gives_column_diagnostic(monkeypatch_fetch):
 
 
 
+_REAL_SOW_CONTENT = ("2026年生猪行业处于产能去化周期，短期市场低位磨底。二季度末能繁母猪存栏3780万头，8月新生仔猪环比回落，"
+                     "但短期出栏总量仍偏高。江西等地疫病致散户产能去化，风险猪源北调对冲供给缺口，猪价呈现“周中回落、周末反弹”震荡特征。"
+                     "虽双节临近消费修复，但9-10月供给压力仍存，猪价大幅上涨条件不具备。后市需关注疫病导致的产能去化幅度及消费兑现程度，"
+                     "待供需拐点显现，猪价中枢有望稳步抬升。")
+
+
+def _sow_resp(items, total=None):
+    return {"resultCode": 0, "resultMsg": "succeed!", "total": total if total is not None else len(items), "dataList": items}
+
+
+def _sow_item(content, publish="2026-09-24 16:31", title="测试文章"):
+    return {"content": content, "publishTime": publish, "title": title, "url": "https://ncp.mysteel.com/a/test.html"}
+
+
+def _run_sow_with_pages(pages, capture=None):
+    """pages是{pageNo: 响应dict}，按请求里的pageNo返回对应页。"""
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        if capture is not None:
+            capture.append({"url": url, "headers": headers, "post_data": post_data})
+        page = (post_data or {}).get("pageNo", 1)
+        return pages.get(page, _sow_resp([])), {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake_fetch
+    try:
+        return fd_module.fetch_mysteel_sow_inventory()
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def test_sow_inventory_mysteel_real_sample(monkeypatch_fetch):
+    """★用户贴的真实响应里唯一展开了正文的那条(2026-09-24发布，"二季度末能繁母猪
+    存栏3780万头")：验证提取出2026年二季度末=3780万头。"""
+    result = _run_sow_with_pages({1: _sow_resp([_sow_item(_REAL_SOW_CONTENT, title="Mysteel解读：生猪震荡磨底阶段 重点关产能去化节奏")])})
+    assert result["available"] is True, result
+    assert result["value"] == 3780.0
+    assert result["quarterLabel"] == "2026年二季度末" and result["quarterEnd"] == "2026-06-30"
+    assert result["date"] == "2026-09-24"
+    print("✅ 真实样本正确提取：2026年二季度末能繁母猪存栏3780万头")
+
+
+def test_sow_inventory_picks_latest_quarter_across_articles(monkeypatch_fetch):
+    """★用户强调的时间维度：把所有文章里的季度都收集起来取最新的季度末，不是取
+    最新发布的那篇；同一季度多篇提到时取发布最晚的。"""
+    items = [
+        _sow_item("一季度末能繁母猪存栏3800万头。", "2026-05-10 09:00"),
+        _sow_item("2025年四季度末能繁母猪存栏3850万头。", "2026-01-20 09:00"),
+        _sow_item("二季度末能繁母猪存栏3790万头。", "2026-09-01 09:00"),   # 二季度，较早发布
+        _sow_item("二季度末能繁母猪存栏3780万头。", "2026-09-24 09:00"),   # 二季度，较晚发布 → 应选这条
+        _sow_item("最新的文章但没有提到具体季度存栏数据。", "2026-09-27 09:00"),  # 发布最晚，但不含数据，不能影响结果
+    ]
+    result = _run_sow_with_pages({1: _sow_resp(items)})
+    assert result["value"] == 3780.0 and result["quarterLabel"] == "2026年二季度末", result
+    assert result["quartersSeen"] == ["2026年二季度末", "2026年一季度末", "2025年四季度末"], result["quartersSeen"]
+    print("✅ 取到最新季度末(2026Q2)，同季度多篇取发布最晚(3780，不是3790)，无关的最新文章不干扰")
+
+
+def test_sow_inventory_q4_newer_than_q3_in_same_year(monkeypatch_fetch):
+    """★用户原话："同一年中4季度的数据是最新的，在4季度末到来之前3季度末的数据是
+    最新的"。用过去的年份(2025)验证：同时有三季度和四季度→选四季度；只有三季度→选三季度。"""
+    q3 = _sow_item("2025年三季度末能繁母猪存栏3900万头。", "2025-10-20 09:00")
+    q4 = _sow_item("2025年四季度末能繁母猪存栏3850万头。", "2026-01-20 09:00")
+    both = _run_sow_with_pages({1: _sow_resp([q3, q4])})
+    only_q3 = _run_sow_with_pages({1: _sow_resp([q3])})
+    assert both["quarterLabel"] == "2025年四季度末" and both["value"] == 3850.0
+    assert only_q3["quarterLabel"] == "2025年三季度末" and only_q3["value"] == 3900.0
+    print("✅ 同年四季度比三季度新；四季度末数据出来之前，三季度末就是最新的")
+
+
+def test_sow_inventory_infer_quarter_year_from_publish_date(monkeypatch_fetch):
+    """文章只写"X季度末"不写年份时，按发布日期推断年份(季度末日期不能晚于发布日期)"""
+    import datetime as dt
+    import fetch_data as fd_module
+    assert fd_module._infer_quarter_year(4, dt.date(2027, 1, 10)) == 2026   # 1月发布提到四季度末=去年
+    assert fd_module._infer_quarter_year(2, dt.date(2026, 9, 24)) == 2026
+    assert fd_module._infer_quarter_year(3, dt.date(2026, 9, 24)) == 2025   # 2026年三季度末9月30日还没到
+    assert fd_module._infer_quarter_year(3, dt.date(2026, 10, 20)) == 2026
+    print("✅ 年份推断正确(跨年的四季度、还没到的三季度都处理对了)")
+
+
+def test_sow_inventory_forecast_and_target_values_ignored(monkeypatch_fetch):
+    """★预测/目标值不是实际数据："预计四季度末能繁母猪存栏将降至3700万头"要丢掉；
+    显式写了未来年份的季度末(还没到)也要丢掉。"""
+    items = [
+        _sow_item("预计四季度末能繁母猪存栏将降至3700万头。", "2026-09-24 09:00"),
+        _sow_item("2099年四季度末能繁母猪存栏3000万头。", "2026-09-24 09:00"),
+        _sow_item("二季度末能繁母猪存栏3780万头。", "2026-09-20 09:00"),
+    ]
+    result = _run_sow_with_pages({1: _sow_resp(items)})
+    assert result["value"] == 3780.0 and result["quarterLabel"] == "2026年二季度末", result
+    only_forecast = _run_sow_with_pages({1: _sow_resp(items[:2])})
+    assert only_forecast["available"] is False
+    print("✅ 预测值和未来季度末被正确丢掉，只剩预测值时诚实报告没有数据")
+
+
+def test_sow_inventory_change_amount_not_mistaken_for_stock(monkeypatch_fetch):
+    """★"二季度末能繁母猪存栏较一季度末减少20万头"里的20万头是变动量，不是存栏量；
+    落在1000~10000万头合理范围之外的数值也不认。"""
+    items = [
+        _sow_item("二季度末能繁母猪存栏较一季度末减少20万头。", "2026-09-24 09:00"),
+        _sow_item("二季度末能繁母猪存栏20万头。", "2026-09-24 09:00"),
+    ]
+    result = _run_sow_with_pages({1: _sow_resp(items)})
+    assert result["available"] is False, result
+    ok = _run_sow_with_pages({1: _sow_resp(items + [_sow_item("二季度末能繁母猪存栏3780万头，较一季度末减少20万头。", "2026-09-24 09:00")])})
+    assert ok["value"] == 3780.0, ok
+    print("✅ 变动量(20万头)和范围外数值不被当成存栏量；同一句里带变动量时仍取到真正的存栏量3780")
+
+
+def test_sow_inventory_paginates_until_exhausted(monkeypatch_fetch):
+    """搜索结果有多页(total=41，每页20条)时，翻页取完(最多3页)——最新季度只出现在
+    第3页时也能拿到。"""
+    page1 = [_sow_item(f"无关文章{i}", "2026-09-01 09:00") for i in range(20)]
+    page2 = [_sow_item(f"无关文章{i}", "2026-09-01 09:00") for i in range(20)]
+    page3 = [_sow_item("二季度末能繁母猪存栏3780万头。", "2026-09-24 09:00")]
+    captured = []
+    result = _run_sow_with_pages({1: _sow_resp(page1, 41), 2: _sow_resp(page2, 41), 3: _sow_resp(page3, 41)}, capture=captured)
+    assert [c["post_data"]["pageNo"] for c in captured] == [1, 2, 3], [c["post_data"]["pageNo"] for c in captured]
+    assert result["value"] == 3780.0
+    print("✅ 翻页取完3页，只出现在第3页的数据也能拿到，且不会多翻")
+
+
+def test_sow_inventory_request_shape(monkeypatch_fetch):
+    """★请求跟用户实际抓包验证过的请求逐项对照：searchArticle端点、
+    query="季度末能繁母猪存栏"、sortType=complex、platform=pc、pageNo=1、pageSize=20，
+    字段集合完全一致(不多不少)；时间窗口是一年(抓包是2025-09-27到2026-09-27=365天，
+    之前我写成150天没被真实接口验证过)；请求头带token=-1。一页取完时不多翻页。"""
+    import datetime as dt
+    captured = []
+    _run_sow_with_pages({1: _sow_resp([_sow_item(_REAL_SOW_CONTENT)])}, capture=captured)
+    assert len(captured) == 1, "结果不足一页时不应该继续翻页"
+    c = captured[0]
+    assert c["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    p = c["post_data"]
+    assert set(p) == {"query", "startTime", "endTime", "sortType", "platform", "pageNo", "pageSize"}, set(p)
+    assert (p["query"], p["sortType"], p["platform"], p["pageNo"], p["pageSize"]) == ("季度末能繁母猪存栏", "complex", "pc", 1, 20)
+    days = (dt.datetime.strptime(p["endTime"][:10], "%Y-%m-%d") - dt.datetime.strptime(p["startTime"][:10], "%Y-%m-%d")).days
+    assert days == 365, f"★时间窗口应该是365天(跟用户抓包一致)，实际{days}天"
+    assert p["startTime"].endswith("00:00:00") and c["headers"]["token"] == "-1"
+    print("✅ 请求逐项对照抓包一致：端点/关键词/排序/平台/分页/字段集合/一年窗口/token")
+
+
+def test_sow_inventory_failure_modes_give_diagnostics(monkeypatch_fetch):
+    """空结果/接口异常/没有可提取内容，都诚实报告；没有可提取内容时debug带第一条样本。"""
+    import fetch_data as fd_module
+    empty = _run_sow_with_pages({1: _sow_resp([])})
+    assert empty["available"] is False and "为空" in empty["reason"]
+    bad = _run_sow_with_pages({1: {"resultCode": 1, "resultMsg": "err"}})
+    assert bad["available"] is False and "resultCode=1" in bad["reason"]
+    nothing = _run_sow_with_pages({1: _sow_resp([_sow_item("完全不相关的内容")])})
+    assert nothing["available"] is False and "firstItemSample" in nothing["debug"] and nothing["debug"]["itemsChecked"] == 1
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"httpStatus": None, "error": "连接超时"})
+    try:
+        none_resp = fd_module.fetch_mysteel_sow_inventory()
+    finally:
+        fd_module.fetch_json_debug = real
+    assert none_resp["available"] is False and "无返回" in none_resp["reason"]
+    print("✅ 空结果/接口异常/无可提取内容/网络无响应都诚实报告")
+
+
+import datetime as _sow_dt
+_SD = _sow_dt.date
+_REAL_SOW_SAMPLES = [
+ ("样本1 2026-09-24 二季度末(写法A:季度末能繁母猪存栏X)", _SD(2026,9,24),
+  "2026年生猪行业处于产能去化周期，短期市场低位磨底。二季度末能繁母猪存栏3780万头，8月新生仔猪环比回落，但短期出栏总量仍偏高。江西等地疫病致散户产能去化，风险猪源北调对冲供给缺口，猪价呈现“周中回落、周末反弹”震荡特征。虽双节临近消费修复，但9-10月供给压力仍存，猪价大幅上涨条件不具备。后市需关注疫病导致的产能去化幅度及消费兑现程度，待供需拐点显现，猪价中枢有望稳步抬升。",
+  [(2026,2,3780.0)]),
+ ("样本2 2025-10-20 三季度末(生猪总存栏在前，其中能繁母猪在后)", _SD(2025,10,20),
+  "三季度末，全国生猪存栏43680万头，同比增加986万头，增长2.3%，环比增加1233万头，增长2.9%其中，能繁母猪存栏4035万头，同比减少28万头，下降0.7%，环比减少9万头，略降0.2% 牛羊生产基本稳定前三季度，全国肉牛出栏3564万头，同比增加71万头，增长2.0%；牛肉产量550万吨，同比增加18万吨，增长3.3%；牛奶产量2921万吨，同比增加19万吨，增长0.7%。",
+  [(2025,3,4035.0)]),
+ ("样本3 2026-04-17 2026年一季度末(全国能繁母猪存栏X，后带基准值3900)", _SD(2026,4,17),
+  "最新官方数据显示，2026年一季度末，全国能繁母猪存栏3904万头，环比减少1.44%，同比下降3.3%这一数字仅略高于3900万头的传统正常保有量，虽处于产能调控的绿色合理区域，但尚未达到预期缩减目标，是解读本轮猪价反弹及预判下半年行情的核心依据。",
+  [(2026,1,3904.0)]),
+ ("样本4 2026-04-17 一季度末(生猪总存栏在前，其中能繁母猪在后)", _SD(2026,4,17),
+  "一季度，全国生猪出栏20026万头，增长2.8%猪肉产量1669万吨，增长4.2%一季度末，全国生猪存栏42358万头，增长1.5%其中，能繁母猪存栏3904万头，下降3.3%，目前为正常保有量的100.1% 牛羊生产基本稳定。",
+  [(2026,1,3904.0)]),
+ ("样本5 2026-04-24 截至2026年第一季度末(存栏量降至X)", _SD(2026,4,24),
+  "截至2026年第一季度末，全国能繁母猪存栏量降至3904万头，较2025年6月的高点减少了139万头，已连续9个月下降当前存栏量处于国家设定的3900万头正常保有量的101%左右，告别了此前明显偏高的格局，回归合理区间，为后续猪价企稳回升奠定了坚实基础 2026年以来生猪期货主力合约呈“探底 -反弹”走势。",
+  [(2026,1,3904.0)]),
+ ("样本6 2026-04-27 2026年一季度末(全国能繁母猪存栏X)", _SD(2026,4,27),
+  "2026年一季度末，全国能繁母猪存栏3904万头，环比、同比均有所下降，但仍略高于正常保有量，去化幅度未达预期规模场以种群结构优化为主，去化力度相对温和；散户补栏意愿低迷，后备母猪交易清淡，行业对后市整体持谨慎态度产能去化不到位，意味着未来半年商品猪供给仍将维持高位，市场难以快速摆脱供应过剩局面 仔猪市场同样维持弱势运行。",
+  [(2026,1,3904.0)]),
+ ("样本7 2026-05-21 能繁母猪存栏在前，2026年一季度末存栏量仍有X，后带基准值3650", _SD(2026,5,21),
+  "国内能繁母猪存栏自2025年7月持续去化，但2026年一季度末存栏量仍有3904万头，显著高于3650万头的合理保有量，产能富余的基本面并未彻底改善按照10个月生猪养殖传导周期，前期高位产能持续释放，带动5月商品猪出栏量维持高位同时行业养殖水平提升，PSY升至24头以上，同等存栏规模下生猪出栏基数进一步扩大叠加最新一周的全国生猪出栏均重123.2公斤，市场猪肉供给十分充裕为对冲行业深度亏损、稳定市场情绪，5月中央启动冻猪肉双向轮换操作，配套地方收储举措，对猪价形成底部支撑，但收储规模有限，仅能防范行情非理性下跌，无法逆转整体供给宽松格局。",
+  [(2026,1,3904.0)]),
+ ("样本8 2025-09-28 历史回顾(先有3986/4080两个非季度末数字，再2025年一季度末仍维持在X)", _SD(2025,9,28),
+  "2024年5月起，能繁母猪存栏量进入持续回升通道，从3986万头逐步攀升至11月的4080万头，即便到2025年一季度末，仍维持在4039万头的高位，同比增长1.17%与此同时，养殖技术的提升进一步放大了产能——当前第一梯队集团厂的PSY（每头母猪年提供断奶仔猪数）已达到32头左右，较此前提升0.5-1头，仔猪产能持续释放 需求端的疲软则加剧了价格压力仔猪育肥存在6个月左右的周期，现阶段补栏的仔猪将推迟至2026年春节后出栏，既错过春节消费旺季，又将面临节后淡季价格走弱的风险。",
+  [(2025,1,4039.0)]),
+]
+
+
+def test_sow_inventory_eight_real_articles_all_recognized(monkeypatch_fetch):
+    """★用户贴的8条真实Mysteel正文，逐条验证提取结果。这8条的写法各不相同：
+    ①"季度末能繁母猪存栏X"(样本1)；②先写生猪总存栏再写"其中，能繁母猪存栏X"，
+    中间隔得很远(样本2、4)；③"存栏量降至X"，"降至"里有"降"字(样本5)；
+    ④顺序反过来"能繁母猪存栏自…，但2026年一季度末存栏量仍有X"(样本7、8)；
+    ⑤后面带"3900万头的正常保有量"这种基准值(样本3、5、7)。
+    ★第一版正则(要求季度末后面紧跟能繁母猪存栏)在这8条里只识别出3条。"""
+    import datetime as dt
+    import fetch_data as fd_module
+    today = dt.date(2026, 9, 28)
+    for name, pub, text, expected in _REAL_SOW_SAMPLES:
+        got = fd_module._extract_sow_candidates(text, pub, today)
+        assert got == expected, f"★{name}: 期望{expected}，实际{got}"
+    print(f"✅ 8条真实正文全部正确识别(第一版逻辑只能识别3条)")
+
+
+def test_sow_inventory_other_indicators_not_mistaken_for_sow(monkeypatch_fetch):
+    """★别的指标的"XXXX万头"不能被当成能繁母猪存栏：肉牛出栏3564万头落在1000~10000
+    的合理范围内，只靠范围过滤挡不住，必须靠"主语"判断(样本2里就有这个数)。
+    生猪总存栏43680、生猪出栏20026这类更是不能取。"""
+    import datetime as dt
+    import fetch_data as fd_module
+    today = dt.date(2026, 9, 28)
+    pub = dt.date(2025, 10, 20)
+    assert fd_module._extract_sow_candidates("三季度末，全国肉牛出栏3564万头，同比增加71万头。", pub, today) == []
+    assert fd_module._extract_sow_candidates("三季度末，全国生猪存栏43680万头，同比增加986万头。", pub, today) == []
+    assert fd_module._extract_sow_candidates("一季度末，全国生猪出栏5000万头。", pub, today) == []
+    print("✅ 肉牛出栏(3564，在合理范围内)、生猪总存栏、生猪出栏都不会被误认成能繁母猪存栏")
+
+
+def test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected(monkeypatch_fetch):
+    """★"降至/增至/升至3904万头"是到达某个水平(要放行)；"较上季度减少20万头"、
+    "同比减少28万头"是变动量(要拒绝)；"高于3650万头的合理保有量"是基准值(要拒绝)。"""
+    import datetime as dt
+    import fetch_data as fd_module
+    today = dt.date(2026, 9, 28)
+    pub = dt.date(2026, 4, 24)
+    f = lambda t: fd_module._extract_sow_candidates(t, pub, today)
+    assert f("一季度末能繁母猪存栏降至3904万头。") == [(2026, 1, 3904.0)]
+    assert f("一季度末能繁母猪存栏增至3904万头。") == [(2026, 1, 3904.0)]
+    assert f("一季度末能繁母猪存栏较上年减少28万头。") == []
+    assert f("一季度末能繁母猪存栏同比减少2800万头。") == []      # 数值在范围内也要靠措辞拒绝
+    assert f("一季度末能繁母猪存栏显著高于3650万头的合理保有量。") == []
+    print("✅ 降至/增至放行，变动量和基准值拒绝(数值即使落在合理范围内也一样)")
+
+
+def test_sow_inventory_full_flow_with_eight_real_articles(monkeypatch_fetch):
+    """★端到端：把8条真实文章(各自的发布时间)放进一次搜索响应，最终应选出最新的
+    2026年二季度末3780万头，并且收集到的季度末包括2026Q2/2026Q1/2025Q3/2025Q1。"""
+    items = [_sow_item(text, pub.isoformat() + " 12:00") for _, pub, text, _ in _REAL_SOW_SAMPLES]
+    result = _run_sow_with_pages({1: _sow_resp(items)})
+    assert result["available"] is True, result
+    assert result["value"] == 3780.0 and result["quarterLabel"] == "2026年二季度末", result
+    assert result["quartersSeen"] == ["2026年二季度末", "2026年一季度末", "2025年三季度末", "2025年一季度末"], result["quartersSeen"]
+    print("✅ 8条真实文章端到端：选出2026年二季度末3780万头，收集到4个不同的季度末")
+
+
+def test_sow_inventory_next_quarter_takes_over_once_published(monkeypatch_fetch):
+    """★用户强调的时间维度：二季度末数据是当前最新；等三季度末数据发布后(一篇
+    新文章写"2026年三季度末，全国能繁母猪存栏3700万头")，最新就应该自动变成三季度末。
+    用显式年份+假的"今天"无法在这里改，所以直接测提取函数：today在2026-10-25时
+    三季度末已过，应被识别；today在2026-09-28时三季度末还没到，应被丢掉。"""
+    import datetime as dt
+    import fetch_data as fd_module
+    text = "2026年三季度末，全国能繁母猪存栏3700万头，环比减少80万头。"
+    pub = dt.date(2026, 10, 25)
+    assert fd_module._extract_sow_candidates(text, pub, dt.date(2026, 10, 25)) == [(2026, 3, 3700.0)]
+    assert fd_module._extract_sow_candidates(text, pub, dt.date(2026, 9, 28)) == []
+    print("✅ 三季度末数据发布后自动成为最新；发布之前(季度末还没到)不会被提前采用")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -2759,15 +2903,15 @@ if __name__ == "__main__":
               test_mysteel_meal_stock_real_article_content,
               test_mysteel_meal_stock_query_uses_correct_keyword, test_mysteel_meal_stock_no_matching_content_gives_diagnostic,
               test_mysteel_meal_stock_empty_result,
-              test_sow_inventory_parsing_with_sort, test_sow_inventory_empty_dataframe,
               test_hog_df_retries_and_succeeds_on_second_attempt, test_hog_df_exhausts_retries_reports_honestly,
               test_hog_df_socket_timeout_always_restored,
-              test_sow_inventory_chinese_quarter_sort_bug_fixed, test_period_sort_key_handles_multiple_formats,
               test_hog_ratio_xuantian_real_screenshot_case, test_hog_ratio_uses_latest_common_date_not_last_row,
               test_hog_ratio_skips_nan_and_bad_dates, test_hog_ratio_corn_already_per_kg_not_divided_twice,
               test_hog_ratio_absurd_result_rejected, test_hog_ratio_no_common_dates_gives_diagnostic,
               test_hog_ratio_pig_fetch_failure_reports_which_series, test_hog_ratio_corn_fetch_failure_reports_which_series,
-              test_hog_ratio_field_mismatch_gives_column_diagnostic]
+              test_hog_ratio_field_mismatch_gives_column_diagnostic,
+              test_sow_inventory_mysteel_real_sample, test_sow_inventory_picks_latest_quarter_across_articles, test_sow_inventory_q4_newer_than_q3_in_same_year, test_sow_inventory_infer_quarter_year_from_publish_date, test_sow_inventory_forecast_and_target_values_ignored, test_sow_inventory_change_amount_not_mistaken_for_stock, test_sow_inventory_paginates_until_exhausted, test_sow_inventory_request_shape, test_sow_inventory_failure_modes_give_diagnostics,
+              test_sow_inventory_eight_real_articles_all_recognized, test_sow_inventory_other_indicators_not_mistaken_for_sow, test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected, test_sow_inventory_full_flow_with_eight_real_articles, test_sow_inventory_next_quarter_takes_over_once_published]
     failed = 0
     for t in tests:
         try:

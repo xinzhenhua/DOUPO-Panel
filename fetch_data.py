@@ -41,6 +41,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from datetime import datetime, timezone, timedelta
+from datetime import date as _date_cls
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
@@ -1430,32 +1431,6 @@ def _fetch_akshare_hog_df(symbol, retries=2, timeout_seconds=15, retry_delay_sec
     return None, {"available": False, "reason": f"接口调用成功但返回空数据(已重试{retries}次，symbol={symbol})", "debug": {"symbol": symbol, "retriesAttempted": retries}}
 
 
-def _period_sort_key(period_str):
-    """★真实运行暴露的排序bug(已修复)：能繁母猪存栏这个接口真实返回的
-    "周期"字段是"2025年二季度（末）"这种中文季度格式，不是当初测试时假设
-    的"202608"纯数字月份格式。直接对这种字符串排序会出错——中文数字"二"
-    (unicode码点U+4E8C=20108)比"三"(U+4E09=19977)大，导致同一年份内"二
-    季度"和"三季度"的字符串排序顺序跟真实时间顺序相反，`.iloc[-1]`可能
-    选到的不是真正最新的一期。
-
-    这个函数把"年份+季度/月份/日"统一解析成一个数值tuple来排序，不管是
-    "2025年二季度（末）"这种中文季度格式、"2026-08-19"这种完整日期、还是
-    "202608"这种纯数字年月，都能正确按时间顺序排列。解析失败时返回
-    (0,0,0)，确保这种异常数据排在最前面、不会被误判成"最新"。"""
-    quarter_map = {"一": 1, "二": 2, "三": 3, "四": 4}
-    s = str(period_str)
-    m = re.search(r"(\d{4})年([一二三四])季度", s)
-    if m:
-        return (int(m.group(1)), quarter_map[m.group(2)] * 3, 0)
-    m2 = re.search(r"(\d{4})[年\-](\d{1,2})[月\-](\d{1,2})", s)
-    if m2:
-        return (int(m2.group(1)), int(m2.group(2)), int(m2.group(3)))
-    m3 = re.search(r"(\d{4})[年\-]?(\d{1,2})月?$", s)
-    if m3:
-        return (int(m3.group(1)), int(m3.group(2)), 0)
-    return (0, 0, 0)
-
-
 # ---------------------------------------------------------------------------
 # 猪粮比：用玄田数据(中国养猪网旗下)的每日"生猪价格(外三元)"和"玉米价格"
 # 两个序列自己计算——猪粮比 = 生猪价格(元/公斤) ÷ 玉米价格(元/公斤)。
@@ -1554,32 +1529,203 @@ def fetch_hog_ratio():
     }
 
 
-def fetch_sow_inventory():
-    """能繁母猪存栏：用akshare的futures_hog_supply(symbol="生猪产能")接口
-    (数据源：玄田数据)。这个symbol会同时返回能繁母猪存栏/猪肉产量/生猪存栏/
-    生猪出栏四项数据，这里只取能繁母猪存栏这一项(仪表盘目前的手动指标只
-    对应这一项)。★按_period_sort_key排序后取最后一行——真实运行暴露过
-    这个"周期"字段是中文季度格式("2025年二季度（末）")这个事实，之前对
-    这种字符串直接排序有bug(见_period_sort_key的说明)，已修复。"""
-    df, err = _fetch_akshare_hog_df("生猪产能")
-    if err:
-        return err
-    try:
-        df_sorted = df.sort_values("周期", key=lambda col: col.map(_period_sort_key))
-        latest = df_sorted.iloc[-1]
-        return {
-            "available": True,
-            "value": float(latest["能繁母猪存栏"]),
-            "date": str(latest["周期"]),
-            "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
-            "sourceUrl": "https://zhujia.zhuwang.com.cn",
+# ---------------------------------------------------------------------------
+# 能繁母猪存栏：改用Mysteel文章搜索(沿用开机率/库存等指标的同一套思路)，不再用
+# akshare/玄田数据——那条线停在2025年10月，滞后近一年。
+#
+# ★这个指标是**季度末**数据：Mysteel文章里写的是"二季度末能繁母猪存栏3780万头"
+#   这种说法(用户提供的真实响应样本，2026-09-24发布)。所以查找逻辑跟前面的
+#   日度/周度指标不一样：不是"取最新一篇文章里的数"，而是把搜到的所有文章里
+#   提到的(年份, 季度, 存栏量)都收集起来，取**最新的一个季度末**——同一年里
+#   四季度比三季度新，四季度末数据发布之前，三季度末就是最新的(现在是2026年
+#   9月底，最新就是2026年二季度末的3780万头)。同一季度被多篇文章提到时，取
+#   发布时间最晚的那一篇。
+#
+# ★几个容易误判的陷阱(手算验证过)：
+#   ① 年份：文章通常只写"二季度末"不写年份，按"季度末日期不能晚于发布日期"
+#      推断——2026-09-24发布提到二季度末=2026年；2027-01发布提到四季度末=
+#      2026年；2026-09-24发布提到三季度末=2025年(2026年三季度末9月30日还没到)。
+#      文章里写了"2025年四季度末"这种显式年份就以显式为准。
+#   ② 预测值：政策文章常见"预计四季度末能繁母猪存栏将降至XXXX万头"，不是实际
+#      数据——匹配前面出现预计/预期/目标/调控/有望/将等词就丢掉；显式年份
+#      的季度末如果比今天还晚(未来)也丢掉。
+#   ③ 增减量："二季度末能繁母猪存栏较一季度末减少20万头"里的20万头是变动量
+#      不是存栏量——数字前面的间隔里出现较/比/减/降/增/升等词就丢掉；另外存栏
+#      量落在1000~10000万头之外的一律不认(能繁母猪合理范围约3000~4500)。
+#
+# ★第二版(用户贴了8条真实正文后重写)：第一版只用1条样本设计，要求"季度末"后面紧跟
+#   "能繁母猪存栏"，拿8条真实文章一测只识别出3条——漏掉的5条写法各不相同：
+#   ① 先写生猪总存栏再写"其中，能繁母猪存栏X"(隔了很远，样本2、4)；
+#   ② "存栏量降至3904万头"——"降至"里的"降"字被"变动量过滤"误杀(样本5)；
+#   ③ 顺序反过来："能繁母猪存栏自…，但2026年一季度末存栏量仍有3904万头"(样本7、8)。
+#   现在改成以"季度末"为锚点，往后找数字，再判断数字属于谁(能繁母猪还是别的
+#   指标)，并过滤变动量、基准值(3900万头的正常保有量)、预测值——8条真实样本
+#   全部验证过，而且样本2里的"生猪存栏43680万头""肉牛出栏3564万头"这类
+#   别的指标的数字不会被误认(3564万头在1000~10000范围内，只靠范围过滤挡不住，
+#   靠的是"主语"判断)。
+_SOW_QUARTER_MENTION = re.compile(r"(?:(\d{4})年)?第?([一二三四1-4])季度末")
+_SOW_NUMBER = re.compile(r"(\d+\.?\d*)万头")
+_SOW_OWNER_SOW = ("能繁母猪",)
+_SOW_OWNER_OTHER = ("生猪存栏", "生猪出栏", "出栏", "猪肉", "牛羊", "肉牛", "牛肉", "牛奶", "仔猪", "后备母猪", "商品猪")
+_SOW_BAD_PHRASE_WORDS = ("较", "比", "减", "降", "增", "升", "下滑", "回落", "高于", "低于", "超过", "不足", "设定", "正常", "合理")
+_SOW_LEVEL_VERB = re.compile(r"(?:下降|上升|减少|增加|增长|回落|降|减|增|升)[至到]")
+_SOW_FORECAST_WORDS = ("预计", "预期", "预测", "目标", "调控", "有望", "将", "计划", "力争", "拟")
+_QUARTER_CN = {"一": 1, "二": 2, "三": 3, "四": 4, "1": 1, "2": 2, "3": 3, "4": 4}
+_QUARTER_END_MD = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
+_SOW_WINDOW = 100
+
+
+def _quarter_end_date(year, quarter):
+    m, d = _QUARTER_END_MD[quarter]
+    return _date_cls(year, m, d)
+
+
+def _infer_quarter_year(quarter, pub_date):
+    """文章只写"X季度末"没写年份时，按"季度末日期不能晚于发布日期"推断年份。"""
+    return pub_date.year if _quarter_end_date(pub_date.year, quarter) <= pub_date else pub_date.year - 1
+
+
+def _sow_owner_at(sentence, pos):
+    """pos之前最后出现的"主语"关键词属于哪一类：'sow'(能繁母猪)/'other'(生猪总存栏、
+    出栏、肉牛等别的指标)/None。用来判断一个"XXXX万头"到底是不是能繁母猪的数。"""
+    best_end, best = -1, None
+    for kw in _SOW_OWNER_SOW:
+        i = sentence.rfind(kw, 0, pos)
+        if i != -1 and i + len(kw) > best_end:
+            best_end, best = i + len(kw), "sow"
+    for kw in _SOW_OWNER_OTHER:
+        i = sentence.rfind(kw, 0, pos)
+        if i != -1 and i + len(kw) > best_end:
+            best_end, best = i + len(kw), "other"
+    return best
+
+
+def _extract_sow_candidates(text, pub_date, today):
+    """从一段文本里提取所有(年份, 季度, 存栏量万头)候选。
+
+    ★以"季度末"为锚点(不再要求"季度末"后面紧跟"能繁母猪存栏"——真实文章里有
+    "三季度末，全国生猪存栏43680万头…其中，能繁母猪存栏4035万头"这种隔很远的写法，
+    也有"能繁母猪存栏自…，但2026年一季度末存栏量仍有3904万头"这种顺序反过来的写法)：
+    在同一个句子里，每个"季度末"提及往后(下一个提及之前，最多100字)找第一个合格的
+    "XXXX万头"。合格 = ①这个数字的"主语"是能繁母猪(不是生猪总存栏/出栏/肉牛)；
+    ②紧挨着它的那个短语里没有较/比/减/增/高于/设定/正常/合理这类变动量或基准值的词
+    ("降至/增至/升至"这种"到达某个水平"的写法要放行)；③后面不是"…保有量"；
+    ④没有预计/目标/将等预测词；⑤在1000~10000万头合理范围内；⑥季度末不在未来。"""
+    out = []
+    for sentence in re.split(r"[。\n；;]", text):
+        mentions = list(_SOW_QUARTER_MENTION.finditer(sentence))
+        for mi, m in enumerate(mentions):
+            next_start = mentions[mi + 1].start() if mi + 1 < len(mentions) else len(sentence)
+            seg_end = min(m.end() + _SOW_WINDOW, next_start)
+            for n in _SOW_NUMBER.finditer(sentence, m.end(), seg_end):
+                pos = n.start()
+                if _sow_owner_at(sentence, pos) != "sow":
+                    continue  # 这个数是生猪总存栏/出栏/肉牛等别的指标的
+                phrase = re.split(r"[，,、%\s]", sentence[:pos])[-1][-14:]
+                phrase = _SOW_LEVEL_VERB.sub("", phrase)  # "降至/增至"是到达某个水平，不是变动量
+                if any(w in phrase for w in _SOW_BAD_PHRASE_WORDS):
+                    continue  # 变动量(较上季度减少X)或基准值(高于X的合理保有量)
+                if "保有量" in sentence[n.end():n.end() + 8]:
+                    continue  # "3900万头的正常保有量"是基准值
+                context = sentence[max(0, m.start() - 10):pos]
+                if any(w in context for w in _SOW_FORECAST_WORDS):
+                    continue  # 预测/目标值，不是实际数据
+                value = float(n.group(1))
+                if not (1000 <= value <= 10000):
+                    continue
+                quarter = _QUARTER_CN[m.group(2)]
+                year = int(m.group(1)) if m.group(1) else _infer_quarter_year(quarter, pub_date)
+                if _quarter_end_date(year, quarter) > today:
+                    continue  # 季度末还没到，不可能是实际存栏数据
+                out.append((year, quarter, value))
+                break  # 一个季度末提及只取第一个合格的数字
+    return out
+
+
+
+def fetch_mysteel_sow_inventory():
+    """通过Mysteel文章搜索"季度末能繁母猪存栏"，收集所有文章里提到的
+    (年份, 季度, 存栏量)，取最新的一个季度末。"""
+    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+    today = now_bj.date()
+    # ★回看一年：跟用户实际抓包验证过的请求保持一致(startTime=2025-09-27, endTime=2026-09-27，
+    #   返回total=41)。之前写的150天没有被真实接口验证过，还会少看到去年的历史文章。
+    start_bj = now_bj - timedelta(days=365)
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    page_size, max_pages = 20, 5  # 一年窗口实测41条(3页)，上限放到5页(100条)留余量
+    candidates = []  # (year, quarter, pub_date, value, item)
+    items_checked = 0
+    first_item = None
+
+    for page in range(1, max_pages + 1):
+        payload = {
+            "query": "季度末能繁母猪存栏",
+            "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+            "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+            "sortType": "complex",
+            "platform": "pc",
+            "pageNo": page,
+            "pageSize": page_size,
         }
-    except (KeyError, ValueError, TypeError) as e:
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {
+                    "available": False,
+                    "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                    "debug": {"rawSnippet": debug.get("rawSnippet")},
+                }
+            break  # 后面的页失败：用已经拿到的
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            items_checked += 1
+            if first_item is None:
+                first_item = item
+            try:
+                pub_date = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                pub_date = today
+            for v in item.values():
+                if not isinstance(v, str):
+                    continue
+                for year, quarter, value in _extract_sow_candidates(v, pub_date, today):
+                    candidates.append((year, quarter, pub_date, value, item))
+        total = data.get("total") or 0
+        if len(data_list) < page_size or page * page_size >= total:
+            break
+
+    if not candidates:
         return {
             "available": False,
-            "reason": f"字段解析失败: {e}(接口可能改了字段名)",
-            "debug": {"actualColumns": list(df.columns), "sampleLastRow": df.iloc[-1].to_dict() if len(df) else None},
+            "reason": "搜索结果里没有一条能提取出'X季度末能繁母猪存栏XXXX万头'这个格式(可能措辞变了，或者最新一季度的数据还没发布)",
+            "debug": {"itemsChecked": items_checked, "firstItemSample": first_item},
         }
+
+    # 最新的季度末；同一季度被多篇文章提到时取发布最晚的那篇
+    year, quarter, pub_date, value, item = max(candidates, key=lambda c: (c[0], c[1], c[2]))
+    quarters_seen = sorted({(c[0], c[1]) for c in candidates}, reverse=True)
+    return {
+        "available": True,
+        "value": value,
+        "quarterLabel": f"{year}年{'一二三四'[quarter - 1]}季度末",
+        "quarterEnd": _quarter_end_date(year, quarter).isoformat(),
+        "date": pub_date.isoformat(),
+        "articleTitle": item.get("title"),
+        "quartersSeen": [f"{y}年{'一二三四'[q - 1]}季度末" for y, q in quarters_seen],
+        "source": "Mysteel文章(能繁母猪存栏，季度末数据)",
+        "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -2839,7 +2985,7 @@ def main():
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": fetch_mysteel_meal_stock(),
         "hogRatio": fetch_hog_ratio(),
-        "sowInventory": fetch_sow_inventory(),
+        "sowInventory": fetch_mysteel_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
