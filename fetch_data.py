@@ -1580,6 +1580,19 @@ def _quarter_end_date(year, quarter):
     return _date_cls(year, m, d)
 
 
+def _latest_completed_quarter(today):
+    """今天为止最近一个已经结束的季度(年, 季)。2026-09-28 → (2026, 2)：三季度末9月30日还没到。"""
+    for q in (4, 3, 2, 1):
+        if _quarter_end_date(today.year, q) <= today:
+            return (today.year, q)
+    return (today.year - 1, 4)
+
+
+def _previous_quarter(yq):
+    y, q = yq
+    return (y, q - 1) if q > 1 else (y - 1, 4)
+
+
 def _infer_quarter_year(quarter, pub_date):
     """文章只写"X季度末"没写年份时，按"季度末日期不能晚于发布日期"推断年份。"""
     return pub_date.year if _quarter_end_date(pub_date.year, quarter) <= pub_date else pub_date.year - 1
@@ -1643,11 +1656,20 @@ def _extract_sow_candidates(text, pub_date, today):
 
 
 
-def fetch_mysteel_sow_inventory():
+def fetch_mysteel_sow_inventory(today=None):
     """通过Mysteel文章搜索"季度末能繁母猪存栏"，收集所有文章里提到的
-    (年份, 季度, 存栏量)，取最新的一个季度末。"""
-    now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
-    today = now_bj.date()
+    (年份, 季度, 存栏量)，取最新的一个季度末。
+
+    ★新鲜度限制(用户指出的，之前漏掉了)：只接受"最近一个已完成季度"和它的上一个季度
+    这两期。2026-09-28这天最近已完成的是2026年二季度末(三季度末9月30日还没到)，
+    所以只接受二季度末，找不到才退到一季度末；2025年的数据一律不采用——宁可
+    显示失败原因，也不能把陈年老数据当成最新值填进去。
+    today参数只给测试用(固定"今天"让测试不随真实日期变化)，正式运行不传。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
     # ★回看一年：跟用户实际抓包验证过的请求保持一致(startTime=2025-09-27, endTime=2026-09-27，
     #   返回total=41)。之前写的150天没有被真实接口验证过，还会少看到去年的历史文章。
     start_bj = now_bj - timedelta(days=365)
@@ -1712,9 +1734,22 @@ def fetch_mysteel_sow_inventory():
             "debug": {"itemsChecked": items_checked, "firstItemSample": first_item},
         }
 
-    # 最新的季度末；同一季度被多篇文章提到时取发布最晚的那篇
-    year, quarter, pub_date, value, item = max(candidates, key=lambda c: (c[0], c[1], c[2]))
     quarters_seen = sorted({(c[0], c[1]) for c in candidates}, reverse=True)
+    label = lambda yq: f"{yq[0]}年{'一二三四'[yq[1] - 1]}季度末"
+    latest_done = _latest_completed_quarter(today)
+    allowed = {latest_done, _previous_quarter(latest_done)}
+    fresh = [c for c in candidates if (c[0], c[1]) in allowed]
+    if not fresh:
+        return {
+            "available": False,
+            "reason": (f"只找到了较旧的季度末数据(最新一期是{label(quarters_seen[0])})，已超出允许的滞后范围"
+                       f"(今天最近已完成的季度是{label(latest_done)}，只接受{label(latest_done)}和"
+                       f"{label(_previous_quarter(latest_done))})，为避免把旧数据当成最新值，不采用"),
+            "debug": {"quartersSeen": [label(q) for q in quarters_seen], "itemsChecked": items_checked},
+        }
+
+    # 在允许的季度里取最新的季度末；同一季度被多篇文章提到时取发布最晚的那篇
+    year, quarter, pub_date, value, item = max(fresh, key=lambda c: (c[0], c[1], c[2]))
     return {
         "available": True,
         "value": value,

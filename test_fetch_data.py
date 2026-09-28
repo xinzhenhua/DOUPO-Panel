@@ -2589,8 +2589,12 @@ def _sow_item(content, publish="2026-09-24 16:31", title="测试文章"):
     return {"content": content, "publishTime": publish, "title": title, "url": "https://ncp.mysteel.com/a/test.html"}
 
 
-def _run_sow_with_pages(pages, capture=None):
-    """pages是{pageNo: 响应dict}，按请求里的pageNo返回对应页。"""
+import datetime as _sow_dt
+_SOW_TEST_TODAY = _sow_dt.date(2026, 9, 28)   # 固定"今天"，测试不随真实日期变化
+
+
+def _run_sow_with_pages(pages, capture=None, today=None):
+    """pages是{pageNo: 响应dict}，按请求里的pageNo返回对应页。today固定为2026-09-28。"""
     import fetch_data as fd_module
     real = fd_module.fetch_json_debug
     def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
@@ -2600,7 +2604,7 @@ def _run_sow_with_pages(pages, capture=None):
         return pages.get(page, _sow_resp([])), {"httpStatus": 200}
     fd_module.fetch_json_debug = fake_fetch
     try:
-        return fd_module.fetch_mysteel_sow_inventory()
+        return fd_module.fetch_mysteel_sow_inventory(today=today or _SOW_TEST_TODAY)
     finally:
         fd_module.fetch_json_debug = real
 
@@ -2637,8 +2641,8 @@ def test_sow_inventory_q4_newer_than_q3_in_same_year(monkeypatch_fetch):
     最新的"。用过去的年份(2025)验证：同时有三季度和四季度→选四季度；只有三季度→选三季度。"""
     q3 = _sow_item("2025年三季度末能繁母猪存栏3900万头。", "2025-10-20 09:00")
     q4 = _sow_item("2025年四季度末能繁母猪存栏3850万头。", "2026-01-20 09:00")
-    both = _run_sow_with_pages({1: _sow_resp([q3, q4])})
-    only_q3 = _run_sow_with_pages({1: _sow_resp([q3])})
+    both = _run_sow_with_pages({1: _sow_resp([q3, q4])}, today=_sow_dt.date(2026, 2, 15))
+    only_q3 = _run_sow_with_pages({1: _sow_resp([q3])}, today=_sow_dt.date(2026, 2, 15))
     assert both["quarterLabel"] == "2025年四季度末" and both["value"] == 3850.0
     assert only_q3["quarterLabel"] == "2025年三季度末" and only_q3["value"] == 3900.0
     print("✅ 同年四季度比三季度新；四季度末数据出来之前，三季度末就是最新的")
@@ -2715,6 +2719,53 @@ def test_sow_inventory_request_shape(monkeypatch_fetch):
     assert days == 365, f"★时间窗口应该是365天(跟用户抓包一致)，实际{days}天"
     assert p["startTime"].endswith("00:00:00") and c["headers"]["token"] == "-1"
     print("✅ 请求逐项对照抓包一致：端点/关键词/排序/平台/分页/字段集合/一年窗口/token")
+
+
+def test_sow_inventory_stale_old_data_is_rejected_not_shown(monkeypatch_fetch):
+    """★用户指出的问题：今天是2026-09-28，二季度末数据已发布、三季度末还没到，绝不能把
+    2025年的陈年数据当成最新值填进去。只搜到2025年数据(样本2的2025年三季度末、样本8的
+    2025年一季度末)时，必须拒绝并说明原因，而不是取"找到的最新一期"。"""
+    items = [_sow_item(text, pub.isoformat() + " 12:00") for name, pub, text, _ in _REAL_SOW_SAMPLES if name.startswith(("样本2", "样本8"))]
+    result = _run_sow_with_pages({1: _sow_resp(items)})
+    assert result["available"] is False, result
+    assert "较旧" in result["reason"] and "2026年二季度末" in result["reason"], result["reason"]
+    assert result["debug"]["quartersSeen"] == ["2025年三季度末", "2025年一季度末"], result["debug"]
+    print("✅ 只搜到2025年的旧数据时拒绝展示，并说明今天最近已完成的季度是2026年二季度末")
+
+
+def test_sow_inventory_falls_back_to_previous_quarter_only(monkeypatch_fetch):
+    """★用户的规则："二季度末找不到，可以找一季度末，但不至于是上一年的数据"。
+    只有2026年一季度末的文章(样本3~7)时采用一季度末；二季度末也在时优先二季度末。"""
+    q1_items = [_sow_item(text, pub.isoformat() + " 12:00") for name, pub, text, _ in _REAL_SOW_SAMPLES if name.startswith(("样本3", "样本4", "样本5", "样本6", "样本7"))]
+    only_q1 = _run_sow_with_pages({1: _sow_resp(q1_items)})
+    assert only_q1["available"] is True and only_q1["quarterLabel"] == "2026年一季度末" and only_q1["value"] == 3904.0, only_q1
+    with_q2 = _run_sow_with_pages({1: _sow_resp(q1_items + [_sow_item("二季度末能繁母猪存栏3780万头。", "2026-09-24 09:00")])})
+    assert with_q2["quarterLabel"] == "2026年二季度末" and with_q2["value"] == 3780.0
+    print("✅ 二季度末找不到时退到一季度末(3904)；二季度末在时优先二季度末(3780)")
+
+
+def test_sow_inventory_acceptance_window_rolls_with_calendar(monkeypatch_fetch):
+    """接受的季度随日历滚动：三季度末(9-30)一过，最近已完成的季度变成三季度，此时二季度末
+    (三季度数据还没发布)仍可接受，一季度末就太旧了；到了年底四季度也过了，二季度末也不再接受。"""
+    q2 = _sow_item("二季度末能繁母猪存栏3780万头。", "2026-09-24 09:00")
+    q1 = _sow_item("2026年一季度末，全国能繁母猪存栏3904万头。", "2026-04-17 09:00")
+    D = _sow_dt.date
+    assert _run_sow_with_pages({1: _sow_resp([q2])}, today=D(2026, 10, 5))["quarterLabel"] == "2026年二季度末"
+    assert _run_sow_with_pages({1: _sow_resp([q1])}, today=D(2026, 10, 5))["available"] is False
+    assert _run_sow_with_pages({1: _sow_resp([q2])}, today=D(2027, 1, 5))["available"] is False
+    print("✅ 接受窗口随日历滚动：10月初二季度末仍可用、一季度末过旧；次年1月二季度末也过旧")
+
+
+def test_latest_completed_quarter_helper(monkeypatch_fetch):
+    import datetime as dt
+    import fetch_data as fd_module
+    D = dt.date
+    assert fd_module._latest_completed_quarter(D(2026, 9, 28)) == (2026, 2)   # 三季度末9-30还没到
+    assert fd_module._latest_completed_quarter(D(2026, 9, 30)) == (2026, 3)
+    assert fd_module._latest_completed_quarter(D(2027, 1, 5)) == (2026, 4)
+    assert fd_module._latest_completed_quarter(D(2026, 1, 2)) == (2025, 4)
+    assert fd_module._previous_quarter((2026, 2)) == (2026, 1) and fd_module._previous_quarter((2026, 1)) == (2025, 4)
+    print("✅ 最近已完成季度/上一季度计算正确(含跨年)")
 
 
 def test_sow_inventory_failure_modes_give_diagnostics(monkeypatch_fetch):
@@ -2911,7 +2962,9 @@ if __name__ == "__main__":
               test_hog_ratio_pig_fetch_failure_reports_which_series, test_hog_ratio_corn_fetch_failure_reports_which_series,
               test_hog_ratio_field_mismatch_gives_column_diagnostic,
               test_sow_inventory_mysteel_real_sample, test_sow_inventory_picks_latest_quarter_across_articles, test_sow_inventory_q4_newer_than_q3_in_same_year, test_sow_inventory_infer_quarter_year_from_publish_date, test_sow_inventory_forecast_and_target_values_ignored, test_sow_inventory_change_amount_not_mistaken_for_stock, test_sow_inventory_paginates_until_exhausted, test_sow_inventory_request_shape, test_sow_inventory_failure_modes_give_diagnostics,
-              test_sow_inventory_eight_real_articles_all_recognized, test_sow_inventory_other_indicators_not_mistaken_for_sow, test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected, test_sow_inventory_full_flow_with_eight_real_articles, test_sow_inventory_next_quarter_takes_over_once_published]
+              test_sow_inventory_eight_real_articles_all_recognized, test_sow_inventory_other_indicators_not_mistaken_for_sow, test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected, test_sow_inventory_full_flow_with_eight_real_articles, test_sow_inventory_next_quarter_takes_over_once_published,
+              test_sow_inventory_stale_old_data_is_rejected_not_shown, test_sow_inventory_falls_back_to_previous_quarter_only,
+              test_sow_inventory_acceptance_window_rolls_with_calendar, test_latest_completed_quarter_helper]
     failed = 0
     for t in tests:
         try:

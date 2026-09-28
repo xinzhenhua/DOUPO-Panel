@@ -80,4 +80,15 @@ window._syncedData = {generatedAt: new Date().toISOString(), hogRatio: {availabl
 refreshHogRatio();
 check('★没有计算依据字段时不应该出现undefined', !makeEl('ai_hogratio').innerHTML.includes('undefined'));
 
+
+// ===================== ★旧格式数据防护(复现用户截图：旧版akshare后端的3990万头/2025年10月) =====================
+reset('m_sows', 'ai_sows', 'ind_sows');
+makeEl('ai_sows').className = 'ai-suggest unavailable';
+makeEl('ai_sows').innerHTML = '💡 尚未粘贴数据';
+window._syncedData = {generatedAt: new Date().toISOString(), sowInventory: {available: true, value: 3990, date: '2025年10月', source: '玄田数据(经akshare的futures_hog_supply接口获取)'}};
+refreshSowInventory();
+check('★旧格式数据(没有quarterLabel)绝不能自动填入输入框', makeEl('m_sows').value === '');
+check('★旧格式数据不能显示成"自动抓取(Mysteel)…采用"(那是误导)', !makeEl('ai_sows').innerHTML.includes('自动抓取(Mysteel)') && !makeEl('ai_sows').innerHTML.includes('采用'));
+check('★应该提示这是旧版本后端的数据，并指引去检查Actions/latest.json', makeEl('ai_sows').innerHTML.includes('旧版本后端') && makeEl('ai_sows').innerHTML.includes('quarterLabel'));
+
 H.printSummary();
