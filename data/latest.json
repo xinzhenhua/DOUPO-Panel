@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-28T02:25:52.198923+00:00",
+  "generatedAt": "2026-09-28T04:44:29.586561+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 368.0,
-    "change": -5.9,
-    "changePct": -1.58,
-    "asOf": "2026-09-28T02:14:50+00:00",
+    "price": 366.0,
+    "change": -7.9,
+    "changePct": -2.11,
+    "asOf": "2026-09-28T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
@@ -50,9 +50,9 @@
   },
   "mysteelMealStock": {
     "available": true,
-    "value": 117.32,
-    "date": "2026-09-21",
-    "matchedText": "据Mysteel数据，2026年第38周全国主要油厂大豆库存上升，豆粕库存上升，未执行合同下降。其中大豆库存856.85万吨，较上周增加24.66万吨；豆粕库存117.32万吨，较上周增加6.33万吨；未执行合同459.91万吨，较上周减少78.76万吨；豆粕表观消费量178.08万吨，较上周减少4.19万吨。",
+    "value": 0.7,
+    "date": "2026-09-28",
+    "matchedText": "据Mysteel农产品调研，截至2026年9月25日，西北2家油厂大豆库存11万吨，环比减少0.5万吨，同比减少0.5万吨；豆粕库存0.70万吨，环比持平，同比减少0.15万吨；未执行合同3.6万吨，环比减少万吨，同比减少4.1万吨。",
     "source": "Mysteel文章(豆粕商业库存)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html"
   },
@@ -69,10 +69,19 @@
   },
   "sowInventory": {
     "available": true,
-    "value": 3990.0,
-    "date": "2025年10月",
-    "source": "玄田数据(经akshare的futures_hog_supply接口获取)",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn"
+    "value": 3780.0,
+    "quarterLabel": "2026年二季度末",
+    "quarterEnd": "2026-06-30",
+    "date": "2026-09-24",
+    "articleTitle": "Mysteel解读：生猪震荡磨底阶段 重点关产能去化节奏",
+    "quartersSeen": [
+      "2026年二季度末",
+      "2026年一季度末",
+      "2025年三季度末",
+      "2025年一季度末"
+    ],
+    "source": "Mysteel文章(能繁母猪存栏，季度末数据)",
+    "sourceUrl": "https://ncp.mysteel.com/a/26092416/53218F500D47BAF9.html"
   },
   "cftcManagedMoney": {
     "available": true,
@@ -6951,15 +6960,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-14 10:00:00",
-        "open": 2841.0,
-        "high": 2851.0,
-        "low": 2840.0,
-        "close": 2847.0,
-        "volume": 17456.0,
-        "hold": 674265.0
-      },
-      {
         "datetime": "2026-08-14 11:15:00",
         "open": 2847.0,
         "high": 2857.0,
@@ -8565,10 +8565,19 @@
         "datetime": "2026-09-28 11:15:00",
         "open": 3010.0,
         "high": 3011.0,
-        "low": 3003.0,
-        "close": 3006.0,
-        "volume": 25.0,
-        "hold": 849538.0
+        "low": 2993.0,
+        "close": 2998.0,
+        "volume": 44319.0,
+        "hold": 845605.0
+      },
+      {
+        "datetime": "2026-09-28 14:15:00",
+        "open": 2998.0,
+        "high": 2999.0,
+        "low": 2991.0,
+        "close": 2993.0,
+        "volume": 196.0,
+        "hold": 845225.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10267,15 +10276,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-14 10:00:00",
-        "open": 3146.0,
-        "high": 3155.0,
-        "low": 3144.0,
-        "close": 3151.0,
-        "volume": 126925.0,
-        "hold": 2290245.0
-      },
-      {
         "datetime": "2026-08-14 11:15:00",
         "open": 3150.0,
         "high": 3165.0,
@@ -11881,10 +11881,19 @@
         "datetime": "2026-09-28 11:15:00",
         "open": 3400.0,
         "high": 3401.0,
-        "low": 3390.0,
-        "close": 3393.0,
-        "volume": 78.0,
-        "hold": 2641008.0
+        "low": 3376.0,
+        "close": 3389.0,
+        "volume": 303065.0,
+        "hold": 2634574.0
+      },
+      {
+        "datetime": "2026-09-28 14:15:00",
+        "open": 3389.0,
+        "high": 3390.0,
+        "low": 3380.0,
+        "close": 3385.0,
+        "volume": 307.0,
+        "hold": 2634696.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
