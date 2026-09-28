@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-28T14:20:59.083128+00:00",
+  "generatedAt": "2026-09-28T15:14:32.019586+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.3,
-    "change": -13.6,
-    "changePct": -3.64,
+    "price": 359.1,
+    "change": -14.8,
+    "changePct": -3.96,
     "asOf": "2026-09-28T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -82,7 +82,7 @@
   },
   "hogRatio": {
     "available": false,
-    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f1118f01b90>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fbfa0705390>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
     "debug": {
       "symbol": "外三元",
       "errorType": "ConnectTimeout",
@@ -8607,9 +8607,9 @@
         "open": 2954.0,
         "high": 2958.0,
         "low": 2950.0,
-        "close": 2952.0,
-        "volume": 10.0,
-        "hold": 853156.0
+        "close": 2958.0,
+        "volume": 739.0,
+        "hold": 855012.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11931,11 +11931,11 @@
       {
         "datetime": "2026-09-28 23:00:00",
         "open": 3330.0,
-        "high": 3335.0,
-        "low": 3328.0,
-        "close": 3330.0,
-        "volume": 152.0,
-        "hold": 2535727.0
+        "high": 3336.0,
+        "low": 3327.0,
+        "close": 3335.0,
+        "volume": 38616.0,
+        "hold": 2525699.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
