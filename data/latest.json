@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T20:05:49.898155+00:00",
+  "generatedAt": "2026-09-28T20:31:51.698391+00:00",
   "cbotPrice": {
     "available": true,
     "price": 359.0,
@@ -1972,28 +1972,36 @@
     "weekEnding": "2026-09-27",
     "goodExcellentPct": 58.0,
     "wowChangePts": 0.0,
-    "yoyValue": null,
-    "yoyChangePts": null,
-    "fiveYearAvg": 59.5,
-    "fiveYearAvgChangePts": -1.5,
+    "yoyValue": 62.0,
+    "yoyChangePts": -4.0,
+    "fiveYearAvg": 57.8,
+    "fiveYearAvgChangePts": 0.2,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usPlantingProgress": {
-    "available": false,
-    "reason": "NASS接口无返回数据(注意：每年4-6月播种季才有进度数据)",
-    "debug": {
-      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=PROGRESS&unit_desc=PCT+PLANTED&agg_level_desc=NATIONAL&format=JSON&year=2026",
-      "error": "The read operation timed out"
-    }
+    "available": true,
+    "weekEnding": "2026-06-14",
+    "pctPlanted": 95.0,
+    "wowChangePts": 3.0,
+    "yoyValue": 93.0,
+    "yoyChangePts": 2.0,
+    "fiveYearAvg": 92.8,
+    "fiveYearAvgChangePts": 2.2,
+    "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
+    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usHarvestProgress": {
-    "available": false,
-    "reason": "NASS接口无返回数据(注意：每年9-11月收获季才有进度数据)",
-    "debug": {
-      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=PROGRESS&unit_desc=PCT+HARVESTED&agg_level_desc=NATIONAL&format=JSON&year=2026",
-      "error": "The read operation timed out"
-    }
+    "available": true,
+    "weekEnding": "2026-09-27",
+    "pctHarvested": 17.0,
+    "wowChangePts": 5.0,
+    "yoyValue": 19.0,
+    "yoyChangePts": -2.0,
+    "fiveYearAvg": 16.2,
+    "fiveYearAvgChangePts": 0.8,
+    "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
+    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "dceM09Daily": {
     "available": true,
