@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T20:31:51.698391+00:00",
+  "generatedAt": "2026-09-28T21:11:10.502742+00:00",
   "cbotPrice": {
     "available": true,
     "price": 359.0,
@@ -169,7 +169,7 @@
   },
   "brazilPlantingProgress": {
     "available": false,
-    "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
+    "reason": "CONAB接口调用失败: SourceUnavailableError: conab unavailable: ConnectTimeout:  after 3 retries"
   },
   "exportInspections": {
     "available": true,
