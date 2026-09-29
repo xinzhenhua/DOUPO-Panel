@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-29T13:55:59.456428+00:00",
+  "generatedAt": "2026-09-29T18:34:55.165987+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 355.8,
-    "change": -5.9,
-    "changePct": -1.63,
+    "price": 359.2,
+    "change": -2.5,
+    "changePct": -0.69,
     "asOf": "2026-09-29T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -79,7 +79,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 29,
+    "articleAgeDays": 30,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -112,7 +112,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 1,
+    "ageDays": 2,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -146,15 +146,13 @@
     "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html"
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.33,
-    "date": "2026-09-29",
-    "pigPrice": 10.17,
-    "cornPricePerTon": 2348.0,
-    "pigLatestDate": "2026-09-29",
-    "cornLatestDate": "2026-09-29",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn"
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fddbb3107d0>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
+    }
   },
   "sowInventory": {
     "available": true,
@@ -7068,15 +7066,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-17 15:00:00",
-        "open": 2868.0,
-        "high": 2871.0,
-        "low": 2866.0,
-        "close": 2866.0,
-        "volume": 17.0,
-        "hold": 690158.0
-      },
-      {
         "datetime": "2026-08-17 22:00:00",
         "open": 2871.0,
         "high": 2876.0,
@@ -8683,9 +8672,18 @@
         "open": 2984.0,
         "high": 2986.0,
         "low": 2970.0,
-        "close": 2980.0,
-        "volume": 31469.0,
-        "hold": 834807.0
+        "close": 2981.0,
+        "volume": 31598.0,
+        "hold": 834812.0
+      },
+      {
+        "datetime": "2026-09-29 23:00:00",
+        "open": 2981.0,
+        "high": 2982.0,
+        "low": 2974.0,
+        "close": 2978.0,
+        "volume": 314.0,
+        "hold": 836126.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10404,15 +10402,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-17 15:00:00",
-        "open": 3178.0,
-        "high": 3178.0,
-        "low": 3174.0,
-        "close": 3176.0,
-        "volume": 11481.0,
-        "hold": 2338040.0
-      },
-      {
         "datetime": "2026-08-17 22:00:00",
         "open": 3176.0,
         "high": 3193.0,
@@ -12019,9 +12008,18 @@
         "open": 3368.0,
         "high": 3371.0,
         "low": 3350.0,
-        "close": 3369.0,
-        "volume": 243602.0,
-        "hold": 2492462.0
+        "close": 3371.0,
+        "volume": 245731.0,
+        "hold": 2492804.0
+      },
+      {
+        "datetime": "2026-09-29 23:00:00",
+        "open": 3371.0,
+        "high": 3373.0,
+        "low": 3364.0,
+        "close": 3366.0,
+        "volume": 3934.0,
+        "hold": 2489623.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -12032,6 +12030,26 @@
     "debug": {
       "attempts": [
         {
+          "date": "2026-09-30",
+          "category": "netLong",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-30",
+          "category": "netShort",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-30",
+          "category": "longUp",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
+          "date": "2026-09-30",
+          "category": "longDown",
+          "note": "接口返回success=false: 返回数据为空"
+        },
+        {
           "date": "2026-09-29",
           "category": "netLong",
           "note": "接口返回success=false: 返回数据为空"
@@ -12128,26 +12146,6 @@
         },
         {
           "date": "2026-09-25",
-          "category": "longDown",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-24",
-          "category": "netLong",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-24",
-          "category": "netShort",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-24",
-          "category": "longUp",
-          "note": "接口返回success=false: 返回数据为空"
-        },
-        {
-          "date": "2026-09-24",
           "category": "longDown",
           "note": "接口返回success=false: 返回数据为空"
         }
