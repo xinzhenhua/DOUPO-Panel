@@ -27,9 +27,9 @@ window._syncedData = {
 refreshMysteelPoultryProfit();
 check('★亏损时应该自动填入负值(不是绝对值)', makeEl('m_poultry').value == '-4.18');
 check('★提示区应该正确显示负号，不应该多此一举加"+"号', makeEl('ai_poultry').innerHTML.includes('-4.18元/只') && !makeEl('ai_poultry').innerHTML.includes('+-4.18'));
-check('★采用按钮传入的值也应该是负数', makeEl('ai_poultry').innerHTML.includes("useAiValue('m_poultry', -4.18)"));
+check('★不再有采用按钮', !makeEl('ai_poultry').innerHTML.includes('采用'));
 
-// ===================== 测试3：欄位已有值时不强制覆盖(负值场景) =====================
+// ===================== 测试3：抓取成功时直接覆盖已有值(负值场景) =====================
 resetPoultryFields();
 makeEl('m_poultry').value = '1.5'; // 用户自己填的
 window._syncedData = {
@@ -37,8 +37,8 @@ window._syncedData = {
   mysteelPoultryProfit: {available: true, value: -2.23, date: '2026-09-24'},
 };
 refreshMysteelPoultryProfit();
-check('★欄位已有值时不应该被覆盖', makeEl('m_poultry').value === '1.5');
-check('提示区依然应该显示抓取到的负值供参考', makeEl('ai_poultry').innerHTML.includes('-2.23元/只'));
+check('★抓取成功时应直接覆盖已有值(1.5→-2.23)', makeEl('m_poultry').value == '-2.23');
+check('提示区应该显示抓取到的负值', makeEl('ai_poultry').innerHTML.includes('-2.23元/只'));
 
 // ===================== 测试4：抓取失败时不报错 =====================
 resetPoultryFields();

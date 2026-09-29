@@ -31,6 +31,8 @@ check('NOAA展望渲染结果应该包含<svg>条形图', elements['noaaOutlookC
   elements[id].value = '';
 });
 elements['m_crush'].value = '35'; // <40，触发偏多
+elements['m_stock'].value = '40'; elements['m_basis'].value = '10'; elements['m_arrival'].value = '700'; // 凑够有效指标数(至少5项才下结论、才画仪表盘)
+elements['m_hogratio'].value = '8'; elements['m_sows'].value = '3600';
 elements['ind_crush']=makeEl('ind_crush');elements['ind_stock']=makeEl('ind_stock');
 elements['ind_basis']=makeEl('ind_basis');elements['ind_arrival']=makeEl('ind_arrival');
 elements['ind_hogratio']=makeEl('ind_hogratio');elements['ind_sows']=makeEl('ind_sows');

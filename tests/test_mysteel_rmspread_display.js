@@ -30,7 +30,7 @@ check('★多城市格式时应该自动填入平均值', makeEl('m_rmspread').v
 check('★提示区应该显示"3个城市"字样', makeEl('ai_rmspread').innerHTML.includes('3个城市'));
 check('★提示区应该显示各城市原始数值(740/710/810)，方便核对平均值怎么算出来的', makeEl('ai_rmspread').innerHTML.includes('740/710/810'));
 
-// ===================== 测试3：欄位已有值时不强制覆盖 =====================
+// ===================== 测试3：抓取成功时直接覆盖已有值 =====================
 resetRmSpreadFields();
 makeEl('m_rmspread').value = '600';
 window._syncedData = {
@@ -38,8 +38,8 @@ window._syncedData = {
   mysteelRmSpread: {available: true, value: 500, formatUsed: '区间中点', rangeLow: 480, rangeHigh: 520, date: '2026-07-09'},
 };
 refreshMysteelRmSpread();
-check('★欄位已有值时不应该被覆盖', makeEl('m_rmspread').value === '600');
-check('提示区依然应该显示抓取到的值供参考', makeEl('ai_rmspread').innerHTML.includes('500'));
+check('★抓取成功时应直接覆盖已有值(600→500)', makeEl('m_rmspread').value == '500');
+check('提示区应该显示抓取到的值', makeEl('ai_rmspread').innerHTML.includes('500'));
 
 // ===================== 测试4：抓取失败/无数据时不报错 =====================
 resetRmSpreadFields();

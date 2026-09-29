@@ -16,12 +16,6 @@ function resetFields(){
   elements['alertContent'] = makeEl('alertContent');
 }
 
-// ===================== 测试1：粘贴解析能识别新指标 =====================
-const example = `豆菜粕价差(元/吨) 550元/吨 2026年7月 我的钢铁网`;
-const parsed = parsePastedData(example);
-check('应该正确识别豆菜粕价差这个新指标', !!parsed.m_rmspread);
-check('数值应该正确解析为550', parsed.m_rmspread && parsed.m_rmspread.value === 550);
-
 // ===================== 测试2：阈值验证(用2026年4月查证过的真实数据区间470-780) =====================
 resetFields();
 elements['m_rmspread'].value = '350'; // <400阈值
@@ -38,7 +32,7 @@ elements['m_rmspread'].value = '750'; // >700阈值
 updateOverallAlert();
 check('价差750(>700，菜粕明显划算)应判定偏空', elements['alertContent'].innerHTML.includes('sd-cell sd-neg">豆菜粕价差'));
 
-// ===================== 测试3：13票制审计(12票+新指标=13票) =====================
+// ===================== 测试3：票数审计(豆菜粕价差正确并入) =====================
 resetFields();
 elements['m_crush'].value='35'; elements['m_stock'].value='40'; elements['m_basis'].value='10';
 elements['m_arrival'].value='700'; elements['m_hogratio'].value='8'; elements['m_sows'].value='3600';
@@ -46,10 +40,11 @@ elements['m_import'].value='700'; elements['m_poultry'].value='2'; elements['m_r
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;
 window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 updateOverallAlert();
-check('★13票制审计：全部信号偏多时，总分应精确为+13(新指标正确并入总票数)',
-  elements['alertContent'].innerHTML.includes('+13分'));
+// 供应5票+需求6票(出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差)
+check('★票数审计：全部信号偏多时，总分应精确为+12(11个投票，其中国内豆粕供应松紧票权2)',
+  elements['alertContent'].innerHTML.includes('综合偏多 +12（'));
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★供需表格应精确显示13个偏多格子', posCount === 13);
+check('★供需表格应精确显示11个偏多格子', posCount === 11);
 check('供需表格需求侧应显示"豆菜粕价差"这个新标签', elements['alertContent'].innerHTML.includes('豆菜粕价差'));
 
 

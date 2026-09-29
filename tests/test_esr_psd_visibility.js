@@ -11,7 +11,7 @@ eval(H.loadDashboardJs());
 
 // ★ 核心验证：ESR/PSD不属于contract-group(group-us-weather/group-sa)，
 //   所以selectContract()的隐藏逻辑不会碰到它们，3个合约下都应该保持可见
-const html = require('fs').readFileSync('/home/claude/soymeal-dashboard/index.html', 'utf8');
+const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 const esrPos = html.indexOf('id="esrContent"');
 const psdPos = html.indexOf('id="psdContent"');
 const groupUsOpen = html.indexOf('id="group-us-weather"');

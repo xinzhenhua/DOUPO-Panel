@@ -101,6 +101,17 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .field-ind.neg{background:var(--gd);color:var(--g);border:1px solid var(--gb)}
 .field-ind.neutral{background:var(--bg3);color:var(--t3)}
 .field-ind:empty{display:none}
+.dim-row{display:flex;align-items:center;gap:6px;margin:6px 0;font-size:11px}
+.dim-name{width:56px;color:var(--t2);flex:none}
+.dim-track{position:relative;flex:1;height:10px;background:var(--bg2);border-radius:5px}
+.dim-mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--t3)}
+.dim-tick{position:absolute;top:2px;bottom:2px;width:1px;background:var(--bdr)}
+.dim-bar{position:absolute;top:0;bottom:0;border-radius:5px}
+.dim-bar.pos{background:var(--r)}
+.dim-bar.neg{background:var(--g)}
+.dim-val{width:44px;text-align:right;font-weight:700;flex:none}
+.dim-val.pos{color:var(--r)} .dim-val.neg{color:var(--g)} .dim-val.neutral{color:var(--t3)}
+.dim-n{width:44px;color:var(--t3);font-size:10px;flex:none}
 .loading{text-align:center;padding:20px;color:var(--t3);font-size:11px}
 .divider{height:1px;background:var(--bdr);margin:10px 0}
 .stars{color:var(--gold);font-size:10px}
@@ -112,7 +123,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 <body>
 <div class="topbar">
   <h1>豆粕<span>M</span> 基本面自动预警仪表盘</h1>
-  <div class="sub">天气自动实时更新 · USDA/CBOT数据每日两次同步 · 其余数据手动录入</div>
+  <div class="sub">全部指标自动抓取(GitHub Actions交易时段每小时同步) · 每个指标的详情里可查看来源、必要时手动修正</div>
 </div>
 <div class="main" id="mainContent">
 
@@ -235,6 +246,13 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   </div>
   <div id="harvestContent" class="loading">正在读取同步数据...</div>
 </div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">巴西大豆播种进度<span style="font-size:9px;color:var(--t3);font-weight:400">· CONAB官方数据，自动抓取</span></div>
+    <span class="badge" id="brPlantBadge">检查中...</span>
+  </div>
+  <div id="brPlantContent" class="loading">正在读取同步数据...</div>
+</div>
 <div style="font-size:10px;color:var(--t3);margin:-4px 0 10px 2px">
   💡 收获进度只在每年9-11月收获季有意义。收获快→新豆快速流入市场→偏空；
   收获慢(比如秋雨连绵导致收割延误)→供给流入受阻→偏多。
@@ -268,6 +286,12 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   </div>
   <div id="psdContent" class="loading">正在读取同步数据...</div>
 </div>
+
+<!-- ============ 国内供需 + 需求端指标：原手动指标，现全部自动抓取，页面加载时自动覆盖；详情里可查看来源/手动修正 ============ -->
+<div class="stitle">📦 国内供需 · 自动抓取<span style="font-size:9px;color:var(--t3);font-weight:400">· Mysteel/中储粮等，页面加载时自动覆盖，详情里可手动修正</span></div>
+<div id="cards-supply"></div>
+<div class="stitle">🐖 需求端 · 自动抓取</div>
+<div id="cards-demand"></div>
 
 <!-- ============ 技术面：DCE豆粕K线（日线/小时线，覆盖9月/5月/1月三个合约，跟随合约tab切换） ============ -->
 <div class="stitle">📈 技术面：DCE豆粕K线<span style="font-size:9px;color:var(--t3);font-weight:400">· 日线+小时线，仅供参考</span></div>
@@ -314,144 +338,6 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   </div>
   <div id="crushContent" class="loading">正在读取同步数据...</div>
 </div>
-
-<!-- ============ 一键复制提示词 + 一键粘贴填充板块 ============ -->
-<div class="stitle">📋 一键复制提示词 → 粘贴填充（替代AI搜索，纯本地解析不联网）</div>
-<details class="tier-details big-collapse">
-<summary>📋 第一步+第二步：复制提示词 → 粘贴解析 ▸</summary>
-<div class="tier-body">
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">第一步：复制提示词，去问任意AI</div>
-    <span class="badge badge-manual">🟡 你来选AI</span>
-  </div>
-  <div style="font-size:11px;color:var(--t3);line-height:1.6;margin-bottom:8px">
-    点击复制，粘贴到DeepSeek/豆包/通义千问/ChatGPT等任意AI对话框，把AI的回答整个复制回来，粘贴到下面的框里解析
-  </div>
-  <button class="ai-use-btn" style="width:100%;padding:8px;font-size:12px" onclick="copyPromptToClipboard()">📋 复制提示词</button>
-  <div id="copyPromptResult" style="margin-top:6px;font-size:11px;color:var(--g)"></div>
-</div>
-
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">第二步：把AI的回答粘贴到这里</div>
-    <span class="badge badge-manual">🟡 本地解析</span>
-  </div>
-  <textarea class="minput" id="pasteInput" rows="8" placeholder="把类似这样的表格粘贴进来：
-油厂开机率(%) 65.73% 2026年7月7日 Mysteel
-豆粕商业库存(万吨) 68万吨 2026年7月3日 国家粮油信息中心
-现货基差(元/吨) -182元/吨 2026年7月9日 文华财经
-本月到港预报(万吨) 约1100万吨 2026年7月 Mysteel
-猪粮比 3.88:1 2026年7月3日 中财网
-能繁母猪存栏(万头) 4043万头 2026年6月末 国家统计局
-中国大豆月度进口量(万吨) 约1073.80万吨 2026年6月 Mysteel
-白羽肉鸡养殖利润(元/只) 0.71元/只 2026年5月 财联社
-豆菜粕价差(元/吨) 550元/吨 2026年7月 我的钢铁网" style="font-family:monospace;font-size:11px;white-space:pre;resize:vertical"></textarea>
-  <button class="ai-use-btn" style="width:100%;margin-top:8px;padding:8px;font-size:12px" onclick="parseAndFillPastedData()">📥 解析并填充到下方对应字段</button>
-  <div id="parseResult" style="margin-top:8px;font-size:11px;color:var(--t3)"></div>
-  <div style="font-size:10px;color:var(--t3);margin-top:6px">
-    💡 支持识别：开机率/商业库存/基差/到港预报/猪粮比/能繁母猪/进口量/肉鸡养殖利润/豆菜粕价差/国储拍卖量/对美豆关税，共11个指标<br>
-    💡 每行格式大致为"指标名 数值 日期 来源"，顺序、间距、括号里的补充说明都不影响识别<br>
-    💡 纯本地文本解析，不联网、不调用任何AI，你粘贴什么就严格按什么解析
-  </div>
-</div>
-</div>
-</details>
-
-<details class="tier-details big-collapse">
-<summary>📦 手动指标字段（开机率/库存/基差/到港预报/猪粮比/能繁母猪/进口量/国储拍卖/关税，共11项）▸</summary>
-<div class="tier-body">
-<div class="stitle">📦 国内供需 · 每周更新</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">开机率 / 库存 / 基差 / 到港预报</div>
-    <span class="badge badge-manual">🟡 可编辑</span>
-  </div>
-  <div class="mrow">
-    <div class="mfield">
-      <label>油厂开机率(%)</label>
-      <div class="ai-suggest" id="ai_crush"></div>
-      <input class="minput" id="m_crush" type="number" placeholder="如45" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_crush"></span>
-    </div>
-    <div class="mfield">
-      <label>豆粕商业库存(万吨)</label>
-      <div class="ai-suggest" id="ai_stock"></div>
-      <input class="minput" id="m_stock" type="number" placeholder="如65" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_stock"></span>
-    </div>
-  </div>
-  <div class="mrow">
-    <div class="mfield">
-      <label>现货基差(元/吨，正=现货贵，全国平均)</label>
-      <div class="ai-suggest" id="ai_basis"></div>
-      <input class="minput" id="m_basis" type="number" placeholder="如-50" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_basis"></span>
-    </div>
-    <div class="mfield">
-      <label>本月到港预报(万吨)</label>
-      <div class="ai-suggest" id="ai_arrival"></div>
-      <input class="minput" id="m_arrival" type="number" placeholder="如1100" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_arrival"></span>
-    </div>
-    <div class="mfield">
-      <label>最近一次国储进口大豆拍卖量(万吨，没有就填0)</label>
-      <div class="ai-suggest" id="ai_reserve"></div>
-      <input class="minput" id="m_reserve" type="number" placeholder="如54.3" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_reserve"></span>
-    </div>
-    <div class="mfield">
-      <label>对美豆进口关税(%，仅供参考，不计入评分)</label>
-      <div class="ai-suggest" id="ai_tariff"></div>
-      <input class="minput" id="m_tariff" type="number" step="0.1" placeholder="如13" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_tariff"></span>
-    </div>
-  </div>
-</div>
-
-<div class="stitle">🌎 南美供给 · 每周更新</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">巴西大豆播种进度(CONAB官方数据，自动抓取)</div>
-    <span class="badge" id="brPlantBadge">检查中...</span>
-  </div>
-  <div id="brPlantContent" class="loading">正在读取同步数据...</div>
-</div>
-
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">需求端 · 每月更新</div>
-    <span class="badge badge-manual">🟡 可编辑</span>
-  </div>
-  <div class="mrow">
-    <div class="mfield">
-      <label>猪粮比</label>
-      <div class="ai-suggest" id="ai_hogratio"></div>
-      <input class="minput" id="m_hogratio" type="number" step="0.1" placeholder="如6.2" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_hogratio"></span>
-    </div>
-    <div class="mfield">
-      <label>能繁母猪存栏(万头)</label>
-      <div class="ai-suggest" id="ai_sows"></div>
-      <input class="minput" id="m_sows" type="number" placeholder="如3900" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_sows"></span>
-    </div>
-  </div>
-  <div class="mrow">
-    <div class="mfield">
-      <label>中国大豆月度进口量(万吨)</label>
-      <div class="ai-suggest" id="ai_import"></div>
-      <input class="minput" id="m_import" type="number" placeholder="如950" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_import"></span>
-    </div>
-    <div class="mfield">
-      <label>白羽肉鸡养殖利润(元/只)</label>
-      <div class="ai-suggest" id="ai_poultry"></div>
-      <input class="minput" id="m_poultry" type="number" step="0.1" placeholder="如0.71" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_poultry"></span>
-    </div>
-  </div>
-  <div class="mrow">
-    <div class="mfield">
-      <label>豆菜粕价差(元/吨，间接反映水产旺季+菜粕替代)</label>
-      <div class="ai-suggest" id="ai_rmspread"></div>
-      <input class="minput" id="m_rmspread" type="number" placeholder="如550" oninput="saveManualAndRefresh()"><span class="field-ind" id="ind_rmspread"></span>
-    </div>
-  </div>
-  <div style="font-size:10px;color:var(--t3);margin-top:4px">💡 人民币汇率已移到上方"实时自动"板块，不需要在这里手动填写了</div>
-</div>
-</div>
-</details>
 
 </div><!-- /main -->
 <script>
@@ -531,7 +417,8 @@ function renderBarChartSVG(items, opts={}){
 
 /** 综合评分半圆仪表盘：指针指向当前分数在[minScore,maxScore]区间的位置。
  *  约定：红色=偏多(bull)，绿色=偏空(bear)，跟全站配色习惯一致。 */
-function renderGaugeSVG(score, minScore, maxScore){
+function renderGaugeSVG(score, minScore, maxScore, unit){
+  unit = unit || '分';
   const cx=150, cy=95, r=78;
   const clamped = Math.max(minScore, Math.min(maxScore, score));
   const pct = (clamped-minScore)/(maxScore-minScore); // 0(最左,偏空)→1(最右,偏多)
@@ -551,25 +438,28 @@ function renderGaugeSVG(score, minScore, maxScore){
     <path d="${arc(x2,y2,x3,y3)}" stroke="#e84141" stroke-width="12" fill="none" stroke-linecap="round"/>
     <line x1="${cx}" y1="${cy}" x2="${needleX}" y2="${needleY}" stroke="#ebebeb" stroke-width="2.5" stroke-linecap="round"/>
     <circle cx="${cx}" cy="${cy}" r="4" fill="#ebebeb"/>
-    <text x="150" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#ebebeb">${score>0?'+':''}${score}分</text>
+    <text x="150" y="122" text-anchor="middle" font-size="15" font-weight="700" fill="#ebebeb">${score>0?'+':''}${score}${unit}</text>
     <text x="30" y="118" font-size="9" fill="#00b37a">偏空</text>
     <text x="252" y="118" font-size="9" fill="#e84141">偏多</text>
   </svg>`;
 }
 
-function renderSupplyDemandTable(supplyItems, demandItems){
+function renderSupplyDemandTable(supplyItems, demandItems, structureItems){
+  structureItems = structureItems || [];
   const cellHtml = (item)=>{
     const sig = item.signal;
     const cls = sig===1?'sd-pos':sig===-1?'sd-neg':sig===0?'sd-neutral':'sd-empty';
     const arrow = sig===1?'▲':sig===-1?'▼':sig===0?'—':'';
     return `<td class="sd-cell ${cls}">${item.label}${arrow?` ${arrow}`:''}</td>`;
   };
-  const maxRows = Math.max(supplyItems.length, demandItems.length);
+  const cols = [supplyItems, demandItems].concat(structureItems.length ? [structureItems] : []);
+  const heads = ['供应','需求'].concat(structureItems.length ? ['市场结构'] : []);
+  const maxRows = Math.max.apply(null, cols.map(c=>c.length));
   let rows = '';
   for(let i=0;i<maxRows;i++){
-    rows += `<tr>${supplyItems[i]?cellHtml(supplyItems[i]):'<td class="sd-cell sd-blank"></td>'}${demandItems[i]?cellHtml(demandItems[i]):'<td class="sd-cell sd-blank"></td>'}</tr>`;
+    rows += `<tr>${cols.map(c=>c[i]?cellHtml(c[i]):'<td class="sd-cell sd-blank"></td>').join('')}</tr>`;
   }
-  return `<table class="sd-table"><thead><tr><th>供应</th><th>需求</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="sd-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /** 把一组"州→这一行的html"的映射，全部收进一个details里，只留一个"查看详情"入口。
@@ -671,11 +561,12 @@ async function loadSyncedData(){
     refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
     refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // 压榨利润同样要在数据到达后按当前合约重新渲染一次
     refreshBrazilPlantingDisplay(); // ★必须在下面的updateOverallAlert()之前调用，否则评分逻辑读到的window._brazilPlantingSignal还是上一次的旧值(或者undefined)
-    refreshMysteelCrushRate(); // 开机率自动抓取，欄位是空的就自动填入，已经有值就只提示不强制覆盖
+    refreshMysteelCrushRate(); // 10个原手动指标：抓取成功就直接覆盖输入框(不再有采用按钮)；失败/过期/不合理时如实说明，不覆盖
     refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
     refreshMysteelRmSpread(); // 豆菜粕价差同样改自动抓取
     refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
     refreshMysteelMealStock(); // 豆粕商业库存同样改自动抓取
+    refreshMysteelMealStu(); // 国内豆粕库存消费比(Mysteel月度平衡表)
     refreshMysteelSoyImport(); // 上月大豆进口量同样改自动抓取
     refreshMysteelReserveAuction(); // 国储拍卖同样改自动抓取
     refreshMysteelBasis(); // 现货基差同样改自动抓取
@@ -691,27 +582,17 @@ async function loadSyncedData(){
   updateOverallAlert();
 }
 
-function renderParsedInfo(elId, parsed, unit){
-  // 显示"粘贴解析"出来的结果（取代原来AI搜索的展示逻辑），数据来源是用户自己粘贴的文本，
-  // 不联网、不调用任何AI，纯本地正则解析。
-  const el = document.getElementById(elId);
-  if(!el) return;
-  if(!parsed){
-    el.className = 'ai-suggest unavailable';
-    el.innerHTML = `💡 尚未粘贴数据，或者粘贴的文本里没有识别到这一项`;
-    return;
-  }
-  el.className = 'ai-suggest fresh';
-  el.innerHTML = `📋 解析到：<b>${parsed.value}${unit}</b>
-    <button class="ai-use-btn" onclick="useAiValue('${elId.replace('ai_','m_')}', ${JSON.stringify(parsed.value)})">采用</button><br>
-    日期：${parsed.date||'未识别'}${parsed.source?` · 来源：${parsed.source}`:''}`;
-}
+// ===================== 自动抓取指标（原"手动指标"）=====================
+// ★设计变化：这10个指标原本是"手动录入+复制提示词粘贴解析"，后端早已改成自动抓取，
+//   但前端还保留着"只在输入框为空时才自动填、已有值只提示+采用按钮"的旧逻辑。现在改成：
+//   ① 页面加载时自动抓取成功 → 直接覆盖输入框(不再有"采用"按钮)；
+//   ② 每个指标是一张跟其他自动指标一样的卡片：常驻一个彩色结论框，"查看详情/手动修正"里
+//      才是数据来源、日期、明细，以及可以手改的输入框；
+//   ③ 手动修正只在自动抓取失败时才会被沿用——抓取成功的那次页面加载，自动值一定覆盖手改值；
+//   ④ 数据过期(按各指标更新频率判断)时照样显示，但标注⚠️并且不参与综合评分。
+// 输入框(m_xxx)保留：综合评分从它们读值，手动修正也走它们。
 
-/** ★数据合理性兜底(第二层防线)：后端fetch_data.py里有同一张PLAUSIBLE_RANGES表，抓取时就会丢弃荒谬的
- *  数值；这里再检查一次——防止后端逻辑出错、或者拿到别的版本生成的旧数据时，把明显荒谬的数字
- *  (比如"豆粕库存0.7万吨"，其实是"较上周增加0.7万吨"里的变动量)自动填进输入框。范围故意放宽，
- *  只挡明显荒谬的值。两边的表必须一致(有测试保证)。*/
-const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
+const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"mealStu":[1,40,"%"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
 function sanityProblem(key, value){
   const r = SANITY_RANGES[key];
   if(!r) return null;
@@ -720,507 +601,240 @@ function sanityProblem(key, value){
   if(v < r[0] || v > r[1]) return `${v}${r[2]}超出合理范围(${r[0]}~${r[1]}${r[2]})`;
   return null;
 }
-/** 数值不合理时：不自动填入、不显示"采用"按钮，只显示警告(如果这个区域已经有真正的内容就不覆盖)。返回true表示已拦截。*/
-function blockIfImplausible(badge, key, value, label){
+
+/** 数值不合理时：不填入、不参与评分，只在详情里显示警告。返回true表示已拦截。*/
+function blockIfImplausible(aiEl, key, value, label){
   const problem = sanityProblem(key, value);
   if(!problem) return false;
-  if(badge.className !== 'ai-suggest fresh'){
-    badge.className = 'ai-suggest unavailable';
-    badge.innerHTML = `⚠️ ${label}抓取到的数值不合理，已忽略(没有自动填入)：${problem}。请到来源核对，或手动填写。`;
-  }
+  aiEl.className = 'ai-suggest unavailable';
+  aiEl.innerHTML = `⚠️ ${label}抓取到的数值不合理，已忽略(没有自动填入)：${problem}。请到来源核对，或在下方手动填写。`;
   return true;
 }
 
-function useAiValue(inputId, value){
-  const el = document.getElementById(inputId);
-  if(el){ el.value = value; saveManualAndRefresh(); }
-}
-
-/** 油厂开机率：原本是9个手动指标之一，现在改自动抓取(Mysteel快讯搜索)。
- *  设计上尊重用户已经手动填过的值——欄位是空的才自动填入，已经有值时
- *  只在旁边提示"自动抓取到XX%"+一个"采用"按钮，不强制覆盖用户自己的输入。*/
-function refreshMysteelCrushRate(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_crush');
-  if(!data || !badge) return;
-  const mc = data.mysteelCrushRate;
-  if(!mc || !mc.available){
-    // ★已修复：之前这里直接return、完全不碰这个区域，导致renderParsedInfo
-    //   设置的"💡 尚未粘贴数据"这句默认文字一直留着，让人误以为自动抓取
-    //   根本没有尝试过。现在只在这个区域还没有"真正内容"(className不是fresh，
-    //   也就是既没有粘贴解析成功过，也没有Mysteel抓取成功过)时才主动显示
-    //   明确的失败原因；如果已经有真正内容(比如用户刚手动贴过)，才保留原样
-    //   不覆盖。
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${mc?mc.reason:'未知原因'}` + renderDebugInfo(mc?mc.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'crushRate', mc.value, '油厂开机率')) return;
-  const inputEl = document.getElementById('m_crush');
-  if(inputEl && !inputEl.value){
-    inputEl.value = mc.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${mc.value}%</b>
-    <button class="ai-use-btn" onclick="useAiValue('m_crush', ${mc.value})">采用</button><br>
-    日期：${mc.date}`;
-}
-
-/** 白羽肉鸡养殖利润：同样改自动抓取(Mysteel文章搜索)，跟开机率同一套
- *  "欄位为空自动填入、已有值只提示"的设计。这个值可能是负数(亏损)，
- *  显示上要带上正负号，不能假设恒为正。*/
-function refreshMysteelPoultryProfit(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_poultry');
-  if(!data || !badge) return;
-  const mp = data.mysteelPoultryProfit;
-  if(!mp || !mp.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${mp?mp.reason:'未知原因'}` + renderDebugInfo(mp?mp.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'poultryProfit', mp.value, '养殖利润')) return;
-  const inputEl = document.getElementById('m_poultry');
-  if(inputEl && !inputEl.value){
-    inputEl.value = mp.value;
-    saveManualAndRefresh();
-  }
-  const sign = mp.value > 0 ? '+' : '';
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${sign}${mp.value}元/只</b>
-    <button class="ai-use-btn" onclick="useAiValue('m_poultry', ${mp.value})">采用</button><br>
-    日期：${mp.date}`;
-}
-
-/** 豆菜粕价差：同样改自动抓取(Mysteel文章搜索)，但这次原始文章里价差有
- *  两种表述方式(区间中点/多城市单值平均)，提示区里把用了哪种格式+对应的
- *  原始明细(区间范围或各城市数值)也摆出来，方便核对这个平均值到底是怎么
- *  算出来的，不是只给一个孤零零的数字。*/
-function refreshMysteelRmSpread(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_rmspread');
-  if(!data || !badge) return;
-  const rs = data.mysteelRmSpread;
-  if(!rs || !rs.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${rs?rs.reason:'未知原因'}` + renderDebugInfo(rs?rs.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'rmSpread', rs.value, '豆菜粕价差')) return;
-  const inputEl = document.getElementById('m_rmspread');
-  if(inputEl && !inputEl.value){
-    inputEl.value = rs.value;
-    saveManualAndRefresh();
-  }
-  const detail = rs.formatUsed === '区间中点'
-    ? `区间${rs.rangeLow}-${rs.rangeHigh}元/吨的中点`
-    : `${rs.citySamples.length}个城市(${rs.citySamples.join('/')}元/吨)的平均值`;
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${rs.value}元/吨</b>(${detail})
-    <button class="ai-use-btn" onclick="useAiValue('m_rmspread', ${rs.value})">采用</button><br>
-    日期：${rs.date}`;
-}
-
-/** 到港预报：同样改自动抓取(Mysteel文章搜索)，但这项跟前三项不一样——
- *  到港预报一般月底发布，预测的是"下个月"，不是"当月"，所以不能简单假设
- *  抓到的数字就是"本月"。这里刻意醒目地标注"这是X年X月的预报"，不管什么
- *  时候看仪表盘都清楚这个数字对应哪个月，避免被误导成"当月"。*/
-function refreshMysteelArrivalForecast(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_arrival');
-  if(!data || !badge) return;
-  const af = data.mysteelArrivalForecast;
-  if(!af || !af.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${af?af.reason:'未知原因'}` + renderDebugInfo(af?af.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'arrivalForecast', af.value, '到港预报')) return;
-  const inputEl = document.getElementById('m_arrival');
-  if(inputEl && !inputEl.value){
-    inputEl.value = af.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${af.forecastYear}年${af.forecastMonth}月到港${af.value}万吨</b>
-    <button class="ai-use-btn" onclick="useAiValue('m_arrival', ${af.value})">采用</button><br>
-    ⚠️ 请核对这是不是你需要的月份(到港预报一般发布下个月的数据，不一定是当月)<br>
-    发布日期：${af.date}`;
-}
-
-/** 豆粕商业库存：同样改自动抓取(Mysteel文章搜索)，跟前四项同一套设计模式
- *  (欄位为空自动填入、已有值只提示、失败时显示明确原因+完整debug信息)。*/
-function refreshMysteelMealStock(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_stock');
-  if(!data || !badge) return;
-  const ms = data.mysteelMealStock;
-  if(!ms || !ms.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${ms?ms.reason:'未知原因'}` + renderDebugInfo(ms?ms.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'mealStock', ms.value, '豆粕商业库存')) return;
-  const inputEl = document.getElementById('m_stock');
-  if(inputEl && !inputEl.value){
-    inputEl.value = ms.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${ms.value}万吨</b>${ms.weekLabel?`(${ms.weekLabel})`:''}
-    <button class="ai-use-btn" onclick="useAiValue('m_stock', ${ms.value})">采用</button><br>
-    文章发布日期：${ms.date}`;
-}
-
-/** 上月中国大豆月度进口量：改自动抓取(Mysteel文章搜索"海关总署中国大豆进口量")。后端已经按"上个月/
- *  再上一个月"做了新鲜度限制，这里标出是哪个月的数(下个月数据发布之前，这就是最新的)，
- *  并沿用同一套"合理范围兜底"。*/
-function refreshMysteelSoyImport(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_import');
-  if(!data || !badge) return;
-  const si = data.mysteelSoyImport;
-  if(!si || !si.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${si?si.reason:'未知原因'}` + renderDebugInfo(si?si.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'soyImport', si.value, '大豆月度进口量')) return;
-  const inputEl = document.getElementById('m_import');
-  if(inputEl && !inputEl.value){
-    inputEl.value = si.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel/海关总署)：<b>${si.value}万吨</b>${si.monthLabel?`(${si.monthLabel})`:''}
-    <button class="ai-use-btn" onclick="useAiValue('m_import', ${si.value})">采用</button><br>
-    文章发布日期：${si.date}`;
-}
-
-/** 最近一次国储进口大豆拍卖：改自动抓取(Mysteel文章搜索"进口大豆竞价销售结果")。
- *  ★自动填入的是"计划拍卖量"(万吨)——跟现有计分口径一致(>=40万吨偏空)；成交量/成交率/成交价格
- *  只作为参考信息展示(成交率低说明市场接货意愿弱，实际增加的供给远小于计划量)，
- *  并带上上一次拍卖的成交率，方便看趋势。计分逻辑没有改动。*/
-function refreshMysteelReserveAuction(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_reserve');
-  if(!data || !badge) return;
-  const ra = data.mysteelReserveAuction;
-  if(!ra || !ra.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${ra?ra.reason:'未知原因'}` + renderDebugInfo(ra?ra.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'reserveAuction', ra.value, '国储拍卖量')) return;
-  const inputEl = document.getElementById('m_reserve');
-  if(inputEl && !inputEl.value){
-    inputEl.value = ra.value;
-    saveManualAndRefresh();
-  }
-  const price = ra.avgPrice ? `成交均价${ra.avgPrice}元/吨`
-    : (ra.priceLow ? `${ra.priceKind||'价格'}${ra.priceLow}-${ra.priceHigh}元/吨` : '');
-  const detail = [`成交${ra.soldWan}万吨`, `成交率${ra.soldRate}%`, price].filter(Boolean).join(' · ');
-  const prev = ra.previous
-    ? `<br>上一次(${ra.previous.auctionDate})：计划${ra.previous.plannedWan}万吨 · 成交率${ra.previous.soldRate}%` : '';
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel/中储粮)：<b>${ra.value}万吨</b>(计划拍卖量，${ra.auctionDate}拍卖)
-    <button class="ai-use-btn" onclick="useAiValue('m_reserve', ${ra.value})">采用</button><br>
-    ${detail}${prev}`;
-}
-
-/** 全国主要市场豆粕现货基差：改自动抓取(Mysteel文章搜索"全国主要市场豆粕基差价格汇总")。
- *  ★用户讨论过要不要分沿海/内陆区域计算，最终定案：不分区，只取**沿海代表城市**(日照/南通/
- *  东莞/湛江/防城港/厦门/天津，按此优先级)的确切基差值当全国代理指标(理由：全国定价核心锚
- *  在沿海)。同时可能"最新一篇解析失败"而用了前几天的数据，前端诚实标注实际用的是哪天，
- *  跟最新一篇发布日期不同时额外提示滞后了几天。*/
-function refreshMysteelBasis(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_basis');
-  if(!data || !badge) return;
-  const mb = data.mysteelBasis;
-  if(!mb || !mb.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${mb?mb.reason:'未知原因'}` + renderDebugInfo(mb?mb.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'meaBasis', mb.value, '豆粕现货基差')) return;
-  const inputEl = document.getElementById('m_basis');
-  if(inputEl && !inputEl.value){
-    inputEl.value = mb.value;
-    saveManualAndRefresh();
-  }
-  const fallbackNote = mb.usedFallback
-    ? `<br>⚠️ 最新一篇(${mb.latestArticleDate})没能解析出确切值，用的是${mb.fallbackDays}天前的数据` : '';
-  badge.className = 'ai-suggest fresh';
-  badge.innerHTML = `🤖 自动抓取(Mysteel/${mb.city}代表沿海)：<b>${mb.value}元/吨</b>
-    <button class="ai-use-btn" onclick="useAiValue('m_basis', ${mb.value})">采用</button><br>
-    日期：${mb.date}${fallbackNote}`;
-}
-
-/** 猪粮比 + 能繁母猪存栏：改自动抓取(akshare的futures_hog_supply接口，
- *  数据源玄田数据)，跟Mysteel那五项同一套设计模式(欄位为空自动填入、
- *  已有值只提示、失败时显示明确原因+完整debug信息)。*/
-function refreshHogRatio(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_hogratio');
-  if(!data || !badge) return;
-  const hr = data.hogRatio;
-  if(!hr || !hr.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${hr?hr.reason:'未知原因'}` + renderDebugInfo(hr?hr.debug:null);
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'hogRatio', hr.value, '猪粮比')) return;
-  const inputEl = document.getElementById('m_hogratio');
-  if(inputEl && !inputEl.value){
-    inputEl.value = hr.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  // 把计算依据(外三元价格÷玉米价格)也摆出来，方便核对这个比值是怎么算出来的
-  const basis = (hr.pigPrice && hr.cornPricePerTon)
-    ? `(外三元${hr.pigPrice}元/公斤 ÷ 玉米${hr.cornPricePerTon}元/吨)` : '';
-  badge.innerHTML = `🤖 自动抓取(玄田数据)：<b>${hr.value}</b>${basis}
-    <button class="ai-use-btn" onclick="useAiValue('m_hogratio', ${hr.value})">采用</button><br>
-    日期：${hr.date}`;
-}
-
-function refreshSowInventory(){
-  const data = window._syncedData;
-  const badge = document.getElementById('ai_sows');
-  if(!data || !badge) return;
-  const si = data.sowInventory;
-  if(!si || !si.available){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `🤖 自动抓取失败：${si?si.reason:'未知原因'}` + renderDebugInfo(si?si.debug:null);
-    }
-    return;
-  }
-  // ★旧格式数据防护：新版后端(Mysteel)一定会带quarterLabel("2026年二季度末")。没有它，说明
-  //   data/latest.json是旧版后端(akshare/玄田数据)生成的——当时的数据停在2025年10月，
-  //   显示"(Mysteel)"是误导，自动填入更是把陈年老数据当成最新值。所以不采用，并提示
-  //   去确认GitHub Actions是不是已经用新版fetch_data.py重新运行过。
-  if(!si.quarterLabel){
-    if(badge.className !== 'ai-suggest fresh'){
-      badge.className = 'ai-suggest unavailable';
-      badge.innerHTML = `⚠️ 收到的是旧版本后端生成的数据(${si.value}万头，${si.date}，没有季度末信息)，已忽略，没有自动填入。请确认GitHub Actions已经用最新的fetch_data.py重新运行过，并检查data/latest.json里sowInventory是否带quarterLabel字段。`;
-    }
-    return;
-  }
-  if(blockIfImplausible(badge, 'sowInventory', si.value, '能繁母猪存栏')) return;
-  const inputEl = document.getElementById('m_sows');
-  if(inputEl && !inputEl.value){
-    inputEl.value = si.value;
-    saveManualAndRefresh();
-  }
-  badge.className = 'ai-suggest fresh';
-  // 季度末数据：明确标出是哪个季度末(下一个季度末数据发布之前，这就是最新的)，
-  // 以及是哪天发布的文章
-  badge.innerHTML = `🤖 自动抓取(Mysteel)：<b>${si.value}万头</b>(${si.quarterLabel})
-    <button class="ai-use-btn" onclick="useAiValue('m_sows', ${si.value})">采用</button><br>
-    季度末数据 · 文章发布日期：${si.date}`;
-}
-
-// ===================== 一键复制提示词：内嵌默认提示词，方便去问任意AI =====================
-const PASTE_PROMPT_TEMPLATE = `我需要做国内豆粕期货的基本面分析,以下是大豆或者豆粕的一些基本数据,我需要你做一件事。
-
-给我最近日期的每个指标的数据,数据一一对应不要多余,也不要遗漏
-
-油厂开机率(%)
-豆粕商业库存(万吨)
-现货基差(元/吨,正=现货贵)
-本月到港预报(万吨)
-猪粮比
-能繁母猪存栏(万头)
-上月中国大豆月度进口量(万吨)
-白羽肉鸡养殖利润(元/只)
-豆菜粕价差(元/吨)
-最近一次国储进口大豆拍卖量(万吨)
-对美豆进口关税(%)
-
-我要数据(纯数值,不能缺失)+日期(年月日)+来源及备注(文字描述),直接给我表格,所有数据必须是最近日期的,必须有数据列(数据列不能包含任何文字),没有数据,就往前一个最近日期找数据,而且必须是全国的`;
-
-function copyPromptToClipboard(){
-  const resultEl = document.getElementById('copyPromptResult');
-  const showSuccess = () => {
-    resultEl.textContent = '✅ 已复制！去粘贴到DeepSeek/豆包/通义千问/ChatGPT等任意AI对话框';
-    setTimeout(()=>{ resultEl.textContent=''; }, 4000);
-  };
-  const showFailure = (err) => {
-    resultEl.innerHTML = `<span style="color:var(--gold)">⚠️ 自动复制失败，请手动选中下面的文字复制：</span>
-      <textarea readonly style="width:100%;margin-top:6px;font-size:11px;font-family:monospace" rows="10">${PASTE_PROMPT_TEMPLATE}</textarea>`;
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(PASTE_PROMPT_TEMPLATE).then(showSuccess).catch(showFailure);
-  } else {
-    // 兼容不支持Clipboard API的环境(比如非HTTPS或较老浏览器)，退回传统方案
-    try{
-      const ta = document.createElement('textarea');
-      ta.value = PASTE_PROMPT_TEMPLATE;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showSuccess();
-    }catch(err){ showFailure(err); }
-  }
-}
-
-// ===================== 一键粘贴填充：纯本地文本解析，不联网 =====================
-const PASTE_INDICATOR_PATTERNS = [
-  {id: 'm_crush', unit: '%', keywords: ['开机率']},
-  {id: 'm_stock', unit: '万吨', keywords: ['商业库存', '豆粕库存']},
-  {id: 'm_basis', unit: '元/吨', keywords: ['基差']},
-  {id: 'm_arrival', unit: '万吨', keywords: ['到港预报', '到港量']},
-  {id: 'm_hogratio', unit: '', keywords: ['猪粮比']},
-  {id: 'm_sows', unit: '万头', keywords: ['能繁母猪', '母猪存栏']},
-  {id: 'm_import', unit: '万吨', keywords: ['进口量']},
-  {id: 'm_poultry', unit: '元/只', keywords: ['肉鸡养殖利润', '白羽肉鸡利润', '毛鸡养殖利润', '肉鸡利润']},
-  {id: 'm_rmspread', unit: '元/吨', keywords: ['豆菜粕价差', '豆粕菜粕价差', '菜粕价差']},
-  {id: 'm_reserve', unit: '万吨', keywords: ['最近一次国储进口大豆拍卖量', '国储进口大豆拍卖量', '国储拍卖量', '国储大豆拍卖']},
-  {id: 'm_tariff', unit: '%', keywords: ['对美豆进口关税', '美豆进口关税', '美国大豆关税', '美豆关税']},
+// 每个指标：key / 所在分组 / 输入框id / 标题 / 单位 / 更新频率 / 数据来源 / latest.json里的字段名 /
+//           合理范围表里的key / 超过多少天算过期 / extract(把后端字段整理成统一结构)
+const AUTO_INDICATORS = [
+  {key:'crush', group:'supply', inputId:'m_crush', title:'油厂开机率', unit:'%', ph:'如45', freq:'周度', sourceName:'Mysteel',
+   dataKey:'mysteelCrushRate', sanityKey:'crushRate', maxAgeDays:10,
+   extract:d=>({value:d.value, valueText:`${d.value}%`, date:d.date, detail:`数据日期：${d.date}`})},
+  {key:'stock', group:'supply', inputId:'m_stock', title:'豆粕商业库存', unit:'万吨', ph:'如65', freq:'周度', sourceName:'Mysteel',
+   dataKey:'mysteelMealStock', sanityKey:'mealStock', maxAgeDays:14,
+   extract:d=>({value:d.value, valueText:`${d.value}万吨${d.weekLabel?`(${d.weekLabel})`:''}`, date:d.date, detail:`文章发布日期：${d.date}`})},
+  {key:'stu', group:'supply', inputId:'m_stu', title:'国内豆粕库存消费比', unit:'%', ph:'如12.5', freq:'月度', sourceName:'Mysteel平衡表',
+   dataKey:'mysteelMealStu', sanityKey:'mealStu', maxAgeDays:45,
+   // 库消比=月末库存÷当月消费量(月度口径，文章里的数字手算核对过)。每月月底发一篇，当月记录通常是上月底发布的预测，
+   // 所以标出"预测"；正文抓不到时后端会退回摘要/周度库存推算，method和methodLabel如实说明用的是哪一级。
+   extract:d=>{
+     const f = n => n==null ? '--' : (Number.isInteger(n) ? n : n.toFixed(2).replace(/0+$/,'').replace(/\.$/,''));
+     const lines = [];
+     lines.push(`采用值来源：${d.methodLabel}${d.recordSource==='summary'?'(取自搜索摘要，没有用到正文)':''}`);
+     lines.push(`取自《${d.articleTitle||'全国豆粕供需平衡表'}》，发布日期${d.date}(距今${d.articleAgeDays}天)`);
+     if(d.stockWan!=null || d.consumptionWan!=null || d.productionWan!=null)
+       lines.push(`${d.monthLabel}：月末库存${f(d.stockWan)}万吨 ÷ 当月消费${f(d.consumptionWan)}万吨(产量${f(d.productionWan)}万吨)`);
+     if(d.next) lines.push(`下月(${d.next.monthLabel})：库消比${d.next.value}%${d.trend?` · 较当月${d.trend.delta>0?'+':''}${d.trend.delta}个百分点，${d.trend.direction}`:''}`);
+     else lines.push('下月记录：文章正文只公开到第2个月，暂无下月数据');
+     if(d.weeklyCheck) lines.push(`交叉核对：最新周度库存${f(d.weeklyCheck.stockWan)}万吨(${d.weeklyCheck.stockDate||'日期未知'}) ÷ 当月预计消费${f(d.weeklyCheck.consumptionWan)}万吨 = ${d.weeklyCheck.value}%(周度库存不是月末值，仅供对照)`);
+     const warns = [];
+     if(d.usedFallbackMonth) warns.push(`⚠️ 当月记录还没发布，沿用的是${d.monthLabel}的记录`);
+     if(d.method==='weekly') warns.push('⚠️ 文章里没有明示库消比，这个值是用周度库存÷当月预计消费推算的，可信度低于文中数字');
+     if(d.bodyNotes && d.bodyNotes.length) warns.push('⚠️ 文章正文没能取到，这次用的是搜索摘要：'+d.bodyNotes.join('；'));
+     return {value:d.value, valueText:`${d.monthLabel}${d.isForecast?'(预测)':''}库消比${d.value}%`, date:d.date,
+             detail:lines.join('<br>'), warn:warns.join('<br>')};
+   }},
+  {key:'basis', group:'supply', inputId:'m_basis', title:'豆粕现货基差', unit:'元/吨', ph:'如-50', freq:'日度', sourceName:'Mysteel',
+   dataKey:'mysteelBasis', sanityKey:'meaBasis', maxAgeDays:7,
+   // 只取沿海代表城市(日照/南通/东莞/湛江/防城港/厦门/天津，按此优先级)的确切基差当全国代理指标；
+   // 最新一篇解析失败时可能用了前几天的数据，诚实标注实际用的是哪天。
+   extract:d=>({value:d.value, valueText:`${d.value}元/吨(${d.city}·沿海代表)`, date:d.date, detail:`数据日期：${d.date}`,
+     warn:d.usedFallback?`⚠️ 最新一篇(${d.latestArticleDate})没能解析出确切值，用的是${d.fallbackDays}天前的数据`:''})},
+  {key:'arrival', group:'supply', inputId:'m_arrival', title:'大豆到港预报', unit:'万吨', ph:'如1100', freq:'月度', sourceName:'Mysteel',
+   dataKey:'mysteelArrivalForecast', sanityKey:'arrivalForecast', maxAgeDays:50,
+   // 到港预报一般月底发布、预测的是"下个月"，所以醒目标注是X年X月的预报，不假设是当月。
+   extract:d=>({value:d.value, valueText:`${d.forecastYear}年${d.forecastMonth}月到港${d.value}万吨`, date:d.date, detail:`发布日期：${d.date}`,
+     warn:'⚠️ 到港预报一般提前发布下个月的数据，请留意上面标的是哪个月的预报'})},
+  {key:'import', group:'supply', inputId:'m_import', title:'大豆月度进口量', unit:'万吨', ph:'如950', freq:'月度', sourceName:'Mysteel/海关总署',
+   dataKey:'mysteelSoyImport', sanityKey:'soyImport', maxAgeDays:50,
+   extract:d=>({value:d.value, valueText:`${d.value}万吨${d.monthLabel?`(${d.monthLabel})`:''}`, date:d.date, detail:`文章发布日期：${d.date}`})},
+  {key:'reserve', group:'supply', inputId:'m_reserve', title:'国储进口大豆拍卖', unit:'万吨', ph:'如54.3', freq:'不定期', sourceName:'Mysteel/中储粮',
+   dataKey:'mysteelReserveAuction', sanityKey:'reserveAuction', maxAgeDays:45,
+   // 计分口径是"计划拍卖量"(≥40万吨偏空)；成交量/成交率/价格只作参考展示(成交率低说明接货意愿弱，实际增供远小于计划量)。
+   extract:d=>{
+     const price = d.avgPrice ? `成交均价${d.avgPrice}元/吨` : (d.priceLow ? `${d.priceKind||'价格'}${d.priceLow}-${d.priceHigh}元/吨` : '');
+     const sub = [`成交${d.soldWan}万吨`, `成交率${d.soldRate}%`, price].filter(Boolean).join(' · ');
+     const prev = d.previous ? `<br>上一次(${d.previous.auctionDate})：计划${d.previous.plannedWan}万吨 · 成交率${d.previous.soldRate}%` : '';
+     return {value:d.value, valueText:`${d.value}万吨(计划拍卖量)`, date:d.auctionDate, detail:`${d.auctionDate}拍卖<br>${sub}${prev}`};
+   }},
+  {key:'hogratio', group:'demand', inputId:'m_hogratio', title:'猪粮比', unit:'', ph:'如6.2', freq:'日度', sourceName:'玄田数据',
+   dataKey:'hogRatio', sanityKey:'hogRatio', maxAgeDays:10,
+   extract:d=>{
+     const basis = (d.pigPrice && d.cornPricePerTon) ? `(外三元${d.pigPrice}元/公斤 ÷ 玉米${d.cornPricePerTon}元/吨)` : '';
+     return {value:d.value, valueText:`${d.value}${basis}`, date:d.date, detail:`数据日期：${d.date}`};
+   }},
+  {key:'sows', group:'demand', inputId:'m_sows', title:'能繁母猪存栏', unit:'万头', ph:'如3900', freq:'季度', sourceName:'Mysteel',
+   dataKey:'sowInventory', sanityKey:'sowInventory', maxAgeDays:130,
+   extract:d=>{
+     // 旧格式数据防护：新版后端一定带quarterLabel。没有它说明data/latest.json是旧版后端生成的(停在2025年10月的陈年数据)，不采用。
+     if(!d.quarterLabel) return {blocked:`收到的是旧版本后端生成的数据(${d.value}万头，${d.date}，没有季度末信息)，已忽略。请确认GitHub Actions已用最新的fetch_data.py重新运行。`};
+     return {value:d.value, valueText:`${d.value}万头(${d.quarterLabel})`, date:d.date, detail:`季度末数据 · 文章发布日期：${d.date}`};
+   }},
+  {key:'poultry', group:'demand', inputId:'m_poultry', title:'白羽肉鸡养殖利润', unit:'元/只', ph:'如0.71', freq:'周度', sourceName:'Mysteel',
+   dataKey:'mysteelPoultryProfit', sanityKey:'poultryProfit', maxAgeDays:30,
+   extract:d=>({value:d.value, valueText:`${d.value>0?'+':''}${d.value}元/只`, date:d.date, detail:`数据日期：${d.date}`})},
+  {key:'rmspread', group:'demand', inputId:'m_rmspread', title:'豆菜粕价差', unit:'元/吨', ph:'如550', freq:'周度', sourceName:'Mysteel',
+   dataKey:'mysteelRmSpread', sanityKey:'rmSpread', maxAgeDays:21,
+   extract:d=>{
+     const how = d.formatUsed === '区间中点'
+       ? `区间${d.rangeLow}-${d.rangeHigh}元/吨的中点`
+       : `${(d.citySamples||[]).length}个城市(${(d.citySamples||[]).join('/')}元/吨)的平均值`;
+     return {value:d.value, valueText:`${d.value}元/吨(${how})`, date:d.date, detail:`数据日期：${d.date}`};
+   }},
 ];
+const AUTO_BY_KEY = {};
+AUTO_INDICATORS.forEach(c=>{ AUTO_BY_KEY[c.key] = c; });
+window._autoIndicators = AUTO_INDICATORS; window._autoByKey = AUTO_BY_KEY;   // 暴露给测试用(测试脚本里eval的const作用域拿不到)
+window._indState = {};   // key → {mode:'auto'|'manual'|'saved'|'none', stale, autoValue, failReason}
 
-function _pasteExtractValueSection(line, matchedKeyword){
-  const kwIdx = line.indexOf(matchedKeyword);
-  let afterKw = line.slice(kwIdx + matchedKeyword.length).trimStart();
-  if(afterKw[0]==='(' || afterKw[0]==='（'){
-    const closeChar = afterKw[0]==='(' ? ')' : '）';
-    const closeIdx = afterKw.indexOf(closeChar);
-    if(closeIdx!==-1) afterKw = afterKw.slice(closeIdx+1).trimStart();
-  }
-  return afterKw;
+function ageDaysOf(dateStr){
+  const t = Date.parse(dateStr);
+  if(isNaN(t)) return null;   // 日期解析不了：当作"新鲜"，不因为解析失败就把数据排除掉
+  return Math.floor((Date.now() - t) / 86400000);
 }
-
-function parsePastedData(text){
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
-  const results = {};
-  for(const line of lines){
-    if(line.includes('指标') && line.includes('数据') && line.includes('日期')) continue; // 跳过表头行
-
-    let matchedId=null, matchedUnit='', matchedKw=null;
-    for(const pattern of PASTE_INDICATOR_PATTERNS){
-      const kw = pattern.keywords.find(k=>line.includes(k));
-      if(kw){ matchedId=pattern.id; matchedUnit=pattern.unit; matchedKw=kw; break; }
-    }
-    if(!matchedId) continue;
-
-    let valueSection = _pasteExtractValueSection(line, matchedKw);
-
-    // 先识别日期(同时从valueSection里挖掉日期文字，避免年份数字被误当成目标数值)
-    let dateStr = null;
-    const dmy = line.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-    const monthEnd = line.match(/(\d{4})年(\d{1,2})月末/);
-    const ym = line.match(/(\d{4})年(\d{1,2})月/);
-    if(dmy){
-      dateStr = `${dmy[1]}-${dmy[2].padStart(2,'0')}-${dmy[3].padStart(2,'0')}`;
-      valueSection = valueSection.replace(dmy[0], ' ');
-    } else if(monthEnd){
-      const lastDay = new Date(parseInt(monthEnd[1]), parseInt(monthEnd[2]), 0).getDate();
-      dateStr = `${monthEnd[1]}-${monthEnd[2].padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-      valueSection = valueSection.replace(monthEnd[0], ' ');
-    } else if(ym){
-      dateStr = `${ym[1]}-${ym[2].padStart(2,'0')}-01`;
-      valueSection = valueSection.replace(ym[0], ' ');
-    }
-
-    // 比值格式"3.88:1"优先识别，否则取第一个数字(含负号/小数)
-    let value = null;
-    let valueEndIdx = -1;
-    const ratioMatch = valueSection.match(/(-?\d+\.?\d*)\s*[:：]\s*1/);
-    if(ratioMatch){
-      value = parseFloat(ratioMatch[1]);
-      valueEndIdx = ratioMatch.index + ratioMatch[0].length;
-    } else {
-      const numMatch = valueSection.match(/-?\d+\.?\d*/);
-      if(numMatch){
-        value = parseFloat(numMatch[0]);
-        valueEndIdx = numMatch.index + numMatch[0].length;
-      }
-    }
-
-    // ★已修复：来源及备注不再靠一份写死的机构名单去比对(之前的清单里没有的机构，
-    //   比如"我的钢铁网"，会被漏掉，而且这份清单永远列不完)。改成动态抓取"数值
-    //   之后剩下的文字"——数值和日期都已经从valueSection里定位/挖掉了，剩下的
-    //   自然就是来源及备注这段说明性文字。但数值后面往往还跟着这个指标自己的
-    //   单位文字(比如"68万吨"里的"万吨")、以及对数值的补充说明括号(比如
-    //   "65.73%（全国动态全样本油厂）")，这两层都要先跳过，剩下的才是真正的
-    //   来源，不然"万吨（全国主要油厂）"这种会被误当成来源的一部分。
-    let source = null;
-    if(valueEndIdx !== -1){
-      let afterValue = valueSection.slice(valueEndIdx).trimStart();
-      if(matchedUnit && afterValue.startsWith(matchedUnit)){
-        afterValue = afterValue.slice(matchedUnit.length).trimStart();
-      }
-      if(afterValue[0]==='(' || afterValue[0]==='（'){
-        const closeChar = afterValue[0]==='(' ? ')' : '）';
-        const closeIdx = afterValue.indexOf(closeChar);
-        if(closeIdx!==-1) afterValue = afterValue.slice(closeIdx+1);
-      }
-      const cleaned = afterValue.replace(/^[\s|｜%％:：,，、\-–—]+/, '').replace(/[\s|｜]+$/, '').trim();
-      if(cleaned.length > 0) source = cleaned;
-    }
-
-    if(value !== null) results[matchedId] = {value, date: dateStr, source, unit: matchedUnit};
-  }
-  return results;
+function setBadge(key, text, cls){
+  const b = document.getElementById('badge_'+key);
+  if(b){ b.textContent = text; b.className = 'badge ' + cls; }
 }
-
-function parseAndFillPastedData(){
-  const text = document.getElementById('pasteInput').value;
-  if(!text.trim()){
-    document.getElementById('parseResult').innerHTML = '<span style="color:var(--gold)">⚠️ 请先粘贴数据</span>';
+/** 卡片顶部常驻的彩色结论框(跟其他自动指标同样的alert-box样式)。dir: 1偏多/-1偏空/0中性/null暂无数据 */
+function setCardAlert(key, dir, text, extra){
+  const el = document.getElementById('alert_'+key);
+  if(!el) return;
+  if(dir === null){
+    const st = window._indState[key] || {};
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">暂无数据</span>${st.failReason||'等待自动抓取…'}</div>`;
     return;
   }
-  const parsed = parsePastedData(text);
-  const idToElId = {m_crush:'ai_crush', m_stock:'ai_stock', m_basis:'ai_basis', m_arrival:'ai_arrival',
-                     m_hogratio:'ai_hogratio', m_sows:'ai_sows', m_import:'ai_import', m_poultry:'ai_poultry',
-                     m_rmspread:'ai_rmspread', m_reserve:'ai_reserve', m_tariff:'ai_tariff'};
-  const idToLabel = {m_crush:'开机率', m_stock:'商业库存', m_basis:'现货基差', m_arrival:'到港预报',
-                      m_hogratio:'猪粮比', m_sows:'能繁母猪', m_import:'进口量', m_poultry:'肉鸡养殖利润',
-                      m_rmspread:'豆菜粕价差', m_reserve:'国储拍卖量', m_tariff:'对美豆关税'};
+  const cls = dir===1?'bull':dir===-1?'bear':'neutral';
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${text}</span>${extra||''}</div>`;
+}
 
-  let recognized = [];
-  for(const [fieldId, elId] of Object.entries(idToElId)){
-    if(parsed[fieldId]){
-      renderParsedInfo(elId, parsed[fieldId], parsed[fieldId].unit);
-      document.getElementById(fieldId).value = parsed[fieldId].value;
-      recognized.push(`${idToLabel[fieldId]}:${parsed[fieldId].value}`);
-    }
-  }
-  saveManualAndRefresh();
+/** 生成10张指标卡片。骨架只建一次，之后refresh只更新里面的内容，输入框不会被重建(不会丢值)。*/
+function buildIndicatorCards(){
+  AUTO_INDICATORS.forEach(cfg=>{
+    const host = document.getElementById(cfg.group==='demand' ? 'cards-demand' : 'cards-supply');
+    if(!host || !host.insertAdjacentHTML) return;
+    const unitTxt = cfg.unit ? `(${cfg.unit})` : '';
+    host.insertAdjacentHTML('beforeend', `
+<div class="card" id="card_${cfg.key}">
+  <div class="card-head">
+    <div class="card-title">${cfg.title}<span style="font-size:9px;color:var(--t3);font-weight:400">· ${cfg.freq} · ${cfg.sourceName}</span></div>
+    <span class="badge" id="badge_${cfg.key}">检查中...</span>
+  </div>
+  <div id="alert_${cfg.key}"><div class="loading">正在读取同步数据...</div></div>
+  <details class="tier-details"><summary>查看详情 / 手动修正 ▸</summary><div class="tier-body">
+    <div class="ai-suggest unavailable" id="ai_${cfg.key}">等待自动抓取…</div>
+    <div class="mfield">
+      <label>${cfg.title}${unitTxt} · 手动修正<span style="color:var(--t3);font-weight:400">　自动抓取成功时，下次打开页面会被自动值覆盖；自动抓取失败时才沿用你保存的值</span></label>
+      <input class="minput" id="${cfg.inputId}" type="number" step="any" placeholder="${cfg.ph}" oninput="onManualEdit('${cfg.key}')"><span class="field-ind" id="ind_${cfg.key}"></span>
+    </div>
+  </div></details>
+</div>`);
+  });
+}
 
-  const missing = Object.keys(idToLabel).filter(id => !parsed[id]);
-  let resultHtml = '';
-  if(recognized.length>0){
-    resultHtml += `<span style="color:var(--g)">✅ 已识别并填充${recognized.length}项：${recognized.join('、')}</span>`;
+// ---- 手动修正的持久化：只存"你手动改过的值"，自动抓到的值不存 ----
+// 旧版本用'soymeal_manual'存了全部11个输入框(包括自动填进去的旧值)，升级后不能再当成"手动修正"读回来，直接丢弃。
+const MANUAL_STORE_KEY = 'soymeal_manual_v2';
+function readManualStore(){
+  try{ return JSON.parse(localStorage.getItem(MANUAL_STORE_KEY)||'{}') || {}; }catch(e){ return {}; }
+}
+function writeManualStore(obj){
+  try{ localStorage.setItem(MANUAL_STORE_KEY, JSON.stringify(obj)); }catch(e){}
+}
+
+/** 自动抓取一个指标：成功→直接覆盖输入框+清掉旧的手动修正；失败/过期/数值不合理→不覆盖，如实说明原因。*/
+function refreshAutoIndicator(key){
+  const cfg = AUTO_BY_KEY[key];
+  const data = window._syncedData;
+  const ai = document.getElementById('ai_'+key);
+  const input = document.getElementById(cfg.inputId);
+  if(!data || !ai || !input) return;
+  const st = window._indState[key] = window._indState[key] || {};
+  st.stale = false; st.autoValue = null; st.failReason = '';
+  const src = data[cfg.dataKey];
+
+  const fail = (reasonHtml, badgeText)=>{
+    const hasSaved = input.value !== '';
+    st.mode = hasSaved ? 'saved' : 'none';
+    st.failReason = reasonHtml;
+    ai.className = 'ai-suggest unavailable';
+    ai.innerHTML = `🤖 ${reasonHtml}` + (src && src.debug ? renderDebugInfo(src.debug) : '');
+    setBadge(key, hasSaved ? '🟡 沿用你保存的值(自动抓取失败)' : badgeText, hasSaved ? 'badge-manual' : 'badge-offline');
+    updateOverallAlert();
+  };
+
+  if(!src || !src.available){
+    fail(`自动抓取失败：${src ? src.reason : '未知原因'}`, '⚪ 抓取失败');
+    return;
   }
-  if(missing.length>0){
-    resultHtml += `<br><span style="color:var(--t3)">未识别到：${missing.map(id=>idToLabel[id]).join('、')}（这些字段保持原值，可以手动填写）</span>`;
+  const ex = cfg.extract(src);
+  if(ex.blocked){ fail(ex.blocked, '⚠️ 旧版数据已忽略'); return; }
+  if(blockIfImplausible(ai, cfg.sanityKey, ex.value, cfg.title)){
+    st.mode = input.value !== '' ? 'saved' : 'none';
+    st.failReason = '抓取到的数值不合理，已忽略';
+    setBadge(key, '⚠️ 数值异常已忽略', 'badge-offline');
+    updateOverallAlert();
+    return;
   }
-  document.getElementById('parseResult').innerHTML = resultHtml || '<span style="color:var(--gold)">⚠️ 没有识别到任何已知指标，请检查格式</span>';
+
+  // ★核心：抓取成功 → 直接覆盖，不再有"采用"按钮，也不再区分"输入框是否为空"
+  input.value = ex.value;
+  const store = readManualStore();
+  if(store[cfg.inputId] !== undefined){ delete store[cfg.inputId]; writeManualStore(store); }
+  st.mode = 'auto'; st.autoValue = ex.value;
+
+  const age = ageDaysOf(ex.date);
+  st.stale = age !== null && age > cfg.maxAgeDays;
+  const shortDate = String(ex.date||'').slice(0,10);
+  if(st.stale) setBadge(key, `⚠️ 数据已${age}天前 · 不计分`, 'badge-offline');
+  else setBadge(key, `🟢 自动 · ${shortDate}`, 'badge-auto');
+
+  ai.className = 'ai-suggest ' + (st.stale ? 'stale' : 'fresh');
+  ai.innerHTML = `🤖 自动抓取(${cfg.sourceName})：<b>${ex.valueText}</b><br>${ex.detail}`
+    + (st.stale ? `<br>⚠️ 这个指标${cfg.freq}更新，已过了${age}天(超过${cfg.maxAgeDays}天视为过期)，仍显示但<b>不参与综合评分</b>` : '')
+    + (ex.warn ? `<br>${ex.warn}` : '');
+  updateOverallAlert();
+}
+
+// 10个指标各一个入口(loadSyncedData逐个调用，测试也可以单独调用)
+function refreshMysteelCrushRate(){ refreshAutoIndicator('crush'); }
+function refreshMysteelMealStock(){ refreshAutoIndicator('stock'); }
+function refreshMysteelMealStu(){ refreshAutoIndicator('stu'); }
+function refreshMysteelBasis(){ refreshAutoIndicator('basis'); }
+function refreshMysteelArrivalForecast(){ refreshAutoIndicator('arrival'); }
+function refreshMysteelSoyImport(){ refreshAutoIndicator('import'); }
+function refreshMysteelReserveAuction(){ refreshAutoIndicator('reserve'); }
+function refreshHogRatio(){ refreshAutoIndicator('hogratio'); }
+function refreshSowInventory(){ refreshAutoIndicator('sows'); }
+function refreshMysteelPoultryProfit(){ refreshAutoIndicator('poultry'); }
+function refreshMysteelRmSpread(){ refreshAutoIndicator('rmspread'); }
+
+/** 用户在详情里手动改了输入框：存下来(仅当自动抓取失败时下次才会沿用)，立刻重新计算。*/
+function onManualEdit(key){
+  const cfg = AUTO_BY_KEY[key];
+  const input = document.getElementById(cfg.inputId);
+  if(!input) return;
+  const v = input.value;
+  const st = window._indState[key] = window._indState[key] || {};
+  const store = readManualStore();
+  if(v === ''){ delete store[cfg.inputId]; } else { store[cfg.inputId] = v; }
+  writeManualStore(store);
+  if(v !== ''){
+    st.mode = 'manual'; st.stale = false;
+    setBadge(key, st.autoValue!=null ? `✏️ 手动修正(自动值${st.autoValue})` : '✏️ 手动填写', 'badge-manual');
+  } else {
+    st.mode = st.autoValue!=null ? 'auto' : 'none';
+    setBadge(key, st.autoValue!=null ? '🟢 自动' : '⚪ 暂无数据', st.autoValue!=null ? 'badge-auto' : 'badge-offline');
+  }
+  updateOverallAlert();
 }
 
 function renderDebugInfo(debug){
@@ -2488,7 +2102,7 @@ const CONTRACT_CONTEXT = {
   },
   jan: {
     label: '1月合约',
-    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+美豆收获进度+南美早期播种。美豆生长期天气不确定性已经消失(已收割)，仪表盘不计入美国天气类信号，但收获进度(新豆多快流入市场)和南美早期播种(下一季怎么样的早期信号)会计入评分。',
+    text: '💡 <b>1月合约</b>对应美豆最终产量/单产数据(秋季WASDE最关键)+美豆收获进度+南美早期播种。8-9月美豆还在灌浆收尾/刚开始收获，美国天气类综合信号仍计入评分(10月起收获过半后不再计入)；收获进度(新豆多快流入市场)和南美早期播种(下一季的早期信号)也会计入评分。',
     show: ['group-sa', 'group-jan-extra'], hide: ['group-us-weather', 'group-may-extra'],
     esrPsdNote: '出口销售/PSD此时怎么看：WASDE已经反映真实收获数据，确定性大幅提高，这个阶段的数字比夏天的预估靠谱得多；出口销售能看出新市场年度的订单节奏和到港安排。',
     recommendedMonths: [8,9,10,11], cautionMonths: [12], avoidMonths: [1],
@@ -2573,6 +2187,14 @@ function renderTradingWindow(ctx){
     <div class="tw-row"><span class="tw-avoid">务必避开(交割月)：</span>${fmt(ctx.avoidMonths)}</div>
   </div>`;
 }
+/** 每个合约要隐藏哪些板块。1月合约8-9月例外：美豆仍在灌浆收尾/刚开始收获，美国天气类综合信号计入评分，
+ *  对应的美国天气板块也就不能藏起来(否则评分里有一票用户看不到依据)。*/
+function contractHiddenGroups(month){
+  const ctx = CONTRACT_CONTEXT[month];
+  const nowMonth = new Date().getMonth()+1;
+  if(month==='jan' && (nowMonth===8 || nowMonth===9)) return ctx.hide.filter(g=>g!=='group-us-weather');
+  return ctx.hide;
+}
 function selectContract(month){
   ['sep','may','jan'].forEach(m=>{
     document.getElementById('tab-'+m).classList.toggle('active', m===month);
@@ -2583,7 +2205,7 @@ function selectContract(month){
   document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
   ['group-us-weather','group-sa','group-may-extra','group-jan-extra'].forEach(gid=>{
     const el = document.getElementById(gid);
-    el.classList.toggle('hidden-by-contract', ctx.hide.includes(gid));
+    el.classList.toggle('hidden-by-contract', contractHiddenGroups(month).includes(gid));
   });
   window._selectedContract = month;
   refreshKlineForContract(month); // 技术面(K线/MACD/RSI/成交量)也要跟着切换到对应合约的数据
@@ -2690,13 +2312,30 @@ function fmtTime(iso){
   return d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 }
 
+// ★出口销售信号：本周美豆净销售 vs 最近4周均值(比单周环比噪音小)。
+//   4周均值低于minBaseMT时基数太小，百分比没有意义，按中性处理。这两个数是暂定值，回测前不要当成结论。
+const ESR_SIGNAL = {pct:40, minBaseMT:100000};
+function esrSignalFrom(esr){
+  if(esr.vs4wAvgPct==null || esr.avg4wNetSalesMT==null) return null;   // 历史周数不足，不判断
+  if(esr.avg4wNetSalesMT < ESR_SIGNAL.minBaseMT) return 0;
+  return esr.vs4wAvgPct > ESR_SIGNAL.pct ? 1 : esr.vs4wAvgPct < -ESR_SIGNAL.pct ? -1 : 0;
+}
 function renderEsr(esr, genAt){
   const badge = document.getElementById('esrBadge');
   const el = document.getElementById('esrContent');
+  window._esrSignal = null;
   if(!esr || !esr.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${esr?esr.reason:'未知原因'}</span></div>` + renderDebugInfo(esr?esr.debug:null);
+    return;
+  }
+  // ★旧格式数据防护：新版后端一定带commodity字段(大豆口径，净销售=当年+下一年度净销售)。
+  //   没有它说明data/latest.json还是旧版后端生成的(豆粕口径，且把"装船量"标成了"净销售")，不能拿来投票。
+  if(!esr.commodity){
+    badge.textContent = '⚠️ 旧版数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">收到的是旧版本后端生成的出口销售数据(豆粕口径)，已忽略</span>请等GitHub Actions用最新的fetch_data.py重新同步一次(详见README)</div>`;
     return;
   }
   if(esr.isStale){
@@ -2706,58 +2345,74 @@ function renderEsr(esr, genAt){
     badge.textContent = '🟢 已同步 '+fmtTime(genAt);
     badge.className = 'badge badge-auto';
   }
-  const wow = esr.wowChangePct;
-  const wowCls = wow>30?'r':wow<-30?'g':'neutral';
-  const alertText = wow>30?'净销售环比大增，偏多信号':wow<-30?'净销售环比大减，偏空信号':'环比变化在正常区间';
+  const fmt = n => n==null ? '--' : Math.round(n).toLocaleString();
+  const pctTxt = p => p==null ? '--' : (p>0?'+':'')+p+'%';
+  const sig = esrSignalFrom(esr);
+  window._esrSignal = sig;
+  const cls = sig===1?'bull':sig===-1?'bear':'neutral';
+  const alertText = sig===1 ? '美豆净销售明显高于近4周均值，偏多信号'
+    : sig===-1 ? '美豆净销售明显低于近4周均值，偏空信号'
+    : sig===0 ? (esr.avg4wNetSalesMT < ESR_SIGNAL.minBaseMT ? '近4周销售基数很小，暂不判断方向' : '净销售处于近4周常态区间')
+    : '历史周数不足4周，暂不判断方向';
   const esrMismatchWarning = esr.debug ? `<div class="alert-box neutral"><span class="at">⚠️ ${esr.isStale?'数据可能过期':'数值可能不准确'}</span>${esr.debug.warning||'已连接上接口，但净销售量汇总为0，可能是字段名候选没匹配上'}</div>` + renderDebugInfo(esr.debug) : '';
   el.innerHTML = `
-    <div class="alert-box ${wowCls==='r'?'bull':wowCls==='g'?'bear':'neutral'}"><span class="at">${alertText}</span>本周净销售${esr.latestTotalMT?.toLocaleString()}吨，环比${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</div>
+    <div class="alert-box ${cls}"><span class="at">${alertText}</span>美豆本周净销售${fmt(esr.netSalesMT)}吨，较近4周均值${pctTxt(esr.vs4wAvgPct)}</div>
     <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="ir"><div class="il">数据周次</div><div class="iv">${esr.weekEnding}${esr.dataAgeDays!=null?` <span style="color:var(--t3)">(距今${esr.dataAgeDays}天)</span>`:''}</div></div>
-    <div class="ir"><div class="il">使用的市场年度</div><div class="iv">${esr.marketYearUsed}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
-    <div class="ir"><div class="il">本周净销售</div><div class="iv"><span class="b">${esr.latestTotalMT?.toLocaleString()} 吨</span></div></div>
-    <div class="ir"><div class="il">上周净销售</div><div class="iv">${esr.prevTotalMT?.toLocaleString()} 吨</div></div>
-    <div class="ir"><div class="il">环比变化</div><div class="iv"><span class="${wowCls==='r'?'r':wowCls==='g'?'g':''}">${wow!=null?(wow>0?'+':'')+wow+'%':'--'}</span></div></div>
-    <div class="ir"><div class="il">中国采购量</div><div class="iv"><span class="gold">${esr.chinaLatestMT?.toLocaleString()} 吨</span></div></div>
+    <div class="ir"><div class="il">商品 / 市场年度</div><div class="iv">${esr.commodity} · ${esr.marketYearUsed}</div></div>
+    <div class="ir"><div class="il">本周净销售(当年+下一年度)</div><div class="iv"><span class="b">${fmt(esr.netSalesMT)} 吨</span></div></div>
+    <div class="ir"><div class="il">近4周均值</div><div class="iv">${fmt(esr.avg4wNetSalesMT)} 吨　<span class="${sig===1?'r':sig===-1?'g':''}">${pctTxt(esr.vs4wAvgPct)}</span></div></div>
+    <div class="ir"><div class="il">上周净销售 / 环比</div><div class="iv">${fmt(esr.prevNetSalesMT)} 吨　${pctTxt(esr.wowChangePct)}</div></div>
+    <div class="ir"><div class="il">本周分目的地(净销售)</div><div class="iv"><span class="gold">中国 ${fmt(esr.chinaNetSalesMT)} 吨</span>${esr.unknownNetSalesMT!=null?`　未知目的地 ${fmt(esr.unknownNetSalesMT)} 吨　其他 ${fmt(esr.otherNetSalesMT)} 吨`:''}</div></div>
+    ${esr.china4wSumMT!=null?`<div class="ir"><div class="il">近4周合计</div><div class="iv"><span class="gold">中国 ${fmt(esr.china4wSumMT)} 吨${esr.chinaShare4wPct!=null?`(占总量${esr.chinaShare4wPct}%)`:''}</span>　未知目的地 ${fmt(esr.unknown4wSumMT)} 吨</div></div>`:''}
+    ${esr.chinaMatched===false?`<div class="alert-box neutral"><span class="at">⚠️ 没有在数据里匹配到"中国"</span>国家名匹配是按名称里含"china"做的，可能接口里写法不同。接口里出现过的国家名：${(esr.countryNamesSeen||[]).slice(0,25).join('、')||'无'}</div>`:''}
+    <div class="ir"><div class="il">本周装船量(已发货)</div><div class="iv">${fmt(esr.shipmentsMT)} 吨　<span style="color:var(--t3)">中国${fmt(esr.chinaShipmentsMT)}吨</span></div></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">净销售=当周新签的出口合同(买家的采购意愿)；装船量=已经发走的货，是滞后的执行结果，不混在一起看。<br>"未知目的地"不能直接当成中国：买家国家明确后，ESR是在那一周记一笔目的地变更(未知记负、具体国家记正)，历史周数不会回头修改，所以单周的中国数字忽小忽大，看近4周合计更稳。<b>中国采购量只展示、不参与打分</b>——中国买美豆对CBOT是利多，但3-5个月后到港会增加国内供给，对国内豆粕是利空，方向相反，所以不直接计分。信号阈值(±${ESR_SIGNAL.pct}%、4周均值≥${ESR_SIGNAL.minBaseMT.toLocaleString()}吨才判断)是暂定值。数据来源：${esr.source}</div>
     </div></details>
     ${esrMismatchWarning}
   `;
-  window._esrSignal = wow>30?1:wow<-30?-1:0;
 }
 
+// ★库存消费比(美豆)信号阈值。口径：期末库存 ÷ (国内消费+出口)，即 期末库存/总用量。
+//   之前抓的是美国"豆粕"，豆粕库存只占消费的1-3%，套大豆阈值等于永远偏多。
+//   参考：USDA平衡表近几年美豆库存消费比多在约6-8%(2013/14与2020/21曾低至约2.6%)。
+//   <5%=紧、>10%=宽松是暂定值，后续会换成"同期历史分位"。
+const PSD_STU = {tight:5, loose:10};
 function renderPsd(psd, genAt){
   const badge = document.getElementById('psdBadge');
   const el = document.getElementById('psdContent');
+  window._psdSignal = null;
   if(!psd || !psd.available){
     badge.textContent = '⚪ 暂无数据';
     badge.className = 'badge badge-offline';
     el.innerHTML = `<div class="alert-box neutral"><span class="at">${psd?psd.reason:'未知原因'}</span></div>` + renderDebugInfo(psd?psd.debug:null);
-    window._psdSignal = 0;
+    return;
+  }
+  // ★旧格式数据防护：新版后端一定带commodity字段(大豆口径)。没有说明是旧版(豆粕口径)，比值没有意义。
+  if(!psd.commodity){
+    badge.textContent = '⚠️ 旧版数据';
+    badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">收到的是旧版本后端生成的供需数据(豆粕口径)，已忽略</span>请等GitHub Actions用最新的fetch_data.py重新同步一次(详见README)</div>`;
     return;
   }
   badge.textContent = '🟢 已同步 '+fmtTime(genAt);
   badge.className = 'badge badge-auto';
 
-  // 库存消费比 = 期末库存 / 国内消费 × 100%（沿用之前基本面表格里定的阈值：<10%紧张偏多，10-15%偏紧，>20%宽松偏空）
+  const fmt = n => n==null ? '--' : Number(n).toLocaleString();
+  const stu = psd.stocksToUsePct;
   let ratioHtml = '', alertHtml = '';
-  if(psd.endingStocks!=null && psd.domesticConsumption){
-    const ratio = psd.endingStocks/psd.domesticConsumption*100;
-    const rCls = ratio<10?'r':ratio<15?'gold':ratio>20?'g':'';
-    const rSignal = ratio<15?1:ratio>20?-1:0;
-    const rText = ratio<10?'非常紧张 → 偏多':ratio<15?'偏紧 → 偏多倾向':ratio>20?'宽松 → 偏空':'正常区间';
-    ratioHtml = `<div class="ir"><div class="il">库存消费比</div><div class="iv"><span class="${rCls}">${ratio.toFixed(1)}%</span> ${rText}</div></div>`;
-    window._psdSignal = rSignal;
-    // ★ 已修复：之前这个信号算出来了(_psdSignal参与总评分)，但没有像其他板块一样
-    //   用醒目的alert-box展示结论，容易让人以为这个板块没有做多做空建议。
-    const alertCls = rSignal===1?'bull':rSignal===-1?'bear':'neutral';
-    alertHtml = `<div class="alert-box ${alertCls}"><span class="at">库存消费比${ratio.toFixed(1)}%：${rText}</span>期末库存/国内消费，阈值参考：&lt;10%紧张偏多，10-15%偏紧偏多，&gt;20%宽松偏空</div>`;
+  if(stu != null){
+    const sig = stu < PSD_STU.tight ? 1 : stu > PSD_STU.loose ? -1 : 0;
+    window._psdSignal = sig;
+    const rText = sig===1 ? '偏紧 → 偏多' : sig===-1 ? '宽松 → 偏空' : '正常区间';
+    const alertCls = sig===1?'bull':sig===-1?'bear':'neutral';
+    alertHtml = `<div class="alert-box ${alertCls}"><span class="at">美豆库存消费比${stu}%：${rText}</span>${psd.marketYearLabel}年度期末库存÷(国内消费+出口)，阈值参考：&lt;${PSD_STU.tight}%偏紧，&gt;${PSD_STU.loose}%宽松</div>`;
+    ratioHtml = `<div class="ir"><div class="il">库存消费比</div><div class="iv"><span class="${sig===1?'r':sig===-1?'g':''}">${stu}%</span> ${rText}</div></div>`;
   } else {
-    window._psdSignal = 0;
-    alertHtml = `<div class="alert-box neutral"><span class="at">数据不足，暂无法计算库存消费比</span></div>`;
+    alertHtml = `<div class="alert-box neutral"><span class="at">数据不足，暂无法计算库存消费比</span>缺少出口或国内消费数据(库存消费比必须用 期末库存÷(国内消费+出口)，不能只除以国内消费)，不参与综合评分</div>`;
   }
 
-  // 如果接口连上了、有数据，但四个关键字段一个都没取到值(说明字段名对不上)，
-  // 明确提示这个情况，而不是默默显示undefined让人误以为是网页本身的bug
+  // 接口连上了、有数据，但四个关键字段一个都没取到(字段名对不上)：明确提示，而不是显示undefined
   let mismatchWarning = '';
   if(psd.endingStocks==null && psd.production==null && psd.domesticConsumption==null){
     mismatchWarning = `<div class="alert-box neutral"><span class="at">⚠️ 已连接上接口，但字段名没匹配上</span>接口返回了数据，但预设的属性名称(Ending Stocks等)在实际返回里找不到，下方诊断信息里的"实际字段名"会显示真实名称</div>` + renderDebugInfo(psd.debug);
@@ -2766,13 +2421,15 @@ function renderPsd(psd, genAt){
   el.innerHTML = alertHtml + `
     <details class="tier-details" style="margin-top:8px"><summary>详细数据 ▸</summary>
     <div class="tier-body">
-    <div class="ir"><div class="il">市场年度</div><div class="iv">${psd.marketYear}<span style="color:var(--t3)">（自动从多个候选年份中选出数据最新的一个）</span></div></div>
+    <div class="ir"><div class="il">商品 / 市场年度</div><div class="iv">${psd.commodity} · ${psd.marketYearLabel||psd.marketYear}<span style="color:var(--t3)">（5月起看新年度预估，1-4月看当前年度）</span></div></div>
     <div class="ir"><div class="il">WASDE版本</div><div class="iv"><span class="b">${psd.wasdeVintage||'未知'}</span><span style="color:var(--t3)">（可对照 <a href="https://apps.fas.usda.gov/psdonline/" target="_blank" style="color:var(--b)">PSD Online</a> 核实是否为最新月报）</span></div></div>
-    <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${psd.endingStocks!=null?psd.endingStocks.toLocaleString():'--'}</span></div></div>
-    <div class="ir"><div class="il">产量</div><div class="iv">${psd.production!=null?psd.production.toLocaleString():'--'}</div></div>
-    <div class="ir"><div class="il">国内消费</div><div class="iv">${psd.domesticConsumption!=null?psd.domesticConsumption.toLocaleString():'--'}</div></div>
+    <div class="ir"><div class="il">期末库存</div><div class="iv"><span class="b">${fmt(psd.endingStocks)}</span></div></div>
+    <div class="ir"><div class="il">产量</div><div class="iv">${fmt(psd.production)}</div></div>
+    <div class="ir"><div class="il">国内消费(含压榨)</div><div class="iv">${fmt(psd.domesticConsumption)}</div></div>
+    <div class="ir"><div class="il">出口</div><div class="iv">${fmt(psd.exports)}</div></div>
+    <div class="ir"><div class="il">总用量(国内消费+出口)</div><div class="iv">${fmt(psd.totalUse)}</div></div>
     ${ratioHtml}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为USDA标准计量单位，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为${psd.unit||'USDA标准计量单位'}，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
     </div></details>
     ${mismatchWarning}
   `;
@@ -2924,15 +2581,8 @@ function renderCrushMargin(margin, genAt){
   // 不适合直接拿来跟其他有明确阈值依据的指标同等对待。
   const cls = gm>0?'bear':gm<0?'bull':'neutral';
   const text = gm>0?'盘面毛利为正 — 油厂开机动力较强，偏空参考':gm<0?'盘面毛利为负 — 油厂挺价惜售动力强，偏多参考':'盘面毛利接近盈亏平衡';
-  // ★关税是手动填的纯资讯栏位(m_tariff)，不参与评分——豆二盘面价格本身已经包含了
-  // 市场对当前关税成本的定价，公式里不需要再叠加一层；这里只是把关税数字摆出来，
-  // 帮助理解"美豆对比南美豆到底贵在哪"，不是要在榨利公式里再算一遍。
-  const tariffEl = document.getElementById('m_tariff');
-  const tariffVal = tariffEl ? parseFloat(tariffEl.value) : NaN;
-  const tariffNote = !isNaN(tariffVal) ? `<div style="font-size:10px;color:var(--t3);margin:4px 0">💡 当前对美豆进口关税：${tariffVal}%(仅供参考，豆二盘面价格本身已包含关税成本，不重复计入公式)</div>` : '';
   el.innerHTML = `
     <div class="alert-box ${cls}"><span class="at">${text}</span>${gm>0?'+':''}${gm}元/吨(毛利，未扣加工费)　仅供参考不计入综合评分</div>
-    ${tariffNote}
     <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
     <div class="grid2">
       <div class="stat"><span class="sv neutral">${margin.mealPrice}</span><div class="sl">豆粕${margin.mealSymbol}(元/吨)</div></div>
@@ -3000,20 +2650,16 @@ function refreshBrazilPlantingDisplay(){
 
 // ===================== 手动数据 + 综合预警 =====================
 function loadManual(){
-  const saved = JSON.parse(localStorage.getItem('soymeal_manual')||'{}');
-  Object.keys(saved).forEach(k=>{
-    const el = document.getElementById(k);
-    if(el) el.value = saved[k];
+  // 旧版本('soymeal_manual')存的是全部输入框(含自动填进去的旧值)，不能当"手动修正"读回来，直接丢弃
+  try{ localStorage.removeItem('soymeal_manual'); }catch(e){}
+  const saved = readManualStore();
+  AUTO_INDICATORS.forEach(cfg=>{
+    if(saved[cfg.inputId] !== undefined){
+      const el = document.getElementById(cfg.inputId);
+      if(el){ el.value = saved[cfg.inputId]; window._indState[cfg.key] = {mode:'saved'}; }
+    }
   });
-  updateOverallAlert(); // 恢复上次填写的数值后，立刻显示对应颜色指示，不用等用户重新输入才触发
-}
-function saveManualAndRefresh(){
-  const ids = ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry','m_rmspread','m_reserve','m_tariff'];
-  const data = {};
-  ids.forEach(id=>{ data[id] = document.getElementById(id).value; });
-  localStorage.setItem('soymeal_manual', JSON.stringify(data));
-  updateOverallAlert();
-  refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // ★关税是手动输入的，改了要让压榨利润卡片里的关税提示跟着更新，不用等页面刷新
+  updateOverallAlert(); // 恢复手动修正过的值后，立刻显示对应结论
 }
 
 function setInd(id, dir, text){
@@ -3024,150 +2670,219 @@ function setInd(id, dir, text){
   el.textContent = text;
 }
 
-function updateOverallAlert(){
-  const crush = parseFloat(document.getElementById('m_crush').value);
-  const stock = parseFloat(document.getElementById('m_stock').value);
-  const basis = parseFloat(document.getElementById('m_basis').value);
-  const arrival = parseFloat(document.getElementById('m_arrival').value);
-  const hogratio = parseFloat(document.getElementById('m_hogratio').value);
-  const sows = parseFloat(document.getElementById('m_sows').value);
-  const cnImport = parseFloat(document.getElementById('m_import').value);
-  const poultryProfit = parseFloat(document.getElementById('m_poultry').value);
-  const rmSpread = parseFloat(document.getElementById('m_rmspread').value);
-  const reserveAuction = parseFloat(document.getElementById('m_reserve').value);
+// ===================== 综合评分 =====================
+// ★综合方向的判定：不再用"固定±3分"，改成"净倾向 = 票权加权分数 ÷ 有效票权合计"(大多数指标票权1，国内豆粕供应松紧票权2)。
+//   之前±3分不管这次有多少个指标有数据都一样——填了5项和填了13项，±3的含义完全不同。
+//   0.22这个门槛是这样定的：全部指标都有数据时(约11-13票)，0.22×11≈2.4→需要3分，跟之前的±3基本等价；
+//   数据少的时候门槛按比例降低，但有效指标少于MIN_VALID_VOTES(5)时不下结论。
+const DIRECTION_RATIO = 0.22;
+const MIN_VALID_VOTES = 5;
 
-  let score = 0;
-  const notes = [];
-  // 追踪7个手动指标各自的信号值(1/-1/0/null)，供状态点图使用
-  let sigCrush=null, sigStock=null, sigBasis=null, sigArrival=null, sigHogratio=null, sigSows=null, sigImport=null, sigPoultry=null, sigRmSpread=null, sigReserve=null;
+function nzSig(v){ return (v===1||v===-1||v===0) ? v : null; }
+function sigWord(v){ return v===1?'偏多':v===-1?'偏空':v===0?'中性':'无数据'; }
 
-  if(!isNaN(crush)){
-    if(crush < 40){ score+=1; notes.push('开机率'+crush+'%（&lt;40%）→ 偏多'); setInd('ind_crush',1,'→ 偏多'); sigCrush=1; }
-    else if(crush > 60){ score-=1; notes.push('开机率'+crush+'%（&gt;60%）→ 偏空'); setInd('ind_crush',-1,'→ 偏空'); sigCrush=-1; }
-    else{ setInd('ind_crush',0,'→ 中性'); sigCrush=0; notes.push('开机率'+crush+'%（中性区间）'); }
-  } else setInd('ind_crush', null);
+/** 把几个"讲同一件事"的子信号按权重合成1票：加权平均≥0.5→偏多，≤-0.5→偏空，否则中性。
+ *  跳过无数据(null/undefined/NaN)的子信号，剩下的按各自权重重新计算，缺一项不会让整个信号失效。*/
+function weightedComposite(signalsWithWeights){
+  const avail = signalsWithWeights.filter(s=>s.val!==null && s.val!==undefined && !isNaN(s.val));
+  if(!avail.length) return null;
+  const totalWeight = avail.reduce((sum,s)=>sum+s.weight,0);
+  const weightedSum = avail.reduce((sum,s)=>sum+s.val*s.weight,0);
+  const avg = weightedSum/totalWeight;
+  return avg>=0.5?1:avg<=-0.5?-1:0;
+}
 
-  if(!isNaN(stock)){
-    if(stock < 50){ score+=1; notes.push('库存'+stock+'万吨（&lt;50）→ 偏多'); setInd('ind_stock',1,'→ 偏多'); sigStock=1; }
-    else if(stock > 100){ score-=1; notes.push('库存'+stock+'万吨（&gt;100）→ 偏空'); setInd('ind_stock',-1,'→ 偏空'); sigStock=-1; }
-    else{ setInd('ind_stock',0,'→ 中性'); sigStock=0; notes.push('库存'+stock+'万吨（中性区间）'); }
-  } else setInd('ind_stock', null);
-
-  if(!isNaN(basis)){
-    if(basis > 0){ score+=1; notes.push('正基差'+basis+'→ 偏多'); setInd('ind_basis',1,'→ 偏多'); sigBasis=1; }
-    else if(basis < 0){ score-=1; notes.push('负基差'+basis+'→ 偏空'); setInd('ind_basis',-1,'→ 偏空'); sigBasis=-1; }
-    else{ setInd('ind_basis',0,'→ 中性'); sigBasis=0; notes.push('基差'+basis+'（中性/持平）'); }
-  } else setInd('ind_basis', null);
-
-  // ★ 已修复：从"本周"改成"本月"到港预报后，阈值忘了跟着从周度改成月度，
-  //   之前180/250是周度量级，月度数字通常是周度的4倍以上，会导致月度数值
-  //   几乎必然被误判成"偏空"。现在改用跟"月度进口量"一致的月度阈值(800/1000)。
-  if(!isNaN(arrival)){
-    if(arrival < 800){ score+=1; notes.push('到港'+arrival+'万吨（&lt;800，偏少）→ 偏多'); setInd('ind_arrival',1,'→ 偏多'); sigArrival=1; }
-    else if(arrival > 1000){ score-=1; notes.push('到港'+arrival+'万吨（&gt;1000，偏多）→ 偏空'); setInd('ind_arrival',-1,'→ 偏空'); sigArrival=-1; }
-    else{ setInd('ind_arrival',0,'→ 中性'); sigArrival=0; notes.push('到港'+arrival+'万吨（中性区间）'); }
-  } else setInd('ind_arrival', null);
-
-  if(!isNaN(hogratio)){
-    if(hogratio > 7){ score+=1; notes.push('猪粮比'+hogratio+'（&gt;7）→ 补栏积极，偏多'); setInd('ind_hogratio',1,'→ 偏多'); sigHogratio=1; }
-    else if(hogratio < 5){ score-=1; notes.push('猪粮比'+hogratio+'（&lt;5）→ 养殖亏损，偏空'); setInd('ind_hogratio',-1,'→ 偏空'); sigHogratio=-1; }
-    else{ setInd('ind_hogratio',0,'→ 中性'); sigHogratio=0; notes.push('猪粮比'+hogratio+'（中性区间）'); }
-  } else setInd('ind_hogratio', null);
-
-  // 能繁母猪：低于3750万头目标（产能调控线）=未来供给偏紧=偏多；远超目标=产能过剩=偏空
-  if(!isNaN(sows)){
-    if(sows < 3700){ score+=1; notes.push('能繁母猪'+sows+'万头（&lt;3700，低于调控目标）→ 偏多'); setInd('ind_sows',1,'→ 偏多'); sigSows=1; }
-    else if(sows > 3800){ score-=1; notes.push('能繁母猪'+sows+'万头（&gt;3800，超调控目标）→ 偏空'); setInd('ind_sows',-1,'→ 偏空'); sigSows=-1; }
-    else{ setInd('ind_sows',0,'→ 中性'); sigSows=0; notes.push('能繁母猪'+sows+'万头（中性区间）'); }
-  } else setInd('ind_sows', null);
-
-  // 中国大豆月度进口量：逻辑与"到港预报"保持一致——进口少=供给收紧=偏多；进口多=供给宽松=偏空
-  // （这里做了个修正：之前独立表格里曾把"进口增长"标成偏多，和到港预报的方向矛盾，现在统一为同一套供需逻辑）
-  if(!isNaN(cnImport)){
-    if(cnImport < 800){ score+=1; notes.push('进口'+cnImport+'万吨（&lt;800）→ 供给偏紧，偏多'); setInd('ind_import',1,'→ 偏多'); sigImport=1; }
-    else if(cnImport > 1000){ score-=1; notes.push('进口'+cnImport+'万吨（&gt;1000）→ 供给宽松，偏空'); setInd('ind_import',-1,'→ 偏空'); sigImport=-1; }
-    else{ setInd('ind_import',0,'→ 中性'); sigImport=0; notes.push('进口'+cnImport+'万吨（中性区间）'); }
-  } else setInd('ind_import', null);
-
-  // 白羽肉鸡养殖利润：跟猪粮比逻辑一样，利润驱动养殖户扩产/减产决策，从而影响饲料(豆粕)需求
-  // 阈值参考查证过的真实数据：正常盈利年份约0.7-1.7元/只，严重亏损年份为负值(比如"一只鸡跌去4块钱")
-  if(!isNaN(poultryProfit)){
-    if(poultryProfit > 1.5){ score+=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（&gt;1.5，盈利较好）→ 扩产意愿强，偏多'); setInd('ind_poultry',1,'→ 偏多'); sigPoultry=1; }
-    else if(poultryProfit < 0){ score-=1; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（&lt;0，亏损）→ 减产退出，偏空'); setInd('ind_poultry',-1,'→ 偏空'); sigPoultry=-1; }
-    else{ setInd('ind_poultry',0,'→ 中性'); sigPoultry=0; notes.push('肉鸡养殖利润'+poultryProfit+'元/只（中性区间）'); }
-  } else setInd('ind_poultry', null);
-
-  // 豆菜粕价差：反映菜粕对豆粕的替代经济性，间接也反映水产养殖旺季需求
-  // (菜粕一半以上用在水产饲料，水产旺季会先带动菜粕供需趋紧，体现在价差变化上)
-  // 阈值参考查证过的多个独立来源+2026年实际数据(4月国内现货价差470-780元/吨)：
-  // 正常/合理价差区间约350-650，低于600饲料厂会考虑减少菜粕转向豆粕
-  if(!isNaN(rmSpread)){
-    if(rmSpread < 400){ score+=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（&lt;400，菜粕不够便宜）→ 豆粕需求锁定，偏多'); setInd('ind_rmspread',1,'→ 偏多'); sigRmSpread=1; }
-    else if(rmSpread > 700){ score-=1; notes.push('豆菜粕价差'+rmSpread+'元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空'); setInd('ind_rmspread',-1,'→ 偏空'); sigRmSpread=-1; }
-    else{ setInd('ind_rmspread',0,'→ 中性'); sigRmSpread=0; notes.push('豆菜粕价差'+rmSpread+'元/吨（中性区间）'); }
-  } else setInd('ind_rmspread', null);
-
-  // ★国储进口大豆拍卖：这个动作本身几乎总是偏空的(国家主动向市场投放供给，
-  // 不管成交率高低，都是在增加短期流通量)，不是那种"高了偏多、低了偏空"的双向阈值指标，
-  // 所以只在"量比较大"时才标记偏空，量小或没有拍卖时是中性(不代表偏多——没有拍卖只是
-  // "没有额外的空头催化"，不等于"看多")。40万吨这个门槛参考的是文华财经文章里
-  // 实际报道的拍卖规模(54.3万吨被描述为一次常规规模的拍卖)，留了一点余量不卡在这个
-  // 具体数字上。
-  if(!isNaN(reserveAuction)){
-    if(reserveAuction >= 40){ score-=1; notes.push('国储拍卖'+reserveAuction+'万吨（规模较大）→ 供给端主动增投，偏空'); setInd('ind_reserve',-1,'→ 偏空'); sigReserve=-1; }
-    else{ setInd('ind_reserve',0,'→ 中性'); sigReserve=0; notes.push(reserveAuction>0?('国储拍卖'+reserveAuction+'万吨（规模较小），影响有限'):'近期无国储拍卖，无新增供给压力'); }
-  } else setInd('ind_reserve', null);
-
-  // ★ 已改进：之前天气/干旱监测/NOAA展望/美豆优良率这4个指标各自独立投票(最多±4分)，
-  //   但这4个本质上都在测"这个生长季天气好不好"，只是时间尺度不同(7天/现在/1个月/本周报告)。
-  //   如果真的发生干旱，这4个很可能同时转向同一方向，等于同一件事被计了4次票。
-  //   现在改成：先算出这4个子信号的"加权态度"，合成1个"作物生长状况"综合信号，只投1票，
-  //   而不是最多4票——避免高度相关的信息在总分里被重复放大。
-  // ★ 已改进：现在按选中的合约月份决定用哪个天气类信号——
-  //   9月合约看美国天气类综合(生长关键期)；5月合约看南美天气(收获期核心)；
-  //   1月合约天气不确定性已消失(美豆已收割)，不计入天气类信号。
-  // ★ 已改进(时间感知加权)：之前4个子信号是简单平均，但干旱监测是"现状快照"，
-  //   NOAA展望/天气预报是"前瞻预测"，这两类信息在生长季不同阶段的价值不一样：
-  //   6-7月伤害还在累积、后续变数大，前瞻信号更值钱；8月起关键窗口(R1-R5授粉结荚)基本走完，
-  //   干旱监测测的是"已经造成的、很可能不可逆的伤害"，比"预测接下来会怎样"更接近最终结果，
-  //   NOAA展望这时候覆盖的9月天气对单产边际影响也变小了。南美同理，但用的是南美自己的
-  //   生长周期(播种9-12月，关键期12-2月，收获2-5月)，不是美国那套6-7月/8月起的分法。
-  const contract = window._selectedContract || 'sep';
+/** 美国作物生长状况综合(天气预报/NOAA展望/干旱监测/美豆优良率4合1，只投1票)。
+ *  时间感知加权：6-7月前瞻信号更值钱；8月起授粉结荚窗口(R1-R5)基本走完，干旱监测/优良率测的是"已经造成的伤害"，权重升高。*/
+function computeUsCrop(nowMonth){
   const weatherSigNum = window._weatherRisk==='high'?1:window._weatherRisk==='low'?-1:(window._weatherRisk==='medium'?0:null);
+  const late = nowMonth >= 8;
+  const w = late
+    ? {weather:25, noaa:15, drought:30, soycond:30}
+    : {weather:35, noaa:30, drought:10, soycond:25};
+  return {
+    val: weightedComposite([
+      {val:weatherSigNum, weight:w.weather},
+      {val:window._noaaOutlookSignal, weight:w.noaa},
+      {val:window._droughtSignal, weight:w.drought},
+      {val:window._soyCondSignal, weight:w.soycond},
+    ]),
+    late,
+  };
+}
+
+const STU_THRESH = {tight:10, loose:14};
+// 组内权重：库消比=库存÷消费，跟商业库存是同一数据的两种口径(库存是分子)，所以库存只给20，主要作兜底和一致性参考；
+// 库消比不可用时回到第1步的60/40(库存/开机率)。整组是主导档，投2票。
+const TIGHTNESS_WEIGHTS = {withStu:{stu:50, crush:30, stock:20}, withoutStu:{stock:60, crush:40}};
+const TIGHTNESS_VOTE_WEIGHT = 2;
+// 10个原手动指标的判定规则：返回[信号, 说明文字]。说明文字同时用于卡片结论框和"查看每项详细理由"。
+const MANUAL_RULES = {
+  crush: v => v<40 ? [1, `开机率${v}%（&lt;40%）→ 偏多`] : v>60 ? [-1, `开机率${v}%（&gt;60%）→ 偏空`] : [0, `开机率${v}%（中性区间）`],
+  stock: v => v<50 ? [1, `库存${v}万吨（&lt;50）→ 偏多`] : v>100 ? [-1, `库存${v}万吨（&gt;100）→ 偏空`] : [0, `库存${v}万吨（中性区间）`],
+  // 国内豆粕库消比(月末库存÷当月消费)：阈值依据Mysteel自己对近12个月的定性措辞——5.94%被称"供应紧张"，
+  // 10.3-10.5%被称"中低水平、供应偏紧"，12.45-13.7%被称"趋于宽松"，15%以上被称"显著宽松、供强需弱"。暂定值，后续换成历史百分位。
+  stu: v => v<=STU_THRESH.tight ? [1, `国内豆粕库消比${v}%（≤${STU_THRESH.tight}%，供应偏紧）→ 偏多`]
+          : v>=STU_THRESH.loose ? [-1, `国内豆粕库消比${v}%（≥${STU_THRESH.loose}%，供应宽松）→ 偏空`]
+          : [0, `国内豆粕库消比${v}%（中性区间）`],
+  basis: v => v>0 ? [1, `正基差${v}→ 偏多`] : v<0 ? [-1, `负基差${v}→ 偏空`] : [0, `基差${v}（中性/持平）`],
+  // ★到港预报是月度数字，阈值用月度量级(800/1000)，不是周度量级
+  arrival: v => v<800 ? [1, `到港${v}万吨（&lt;800，到港量小）→ 偏多`] : v>1000 ? [-1, `到港${v}万吨（&gt;1000，到港量大）→ 偏空`] : [0, `到港${v}万吨（中性区间）`],
+  import: v => v<800 ? [1, `进口${v}万吨（&lt;800）→ 供给偏紧，偏多`] : v>1000 ? [-1, `进口${v}万吨（&gt;1000）→ 供给宽松，偏空`] : [0, `进口${v}万吨（中性区间）`],
+  // 国储拍卖：这个动作本身几乎总是偏空(国家主动投放供给)，不是"高了偏多低了偏空"的双向阈值指标；
+  // 只在量大(≥40万吨)时标偏空，没有拍卖=中性(不代表偏多)。后端只保留45天内的拍卖，过期自动不可用。
+  reserve: v => v>=40 ? [-1, `国储拍卖${v}万吨（规模较大）→ 供给端主动增投，偏空`]
+                      : [0, v>0 ? `国储拍卖${v}万吨（规模较小），影响有限` : '近期无国储拍卖，无新增供给压力'],
+  hogratio: v => v>7 ? [1, `猪粮比${v}（&gt;7）→ 补栏积极，偏多`] : v<5 ? [-1, `猪粮比${v}（&lt;5）→ 养殖亏损，偏空`] : [0, `猪粮比${v}（中性区间）`],
+  // 能繁母猪：低于3750万头调控目标=未来供给偏紧=偏多；远超目标=产能过剩=偏空
+  sows: v => v<3700 ? [1, `能繁母猪${v}万头（&lt;3700，低于调控目标）→ 偏多`] : v>3800 ? [-1, `能繁母猪${v}万头（&gt;3800，超调控目标）→ 偏空`] : [0, `能繁母猪${v}万头（中性区间）`],
+  poultry: v => v>1.5 ? [1, `肉鸡养殖利润${v}元/只（&gt;1.5，盈利较好）→ 扩产意愿强，偏多`] : v<0 ? [-1, `肉鸡养殖利润${v}元/只（&lt;0，亏损）→ 减产退出，偏空`] : [0, `肉鸡养殖利润${v}元/只（中性区间）`],
+  rmspread: v => v<400 ? [1, `豆菜粕价差${v}元/吨（&lt;400，菜粕不够便宜）→ 豆粕需求锁定，偏多`] : v>700 ? [-1, `豆菜粕价差${v}元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空`] : [0, `豆菜粕价差${v}元/吨（中性区间）`],
+};
+
+// ===================== 三维度评分 + 置信度 + 分歧提示 =====================
+// ★三个维度是把同一批投票按类别"拆开看"，不是另外加的指标——综合方向仍然是全部投票(票权加权)算出来的，
+//   维度分数只是回答"这个结论是哪一侧撑起来的、两侧是不是一致"。单个分数会抹掉这种分歧。
+//   供给端=货有多少(天气/产量/库存/到港/汇率/拍卖…)；需求端=谁要买(出口/养殖/替代)；
+//   市场结构=盘面自己的表态(目前只有现货基差一项，样本少，界面上如实标出)。
+const DIM_META = [
+  {key:'supply',    name:'供给端'},
+  {key:'demand',    name:'需求端'},
+  {key:'structure', name:'市场结构'},
+];
+const MIN_DIM_VOTES = 2;   // 维度里有效指标少于2项：仍显示，但标"样本少"，不参与"分歧"判断
+
+function dirOfRatio(r){ return r===null ? null : r>=DIRECTION_RATIO ? 1 : r<=-DIRECTION_RATIO ? -1 : 0; }
+function dirWord(d){ return d===1?'偏多':d===-1?'偏空':d===0?'中性':'无数据'; }
+function fmtPct(r){ const p = Math.round(r*100); return (p>0?'+':'')+p+'%'; }
+
+/** 一组投票的汇总：有效个数、票权加权净倾向、多空各自的票权。votes: [{label, side, signal(1/-1/0/null), weight}] */
+function tallyVotes(list){
+  const valid = list.filter(v=>v.signal!==null);
+  const W = valid.reduce((a,v)=>a+v.weight, 0);
+  const score = valid.reduce((a,v)=>a+v.signal*v.weight, 0);
+  const bullW = valid.filter(v=>v.signal===1).reduce((a,v)=>a+v.weight, 0);
+  const bearW = valid.filter(v=>v.signal===-1).reduce((a,v)=>a+v.weight, 0);
+  const ratio = W ? score/W : null;
+  return {n:valid.length, total:list.length, weight:W, score, ratio, dir:dirOfRatio(ratio), bullW, bearW};
+}
+
+function computeDimensions(votes){
+  const dims = {};
+  DIM_META.forEach(m=>{
+    const t = tallyVotes(votes.filter(v=>v.side===m.key));
+    t.key = m.key; t.name = m.name;
+    t.thin = t.n > 0 && t.n < MIN_DIM_VOTES;   // 样本少
+    dims[m.key] = t;
+  });
+  return dims;
+}
+
+/** 分歧：有两个"样本够"的维度，一个≥+22%、一个≤-22%。样本少的维度不参与判断。返回null或{bull, bear}。*/
+function detectDivergence(dims){
+  const ok = Object.values(dims).filter(d=>d.n>=MIN_DIM_VOTES && d.dir!==null);
+  const bull = ok.filter(d=>d.dir===1), bear = ok.filter(d=>d.dir===-1);
+  return (bull.length && bear.length) ? {bull:bull[0], bear:bear[0]} : null;
+}
+
+/** 置信度：从"满分"往下扣，每一条规则都写在界面上，不给一个黑箱数字。
+ *  覆盖率<80%扣一级、<60%再扣一级；出现供需分歧扣一级；多空一致性(多数方向的票权占多空票权的比例)<70%扣一级。
+ *  高=2 / 中=1 / 低=0。这些门槛是暂定值，没有回测。只在综合方向明确(偏多/偏空)时才评级。*/
+function computeConfidence(votes, overall, dims){
+  const coverage = votes.length ? overall.n/votes.length : 0;
+  const dirW = overall.bullW + overall.bearW;
+  const agreement = dirW ? Math.max(overall.bullW, overall.bearW)/dirW : null;
+  const divergence = detectDivergence(dims);
+  const reasons = [];
+  let level = 2;
+  if(coverage < 0.6){ level -= 2; reasons.push(`有效指标只有${overall.n}/${votes.length}(${Math.round(coverage*100)}%，低于60%)`); }
+  else if(coverage < 0.8){ level -= 1; reasons.push(`有效指标${overall.n}/${votes.length}(${Math.round(coverage*100)}%，低于80%)`); }
+  if(divergence){ level -= 1; reasons.push(`${divergence.bear.name}${dirWord(divergence.bear.dir)}而${divergence.bull.name}${dirWord(divergence.bull.dir)}，方向分歧`); }
+  if(agreement !== null && agreement < 0.7){ level -= 1; reasons.push(`多空意见一致性只有${Math.round(agreement*100)}%(低于70%)`); }
+  level = Math.max(0, level);
+  if(!reasons.length) reasons.push(`覆盖${Math.round(coverage*100)}%、多空一致性${agreement===null?'--':Math.round(agreement*100)+'%'}、供需两侧没有分歧`);
+  return {level, label:['低','中','高'][level], reasons, coverage, agreement, divergence};
+}
+
+/** 主要驱动：偏多/偏空各列出有效投票的名字(带票权)，让人一眼看到"结论是谁撑起来的" */
+function driversHtml(votes){
+  const pick = sgn => votes.filter(v=>v.signal===sgn).sort((a,b)=>b.weight-a.weight).slice(0,6).map(v=>v.label);
+  const bear = pick(-1), bull = pick(1);
+  if(!bear.length && !bull.length) return '';
+  return `<div style="font-size:10.5px;color:var(--t2);line-height:1.7;margin-top:6px">`
+    + (bear.length ? `<div><span style="color:var(--g);font-weight:700">偏空依据：</span>${bear.join('、')}</div>` : '')
+    + (bull.length ? `<div><span style="color:var(--r);font-weight:700">偏多依据：</span>${bull.join('、')}</div>` : '')
+    + `</div>`;
+}
+
+/** 三条维度条形：中线=0，向右(红)偏多、向左(绿)偏空，两根淡刻度线是±22%(方向判定门槛) */
+function dimensionBarsHtml(dims){
+  return DIM_META.map(m=>{
+    const d = dims[m.key];
+    if(d.n === 0){
+      return `<div class="dim-row"><span class="dim-name">${m.name}</span><div class="dim-track"><div class="dim-mid"></div></div><span class="dim-val neutral">--</span><span class="dim-n">无数据</span></div>`;
+    }
+    const half = Math.min(1, Math.abs(d.ratio)) * 50;
+    const bar = d.ratio === 0 ? '' : `<div class="dim-bar ${d.ratio>0?'pos':'neg'}" style="${d.ratio>0?`left:50%`:`right:50%`};width:${half.toFixed(1)}%"></div>`;
+    const cls = d.thin ? 'neutral' : (d.dir===1?'pos':d.dir===-1?'neg':'neutral');
+    return `<div class="dim-row"><span class="dim-name">${m.name}</span>`
+      + `<div class="dim-track"><div class="dim-tick" style="left:${50-DIRECTION_RATIO*50}%"></div><div class="dim-tick" style="left:${50+DIRECTION_RATIO*50}%"></div>${bar}<div class="dim-mid"></div></div>`
+      + `<span class="dim-val ${cls}">${fmtPct(d.ratio)}</span>`
+      + `<span class="dim-n">${d.thin?'样本少·':''}${d.n}项</span></div>`;
+  }).join('');
+}
+
+/** 一句话总结："供给端偏空(-46%)，需求端偏多(+20%)，市场结构偏空(-100%·仅1项)" */
+function dimensionSummary(dims){
+  return DIM_META.map(m=>{
+    const d = dims[m.key];
+    if(d.n===0) return `${m.name}无数据`;
+    return `${m.name}${d.thin?'仅'+d.n+'项，':''}${dirWord(d.dir)}(${fmtPct(d.ratio)})`;
+  }).join('，');
+}
+
+function updateOverallAlert(){
+  const notes = [];
+  const sig = {};   // key → 1/-1/0/null(无数据或数据过期，不投票)
+  AUTO_INDICATORS.forEach(cfg=>{
+    const raw = parseFloat(document.getElementById(cfg.inputId).value);
+    const st = window._indState[cfg.key] || {};
+    if(isNaN(raw)){ setInd('ind_'+cfg.key, null); setCardAlert(cfg.key, null); sig[cfg.key] = null; return; }
+    const [dir, note] = MANUAL_RULES[cfg.key](raw);
+    setInd('ind_'+cfg.key, dir, dir===1?'→ 偏多':dir===-1?'→ 偏空':'→ 中性');
+    if(st.stale){
+      sig[cfg.key] = null;   // 过期数据不投票
+      setCardAlert(cfg.key, dir, note, '　⚠️ 数据已过期，不参与综合评分');
+      notes.push(note + '（⚠️ 数据已过期，未计入评分）');
+      return;
+    }
+    sig[cfg.key] = dir;
+    setCardAlert(cfg.key, dir, note);
+    notes.push(note);
+  });
+
+  const contract = window._selectedContract || 'sep';
   const nowMonth = new Date().getMonth()+1; // 1-12
+
+  // ---- 投票清单：综合评分的唯一数据来源。每一项=1票(null=无数据，不投票也不算中性) ----
+  const votes = [];
+  const addVote = (label, side, signal, note, weight)=>{
+    votes.push({label, side, signal: nzSig(signal), weight: weight || 1});
+    if(note) notes.push(note);
+  };
+  const compositeNote = (label, parts, v, voteWeight)=> v===null ? null
+    : `${label}：${parts.map(([n,s,w])=>n+sigWord(s)+(w!=null?`(权重${w})`:'')).join('、')} → 合并为1票${voteWeight>1?`(票权×${voteWeight})`:''}：${sigWord(v)}`;
+
+  // ---- ① 作物/天气类(按合约选不同的信号，同一件事不重复计票) ----
   let cropComposite = null, cropLabel = '';
-
-  function weightedComposite(signalsWithWeights){
-    // signalsWithWeights: [{val, weight}, ...]，跳过val为null/undefined/NaN的
-    const avail = signalsWithWeights.filter(s=>s.val!==null && s.val!==undefined && !isNaN(s.val));
-    if(!avail.length) return null;
-    const totalWeight = avail.reduce((sum,s)=>sum+s.weight,0);
-    const weightedSum = avail.reduce((sum,s)=>sum+s.val*s.weight,0);
-    const avg = weightedSum/totalWeight;
-    return avg>=0.5?1:avg<=-0.5?-1:0;
-  }
-
   if(contract === 'sep'){
-    const isLateSeasonUS = nowMonth >= 8;
-    const usW = isLateSeasonUS
-      ? {weather:25, noaa:15, drought:30, soycond:30}   // 8月起：干旱监测/优良率权重升高，NOAA展望降低
-      : {weather:35, noaa:30, drought:10, soycond:25};  // 6-7月：天气预报/NOAA展望权重更高
-    cropComposite = weightedComposite([
-      {val:weatherSigNum, weight:usW.weather},
-      {val:window._noaaOutlookSignal, weight:usW.noaa},
-      {val:window._droughtSignal, weight:usW.drought},
-      {val:window._soyCondSignal, weight:usW.soycond},
-    ]);
-    cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率，${isLateSeasonUS?'8月起':'6-7月'}权重)`;
-  } else if(contract === 'may' || contract === 'jan'){
-    // 南美天气+南美产量(PSD)也是相关信号(天气不好→产量预期下降是同一件事的两个角度)，
-    // 跟9月合约那边"美国天气类4合1"用同样的原则合成，不各自独立投票
-    // ★ 已修复：之前1月合约完全不看南美数据，但1月合约的说明文字里明明写着
-    //   "南美早期播种"值得关注，而且南美"播种生长期(10-次年1月)"跟1月合约建议
-    //   交易窗口(8-11月)高度重叠——加权用的是南美自己的日历，不因合约不同而改变
-    const isOffSeasonSA = nowMonth>=6 && nowMonth<=9;      // 休耕期(6-9月)：地里没有作物，天气信号参考价值低
-    const isPlantingSA = nowMonth>=10 || nowMonth===1;      // 播种+生长期(10-次年1月)
-    // 关键期+收获(2-5月)是剩下的情况
+    const us = computeUsCrop(nowMonth);
+    cropComposite = us.val;
+    cropLabel = `作物生长状况综合(美国天气+干旱监测+NOAA展望+美豆优良率，${us.late?'8月起':'6-7月'}权重)`;
+  } else {
+    // 5月/1月合约：南美天气+南美产量(PSD)合成1票。南美用自己的生长日历，不套用美国的分法。
+    const isOffSeasonSA = nowMonth>=6 && nowMonth<=9;      // 休耕期：地里没有作物，天气信号参考价值低
+    const isPlantingSA = nowMonth>=10 || nowMonth===1;      // 播种+生长期
     const saW = isOffSeasonSA ? {weather:10, psd:90}
                : isPlantingSA ? {weather:55, psd:45}
                : {weather:20, psd:80};
@@ -3178,98 +2893,136 @@ function updateOverallAlert(){
     const seasonLabel = isOffSeasonSA?'休耕期':isPlantingSA?'播种生长期':'关键期收获期';
     cropLabel = `南美(巴西/阿根廷)天气+产量综合(${seasonLabel}权重)`;
   }
-  if(cropComposite===1){ score+=1; notes.push(`${cropLabel} → 偏多`); }
-  else if(cropComposite===-1){ score-=1; notes.push(`${cropLabel} → 偏空`); }
-  else if(cropComposite===0){ notes.push(`${cropLabel}：子信号方向不一致或均为中性 → 中性`); }
-  // 美豆播种进度+巴西雷亚尔汇率：这2项测的是跟"南美天气+产量"不同的东西
-  // (播种进度测的是"美国下一季刚起步"，雷亚尔测的是"已产出的南美豆卖得快不快")，
-  // 不是同一件事的不同角度，所以不合并进crop composite，各自独立投票，
-  // 但只在5月合约时才计入(这2项只跟这个窗口期相关)
+  addVote(cropLabel, 'supply', cropComposite,
+    cropComposite===1 ? `${cropLabel} → 偏多` : cropComposite===-1 ? `${cropLabel} → 偏空`
+    : cropComposite===0 ? `${cropLabel}：子信号方向不一致或均为中性 → 中性` : null);
+
+  // ★1月合约的建议交易窗口是8-11月，8-9月美豆还在灌浆/刚开始收获，美国天气和优良率仍有信息量；
+  //   之前1月合约完全不看美国天气，这两个月等于少了一块。10月起收获过半，才不再计入。
+  if(contract === 'jan' && (nowMonth===8 || nowMonth===9)){
+    const us = computeUsCrop(nowMonth);
+    const lbl = '美国作物生长状况综合(1月合约8-9月灌浆收尾期，8月起权重)';
+    addVote(lbl, 'supply', us.val,
+      us.val===1 ? `${lbl} → 偏多` : us.val===-1 ? `${lbl} → 偏空` : us.val===0 ? `${lbl}：子信号方向不一致或均为中性 → 中性` : null);
+  }
+
+  // ---- ② 供应侧其他 ----
+  addVote('库存消费比(美豆)', 'supply', window._psdSignal,
+    window._psdSignal===1 ? '美豆库存消费比偏低 → 供给偏紧，偏多'
+    : window._psdSignal===-1 ? '美豆库存消费比偏高 → 供给宽松，偏空'
+    : window._psdSignal===0 ? '美豆库存消费比处于正常区间' : null);
+
+  // ★合并重复票(第1步)：商业库存和开机率是"存量"和"流量"，到港预报和月度进口量是"预报"和"实绩"(同一批大豆，
+  //   同一套800/1000阈值)，之前各投1票等于同一件事计了两次。
+  // ★国内豆粕库消比进"国内豆粕供应松紧"这一组：库消比(50)+开机率(30)+商业库存(20)。库存只给20是因为库消比=库存÷消费，两者是同一数据的
+  //   两种口径，并列投票等于重复计票；库消比不可用(抓取失败/过期)时回到60/40。整组是"主导档"，投2票——
+  //   用户判断国内库消比比美豆库消比更能反映国内期货的中短期状态。
+  const tw = sig.stu!==null ? TIGHTNESS_WEIGHTS.withStu : TIGHTNESS_WEIGHTS.withoutStu;
+  const tightness = weightedComposite(sig.stu!==null
+    ? [{val:sig.stu, weight:tw.stu}, {val:sig.crush, weight:tw.crush}, {val:sig.stock, weight:tw.stock}]
+    : [{val:sig.stock, weight:tw.stock}, {val:sig.crush, weight:tw.crush}]);
+  addVote('国内豆粕供应松紧 ×'+TIGHTNESS_VOTE_WEIGHT, 'supply', tightness,
+    compositeNote('国内豆粕供应松紧', sig.stu!==null
+      ? [['库消比',sig.stu,tw.stu],['开机率',sig.crush,tw.crush],['库存',sig.stock,tw.stock]]
+      : [['库存',sig.stock,tw.stock],['开机率',sig.crush,tw.crush]], tightness, TIGHTNESS_VOTE_WEIGHT), TIGHTNESS_VOTE_WEIGHT);
+  const inflow = weightedComposite([{val:sig.arrival, weight:60}, {val:sig.import, weight:40}]);
+  addVote('大豆到港/进口(到港预报+月度进口量)', 'supply', inflow,
+    compositeNote('大豆到港/进口', [['到港预报',sig.arrival],['月度进口量',sig.import]], inflow));
+
+  addVote('人民币汇率', 'supply', window._fxSignal,
+    window._fxSignal===1 ? '人民币贬值 → 进口成本上升，偏多' : window._fxSignal===-1 ? '人民币升值 → 进口成本下降，偏空' : null);
+  addVote('国储拍卖', 'supply', sig.reserve, null);
+
+  // 美豆播种进度+巴西雷亚尔汇率：跟"南美天气+产量"测的是不同的事，不合并，各自投票，只在5月合约计入
   if(contract === 'may'){
-    if(window._plantingSignal===1){ score+=1; notes.push('美豆播种推进缓慢 → 偏多'); }
-    else if(window._plantingSignal===-1){ score-=1; notes.push('美豆播种推进较快 → 偏空'); }
-    if(window._brlSignal===1){ score+=1; notes.push('雷亚尔升值，巴西农户惜售 → 偏多'); }
-    else if(window._brlSignal===-1){ score-=1; notes.push('雷亚尔贬值，巴西农户加快卖粮 → 偏空'); }
+    addVote('美豆播种进度', 'supply', window._plantingSignal,
+      window._plantingSignal===1 ? '美豆播种推进缓慢 → 偏多' : window._plantingSignal===-1 ? '美豆播种推进较快 → 偏空' : null);
+    addVote('巴西雷亚尔汇率', 'supply', window._brlSignal,
+      window._brlSignal===1 ? '雷亚尔升值，巴西农户惜售 → 偏多' : window._brlSignal===-1 ? '雷亚尔贬值，巴西农户加快卖粮 → 偏空' : null);
   }
-  // 美豆收获进度：测的是"新豆多快流入市场"，跟"最终产量数据"(PSD/WASDE)不是一回事，
-  // 只在1月合约时才计入(这项只跟这个窗口期相关)
+  // 美豆收获进度(新豆多快流入市场)+巴西播种进度(跟去年同期比)：只在1月合约计入
   if(contract === 'jan'){
-    if(window._harvestSignal===1){ score+=1; notes.push('美豆收获推进缓慢 → 偏多'); }
-    else if(window._harvestSignal===-1){ score-=1; notes.push('美豆收获推进较快 → 偏空'); }
-    // ★巴西大豆播种进度：现在改成自动抓取(CONAB via agrobr库)，信号在renderBrazilPlanting()
-    // 里算好存到window._brazilPlantingSignal，这里只是读取，不再自己解析手动输入框。
-    // 跟同比(去年同期)比，不用固定阈值——播种率是从0%累积到100%的季节性数字，同一个
-    // 百分比在播种季初期和末期意义完全不同，只有跟"去年同期同一时间点"比才有意义。
-    if(window._brazilPlantingSignal===1){ score+=1; notes.push('巴西大豆播种慢于去年同期 → 偏多'); }
-    else if(window._brazilPlantingSignal===-1){ score-=1; notes.push('巴西大豆播种快于去年同期 → 偏空'); }
+    addVote('美豆收获进度', 'supply', window._harvestSignal,
+      window._harvestSignal===1 ? '美豆收获推进缓慢 → 偏多' : window._harvestSignal===-1 ? '美豆收获推进较快 → 偏空' : null);
+    addVote('巴西大豆播种进度', 'supply', window._brazilPlantingSignal,
+      window._brazilPlantingSignal===1 ? '巴西大豆播种慢于去年同期 → 偏多' : window._brazilPlantingSignal===-1 ? '巴西大豆播种快于去年同期 → 偏空' : null);
   }
-  if(window._esrSignal===1){ score+=1; notes.push('出口销售环比大增 → 偏多'); }
-  else if(window._esrSignal===-1){ score-=1; notes.push('出口销售环比大减 → 偏空'); }
-  if(window._fxSignal===1){ score+=1; notes.push('人民币贬值 → 进口成本上升，偏多'); }
-  else if(window._fxSignal===-1){ score-=1; notes.push('人民币升值 → 进口成本下降，偏空'); }
-  if(window._psdSignal===1){ score+=1; notes.push('库存消费比偏低 → 供给偏紧，偏多'); }
-  else if(window._psdSignal===-1){ score-=1; notes.push('库存消费比偏高 → 供给宽松，偏空'); }
+
+  // ---- ③ 需求侧 ----
+  addVote('出口销售(美豆)', 'demand', window._esrSignal,
+    window._esrSignal===1 ? '美豆出口净销售明显高于近4周均值 → 偏多' : window._esrSignal===-1 ? '美豆出口净销售明显低于近4周均值 → 偏空' : null);
+  addVote('现货基差', 'structure', sig.basis, null);   // 盘面自己的表态，归入"市场结构"维度
+  addVote('猪粮比', 'demand', sig.hogratio, null);
+  addVote('能繁母猪', 'demand', sig.sows, null);
+  addVote('肉鸡养殖利润', 'demand', sig.poultry, null);
+  addVote('豆菜粕价差', 'demand', sig.rmspread, null);
+
+  // ---- 汇总：净倾向 = 票权加权分数 ÷ 有效票权合计 ----
+  const overall = tallyVotes(votes);
+  const dims = computeDimensions(votes);
+  const valid = votes.filter(v=>v.signal!==null);
+  const n = overall.n;                 // 有效指标数(用于"数据不足/覆盖率"判断，按投票个数算，不按票权)
+  const score = overall.score;
+  const ratio = overall.ratio===null ? 0 : overall.ratio;
+  const bullN = valid.filter(v=>v.signal===1).length;
+  const bearN = valid.filter(v=>v.signal===-1).length;
+  const neutN = n - bullN - bearN;
+  const coverageNote = `有效${n}/${votes.length}项 · ${bullN}多 ${neutN}中 ${bearN}空`;
 
   const el = document.getElementById('alertContent');
-  if(notes.length===0){
-    el.innerHTML = '<div class="alert-box neutral"><span class="at">数据不足</span>请至少填写几项手动数据，或等天气/USDA数据加载完成</div>';
-    window._fundamentalDirection = null; // ★三方共振第③块输入：数据不够时明确置空，而不是留着上一次的旧值不管
+  const supplyItems = votes.filter(v=>v.side==='supply').map(v=>({label:v.label, signal:v.signal}));
+  const demandItems = votes.filter(v=>v.side==='demand').map(v=>({label:v.label, signal:v.signal}));
+  const structureItems = votes.filter(v=>v.side==='structure').map(v=>({label:v.label, signal:v.signal}));
+  const sdTable = renderSupplyDemandTable(supplyItems, demandItems, structureItems);
+  const footerNote = contract === 'sep'
+    ? '💡 "作物生长状况综合"是美国天气/干旱监测/NOAA展望/美豆优良率4项子信号的综合结果；"国内豆粕供应松紧""大豆到港/进口"也是合并信号，避免同一件事被重复计票'
+    : contract === 'may'
+    ? '💡 5月合约窗口期，天气类信号改用南美(巴西/阿根廷)天气代替美国天气；"国内豆粕供应松紧""大豆到港/进口"是合并信号'
+    : (nowMonth===8 || nowMonth===9)
+    ? '💡 1月合约8-9月：美豆仍在灌浆收尾/刚开始收获，美国天气类综合信号计入(10月起不再计入)，同时看南美早期播种和收获进度'
+    : '💡 1月合约窗口期，美豆已进入收获中后期，暂不计入美国天气类信号，看收获进度和南美早期播种';
+
+  if(n < MIN_VALID_VOTES){
+    // 有效指标太少时不下结论——这时候任何"偏多/偏空"都可能只是一两个指标的偶然
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">数据不足，暂不下结论</span>目前只有${n}项指标有有效数据(至少需要${MIN_VALID_VOTES}项)，等自动抓取完成或到各指标卡片的详情里核对/手动补充</div>${sdTable}
+      <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')||'暂无数据'}</div></details>`;
+    window._fundamentalDirection = null; // 三方共振第③块输入：数据不够时明确置空，不留着上一次的旧值
+    window._dimensions = null; window._fundamentalConfidence = null;
     renderResonancePanel();
     return;
   }
 
   let cls, title;
-  if(score>=3){ cls='bull'; title='综合偏多 +'+score; }
-  else if(score<=-3){ cls='bear'; title='综合偏空 '+score; }
-  else{ cls='neutral'; title='信号混合 '+(score>0?'+':'')+score; }
-  // ★三方共振第③块输入：跟上面判定alert-box样式用的同一套score>=3/score<=-3阈值，
-  //   不是另外发明一套标准——这样"基本面：偏多"跟下面详细面板里的"综合偏多"不会对不上。
-  window._fundamentalDirection = score>=3 ? '偏多' : score<=-3 ? '偏空' : '中性';
+  const pct = Math.round(ratio*100);
+  if(ratio >= DIRECTION_RATIO){ cls='bull'; title=`综合偏多 +${score}（净倾向${pct>0?'+':''}${pct}%）`; }
+  else if(ratio <= -DIRECTION_RATIO){ cls='bear'; title=`综合偏空 ${score}（净倾向${pct}%）`; }
+  else{ cls='neutral'; title=`信号混合 ${score>0?'+':''}${score}（净倾向${pct>0?'+':''}${pct}%）`; }
+  // 三方共振第③块输入：跟上面alert-box样式用同一套判定，"基本面：偏多"跟详细面板里的"综合偏多"不会对不上
+  window._fundamentalDirection = ratio>=DIRECTION_RATIO ? '偏多' : ratio<=-DIRECTION_RATIO ? '偏空' : '中性';
 
-  // 1月合约不计入天气类信号(少1票)；5月合约多了播种进度+雷亚尔汇率这2项(最多多2票)
-  // 1月合约现在有南美综合信号(之前没有)+收获进度+巴西播种进度(新增)，上限从14变成15
-  // 5月合约多了播种进度+雷亚尔汇率这2项，上限15
-  const maxVotes = contract === 'jan' ? 16 : contract === 'may' ? 16 : 14;
-  const gauge = renderGaugeSVG(score, -maxVotes, maxVotes);
-  // 供应侧：影响"有多少货"的指标；需求侧：影响"有多少人要买"的指标
-  const supplyItems = [];
-  if(cropLabel) supplyItems.push({label:cropLabel, signal:cropComposite});
-  supplyItems.push(
-    {label:'库存消费比', signal:window._psdSignal}, {label:'开机率', signal:sigCrush},
-    {label:'商业库存', signal:sigStock}, {label:'到港预报', signal:sigArrival},
-    {label:'进口量', signal:sigImport}, {label:'人民币汇率', signal:window._fxSignal},
-    {label:'国储拍卖', signal:sigReserve},
-  );
-  if(contract === 'may'){
-    supplyItems.push(
-      {label:'美豆播种进度', signal:window._plantingSignal},
-      {label:'巴西雷亚尔汇率', signal:window._brlSignal},
-    );
-  }
-  if(contract === 'jan'){
-    supplyItems.push(
-      {label:'美豆收获进度', signal:window._harvestSignal},
-      {label:'巴西大豆播种进度', signal:window._brazilPlantingSignal},
-    );
-  }
-  const demandItems = [
-    {label:'出口销售', signal:window._esrSignal}, {label:'现货基差', signal:sigBasis},
-    {label:'猪粮比', signal:sigHogratio}, {label:'能繁母猪', signal:sigSows},
-    {label:'肉鸡养殖利润', signal:sigPoultry}, {label:'豆菜粕价差', signal:sigRmSpread},
-  ];
-  const sdTable = renderSupplyDemandTable(supplyItems, demandItems);
-  const footerNote = contract === 'sep'
-    ? '💡 "作物生长状况综合"是美国天气/干旱监测/NOAA展望/美豆优良率这4项子信号的综合结果，避免同一件事被重复计票'
-    : contract === 'may'
-    ? '💡 5月合约窗口期，天气类信号改用南美(巴西/阿根廷)天气代替美国天气'
-    : '💡 1月合约窗口期，美豆已收割、南美刚播种没多久，天气不确定性低，暂不计入天气类信号';
-  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span></div>${sdTable}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由</div>
+  const lowCoverage = n / votes.length < 0.6;
+  // 置信度只在综合方向明确时评级；信号混合时说明"多空力量接近"，并单独提示两侧是否在打架
+  const directional = cls !== 'neutral';
+  const conf = computeConfidence(votes, overall, dims);
+  window._dimensions = dims;
+  window._fundamentalConfidence = directional ? conf.label : null;
+  const divergence = conf.divergence;
+  const divergenceHtml = divergence
+    ? `<div class="alert-box warn"><span class="at">⚠️ 方向分歧</span>${divergence.bear.name}${dirWord(divergence.bear.dir)}(${fmtPct(divergence.bear.ratio)})，${divergence.bull.name}${dirWord(divergence.bull.dir)}(${fmtPct(divergence.bull.ratio)})——两侧信号方向相反，综合分数会把它们抵消掉，不要只看总分</div>` : '';
+  const confHtml = directional
+    ? `<div class="alert-box ${conf.level===0?'warn':'neutral'}"><span class="at">🔎 结论置信度：${conf.label}</span>${conf.reasons.join('；')}</div>`
+    : `<div class="alert-box neutral"><span class="at">🔎 多空力量接近，没有明确方向</span>偏多票权${overall.bullW} vs 偏空票权${overall.bearW}，${overall.n-bullN-bearN}项中性</div>`;
+  const dimHtml = `<div style="margin-top:8px">${dimensionBarsHtml(dims)}<div style="font-size:10px;color:var(--t3);margin-top:2px">${dimensionSummary(dims)} · 淡刻度线=±${Math.round(DIRECTION_RATIO*100)}%方向门槛，三个维度是同一批投票的拆分，不是额外指标</div></div>`;
+  // 仪表：量程±66%，这样1/3分界线正好落在±22%(=方向判定门槛)，指针落在哪一段跟文字结论一致
+  const gauge = renderGaugeSVG(pct, -66, 66, '%');
+  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${dimHtml}${divergenceHtml}${confHtml}${driversHtml(votes)}${sdTable}
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是基本面倾向，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
   renderResonancePanel();
 }
 
 // ===================== 初始化 =====================
+buildIndicatorCards(); // 先生成10张指标卡片骨架，再恢复手动修正值、再等自动抓取结果覆盖
 loadManual();
 loadWeather();
 loadFxRate();

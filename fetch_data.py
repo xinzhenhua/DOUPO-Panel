@@ -30,6 +30,7 @@
     data/latest.json  ← 网页会读取这个文件
 """
 
+import html
 import json
 import os
 import re
@@ -191,23 +192,73 @@ def get_soybean_meal_esr_code():
     return None, debug
 
 
+def get_soybean_esr_code():
+    """动态查找\"Soybeans\"(大豆本身，不是豆粕/豆油)在 ESR 商品列表里的编码。
+    ★为什么从豆粕改成大豆：美国豆粕出口量对DCE豆粕的影响远小于\"美豆对华销售\"，
+      ESR里能拿来判断中国买家动向的是大豆(801)这一项，不是豆粕。
+    返回 (code, debug)：code为None时，debug里说明是\"请求失败\"还是\"没匹配上\"。"""
+    data, debug = fetch_json_debug(f"{USDA_BASE}/esr/commodities", headers={"X-Api-Key": USDA_API_KEY})
+    if not data:
+        debug["failureStage"] = "请求/esr/commodities本身失败（网络问题、认证失败、或被限流）"
+        return None, debug
+    # 第一优先级：名称精确等于"soybeans"(不区分大小写/首尾空格)
+    for item in data:
+        if (item.get("commodityName") or "").strip().lower() == "soybeans":
+            return item.get("commodityCode"), None
+    # 兜底：含soybean、且不是meal/cake/oil
+    for item in data:
+        name = (item.get("commodityName") or "").lower()
+        if "soybean" in name and not any(x in name for x in ("meal", "cake", "oil")):
+            return item.get("commodityCode"), None
+    debug["failureStage"] = "接口请求成功，拿到了商品列表，但没有一条是'Soybeans'(大豆本身)"
+    debug["actualCommodityNamesSeen"] = sorted(set((item.get("commodityName") or "") for item in data))[:50]
+    debug["totalCommoditiesReturned"] = len(data)
+    return None, debug
+
+
+# ★ESR每行数据里两个容易混淆的量：
+#   weeklyExports      = 当周实际装船出口量(shipments，已经发走的货)
+#   currentMYNetSales / nextMYNetSales = 当周净销售(net sales，新签的合同，本年度+下一年度)
+# 之前的版本按\"weeklyExports优先\"取数，却把它标成\"净销售\"，等于把装船量当成了销售量。
+# 买家的采购意愿看的是净销售；装船量是滞后的执行结果，单独展示，不混用。
+ESR_NET_SALES_FIELDS = ("currentMYNetSales", "nextMYNetSales")
+
+
+def _num(v):
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else 0
+
+
+def _esr_net_sales(row):
+    return sum(_num(row.get(f)) for f in ESR_NET_SALES_FIELDS)
+
+
+def _is_china(row):
+    """国家名里含china(不区分大小写)算中国。这是按名称匹配的，没法在开发环境里核对ESR接口里中国
+    到底怎么写——所以结果里会带上出现过的国家名列表(countryNamesSeen)，部署后可以核对。"""
+    return "china" in (row.get("countryName") or "").lower()
+
+
+def _is_unknown_dest(row):
+    """\"未知目的地\"：买家国家还没确定的销售。ESR的做法不是回头修改历史，而是国家明确的那一周
+    记一笔目的地变更(未知记负、具体国家记正)。所以单周的中国数字会忽小忽大，未知也不能直接算成中国。"""
+    return "unknown" in (row.get("countryName") or "").lower()
+
+
 def fetch_esr_export_sales():
-    code, code_lookup_debug = get_soybean_meal_esr_code()
+    code, code_lookup_debug = get_soybean_esr_code()
     if not code:
         return {
             "available": False,
-            "reason": "未能找到豆粕的ESR商品编码",
+            "reason": "未能找到大豆(Soybeans)的ESR商品编码",
             "debug": code_lookup_debug,
         }
 
-    # ★ 已修复：之前用"10月做分界"猜市场年度，实测发现猜错了
-    #   （查到marketYear=2025时，最新数据停在2025-10-02，说明那是个已完结、不再更新的年度）。
-    #   现在不再猜，而是同时试几个候选年份，用真实返回数据里最新的日期来判断哪个年度是当前活跃的。
+    # 同时试几个候选年份(不猜哪个是当前年度)，把每个年度的逐周数据都收下来。
+    # 跨市场年度切换(9月初)时，4周均值需要用到上一个年度的最后几周，所以不能只留\"最新年度\"一份。
     now = datetime.now(timezone.utc)
     candidate_years = [now.year - 1, now.year, now.year + 1]
-    best_rows, best_debug, best_year = None, None, None
+    rows_by_year = {}
     all_attempts_debug = {}
-
     for candidate_my in candidate_years:
         url = f"{USDA_BASE}/esr/exports/commodityCode/{code}/allCountries/marketYear/{candidate_my}"
         rows, debug = fetch_json_debug(url, headers={"X-Api-Key": USDA_API_KEY})
@@ -216,68 +267,77 @@ def fetch_esr_export_sales():
             "rowCount": len(rows) if rows else 0,
             "latestWeekFound": max((r.get("weekEndingDate") for r in rows if r.get("weekEndingDate")), default=None) if rows else None,
         }
-        if not rows:
-            continue
-        candidate_latest_week = max((r.get("weekEndingDate") for r in rows if r.get("weekEndingDate")), default=None)
-        if candidate_latest_week is None:
-            continue
-        best_latest_week = max((r.get("weekEndingDate") for r in best_rows if r.get("weekEndingDate")), default=None) if best_rows else None
-        if best_rows is None or candidate_latest_week > best_latest_week:
-            best_rows, best_debug, best_year = rows, debug, candidate_my
+        if rows:
+            rows_by_year[candidate_my] = rows
 
-    rows, debug = best_rows, best_debug
-    if not rows:
+    if not rows_by_year:
         return {
             "available": False,
             "reason": "ESR接口无返回数据（已尝试" + "、".join(str(y) for y in candidate_years) + "这几个候选年份）",
             "debug": all_attempts_debug,
         }
 
-    # 关键点：每周有多个国家的记录，不能直接用 rows[-1]/rows[-2]
-    # （那样可能取到"同一周的另一个国家"而不是"上一周"）。
-    # 必须先拿到"去重后的周次日期"排序，再取最近两个不同的周。
-    unique_weeks = sorted(set(r.get("weekEndingDate") for r in rows if r.get("weekEndingDate")))
+    # 每个周次只取\"包含这一周的最大市场年度\"那一批行，避免年度交界处同一周被两个年度重复计入。
+    week_rows = {}
+    for my in sorted(rows_by_year):
+        by_week = {}
+        for r in rows_by_year[my]:
+            w = r.get("weekEndingDate")
+            if w:
+                by_week.setdefault(w, []).append(r)
+        for w, rs in by_week.items():
+            week_rows[w] = (my, rs)
+
+    unique_weeks = sorted(week_rows)
     if len(unique_weeks) < 2:
         return {
             "available": False,
             "reason": "数据量不足以计算环比（不足两个不同周次）",
-            "debug": {"note": f"拿到{len(rows)}条记录，但去重后只有{len(unique_weeks)}个周次", "sampleRawRow": rows[0] if rows else None},
+            "debug": {"note": f"去重后只有{len(unique_weeks)}个周次", "attempts": all_attempts_debug},
         }
 
-    latest_week_date = unique_weeks[-1]
-    prev_week_date = unique_weeks[-2]
+    # ★不做\"净销售字段找不到就退回weeklyExports\"的静默兜底——那正是之前把装船量当成销售量的原因。
+    latest_rows = week_rows[unique_weeks[-1]][1]
+    if not any(f in r for r in latest_rows for f in ESR_NET_SALES_FIELDS):
+        return {
+            "available": False,
+            "reason": "ESR返回的数据里找不到净销售字段(currentMYNetSales/nextMYNetSales)，为避免把装船量误当成净销售，不使用",
+            "debug": {"actualFieldsSeen": sorted(latest_rows[0].keys()) if latest_rows else [],
+                      "sampleRawRow": latest_rows[0] if latest_rows else None},
+        }
 
-    # 汇总所有国家在某一周的净销售量（weeklyExports字段名可能随API版本略有差异，做容错）
-    def week_total(week_rows, field_candidates):
-        total = 0
-        for r in week_rows:
-            for f in field_candidates:
-                if f in r and r[f] is not None:
-                    total += r[f]
-                    break
-        return total
+    weekly = []
+    country_names_seen = set()
+    for w in unique_weeks:
+        my, rs = week_rows[w]
+        china = [r for r in rs if _is_china(r)]
+        unknown = [r for r in rs if _is_unknown_dest(r)]
+        for r in rs:
+            n = (r.get("countryName") or "").strip()
+            if n:
+                country_names_seen.add(n)
+        net_total = sum(_esr_net_sales(r) for r in rs)
+        china_net = sum(_esr_net_sales(r) for r in china)
+        unknown_net = sum(_esr_net_sales(r) for r in unknown)
+        weekly.append({
+            "weekEnding": w,
+            "marketYear": my,
+            "netSalesMT": net_total,
+            "shipmentsMT": sum(_num(r.get("weeklyExports")) for r in rs),
+            "chinaNetSalesMT": china_net,
+            "unknownNetSalesMT": unknown_net,
+            "otherNetSalesMT": net_total - china_net - unknown_net,
+            "chinaShipmentsMT": sum(_num(r.get("weeklyExports")) for r in china),
+        })
 
-    latest_week = [r for r in rows if r.get("weekEndingDate") == latest_week_date]
-    prev_week = [r for r in rows if r.get("weekEndingDate") == prev_week_date]
+    latest, prev = weekly[-1], weekly[-2]
+    trailing = weekly[-5:-1]  # 最新一周之前的4周，作为\"近期常态\"基准，比单看环比噪音小得多
+    avg4 = round(sum(x["netSalesMT"] for x in trailing) / 4) if len(trailing) == 4 else None
+    vs4w = round((latest["netSalesMT"] - avg4) / abs(avg4) * 100, 1) if avg4 else None
+    wow = round((latest["netSalesMT"] - prev["netSalesMT"]) / abs(prev["netSalesMT"]) * 100, 1) if prev["netSalesMT"] else None
 
-    net_sales_field_candidates = ["weeklyExports", "grossNewSales", "netSales"]
-    latest_total = week_total(latest_week, net_sales_field_candidates)
-    prev_total = week_total(prev_week, net_sales_field_candidates)
-
-    china_latest = sum(
-        r.get("weeklyExports", 0) or 0
-        for r in latest_week
-        if "china" in (r.get("countryName") or "").lower()
-    )
-
-    wow_change_pct = None
-    if prev_total:
-        wow_change_pct = round((latest_total - prev_total) / abs(prev_total) * 100, 1)
-
-    # 计算数据新鲜度：即便三个候选年份里选出了"最新的"，也可能三个都不新鲜
-    # （比如接口本身更新滞后）。ESR是每周更新的报告，超过25天没更新就该提醒一下。
     try:
-        latest_date_parsed = datetime.fromisoformat(latest_week_date.replace("Z", "+00:00"))
+        latest_date_parsed = datetime.fromisoformat(latest["weekEnding"].replace("Z", "+00:00"))
         if latest_date_parsed.tzinfo is None:
             latest_date_parsed = latest_date_parsed.replace(tzinfo=timezone.utc)
         age_days = (datetime.now(timezone.utc) - latest_date_parsed).days
@@ -287,30 +347,45 @@ def fetch_esr_export_sales():
 
     result = {
         "available": True,
-        "weekEnding": latest_week_date,
-        "marketYearUsed": best_year,
+        "commodity": "Soybeans(大豆)",
+        "weekEnding": latest["weekEnding"],
+        "marketYearUsed": latest["marketYear"],
         "dataAgeDays": age_days,
         "isStale": is_stale,
-        "latestTotalMT": latest_total,
-        "prevTotalMT": prev_total,
-        "wowChangePct": wow_change_pct,
-        "chinaLatestMT": china_latest,
+        "netSalesMT": latest["netSalesMT"],
+        "prevNetSalesMT": prev["netSalesMT"],
+        "avg4wNetSalesMT": avg4,
+        "vs4wAvgPct": vs4w,
+        "wowChangePct": wow,
+        "shipmentsMT": latest["shipmentsMT"],
+        "chinaNetSalesMT": latest["chinaNetSalesMT"],
+        "unknownNetSalesMT": latest["unknownNetSalesMT"],
+        "otherNetSalesMT": latest["otherNetSalesMT"],
+        "chinaShipmentsMT": latest["chinaShipmentsMT"],
+        # 近4周(含最新周)滚动合计：抹平\"未知→中国\"目的地变更造成的单周跳动
+        "china4wSumMT": sum(x["chinaNetSalesMT"] for x in weekly[-4:]),
+        "unknown4wSumMT": sum(x["unknownNetSalesMT"] for x in weekly[-4:]),
+        "total4wSumMT": sum(x["netSalesMT"] for x in weekly[-4:]),
+        "chinaShare4wPct": (round(sum(x["chinaNetSalesMT"] for x in weekly[-4:]) / sum(x["netSalesMT"] for x in weekly[-4:]) * 100, 1)
+                            if sum(x["netSalesMT"] for x in weekly[-4:]) > 0 else None),
+        "chinaMatched": any(_is_china(r) for _, (_, rs) in week_rows.items() for r in rs),
+        "countryNamesSeen": sorted(country_names_seen)[:60],
+        "recentWeeks": [{"weekEnding": x["weekEnding"], "netSalesMT": x["netSalesMT"],
+                         "chinaNetSalesMT": x["chinaNetSalesMT"], "unknownNetSalesMT": x["unknownNetSalesMT"]} for x in weekly[-8:]],
         "source": "USDA-FAS ESR API",
         "sourceUrl": "https://apps.fas.usda.gov/esrqs/",
     }
     if is_stale:
         result["debug"] = {
-            "warning": f"三个候选年份({candidate_years})里最新数据是{latest_week_date}，距今{age_days}天，"
-                       f"已超过25天的新鲜度阈值，ESR是每周更新的报告，这可能意味着接口有延迟或候选年份范围需要调整",
+            "warning": f"最新数据是{latest['weekEnding']}，距今{age_days}天，已超过25天的新鲜度阈值，"
+                       f"ESR是每周更新的报告，这可能意味着接口有延迟或候选年份范围需要调整",
             "allCandidateYearsResults": all_attempts_debug,
         }
-    # 如果拿到了记录，但汇总出来的数值全是0，很可能是 weeklyExports/grossNewSales/netSales
-    # 这几个候选字段名都没命中，附上实际字段名方便诊断
-    if latest_total == 0 and prev_total == 0 and latest_week:
+    if latest["netSalesMT"] == 0 and prev["netSalesMT"] == 0:
         result["debug"] = {
-            "warning": "已连接上接口并拿到数据，但汇总净销售量为0，可能是字段名候选(weeklyExports/grossNewSales/netSales)都没匹配上",
-            "actualFieldsSeen": sorted(latest_week[0].keys()) if latest_week else [],
-            "sampleRawRow": latest_week[0] if latest_week else None,
+            "warning": "已连接上接口并拿到数据，但连续两周净销售汇总为0，可能是净销售字段名(currentMYNetSales/nextMYNetSales)没匹配上",
+            "actualFieldsSeen": sorted(latest_rows[0].keys()) if latest_rows else [],
+            "sampleRawRow": latest_rows[0] if latest_rows else None,
         }
     return result
 
@@ -409,6 +484,8 @@ def _parse_psd_rows(rows, attr_map):
         "production": "Production",
         "total supply": "Total Supply",
         "domestic consumption": "Domestic Consumption",
+        "exports": "Exports",
+        "crush": "Crush",
     }
     out = {}
     seen_attrs = set()
@@ -452,22 +529,32 @@ def _parse_psd_rows(rows, attr_map):
     return out, seen_attrs, has_string_names, latest_vintage
 
 
+def _psd_target_market_year(now):
+    """美豆的PSD市场年度按起始年份标记(2026=2026/27，9月1日开始)。
+    5月WASDE起首次给出新年度预估——9月合约窗口(4-7月)看的正是新作物平衡表，
+    所以5月起用\"当年\"，1-4月用\"上一年\"(还在当前年度内，新年度预估要5月才发布)。"""
+    return now.year if now.month >= 5 else now.year - 1
+
+
 def fetch_psd_supply_demand():
-    code, code_lookup_debug = get_soybean_meal_psd_code()
+    """美国大豆(Oilseed, Soybean)的供需平衡表，算库存消费比(stocks-to-use)。
+    ★之前抓的是美国豆粕：豆粕是流量型商品，期末库存只占消费的1-3%，套用\"大豆\"的阈值等于永远偏多；
+      大豆库存消费比的标准口径是 期末库存 ÷ (国内消费+出口)，即 期末库存/总用量。"""
+    code, code_lookup_debug = get_soybean_psd_code()
     if not code:
         return {
             "available": False,
-            "reason": "未能找到豆粕的PSD商品编码",
+            "reason": "未能找到大豆(Oilseed, Soybean)的PSD商品编码",
             "debug": code_lookup_debug,
         }
+    matched_name = (code_lookup_debug or {}).get("matchedName")
 
     attr_map, attr_map_source = get_psd_attribute_names()
 
-    # ★ 同样的教训：不再猜哪个"year"参数值对应当前活跃的市场年度，
-    #   而是同时试几个候选年份，用每批数据里真实出现的"最新WASDE修订月份"来判断哪个最新。
-    now_year = datetime.now(timezone.utc).year
-    candidate_years = [now_year - 1, now_year, now_year + 1]
-    best = None  # {"year":, "rows":, "out":, "seen_attrs":, "has_string_names":, "vintage":}
+    now = datetime.now(timezone.utc)
+    target = _psd_target_market_year(now)
+    candidate_years = [target - 1, target, target + 1]
+    candidates = {}
     all_attempts = {}
 
     for candidate_year in candidate_years:
@@ -481,54 +568,59 @@ def fetch_psd_supply_demand():
             continue
         out, seen_attrs, has_string_names, vintage = _parse_psd_rows(rows, attr_map)
         all_attempts[str(candidate_year)]["latestVintage"] = vintage
-        candidate = {
+        candidates[candidate_year] = {
             "year": candidate_year, "rows": rows, "out": out,
             "seen_attrs": seen_attrs, "has_string_names": has_string_names, "vintage": vintage,
         }
-        # 优先选"有实际匹配到数值"且"vintage最新"的候选；vintage为None时排到最后
-        if best is None:
-            best = candidate
-        else:
-            best_sort_key = (bool(best["out"]), best["vintage"] or ("", ""))
-            cand_sort_key = (bool(out), vintage or ("", ""))
-            if cand_sort_key > best_sort_key:
-                best = candidate
 
-    if best is None:
+    if not candidates:
         return {
             "available": False,
             "reason": "PSD接口无返回数据（已尝试" + "、".join(str(y) for y in candidate_years) + "这几个候选年份）",
             "debug": all_attempts,
         }
 
+    # ★按日历规则选目标年度(见_psd_target_market_year)，而不是\"哪个年度WASDE版本最新\"——
+    #   之前的做法在版本月份相同时会取到已经结束的旧年度。目标年度没有解析出数据时才退回版本最新的。
+    best = candidates.get(target)
+    if best is None or not best["out"]:
+        best = max(candidates.values(), key=lambda c: (bool(c["out"]), c["vintage"] or ("", "")))
+
     year = best["year"]
     out = best["out"]
-    seen_attrs = best["seen_attrs"]
-    has_string_names = best["has_string_names"]
     vintage = best["vintage"]
+
+    es, dc, ex = out.get("Ending Stocks"), out.get("Domestic Consumption"), out.get("Exports")
+    total_use = (dc + ex) if (dc is not None and ex is not None) else None
+    stocks_to_use = round(es / total_use * 100, 1) if (es is not None and total_use) else None
 
     result = {
         "available": True,
+        "commodity": matched_name or "Oilseed, Soybean",
         "marketYear": year,
+        "marketYearLabel": f"{year}/{str(year + 1)[-2:]}",
         "wasdeVintage": f"{vintage[0]}年{vintage[1]}月版" if vintage else "未知",
-        "endingStocks": out.get("Ending Stocks"),
+        "endingStocks": es,
         "production": out.get("Production"),
         "totalSupply": out.get("Total Supply"),
-        "domesticConsumption": out.get("Domestic Consumption"),
+        "domesticConsumption": dc,
+        "exports": ex,
+        "crush": out.get("Crush"),
+        "totalUse": total_use,
+        "stocksToUsePct": stocks_to_use,
+        "unit": "千公吨(USDA PSD标准单位)",
         "source": "USDA-FAS PSD API (WASDE同源数据)",
         "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
     }
 
-    # 如果四个关键字段一个都没匹配上，说明还是没能正确识别，
-    # 把实际收到的信息列出来，方便直接看出真实情况是什么，不用去翻原始接口。
     if not out:
-        if has_string_names:
+        if best["has_string_names"]:
             warning = "已连接上接口并拿到数据，但字段名一个都没匹配上，可能是接口实际用的attributeName和预期不同"
         else:
             warning = "接口返回的是数字attributeId而不是字符串名称，且未能成功获取attributeId对照表（这个对照表接口的确切路径尚未100%确认）"
         result["debug"] = {
             "warning": warning,
-            "actualAttributeNamesSeen": sorted(str(a) for a in seen_attrs)[:30],
+            "actualAttributeNamesSeen": sorted(str(a) for a in best["seen_attrs"])[:30],
             "sampleRawRow": best["rows"][0] if best["rows"] else None,
             "allCandidateYearsAttempted": all_attempts,
         }
@@ -942,6 +1034,7 @@ PLAUSIBLE_RANGES = {
     "rmSpread": (100.0, 3000.0, "元/吨"),        # 豆菜粕现货价差(变动幅度一般只有几十，会被挡掉)
     "arrivalForecast": (200.0, 2000.0, "万吨"),  # 月度大豆到港预报
     "mealStock": (10.0, 600.0, "万吨"),          # 豆粕商业库存
+    "mealStu": (1.0, 40.0, "%"),                # 国内豆粕库消比(月末库存÷当月消费；近12个月实测5.94~16.30)
     "soyImport": (200.0, 2000.0, "万吨"),        # 中国大豆月度进口量(2026年最低401.9，最高约1400)
     "reserveAuction": (0.1, 300.0, "万吨"),      # 国储进口大豆单次计划拍卖量(实测6.8~54.3)
     "soyAuctionPrice": (2000.0, 8000.0, "元/吨"),  # 国储进口大豆拍卖价格(实测4110~4450)
@@ -1514,6 +1607,319 @@ def fetch_mysteel_meal_stock(today=None):
         "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
     }
 
+
+
+# ---------------------------------------------------------------------------
+# 国内豆粕库存消费比(库消比)：Mysteel每月一篇《全国豆粕供需平衡表》。
+#
+# ★为什么要做：美豆库存消费比反映中长期的顶和底，国内豆粕库消比更能反映国内期货的中短期状态。
+# ★口径(用文章里的数字手算核对过，不是猜的)：库消比 = 月末库存 ÷ 当月消费量(月度，不是年度)。
+#     5月 40÷673=5.94%、1月 90÷722=12.47%(文中12.45%)、12月 117÷716=16.34%(文中16.30%)。
+#     这跟已有的"豆粕商业库存"是同一份数据的两种口径(库存是分子)，评分里不能并列投票，见前端合并规则。
+#
+# ★数据结构的三个坑(用户抓包+我抓过一篇正文核实的)：
+#   ① 搜索接口的content只是摘要：12篇里约1/3的摘要没有具体数字(比如"库消比仍处高位")，
+#      数字在正文里 → 要再GET文章url取正文。匿名访问时正文只到第2个月就截断(写到"10月产量大幅收缩"
+#      就没了)，刚好够用(当月+下月)。但这是开发环境的访问结果，GitHub Actions那边可能被拦或页面变了，
+#      所以抓取正文失败时要退回摘要，摘要也不行再退回"周度库存÷当月消费"，都不行就不可用。
+#   ② 文章标题的月份不可靠(2025年10-12月的文章，标题写的是下一个月)，所以不看标题，只看正文里的月份。
+#   ③ 摘要措辞五花八门："库消比从10.06%升至15.27%"(多月区间)、"库消比处于10.3%至10.5%"(区间)、
+#      "库消比达15%"(整数)、"期初库存仅43万吨...库存一度降至30万吨以下"(月中低点，不是月末)。
+#      → 只认单月记录里明示的单个库消比；区间/多月一律不采用；库存数字要跟库消比自洽才采用。
+# ---------------------------------------------------------------------------
+MEAL_BALANCE_QUERY = "全国豆粕供需平衡表"
+MEAL_BALANCE_TITLE_KEY = "豆粕供需平衡表"       # 标题必须含这个，排除"Mysteel半年报"这类不是平衡表的文章
+MEAL_BALANCE_MAX_ARTICLE_AGE_DAYS = 45          # 每月月底发一篇，超过45天没有新的就说明可能停更
+MEAL_BALANCE_BODY_FETCH_LIMIT = 2               # 只取最新2篇的正文，避免频繁请求触发反爬
+MEAL_MONTHLY_CONSUMPTION_RANGE = (300.0, 1200.0)  # 月消费量(万吨)合理范围(实测570~800)
+MEAL_STU_CONSISTENCY_TOL = 0.6                  # 库存÷消费 与 文中库消比 相差超过0.6个百分点，认为库存数字不是月末值，丢弃
+
+# 月份标记：先匹配"区间"(3月至6月 / 8-11月 / 2025年12月至2026年3月)，再匹配单月。区间整体跳过。
+_MB_MONTH_TOKEN = re.compile(
+    r"(?P<range>(?:\d{4}年)?\d{1,2}月?\s*[-—–至到]\s*(?:\d{4}年)?\d{1,2}月)"
+    r"|(?<![较比自从至到])(?:(?P<year>\d{4})年)?(?P<month>\d{1,2})月(?![份]?[0-9])"
+)
+_MB_PRODUCTION_RE = re.compile(r"产量[^0-9。；;]{0,8}?(\d+\.?\d*)万吨")
+_MB_CONSUMPTION_RE = re.compile(r"消费(?:量)?[^0-9。；;]{0,8}?(\d+\.?\d*)万吨")
+_MB_STOCK_RE = re.compile(r"(?<!期初)库存[^0-9。；;]{0,10}?(\d+\.?\d*)万吨")
+_MB_STU_RE = re.compile(r"库消比[^0-9。；;]{0,8}?(\d+\.?\d*)%(?!\s*[-—–至到~]\s*\d)")   # 后面紧跟"-16%"/"至10.5%"的是区间，不取
+_MB_STU_ANY_RE = re.compile(r"库消比")
+
+
+def _nearest_year_for_month(month, pub_date):
+    """文章里只写"12月"没写年份时，取离发布日期最近的那个年份(1月4日发布的文章里的12月是上一年)。"""
+    best = None
+    for y in (pub_date.year - 1, pub_date.year, pub_date.year + 1):
+        diff = abs((y * 12 + month) - (pub_date.year * 12 + pub_date.month))
+        if best is None or diff < best[0]:
+            best = (diff, y)
+    return best[1]
+
+
+def _parse_meal_balance_text(text, pub_date):
+    """从一段文字(正文或摘要)里解析出"单月"记录：{(年,月): {production, consumption, stock, stu, stuSource}}。
+    只处理单月片段；"8-11月""3月至6月"这种区间片段整体跳过(区间里的数字没法对应到具体某个月)。"""
+    text = re.sub(r"\s+", "", str(text or ""))
+    tokens = list(_MB_MONTH_TOKEN.finditer(text))
+    records = {}
+    for i, m in enumerate(tokens):
+        if m.group("range"):
+            continue
+        month = int(m.group("month"))
+        if not 1 <= month <= 12:
+            continue
+        year = int(m.group("year")) if m.group("year") else _nearest_year_for_month(month, pub_date)
+        # 片段=这个月份标记到下一个"不同月份"标记之前。同一个月连续出现("5月，...5月中旬...")合并成一段。
+        end = len(text)
+        for nxt in tokens[i + 1:]:
+            if nxt.group("range") or (int(nxt.group("month")) != month):
+                end = nxt.start()
+                break
+        seg = text[m.end():end]
+        rec = records.setdefault((year, month), {"production": None, "consumption": None, "stock": None, "stu": None, "stuStated": False})
+        def first(rx):
+            mm = rx.search(seg)
+            return float(mm.group(1)) if mm else None
+        rec["production"] = rec["production"] if rec["production"] is not None else first(_MB_PRODUCTION_RE)
+        rec["consumption"] = rec["consumption"] if rec["consumption"] is not None else first(_MB_CONSUMPTION_RE)
+        rec["stock"] = rec["stock"] if rec["stock"] is not None else first(_MB_STOCK_RE)
+        if rec["stu"] is None:
+            stu = first(_MB_STU_RE)
+            if stu is not None and 1.0 <= stu <= 40.0:
+                rec["stu"], rec["stuStated"] = stu, True
+    # 合理性 + 自洽检查
+    lo, hi = MEAL_MONTHLY_CONSUMPTION_RANGE
+    for key, rec in list(records.items()):
+        if rec["consumption"] is not None and not (lo <= rec["consumption"] <= hi):
+            rec["consumption"] = None
+        if rec["stock"] is not None and _plausibility_problem("mealStock", rec["stock"]):
+            rec["stock"] = None
+        if rec["stuStated"] and rec["stock"] is not None and rec["consumption"]:
+            if abs(rec["stock"] / rec["consumption"] * 100 - rec["stu"]) > MEAL_STU_CONSISTENCY_TOL:
+                rec["stock"] = None     # 多半是月中低点/期初值，不是月末库存：库消比以文中明示为准，库存不展示
+        if all(rec[k] is None for k in ("production", "consumption", "stock", "stu")):
+            del records[key]
+    return records
+
+
+def _usable_meal_record(rec):
+    """这条月度记录能不能给出库消比：文中明示，或库存和消费都有可以推算。返回(值, 方式)。"""
+    if rec.get("stu") is not None:
+        return rec["stu"], "stated"
+    if rec.get("stock") is not None and rec.get("consumption"):
+        v = round(rec["stock"] / rec["consumption"] * 100, 2)
+        if 1.0 <= v <= 40.0:
+            return v, "computed"
+    return None, None
+
+
+def _html_to_text(raw):
+    raw = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", raw or "")
+    raw = re.sub(r"(?s)<[^>]+>", " ", raw)
+    return re.sub(r"\s+", " ", html.unescape(raw)).strip()
+
+
+def _extract_article_region(text, title):
+    """页面里有大量导航/推荐文章标题(含各种"9月29日…"月份标记，会干扰解析)。只取"文章标题→免责声明"之间那段正文。"""
+    end = text.find("免责声明")
+    end = end if end >= 0 else len(text)
+    start = text.rfind(title, 0, end) if title else -1
+    start = start if start >= 0 else max(0, end - 6000)
+    return text[start:end]
+
+
+def fetch_text_debug(url, headers=None, retries=2, timeout=20):
+    """GET一个网页，返回(文本, debug)。跟fetch_json_debug同一套错误处理，只是不做JSON解析。"""
+    headers = dict(headers or {})
+    headers.setdefault("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+    headers.setdefault("Accept", "text/html,application/xhtml+xml")
+    debug = {"url": url}
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+                debug["httpStatus"] = resp.status
+                debug["rawSnippet"] = raw[:300]
+                return raw, debug
+        except urllib.error.HTTPError as e:
+            debug["httpStatus"] = e.code
+            debug["error"] = f"HTTP {e.code}: {e.reason}"
+            print(f"[WARN] 请求失败(HTTP {e.code}): {url}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+        except Exception as e:  # noqa: BLE001
+            debug["error"] = str(e)
+            print(f"[WARN] 请求失败: {url} -> {e}", file=sys.stderr)
+            time.sleep(2 * (attempt + 1))
+    return None, debug
+
+
+def fetch_mysteel_meal_balance(today=None, weekly_stock=None):
+    """国内豆粕库存消费比(月度，Mysteel《全国豆粕供需平衡表》)。
+    weekly_stock：可选，形如fetch_mysteel_meal_stock()的返回值，给"周度库存÷当月消费"这一级回退和交叉核对用。
+    today参数只给测试用。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)
+    headers = {"token": "-1", "Origin": "https://search.mysteel.com",
+               "Referer": "https://search.mysteel.com/fastcomment.html", "X-Requested-With": "XMLHttpRequest"}
+
+    articles = []   # (发布日期, item)
+    items_checked, skipped_titles = 0, []
+    for page in range(1, 3):
+        payload = {"query": MEAL_BALANCE_QUERY, "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+                   "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"), "sortType": "complex",
+                   "platform": "pc", "pageNo": page, "pageSize": 20}
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False, "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            items_checked += 1
+            title = str(item.get("title") or "")
+            if MEAL_BALANCE_TITLE_KEY not in title:
+                skipped_titles.append(title[:40])
+                continue
+            try:
+                pub = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            articles.append((pub, item))
+        total = data.get("total") or 0
+        if len(data_list) < 20 or page * 20 >= total:
+            break
+
+    if not articles:
+        return {"available": False, "reason": "搜索结果里没有标题含'豆粕供需平衡表'的文章",
+                "debug": {"itemsChecked": items_checked, "skippedTitles": skipped_titles[:10]}}
+    articles.sort(key=lambda a: a[0], reverse=True)
+    newest_pub, newest_item = articles[0]
+    newest_age = (today - newest_pub).days
+    if newest_age > MEAL_BALANCE_MAX_ARTICLE_AGE_DAYS:
+        return {"available": False,
+                "reason": f"最新一篇平衡表是{newest_age}天前({newest_pub.isoformat()})，超过{MEAL_BALANCE_MAX_ARTICLE_AGE_DAYS}天的新鲜度限制，可能停更；不采用",
+                "debug": {"latestArticleDate": newest_pub.isoformat(), "articles": len(articles)}}
+
+    # ---- 逐篇解析：新→旧；每篇先正文(只取最新几篇)，再摘要 ----
+    candidates = {}      # (年,月) → [(优先级顺序, 记录, 来源, 文章日期, 文章)]，靠前的优先
+    body_notes, bodies_fetched = [], 0
+    for idx, (pub, item) in enumerate(articles[:4]):
+        sources = []
+        if idx < MEAL_BALANCE_BODY_FETCH_LIMIT and item.get("url"):
+            raw, dbg = fetch_text_debug(item["url"], headers={"Referer": "https://ncp.mysteel.com/"})
+            if raw:
+                region = _extract_article_region(_html_to_text(raw), str(item.get("title") or ""))
+                recs = _parse_meal_balance_text(region, pub)
+                if recs:
+                    bodies_fetched += 1
+                    sources.append(("body", recs))
+                else:
+                    body_notes.append(f"{pub.isoformat()}: 正文取到了但没解析出单月记录(可能被截断/格式变了)")
+            else:
+                body_notes.append(f"{pub.isoformat()}: 正文请求失败({dbg.get('error')})")
+        srecs = _parse_meal_balance_text(item.get("content"), pub)
+        if srecs:
+            sources.append(("summary", srecs))
+        for src, recs in sources:
+            for key, rec in recs.items():
+                candidates.setdefault(key, []).append((src, rec, pub, item))
+
+    def best_for(key):
+        for src, rec, pub, item in candidates.get(key, []):
+            val, how = _usable_meal_record(rec)
+            if val is not None:
+                return {"src": src, "how": how, "value": val, "rec": rec, "pub": pub, "item": item}
+        # 没有可用的库消比，但有消费量：给"周度库存÷消费"这一级回退留着
+        for src, rec, pub, item in candidates.get(key, []):
+            if rec.get("consumption"):
+                return {"src": src, "how": None, "value": None, "rec": rec, "pub": pub, "item": item}
+        return None
+
+    def ym_add(y, m, k):
+        t = y * 12 + (m - 1) + k
+        return t // 12, t % 12 + 1
+
+    cur = (today.year, today.month)
+    used_fallback_month = False
+    chosen = best_for(cur)
+    chosen_key = cur
+    if chosen is None or (chosen["value"] is None and not (weekly_stock and weekly_stock.get("available"))):
+        # 当月还没有记录(比如月初，新一期还没发)：用最近一个不晚于当月的记录，新鲜度已经由文章日期限制过
+        for back in range(1, 4):
+            k = ym_add(cur[0], cur[1], -back)
+            b = best_for(k)
+            if b is not None and b["value"] is not None:
+                chosen, chosen_key, used_fallback_month = b, k, True
+                break
+    if chosen is None:
+        return {"available": False, "reason": "最近几篇平衡表里没有解析出任何单月的库消比/库存/消费数据(措辞或格式可能变了)",
+                "debug": {"articlesChecked": len(articles[:4]), "bodyNotes": body_notes,
+                          "newestSummary": str(newest_item.get("content") or "")[:300]}}
+
+    rec, method, value = chosen["rec"], chosen["how"], chosen["value"]
+    weekly_ok = bool(weekly_stock and weekly_stock.get("available") and weekly_stock.get("value") is not None)
+    weekly_check = None
+    if rec.get("consumption") and weekly_ok:
+        wv = round(weekly_stock["value"] / rec["consumption"] * 100, 2)
+        weekly_check = {"stockWan": weekly_stock["value"], "stockDate": weekly_stock.get("date"),
+                        "consumptionWan": rec["consumption"], "value": wv}
+    if value is None:
+        # 第三级回退：周度库存÷当月预计消费。周度库存不是月末值，可信度低于文中数字，明确标出
+        if weekly_check and 1.0 <= weekly_check["value"] <= 40.0:
+            value, method = weekly_check["value"], "weekly"
+        else:
+            return {"available": False, "reason": "当月记录里没有库消比，也没有足够的库存/消费数据可以推算",
+                    "debug": {"record": rec, "bodyNotes": body_notes}}
+    if _plausibility_problem("mealStu", value):
+        return {"available": False, "reason": f"解析出的库消比不合理，已丢弃: {_plausibility_problem('mealStu', value)}",
+                "debug": {"record": rec}}
+
+    nxt = None
+    nk = ym_add(chosen_key[0], chosen_key[1], 1)
+    nb = best_for(nk)
+    if nb is not None and nb["value"] is not None and not _plausibility_problem("mealStu", nb["value"]):
+        nxt = {"month": f"{nk[0]}-{nk[1]:02d}", "monthLabel": f"{nk[0]}年{nk[1]}月", "value": nb["value"],
+               "method": nb["how"], "stockWan": nb["rec"].get("stock"), "consumptionWan": nb["rec"].get("consumption")}
+    trend = None
+    if nxt is not None:
+        d = round(nxt["value"] - value, 2)
+        trend = {"delta": d, "direction": "上升(累库)" if d >= 1.0 else "下降(去库)" if d <= -1.0 else "基本持平"}
+
+    pub, item = chosen["pub"], chosen["item"]
+    method_label = {"stated": "文章明示", "computed": "由库存÷消费推算", "weekly": "周度库存÷当月预计消费(可信度较低)"}[method]
+    result = {
+        "available": True,
+        "value": value,
+        "month": f"{chosen_key[0]}-{chosen_key[1]:02d}",
+        "monthLabel": f"{chosen_key[0]}年{chosen_key[1]}月",
+        # 记录的月份晚于文章发布的月份 = 预测值(比如8月31日发布的文章里的9月)
+        "isForecast": (chosen_key[0] * 12 + chosen_key[1]) > (pub.year * 12 + pub.month),
+        "usedFallbackMonth": used_fallback_month,
+        "method": method, "methodLabel": method_label,
+        "recordSource": chosen["src"],
+        "stockWan": rec.get("stock"), "consumptionWan": rec.get("consumption"), "productionWan": rec.get("production"),
+        "next": nxt, "trend": trend, "weeklyCheck": weekly_check,
+        "date": pub.isoformat(), "articleAgeDays": (today - pub).days,
+        "articleTitle": item.get("title"),
+        "bodiesFetched": bodies_fetched,
+        "source": "Mysteel文章(全国豆粕供需平衡表)",
+        "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
+    if body_notes:
+        result["bodyNotes"] = body_notes     # 正文没取到时如实说明(用的是摘要)，部署后看一眼就知道Actions那边能不能抓到正文
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -3696,6 +4102,8 @@ def main():
         "jan": fetch_crush_margin(1),
     }
 
+    _meal_stock_result = fetch_mysteel_meal_stock()   # 周度库存：自己要展示，也给库消比的回退/交叉核对用
+
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
@@ -3703,7 +4111,8 @@ def main():
         "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
-        "mysteelMealStock": fetch_mysteel_meal_stock(),
+        "mysteelMealStock": _meal_stock_result,
+        "mysteelMealStu": fetch_mysteel_meal_balance(weekly_stock=_meal_stock_result),
         "mysteelSoyImport": fetch_mysteel_soy_import(),
         "mysteelReserveAuction": fetch_mysteel_reserve_auction(),
         "mysteelBasis": fetch_mysteel_basis(),

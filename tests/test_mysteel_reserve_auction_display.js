@@ -15,7 +15,7 @@ check('★提示区应该标明这是"计划拍卖量"和拍卖日期', makeEl('
 check('★提示区应该同时显示成交量和成交率(参考信息)', makeEl('ai_reserve').innerHTML.includes('成交19.17万吨') && makeEl('ai_reserve').innerHTML.includes('成交率37.27%'));
 check('★提示区应该显示成交价格', makeEl('ai_reserve').innerHTML.includes('底价~最高价4310-4390元/吨'));
 check('★提示区应该显示上一次拍卖的成交率，方便看趋势', makeEl('ai_reserve').innerHTML.includes('上一次(2026-09-22)') && makeEl('ai_reserve').innerHTML.includes('成交率62.37%'));
-check('提示区应该有"采用"按钮', makeEl('ai_reserve').innerHTML.includes('采用'));
+check('★不再有"采用"按钮', !makeEl('ai_reserve').innerHTML.includes('采用'));
 
 // 有成交均价时显示成交均价
 reset();
@@ -24,12 +24,12 @@ refreshMysteelReserveAuction();
 check('有成交均价时应该显示成交均价', makeEl('ai_reserve').innerHTML.includes('成交均价4162.73元/吨'));
 check('★没有上一次拍卖时不应该出现undefined/null', !makeEl('ai_reserve').innerHTML.includes('undefined') && !makeEl('ai_reserve').innerHTML.includes('null'));
 
-// 已有值：不覆盖
+// 已有值：抓取成功直接覆盖
 reset(); makeEl('m_reserve').value = '30';
 window._syncedData = {generatedAt:new Date().toISOString(), mysteelReserveAuction:latest};
 refreshMysteelReserveAuction();
-check('★欄位已有值时不应该被覆盖', makeEl('m_reserve').value === '30');
-check('提示区依然显示抓取到的值供参考', makeEl('ai_reserve').innerHTML.includes('51.43'));
+check('★抓取成功时直接覆盖已有值(30→51.43)', makeEl('m_reserve').value == '51.43');
+check('提示区显示抓取到的值', makeEl('ai_reserve').innerHTML.includes('51.43'));
 
 // 失败：显示明确原因+debug
 reset(); makeEl('ai_reserve').className = 'ai-suggest unavailable'; makeEl('ai_reserve').innerHTML = '💡 尚未粘贴数据';

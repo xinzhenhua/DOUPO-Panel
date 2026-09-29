@@ -25,11 +25,11 @@ for (const c of cases) {
   window._syncedData = {generatedAt: new Date().toISOString(), [c.key]: Object.assign({available: true}, c.good)};
   c.fn();
   check(`${c.name}: 合理数值(${c.good.value})不受影响，正常自动填入`, String(makeEl(c.input).value) === String(c.good.value));
-  // 用户已经手动贴过真实内容(fresh)时，不被警告覆盖
-  makeEl(c.ai).className = 'ai-suggest fresh'; makeEl(c.ai).innerHTML = '📋 用户手动贴的真实结果'; makeEl(c.input).value = '';
+  // 输入框里有保存过的手动值时：荒谬的自动值既不能覆盖它，也不能把它清掉，同时要显示警告
+  makeEl(c.ai).className = 'ai-suggest unavailable'; makeEl(c.ai).innerHTML = ''; makeEl(c.input).value = '42';
   window._syncedData = {generatedAt: new Date().toISOString(), [c.key]: Object.assign({available: true}, c.bad)};
   c.fn();
-  check(`${c.name}: 已有真实内容时，荒谬数值的警告不覆盖它，也不填入`, makeEl(c.ai).innerHTML.includes('用户手动贴的真实结果') && makeEl(c.input).value === '');
+  check(`${c.name}: 荒谬数值既不覆盖也不清掉已保存的手动值，并显示警告`, makeEl(c.input).value === '42' && makeEl(c.ai).innerHTML.includes('不合理'));
 }
 // 判断函数本身
 check('sanityProblem: 合理值返回null', sanityProblem('mealStock', 117.32) === null);

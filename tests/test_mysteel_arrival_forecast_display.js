@@ -20,8 +20,8 @@ check('★提示区应该明确显示是哪年哪月的预报(2026年6月)', mak
 check('★提示区应该显示数值', makeEl('ai_arrival').innerHTML.includes('1073.8万吨'));
 
 // ===================== 测试2：★核心验证——必须有醒目警告提醒核对月份 =====================
-check('★必须包含警告文字，提醒用户核对月份(不能默认这就是"本月")', makeEl('ai_arrival').innerHTML.includes('请核对这是不是你需要的月份'));
-check('★警告文字应该说明到港预报的性质(一般是下个月，不一定是当月)', makeEl('ai_arrival').innerHTML.includes('一般发布下个月'));
+check('★必须包含警告文字，提醒用户核对月份(不能默认这就是"本月")', makeEl('ai_arrival').innerHTML.includes('请留意上面标的是哪个月的预报'));
+check('★警告文字应该说明到港预报的性质(一般是下个月，不一定是当月)', makeEl('ai_arrival').innerHTML.includes('一般提前发布下个月'));
 
 // ===================== 测试3：级联格式(预测未来3个月，只取最近月)同样正确显示 =====================
 resetArrivalFields();
@@ -31,9 +31,9 @@ window._syncedData = {
 };
 refreshMysteelArrivalForecast();
 check('★级联格式时同样应该明确显示对应月份(2026年7月)', makeEl('ai_arrival').innerHTML.includes('2026年7月到港'));
-check('★级联格式时同样应该有月份核对警告', makeEl('ai_arrival').innerHTML.includes('请核对这是不是你需要的月份'));
+check('★级联格式时同样应该有月份核对警告', makeEl('ai_arrival').innerHTML.includes('请留意上面标的是哪个月的预报'));
 
-// ===================== 测试4：欄位已有值时不强制覆盖 =====================
+// ===================== 测试4：抓取成功时直接覆盖已有值 =====================
 resetArrivalFields();
 makeEl('m_arrival').value = '900';
 window._syncedData = {
@@ -41,8 +41,8 @@ window._syncedData = {
   mysteelArrivalForecast: {available: true, forecastYear: 2026, forecastMonth: 6, value: 1073.8, date: '2026-05-27'},
 };
 refreshMysteelArrivalForecast();
-check('★欄位已有值时不应该被覆盖', makeEl('m_arrival').value === '900');
-check('提示区依然应该显示抓取到的月份+数值供参考', makeEl('ai_arrival').innerHTML.includes('2026年6月'));
+check('★抓取成功时应直接覆盖已有值(900→1073.8)', makeEl('m_arrival').value == '1073.8');
+check('提示区应该显示抓取到的月份+数值', makeEl('ai_arrival').innerHTML.includes('2026年6月'));
 
 // ===================== 测试5：抓取失败/无数据时不报错 =====================
 resetArrivalFields();

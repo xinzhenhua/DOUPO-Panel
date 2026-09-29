@@ -68,10 +68,18 @@ elements['fxContent'] = makeEl('fxContent');
 // 直接测试 renderPsd 的 _psdSignal 计算逻辑
 elements['psdBadge'] = makeEl('psdBadge');
 elements['psdContent'] = makeEl('psdContent');
-renderPsd({available:true, marketYear:2026, endingStocks:300, production:52000, domesticConsumption:34000}, new Date().toISOString());
-const psdRatio = 300/34000*100;
-check('PSD库存消费比计算：300/34000='+psdRatio.toFixed(2)+'% → 应判定为偏多(ratio<15)',
-  window._psdSignal, 1);
+// ★口径已改：美豆库存消费比 = 期末库存÷(国内消费+出口)，由后端算好放在stocksToUsePct里；阈值<5%偏紧(偏多)、>10%宽松(偏空)
+const psdBase = {available:true, commodity:'Oilseed, Soybean', marketYear:2026, marketYearLabel:'2026/27', endingStocks:1, production:1, domesticConsumption:1, exports:1, totalUse:2};
+renderPsd(Object.assign({}, psdBase, {stocksToUsePct:3.9}), new Date().toISOString());
+check('PSD库存消费比3.9%(<5%) → 应判定为偏多', window._psdSignal, 1);
+renderPsd(Object.assign({}, psdBase, {stocksToUsePct:6.9}), new Date().toISOString());
+check('PSD库存消费比6.9%(近年常态区间) → 应判定为中性(旧逻辑会因豆粕口径永远偏多)', window._psdSignal, 0);
+renderPsd(Object.assign({}, psdBase, {stocksToUsePct:12.5}), new Date().toISOString());
+check('PSD库存消费比12.5%(>10%) → 应判定为偏空', window._psdSignal, -1);
+renderPsd(Object.assign({}, psdBase, {stocksToUsePct:null}), new Date().toISOString());
+check('PSD缺出口数据算不出库存消费比 → 信号为null(不投票)，不是中性', window._psdSignal, null);
+renderPsd({available:true, marketYear:2026, endingStocks:408, production:57427, domesticConsumption:39668}, new Date().toISOString());
+check('★旧版后端数据(豆粕口径，没有commodity字段) → 必须忽略，信号为null', window._psdSignal, null);
 
 
 console.log('');

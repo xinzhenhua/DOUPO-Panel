@@ -16,11 +16,33 @@ function resetAll(){
 }
 
 // ===================== 测试1：修复验证——1月合约现在应该显示group-sa(之前被误隐藏) =====================
+H.setMockedMonth(11); // 11月：美豆收获中后期，美国天气板块隐藏
 resetAll();
 selectContract('jan');
 check('★修复验证：1月合约现在应该显示group-sa(南美数据)，之前这里是被误隐藏的', !elements['group-sa'].classList.contains('hidden-by-contract'));
 check('1月合约应该显示新的group-jan-extra(收获进度)', !elements['group-jan-extra'].classList.contains('hidden-by-contract'));
-check('1月合约应该隐藏group-us-weather(美国天气类，仍然不相关)', elements['group-us-weather'].classList.contains('hidden-by-contract'));
+check('1月合约(11月)应该隐藏group-us-weather(美国天气类，收获中后期已不相关)', elements['group-us-weather'].classList.contains('hidden-by-contract'));
+H.clearMockedMonth();
+// ★新增：1月合约的建议窗口是8-11月，8-9月美豆仍在灌浆收尾/刚开始收获，美国天气板块要显示、评分要计入
+[8,9].forEach(m=>{
+  H.setMockedMonth(m); resetAll(); selectContract('jan');
+  check(`★1月合约(${m}月)应该显示group-us-weather(美国天气板块)`, !elements['group-us-weather'].classList.contains('hidden-by-contract'));
+  H.clearMockedMonth();
+});
+[10,11,12].forEach(m=>{
+  H.setMockedMonth(m); resetAll(); selectContract('jan');
+  check(`1月合约(${m}月)应该隐藏group-us-weather`, elements['group-us-weather'].classList.contains('hidden-by-contract'));
+  H.clearMockedMonth();
+});
+// 评分：8-9月美国天气类综合信号作为独立一票计入；10月起不计入
+window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;
+H.setMockedMonth(9); resetAll(); selectContract('jan');
+check('★1月合约(9月)：美国作物生长状况综合应作为独立一票计入(偏多)', elements['alertContent'].innerHTML.includes('sd-cell sd-pos">美国作物生长状况综合'));
+H.clearMockedMonth();
+H.setMockedMonth(10); resetAll(); selectContract('jan');
+check('1月合约(10月)：不再计入美国作物生长状况综合', !elements['alertContent'].innerHTML.includes('美国作物生长状况综合'));
+H.clearMockedMonth();
+window._weatherRisk=null; window._droughtSignal=null; window._noaaOutlookSignal=null; window._soyCondSignal=null;
 check('1月合约应该隐藏group-may-extra(播种进度/雷亚尔，跟1月无关)', elements['group-may-extra'].classList.contains('hidden-by-contract'));
 
 // ===================== 测试2：renderHarvest渲染 =====================
@@ -52,7 +74,7 @@ window._harvestSignal = 1;
 selectContract('sep');
 check('★9月合约：即使收获进度信号存在，也不应该计入评分(跟1月无关)', !elements['alertContent'].innerHTML.includes('美豆收获进度'));
 
-// ===================== 测试5：1月合约仪表盘上限应为14(13基础+1收获进度) =====================
+// ===================== 测试5：1月合约(10月)全部指标偏多时票数必须精确 =====================
 resetAll();
 elements['m_stock'].value='40'; elements['m_basis'].value='10'; elements['m_arrival'].value='700';
 elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_import'].value='700';
@@ -61,7 +83,9 @@ window._saWeatherSignal=1; window._saPsdSignal=1; window._esrSignal=1; window._f
 window._harvestSignal=1;
 H.setMockedMonth(10); // 播种生长期，权重55/45，两者都偏多，合成应为偏多
 selectContract('jan');
-check('★1月合约全部14个信号偏多时，总分应精确为+14(13基础+1收获进度)', elements['alertContent'].innerHTML.includes('+14分'));
+// 10月有效投票：作物(南美)、库存消费比、国内豆粕供应松紧、大豆到港/进口、汇率、收获进度 = 6票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求。国储拍卖/巴西播种没数据不投票
+check('★1月合约(10月)：12个有效投票全偏多，总分应精确为+13(国内豆粕供应松紧票权2)', elements['alertContent'].innerHTML.includes('综合偏多 +13（') && elements['alertContent'].innerHTML.includes('有效12/14'));
+H.clearMockedMonth();
 
 
 H.printSummary();

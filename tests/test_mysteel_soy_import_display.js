@@ -12,11 +12,11 @@ check('★提示区应该标出是哪个月的数(2026年8月)', makeEl('ai_impo
 check('提示区应该显示数值和万吨单位', makeEl('ai_import').innerHTML.includes('1214.14万吨'));
 check('提示区应该显示文章发布日期', makeEl('ai_import').innerHTML.includes('2026-09-09'));
 
-// 已有值：不覆盖
+// 已有值：抓取成功直接覆盖
 reset(); makeEl('m_import').value = '1000';
 refreshMysteelSoyImport();
-check('★欄位已有值时不应该被覆盖', makeEl('m_import').value === '1000');
-check('提示区依然显示抓取到的值供参考', makeEl('ai_import').innerHTML.includes('1214.14'));
+check('★抓取成功时直接覆盖已有值(1000→1214.14)', makeEl('m_import').value == '1214.14');
+check('提示区显示抓取到的值', makeEl('ai_import').innerHTML.includes('1214.14'));
 
 // 失败：显示明确原因+debug，不留"尚未粘贴数据"
 reset(); makeEl('ai_import').className = 'ai-suggest unavailable'; makeEl('ai_import').innerHTML = '💡 尚未粘贴数据';

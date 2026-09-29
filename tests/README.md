@@ -15,7 +15,7 @@ cd tests
 bash run_all_tests.sh
 ```
 
-会自动跑完全部21个测试文件，汇总显示总共通过了多少项测试。
+会自动跑完全部测试文件(v81时为52个)，汇总显示总共通过了多少项测试。
 
 如果只想跑某一个文件（比如只关心5月合约相关的逻辑）：
 
@@ -28,13 +28,16 @@ node test_planting_brl.js
 | 文件 | 测试内容 |
 |---|---|
 | `test_weather_drought_1/2/3.js` | 天气/干旱监测/PSD渲染，综合评分基础逻辑 |
-| `test_paste_parse.js` | "复制提示词→粘贴解析"这套机制，8个手动指标的识别 |
+| `test_auto_indicator_cards.js` | v79新增：10个指标卡片的生成、自动覆盖、失败保留、过期不计分、手动修正与存储 |
+| `test_dimensions.js` | v81新增：三维度拆分/分歧/置信度(含变异检查过的门槛)、拆分与总分的不变式、界面条形与提示 |
+| `test_meal_stu.js` | v80新增：国内豆粕库消比卡片、组内权重50/30/20、国内组双倍票权、ESR中国/未知拆分展示 |
+| `test_scoring_v2.js` | v79新增：净倾向归一化、数据不足、合并投票、出口销售信号 |
 | `test_noaa_outlook.js` | NOAA月度干旱展望的解析和渲染 |
 | `test_tiered_display.js` | 12州分层显示、供需表格、PSD/CBOT的alert-box |
 | `test_weighted_avg.js` | 按种植面积加权平均(区别于简单平均) |
 | `test_charts_1.js` / `test_charts_2_integration.js` | SVG图表(条形图/仪表盘/供需表格)的生成逻辑 |
 | `test_timing_bugfix.js` | loadWeather/loadFxRate异步完成后正确触发重新计算 |
-| `test_scoring_audit.js` | 严格审计：14/N个信号全部设为偏多时，总分必须精确匹配，不多不少 |
+| `test_scoring_audit.js` | 严格审计：全部信号偏多时，票数必须精确匹配(合并后为9票) |
 | `test_indicator_poultry.js` | 白羽肉鸡养殖利润指标 |
 | `test_indicator_rmspread.js` | 豆菜粕价差指标 |
 | `test_contract_switching.js` / `test_contract_scoring.js` | 9/5/1月合约切换、板块显示隐藏、综合评分随合约变化 |

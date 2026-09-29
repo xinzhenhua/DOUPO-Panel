@@ -30,7 +30,8 @@ selectContract('may');
 check('5月合约：应该用南美天气+产量综合信号(偏多)，不是美国天气信号(偏空)', elements['alertContent'].innerHTML.includes('sd-cell sd-pos">南美(巴西/阿根廷)天气+产量综合'));
 check('5月合约：不应该显示美国天气类综合这个标签', !elements['alertContent'].innerHTML.includes('作物生长状况综合'));
 
-// ===================== 测试3：1月合约不计入任何天气类信号 =====================
+// ===================== 测试3：1月合约10月起不计入美国天气类信号(8-9月才计入，见test_jan_contract_fix) =====================
+H.setMockedMonth(11);
 resetAll();
 window._weatherRisk = 'high'; window._droughtSignal = 1; window._noaaOutlookSignal = 1; window._soyCondSignal = 1;
 window._saWeatherSignal = 1;
@@ -45,8 +46,9 @@ window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 elements['m_stock'].value='40'; elements['m_basis'].value='10'; elements['m_arrival'].value='700';
 elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_import'].value='700';
 elements['m_poultry'].value='2'; elements['m_rmspread'].value='350';
-selectContract('jan'); // 12票都偏多(没有天气类)，1月合约上限应该是12
-check('★1月合约：12个信号全偏多，总分应精确为+12(1月合约上限就是12，不是13)', elements['alertContent'].innerHTML.includes('+12分'));
+selectContract('jan'); // 11月：没有天气类。有效投票：库存/开机率合并、到港/进口合并、库存消费比、汇率 = 4票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求
+check('★1月合约(11月)：10个有效投票全偏多，总分应精确为+11(国内豆粕供应松紧票权2)', elements['alertContent'].innerHTML.includes('综合偏多 +11（'));
+H.clearMockedMonth();
 
 // ===================== 测试5：南美PSD已验证生效，用这次实测确认过的真实数值测试 =====================
 // 巴西186,000 vs 查证过的真实值180,000(误差3.3%，WASDE月度修正的正常范围) → 确认修复生效

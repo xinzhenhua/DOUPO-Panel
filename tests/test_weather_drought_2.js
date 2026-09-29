@@ -32,6 +32,7 @@ elements['psdBadge'] = makeEl('psdBadge');
 elements['psdContent'] = makeEl('psdContent');
 renderPsd({
   available: true,
+  commodity: 'Oilseed, Soybean', marketYearLabel: '2026/27',
   marketYear: 2026,
   endingStocks: null,
   production: null,
@@ -49,7 +50,7 @@ check('PSD：数值应显示为"--"占位符而不是"undefined"字样', !elemen
 
 // 测试3：正常情况（无debug）不应该出现诊断信息区块，避免正常用户被无关信息打扰
 elements['psdContent'] = makeEl('psdContent');
-renderPsd({available:true, marketYear:2026, endingStocks:400, production:52000, domesticConsumption:34000}, new Date().toISOString());
+renderPsd({available:true, commodity:'Oilseed, Soybean', marketYearLabel:'2026/27', marketYear:2026, endingStocks:8436, production:120700, domesticConsumption:61000, exports:62000, totalUse:123000, stocksToUsePct:6.9}, new Date().toISOString());
 check('PSD：数据正常时不应显示诊断信息区块', !elements['psdContent'].innerHTML.includes('诊断信息'));
 
 

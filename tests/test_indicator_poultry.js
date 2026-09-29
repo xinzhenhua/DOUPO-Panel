@@ -8,20 +8,6 @@ eval(H.loadDashboardJs());
 window._selectedContract = 'sep';
 
 
-// ===================== 测试1：粘贴解析能识别新指标(用查证过的真实数据) =====================
-const realExample = `指标 数据 日期 来源
-油厂开机率(%) 65.73% 2026年7月7日 Mysteel
-白羽肉鸡养殖利润(元/只) 0.71元/只 2026年5月 财联社`;
-const parsed = parsePastedData(realExample);
-check('应该正确识别肉鸡养殖利润这个新指标', !!parsed.m_poultry);
-check('数值应该正确解析为0.71(用的是真实查证过的数据)', parsed.m_poultry && parsed.m_poultry.value === 0.71);
-check('日期应该正确解析为2026-05-01', parsed.m_poultry && parsed.m_poultry.date === '2026-05-01');
-
-// 负数(亏损)场景：用查到的真实案例"一只鸡跌去4块钱"对应的负利润
-const lossExample = `肉鸡养殖利润(元/只) -4.0元/只 2026年2月 财联社`;
-const parsedLoss = parsePastedData(lossExample);
-check('亏损场景(负数)应该正确保留负号，不被截断成正数', parsedLoss.m_poultry && parsedLoss.m_poultry.value === -4.0);
-
 // ===================== 测试2：评分阈值验证(用查证过的真实数据区间) =====================
 function resetFields(){
   ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import','m_poultry'].forEach(id=>{
@@ -46,7 +32,7 @@ elements['m_poultry'].value = '-4'; // 亏损场景
 updateOverallAlert();
 check('亏损-4元/只(<0)应判定偏空', elements['alertContent'].innerHTML.includes('sd-cell sd-neg">肉鸡养殖利润'));
 
-// ===================== 测试3：12票制审计(11票+新的肉鸡指标=12票) =====================
+// ===================== 测试3：票数审计(肉鸡指标正确并入) =====================
 resetFields();
 elements['m_crush'].value='35'; elements['m_stock'].value='40'; elements['m_basis'].value='10';
 elements['m_arrival'].value='700'; elements['m_hogratio'].value='8'; elements['m_sows'].value='3600';
@@ -54,22 +40,11 @@ elements['m_import'].value='700'; elements['m_poultry'].value='2';
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;
 window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 updateOverallAlert();
-check('★12票制审计：全部信号偏多时，总分应精确为+12(新指标正确并入总票数)',
-  elements['alertContent'].innerHTML.includes('+12分'));
+// 供应5票(作物、库存消费比、供应松紧、到港/进口、汇率)+需求5票(出口销售、基差、猪粮比、能繁、肉鸡)
+check('★票数审计：全部信号偏多时，总分应精确为+11(10个投票，其中国内豆粕供应松紧票权2)',
+  elements['alertContent'].innerHTML.includes('综合偏多 +11（'));
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★供需表格应精确显示12个偏多格子', posCount === 12);
+check('★供需表格应精确显示10个偏多格子', posCount === 10);
 check('供需表格需求侧应显示"肉鸡养殖利润"这个新标签', elements['alertContent'].innerHTML.includes('肉鸡养殖利润'));
-
-// ===================== 测试4：一键复制的提示词应包含新指标 =====================
-// ★修复：原本断言"豆菜粕价差(元/吨)\n\n我要数据"这种依赖"豆菜粕价差是模板里最后一项"
-//   的位置耦合写法，后来模板里在豆菜粕价差后面又加了巴西播种进度相关的新指标，
-//   这种位置耦合断言就必然被打破——这个文件真正该验证的是"肉鸡养殖利润"这个
-//   关键词有没有出现在提示词模板里，跟模板里其他指标的相对位置无关。
-const rawHtml = require('fs').readFileSync('/home/claude/soymeal-dashboard/index.html', 'utf8');
-const promptTemplateMatch = rawHtml.match(/const PASTE_PROMPT_TEMPLATE = `([\s\S]*?)`;/);
-check('★复制提示词(PASTE_PROMPT_TEMPLATE)模板应该能提取到', promptTemplateMatch !== null);
-const promptTemplateText = promptTemplateMatch ? promptTemplateMatch[1] : '';
-check('复制提示词(PASTE_PROMPT_TEMPLATE)应包含新指标名称，确保用户实际复制时能问到AI', promptTemplateText.includes('肉鸡养殖利润'));
-
 
 H.printSummary();

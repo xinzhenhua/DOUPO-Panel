@@ -12,12 +12,6 @@ function resetFields(){
   elements['alertContent'] = makeEl('alertContent');
 }
 
-// ===================== 测试1：粘贴解析能识别新指标 =====================
-const example = `最近一次国储进口大豆拍卖量(万吨) 54.3万吨 2026年9月22日 国家粮食交易中心`;
-const parsed = parsePastedData(example);
-check('★应该正确识别国储拍卖量这个新指标', !!parsed.m_reserve);
-check('★数值应该正确解析为54.3(不是被"国储进口大豆拍卖量"这个更长的关键字漏掉)', parsed.m_reserve && parsed.m_reserve.value === 54.3);
-
 // ===================== 测试2：规模较大(>=40万吨)时应判定偏空 =====================
 resetFields();
 elements['m_reserve'].value = '54.3'; // 真实查证过的规模(文华财经文章里的实际数字)

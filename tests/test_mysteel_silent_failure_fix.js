@@ -18,14 +18,14 @@ function testOneIndicator(name, refreshFn, badgeId, dataKey){
   check(`★${name}: 失败时应该替换掉"尚未粘贴数据"这句误导性默认文字`, !badge.innerHTML.includes('尚未粘贴数据'));
   check(`★${name}: 失败时应该显示明确的失败原因`, badge.innerHTML.includes('自动抓取失败') && badge.innerHTML.includes('搜索结果为空(测试)'));
 
-  // 场景2：区域已经是fresh状态(比如用户刚手动贴过、或者之前自动抓取成功过)，
-  // 这次抓取失败时不应该覆盖掉这个已有的真实内容
+  // 场景2：★新行为——没有"粘贴解析"这条路径了，详情区里的内容只可能来自自动抓取；
+  // 这次抓取失败时，必须如实显示失败原因，不能让上一次遗留的内容冒充"这次的结果"
   const badge2 = makeEl(badgeId);
   badge2.className = 'ai-suggest fresh';
   badge2.innerHTML = '📋 解析到：<b>某个之前的真实值</b>';
   window._syncedData = {generatedAt: new Date().toISOString(), [dataKey]: {available: false, reason: '这次失败了'}};
   refreshFn();
-  check(`${name}: 区域已有真实内容(fresh状态)时，失败不应该覆盖掉它`, badge2.innerHTML.includes('某个之前的真实值'));
+  check(`${name}: 这次抓取失败时应该如实显示失败原因，不留遗留内容`, badge2.innerHTML.includes('这次失败了') && !badge2.innerHTML.includes('某个之前的真实值'));
 }
 
 testOneIndicator('开机率', refreshMysteelCrushRate, 'ai_crush', 'mysteelCrushRate');

@@ -54,7 +54,7 @@ check('★9月合约：即使播种进度/雷亚尔信号存在，也不应该�
   !elements['alertContent'].innerHTML.includes('美豆播种进度') &&
   !elements['alertContent'].innerHTML.includes('巴西雷亚尔汇率'));
 
-// ===================== 测试4：5月合约仪表盘上限应为15(13基础+2新增) =====================
+// ===================== 测试4：5月合约全部指标偏多时票数必须精确 =====================
 resetAll();
 elements['m_stock'].value='40'; elements['m_basis'].value='10'; elements['m_arrival'].value='700';
 elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_import'].value='700';
@@ -63,7 +63,9 @@ window._saWeatherSignal=1; window._saPsdSignal=1; window._esrSignal=1; window._f
 window._plantingSignal=1; window._brlSignal=1;
 H.setMockedMonth(7); // 休耕期，天气产量权重10/90，两者都偏多，合成应为偏多
 selectContract('may');
-check('★5月合约全部15个信号偏多时，总分应精确为+15(13基础+2新增)', elements['alertContent'].innerHTML.includes('+15分'));
+// 7月：作物(南美)、库存消费比、国内豆粕供应松紧、大豆到港/进口、汇率、播种进度、雷亚尔 = 7票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求
+check('★5月合约：13个有效投票全偏多，总分应精确为+14(国内豆粕供应松紧票权2)', elements['alertContent'].innerHTML.includes('综合偏多 +14（') && elements['alertContent'].innerHTML.includes('有效13/14'));
+H.clearMockedMonth();
 
 
 H.printSummary();

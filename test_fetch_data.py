@@ -10,7 +10,7 @@
 import sys
 import os
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 sys.path.insert(0, os.path.dirname(__file__))
 
 import fetch_data as fd
@@ -101,20 +101,153 @@ def test_esr_code_lookup(monkeypatch_fetch):
     print("✅ ESR 商品编码查找逻辑正确")
 
 
+def _esr_row(week, country, net_cur=0, net_next=0, shipped=0):
+    return {"weekEndingDate": week, "countryName": country, "currentMYNetSales": net_cur,
+            "nextMYNetSales": net_next, "weeklyExports": shipped, "unitId": 1}
+
+
+def test_esr_uses_soybeans_not_meal(monkeypatch_fetch):
+    """★口径修正：ESR应该查大豆(Soybeans)，不是豆粕(Soybean Cake and Meal)。"""
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES})
+    code, debug = fd.get_soybean_esr_code()
+    assert code == 2222, f"应查到大豆编码2222，不是豆粕的2223，实际{code}"
+    assert debug is None
+    # 只有豆粕/豆油时不能退而求其次拿豆粕当大豆
+    monkeypatch_fetch({"esr/commodities": [{"commodityCode": 2223, "commodityName": "Soybean Cake and Meal"},
+                                           {"commodityCode": 2224, "commodityName": "Soybean Oil"}]})
+    code2, debug2 = fd.get_soybean_esr_code()
+    assert code2 is None and "没有一条是" in debug2["failureStage"]
+    print("✅ ESR商品编码：查大豆(2222)，只有豆粕/豆油时不会误用")
+
+
 def test_esr_export_parsing(monkeypatch_fetch):
-    monkeypatch_fetch({
-        "esr/commodities": MOCK_ESR_COMMODITIES,
-        "esr/exports": MOCK_ESR_EXPORTS,
-    })
+    """★净销售=currentMYNetSales+nextMYNetSales；装船量(weeklyExports)单独放，绝不混进净销售。
+    6周数据：净销售依次为100000×4周、150000(上周)、300000(最新周)。
+    最新周之前的4周=[100000,100000,100000,150000]，均值112500，最新周相对均值+166.7%。"""
+    rows = []
+    for w in ["2026-05-28", "2026-06-04", "2026-06-11", "2026-06-18"]:
+        rows.append(_esr_row(w, "China", 60000, 0, 999))   # 装船量故意写成999，验证不会被当净销售
+        rows.append(_esr_row(w, "Mexico", 40000, 0, 999))
+    rows.append(_esr_row("2026-06-25", "China", 100000, 0, 999))
+    rows.append(_esr_row("2026-06-25", "Mexico", 30000, 20000, 999))     # 净销售=当年30000+下一年20000
+    rows.append(_esr_row("2026-07-02", "China", 250000, 10000, 5))
+    rows.append(_esr_row("2026-07-02", "Mexico", 40000, 0, 5))
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows})
     result = fd.fetch_esr_export_sales()
     assert result["available"] is True
-    assert result["latestTotalMT"] == 105000, f"最新周总量应为105000，实际{result['latestTotalMT']}"
-    assert result["prevTotalMT"] == 150000, f"上周总量应为150000，实际{result['prevTotalMT']}"
-    expected_pct = round((105000 - 150000) / 150000 * 100, 1)
-    assert result["wowChangePct"] == expected_pct
-    assert result["chinaLatestMT"] == 80000
-    print("✅ ESR 出口销售解析与环比计算逻辑正确")
-    print(f"   示例输出: {result}")
+    assert result["netSalesMT"] == 300000, f"最新周净销售应=250000+10000+40000=300000，实际{result['netSalesMT']}"
+    assert result["prevNetSalesMT"] == 150000, f"上周应=100000+30000+20000=150000，实际{result['prevNetSalesMT']}"
+    assert result["shipmentsMT"] == 10, "装船量应单独统计(5+5)，不能混进净销售"
+    assert result["avg4wNetSalesMT"] == 112500, f"最新周之前4周均值应=112500，实际{result['avg4wNetSalesMT']}"
+    assert result["vs4wAvgPct"] == round((300000 - 112500) / 112500 * 100, 1) == 166.7, f"实际{result['vs4wAvgPct']}"
+    assert result["wowChangePct"] == 100.0
+    assert result["chinaNetSalesMT"] == 260000
+    assert "latestTotalMT" not in result, "旧字段名(会让人误以为是净销售)不应再出现"
+    assert len(result["recentWeeks"]) == 6
+    print("✅ ESR：净销售=当年+下一年净销售，装船量分开，4周均值基准正确")
+
+
+def test_esr_no_silent_fallback_to_shipments(monkeypatch_fetch):
+    """★接口只返回装船量、没有净销售字段时，必须明确报不可用，不能退回用装船量冒充净销售
+    (旧版本正是这样把装船量标成'净销售'的)。"""
+    rows = [{"weekEndingDate": "2026-06-25", "countryName": "China", "weeklyExports": 90000},
+            {"weekEndingDate": "2026-07-02", "countryName": "China", "weeklyExports": 110000}]
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows})
+    result = fd.fetch_esr_export_sales()
+    assert result["available"] is False
+    assert "净销售字段" in result["reason"]
+    assert "actualFieldsSeen" in result["debug"]
+    print("✅ 没有净销售字段时明确报不可用，不会拿装船量冒充")
+
+
+def test_esr_market_year_boundary_merges_weeks_without_double_count(monkeypatch_fetch):
+    """9月初市场年度切换：4周均值要用到上一年度最后几周；同一周不能被两个年度重复计入。"""
+    old_year = [_esr_row("2026-08-13", "China", 100000), _esr_row("2026-08-20", "China", 100000),
+                _esr_row("2026-08-27", "China", 100000)]
+    new_year = [_esr_row("2026-09-03", "China", 100000), _esr_row("2026-09-10", "China", 300000),
+                _esr_row("2026-08-27", "China", 100000)]   # 交界周两个年度都有：只应计一次
+    def fake_debug(url, headers=None, retries=3, timeout=20, post_data=None):
+        if "esr/commodities" in url: return MOCK_ESR_COMMODITIES, {}
+        if "marketYear/2025" in url: return old_year, {"httpStatus": 200}
+        if "marketYear/2026" in url: return new_year, {"httpStatus": 200}
+        return None, {}
+    fd.fetch_json_debug = fake_debug
+    result = fd.fetch_esr_export_sales()
+    assert result["available"] is True
+    assert result["weekEnding"] == "2026-09-10" and result["marketYearUsed"] == 2026
+    assert result["avg4wNetSalesMT"] == 100000, f"4周均值应把交界周只算一次，实际{result['avg4wNetSalesMT']}"
+    assert result["vs4wAvgPct"] == 200.0
+    print("✅ 市场年度交界：上一年度最后几周并入4周均值，交界周不重复计")
+
+
+def test_psd_soybean_stocks_to_use_uses_total_use(monkeypatch_fetch):
+    """★库存消费比=期末库存÷(国内消费+出口)。用CME公布的2026/27平衡表量级手算验证：
+    期末库存8,436千吨(310百万蒲)、国内消费约61,000、出口约62,000 → 约6.9%。"""
+    data = [
+        {"attributeName": "Ending Stocks", "value": 8436}, {"attributeName": "Production", "value": 120700},
+        {"attributeName": "Total Supply", "value": 135000}, {"attributeName": "Domestic Consumption", "value": 61000},
+        {"attributeName": "Exports", "value": 62000}, {"attributeName": "Crush", "value": 60000},
+    ]
+    monkeypatch_fetch({"psd/commodities": MOCK_PSD_COMMODITIES, "psd/commodity": data})
+    r = fd.fetch_psd_supply_demand()
+    assert r["available"] is True
+    assert r["totalUse"] == 123000
+    assert r["stocksToUsePct"] == round(8436 / 123000 * 100, 1) == 6.9
+    assert r["exports"] == 62000 and r["crush"] == 60000
+    assert "豆粕" not in r["commodity"] and "Meal" not in r["commodity"]
+    print("✅ PSD：大豆库存消费比=期末库存/(国内消费+出口)，手算验证6.9%")
+
+
+def test_psd_stocks_to_use_none_when_exports_missing(monkeypatch_fetch):
+    """缺Exports字段时，库存消费比给None，不能只除以国内消费硬算一个偏大的比值。"""
+    data = [{"attributeName": "Ending Stocks", "value": 8436}, {"attributeName": "Domestic Consumption", "value": 61000}]
+    monkeypatch_fetch({"psd/commodities": MOCK_PSD_COMMODITIES, "psd/commodity": data})
+    r = fd.fetch_psd_supply_demand()
+    assert r["stocksToUsePct"] is None and r["totalUse"] is None
+    print("✅ PSD：缺出口数据时库存消费比为None，不硬算")
+
+
+def test_psd_target_market_year_rule(monkeypatch_fetch):
+    """5月WASDE起首次发布新年度预估：5-12月用当年，1-4月用上一年。"""
+    from datetime import datetime as _dt
+    f = fd._psd_target_market_year
+    assert f(_dt(2026, 9, 29)) == 2026, "9月底：2026/27已开始，应取2026(旧逻辑会取到已结束的2025)"
+    assert f(_dt(2026, 7, 10)) == 2026, "7月：9月合约窗口看新作物，取2026"
+    assert f(_dt(2026, 5, 12)) == 2026
+    assert f(_dt(2027, 1, 15)) == 2026, "1月：仍在2026/27年度内"
+    assert f(_dt(2027, 4, 30)) == 2026, "4月：新年度预估要5月才发布"
+    print("✅ PSD目标年度规则：5-12月取当年，1-4月取上一年")
+
+
+def test_psd_picks_target_year_even_when_older_year_has_same_vintage(monkeypatch_fetch):
+    """回归：旧版本在两个年度WASDE版本月份相同时取第一个(已结束的旧年度)。"""
+    import fetch_data as _fd
+    real_dt = _fd.datetime
+    class FakeDT(real_dt):
+        @classmethod
+        def now(cls, tz=None):
+            return real_dt(2026, 9, 29, tzinfo=tz)
+    _fd.datetime = FakeDT
+    try:
+        def rows(year, es):
+            return [{"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 1, "value": es},
+                    {"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 2, "value": 60000},
+                    {"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 3, "value": 60000}]
+        def fake_debug(url, headers=None, retries=3, timeout=20, post_data=None):
+            if "psd/commodities" in url: return MOCK_PSD_COMMODITIES, {}
+            if "commodityAttributes" in url: return [{"attributeId": 1, "attributeName": "Ending Stocks"},
+                                                      {"attributeId": 2, "attributeName": "Domestic Consumption"},
+                                                      {"attributeId": 3, "attributeName": "Exports"}], {}
+            if "year/2025" in url: return rows(2025, 9000), {"httpStatus": 200}
+            if "year/2026" in url: return rows(2026, 6000), {"httpStatus": 200}
+            return None, {"httpStatus": 404}
+        fd.fetch_json_debug = fake_debug
+        r = fd.fetch_psd_supply_demand()
+        assert r["marketYear"] == 2026 and r["marketYearLabel"] == "2026/27", r
+        assert r["endingStocks"] == 6000
+        print("✅ PSD：9月底取2026/27年度，不会停在已结束的2025/26")
+    finally:
+        _fd.datetime = real_dt
 
 
 def test_psd_code_lookup(monkeypatch_fetch):
@@ -188,12 +321,12 @@ def test_esr_picks_freshest_among_multiple_candidate_years(monkeypatch_fetch):
     已经完结、停留在2025-10-02不再更新的年度。这个测试验证新逻辑——
     同时尝试多个候选年份，自动选出真正数据最新的那一个。"""
     old_completed_year_data = [
-        {"weekEndingDate": "2025-09-25", "countryName": "China", "weeklyExports": 50000},
-        {"weekEndingDate": "2025-10-02", "countryName": "China", "weeklyExports": 60000},
+        _esr_row("2025-09-25", "China", 50000),
+        _esr_row("2025-10-02", "China", 60000),
     ]
     current_active_year_data = [
-        {"weekEndingDate": "2026-06-25", "countryName": "China", "weeklyExports": 90000},
-        {"weekEndingDate": "2026-07-02", "countryName": "China", "weeklyExports": 110000},
+        _esr_row("2026-06-25", "China", 90000),
+        _esr_row("2026-07-02", "China", 110000),
     ]
     def fake_debug(url, headers=None, retries=3, timeout=20):
         if "esr/commodities" in url:
@@ -3674,6 +3807,283 @@ def test_basis_failure_modes_give_diagnostics(monkeypatch_fetch):
     print("✅ 空结果/接口异常/网络无响应都诚实报告")
 
 
+# ===================== 国内豆粕库消比(Mysteel《全国豆粕供需平衡表》) =====================
+# 下面12篇是用户抓包给的真实搜索结果(标题/发布时间/摘要原文)，加上我抓到的8月那篇正文的真实文字。
+MB_REAL_ARTICLES = [
+    ("Mysteel：全国豆粕供需平衡表（2026年8月）", "2026-08-31 18:26", "https://ncp.mysteel.com/a/26083118/BC0AFB400C5ACDC2.html",
+     "2026年8-11月中国豆粕市场供强需弱。8-9月产量高企、消费疲弱，库存攀升至125万吨峰值，基差承压。10月产量收缩低于消费，出现供需逆差，过剩拐点显现。11月消费回暖但产量回升，去库缓慢，库消比仍处高位。整体看，市场由“显著宽松”过渡至“温和偏松”，彻底转向紧平衡仍需产量持续低位或消费超预期回暖。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年7月）", "2026-07-31 18:27", "https://ncp.mysteel.com/a/26073118/9FF36D9CCB44EFCF.html",
+     "2026年7-10月中国豆粕市场呈现“显著供强需弱”格局。7月产量838万吨，消费796万吨，库存升至105万吨；8月库存预计攀升至120万吨，库消比达15%。9-10月产量与消费同步回落，但库存仍高企于110-115万吨，库消比维持15%-16%高位。在高开机、高压榨背景下，供应充沛而饲料需求乏力，库存去化困难，基本面压力持续施压豆粕价格。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年6月）", "2026-06-30 17:28", "https://ncp.mysteel.com/a/26063017/AE9AB8BE03D4723E.html",
+     "2026年6-9月大豆集中到港叠加高温天气影响，油厂维持高开机率，豆粕产量保持高位，月均超750万吨。同期消费端表现平稳，月消费量743-766万吨，出口稳定在8万吨左右。供过于求导致期末库存由74万吨增至125万吨，累计上升约69%；库消比从10.06%升至15.27%，市场供应宽松压力持续加大。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年5月）", "2026-05-29 14:41", "https://ncp.mysteel.com/a/26052914/9207FD950F1F4D92.html",
+     "2026年5月，国内豆粕产量为673万吨，但期初库存仅43万吨，而消费量高达673万吨，导致5月中旬豆粕库存一度降至30万吨以下，月底虽预计小幅回升至40万吨，整体供应依然紧张，库消比仅为5.94%。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年4月）", "2026-04-02 16:09", "https://ncp.mysteel.com/a/26040216/D50E02C891B62166.html",
+     "2026年3月至6月，豆粕市场呈现供应先紧后松、库存逐步累积的格局其中，3月至4月受到港节奏影响，产量分别为658万吨和566万吨，消费则维持在657万至570万吨，豆粕消费需求前置，期末库存从68万吨降至60万吨的低点，库消比处于10.3%至10.5%的中低水平，供应偏紧对价格形成支撑；进入5月至6月后，随着压榨恢复，产量回升至711万吨和790万吨，消费同步增长至683万至767万吨，但产量增幅更大，推动期末库存连续回升至85万吨和105万吨，库消比也逐月上升至12.45%和13.70%，显示供应紧张局面逐步缓解，市场供需趋于宽松。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年3月）", "2026-02-28 16:47", "https://ncp.mysteel.com/a/26022816/892E22631E43F2B7.html",
+     "根据国内豆粕供需平衡表的最新数据，2026年2月至5月期间，豆粕市场在供应恢复与需求回暖的共同作用下，呈现产量逐月回升、消费稳步增长、库存先降后升的运行态势。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年2月）", "2026-01-30 18:00", "https://ncp.mysteel.com/a/26013018/E810E5C2150CE5D3.html",
+     "进入2026年1月，产量略有下降至698万吨，而消费增至722万吨，期末库存进一步减少至90万吨，库消比回落至12.45%，反映春节期间备货需求对库存的消耗。"),
+    ("Mysteel：全国豆粕供需平衡表（2026年1月）", "2026-01-04 08:39", "https://ncp.mysteel.com/a/26010408/896EE0EF49C79A8D.html",
+     "简析：2025年12月至2026年3月期间国内豆粕市场将逐步进入去库周期12月预计产量为716万吨，消费量716万吨，产销基本平衡，期末库存小幅降至117万吨，库消比为16.30%。"),
+    ("Mysteel：全国12月豆粕供需平衡表", "2025-11-28 19:04", "https://ncp.mysteel.com/a/25112819/DBBF9057A8F16AFE.html",
+     "简析：2025年11月国内豆粕产量为712万吨，消费量为714万吨，产需基本持平期末库存为110万吨，环比微降5万吨，库消比为15.40%，供需结构整体维持宽松格局。"),
+    ("Mysteel：全国10月豆粕供需平衡表", "2025-10-31 18:22", "https://ncp.mysteel.com/a/25103118/700CA2E3A3A53F42.html",
+     "2025年10月受假期影响国内油厂压榨量回落，豆粕库存虽小幅下降但仍处百万吨高位。预计11月压榨量增加但需求疲软，去库放缓，月底库存降至90万吨左右。12月因大豆到港减少及压榨亏损，压榨量收缩，库存继续下滑。展望2026年一季度，受买船进度偏缓影响，大豆供应趋紧，豆粕库存或将持续处于较低水平。"),
+    ("Mysteel：全国10月豆粕供需平衡表", "2025-09-30 14:41", "https://ncp.mysteel.com/a/25093014/2BF58BF705529A89.html",
+     "简析：2025年9月油厂维持高开机高压榨，而饲料企业长期维持高头寸滚动，豆粕物理库存处于饱和状态，整体消化进度偏慢。"),
+    ("Mysteel半年报：2026年下半年豆粕价格或呈现先抑后扬走势", "2026-06-29 09:51", "https://ncp.mysteel.com/a/26062909/EE674EE44D1ED87D.html",
+     "2026年上半年豆粕市场呈现冲高回落态势，受南美丰产及国内供应宽松压制，现货价格重心下移，同比跌幅近2%。三季度预计大豆到港量维持高位，豆粕库存持续累积。"),
+]
+# 8月那篇正文(真实抓取)：前后夹着大量导航/推荐文章标题(含\"9月29日…\"这种会被误当月份标记的文字)，用来验证只取标题→免责声明之间的正文
+MB_REAL_BODY_HTML = """<html><head><title>Mysteel：全国豆粕供需平衡表（2026年8月）_我的钢铁网</title><script>var x='9月29日 产量999万吨';</script></head><body>
+<div class="nav">价格 快讯 数据 9月29日江西油厂豆粕销售价格 Mysteel月报：8月花生价格同比下跌 8月31日 产量123万吨 库消比99%</div>
+<h1>Mysteel：全国豆粕供需平衡表（2026年8月）</h1><div>2026-08-31 18:26 来源：我的钢铁网(Mysteel)</div>
+<div class="ai">智能摘要 内容由AI生成 2026年8-11月中国豆粕市场供强需弱。8-9月产量高企、消费疲弱，库存攀升至125万吨峰值，基差承压。10月产量收缩低于消费，出现供需逆差，过剩拐点显现。</div>
+<p>2026年8-11月中国豆粕市场呈现显著供强需弱格局。8月产量800万吨，消费772万吨，供大于求28万吨，期末库存跳增至117万吨，库消比15.12%，油厂库存压力加大，现货基差价格整体承压。9月产量微降至795万吨，消费仅779万吨，供需差扩大至16万吨，库存进一步攀升至125万吨，库消比达16.04%的区间峰值，供应压力最为集中。10月产量大幅收缩</p>
+<div class="disclaimer">免责声明：Mysteel发布的原创及转载内容，仅供客户参考。</div>
+<ul><li>[08-31] Mysteel解读：“金九”已至 9月产量888万吨</li><li>9月29日陕西油厂豆粕销售价格</li></ul></body></html>"""
+
+
+def _mb_items(articles=MB_REAL_ARTICLES):
+    return [{"title": t, "publishTime": pt, "url": u, "content": c, "score": 90} for (t, pt, u, c) in articles]
+
+
+def _mb_install(monkeypatch_fetch, items, body_map=None, body_fail=False):
+    """搜索接口返回items；正文请求：body_map里有的url返回对应HTML，body_fail=True时全部失败。返回还原函数。"""
+    monkeypatch_fetch({"searchapi/search/searchArticle": {"resultCode": 0, "total": len(items), "dataList": items}})
+    real = fd.fetch_text_debug
+    calls = []
+    def fake_text(url, headers=None, retries=2, timeout=20):
+        calls.append(url)
+        if body_fail:
+            return None, {"url": url, "error": "HTTP 403: Forbidden", "httpStatus": 403}
+        if body_map and url in body_map:
+            return body_map[url], {"url": url, "httpStatus": 200}
+        return None, {"url": url, "error": "测试里没有这个url的正文"}
+    fd.fetch_text_debug = fake_text
+    def restore():
+        fd.fetch_text_debug = real
+    restore.calls = calls
+    return restore
+
+
+def test_meal_balance_parses_real_body_and_ignores_page_noise(monkeypatch_fetch):
+    """★真实正文：8月800/772/117/15.12%，9月795/779/125/16.04%。页面里导航/推荐/脚本里的\"9月29日…产量999万吨\"
+    \"8月31日 产量123万吨 库消比99%\"这类会被误当月份标记的文字，必须被排除在解析范围之外。"""
+    text = fd._html_to_text(MB_REAL_BODY_HTML)
+    region = fd._extract_article_region(text, "Mysteel：全国豆粕供需平衡表（2026年8月）")
+    assert "999" not in region and "库消比99%" not in region and "888" not in region, f"导航/脚本噪音混进了正文区域: {region[:200]}"
+    recs = fd._parse_meal_balance_text(region, date(2026, 8, 31))
+    assert recs[(2026, 8)] == {"production": 800.0, "consumption": 772.0, "stock": 117.0, "stu": 15.12, "stuStated": True}, recs
+    assert recs[(2026, 9)] == {"production": 795.0, "consumption": 779.0, "stock": 125.0, "stu": 16.04, "stuStated": True}, recs
+    assert (2026, 10) not in recs, "10月只有一句被截断的话，没有任何数字，不应产生记录"
+    print("✅ 库消比：真实正文解析正确(8月15.12%/9月16.04%)，页面噪音被排除")
+
+
+def test_meal_balance_all_real_summaries(monkeypatch_fetch):
+    """★12篇真实摘要逐条核对：能解析的解析对，区间/多月/月中低点/没数字的一律不误取。"""
+    def P(i):
+        t, pt, u, c = MB_REAL_ARTICLES[i]
+        return fd._parse_meal_balance_text(c, date.fromisoformat(pt[:10]))
+    assert P(0) == {}, "8月摘要没有任何数字(只有'库消比仍处高位')，不应产生记录"
+    r = P(1)   # 7月：产量838/消费796/库存105，没有明示库消比；8月：库存120，\"库消比达15%\"；9-10月是区间
+    assert r[(2026, 7)]["stu"] is None and r[(2026, 7)]["stock"] == 105 and r[(2026, 7)]["consumption"] == 796
+    assert r[(2026, 8)]["stu"] == 15.0 and r[(2026, 8)]["stock"] == 120
+    assert (2026, 9) not in r and (2026, 10) not in r, "'9-10月…库存110-115万吨，库消比维持15%-16%'是区间，不能记到9月或10月头上"
+    assert P(2) == {}, "6月摘要全是'6-9月'区间和'库消比从10.06%升至15.27%'多月变化，一律不采用"
+    r = P(3)   # 5月：库消比5.94%；\"库存一度降至30万吨以下\"是月中低点，30÷673=4.46%与5.94%不自洽 → 库存丢弃
+    assert r[(2026, 5)]["stu"] == 5.94 and r[(2026, 5)]["consumption"] == 673 and r[(2026, 5)]["stock"] is None, r
+    assert P(4) == {}, "4月摘要('3月至6月''10.3%至10.5%''12.45%和13.70%'逐月上升)全是区间/多月，不采用"
+    assert P(5) == {}, "3月摘要没有数字"
+    r = P(6)   # 2026年1月：698/722/90/12.45%，90÷722=12.47%自洽 → 库存保留
+    assert r[(2026, 1)] == {"production": 698.0, "consumption": 722.0, "stock": 90.0, "stu": 12.45, "stuStated": True}, r
+    r = P(7)   # 1月4日发布的文章里的\"12月\"没写年份 → 应推断为上一年(2025年12月)，而不是2026年12月
+    assert (2025, 12) in r and (2026, 12) not in r, r
+    assert r[(2025, 12)]["stu"] == 16.30 and r[(2025, 12)]["stock"] == 117 and r[(2025, 12)]["consumption"] == 716
+    r = P(8)   # 2025年11月：712/714/110/15.40%(\"环比微降5万吨\"不是库存)
+    assert r[(2025, 11)] == {"production": 712.0, "consumption": 714.0, "stock": 110.0, "stu": 15.4, "stuStated": True}, r
+    r = P(9)   # 10月摘要：\"预计11月…月底库存降至90万吨左右\" → 只有库存没有消费和库消比，产生的记录不可用
+    assert all(fd._usable_meal_record(v)[0] is None for v in r.values()), r
+    assert P(10) == {}, "2025年9月摘要没有数字"
+    assert "半年报" in MB_REAL_ARTICLES[11][0]
+    print("✅ 库消比：12篇真实摘要逐条核对——区间/多月/月中低点都没被误取，年份推断正确")
+
+
+def test_meal_balance_full_flow_uses_body(monkeypatch_fetch):
+    """★完整流程(今天=2026-09-29)：最新一篇是8月31日发布的。摘要没数字，必须靠正文拿到9月16.04%。"""
+    items = _mb_items()
+    rest = _mb_install(monkeypatch_fetch, items, body_map={MB_REAL_ARTICLES[0][2]: MB_REAL_BODY_HTML})
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["available"] is True, r
+    assert r["value"] == 16.04 and r["month"] == "2026-09" and r["method"] == "stated" and r["recordSource"] == "body", r
+    assert r["isForecast"] is True, "9月记录来自8月31日的文章，属于预测"
+    assert r["usedFallbackMonth"] is False and r["bodiesFetched"] == 1
+    assert r["stockWan"] == 125 and r["consumptionWan"] == 779
+    assert r["next"] is None and r["trend"] is None, "正文只到9月(10月被截断)，不应编出下月数据"
+    assert r["date"] == "2026-08-31" and r["articleAgeDays"] == 29
+    assert "半年报" not in (r["articleTitle"] or "")
+    print("✅ 库消比：完整流程——靠正文拿到9月16.04%，标记为预测，不编造下月")
+
+
+def test_meal_balance_current_and_next_month_with_trend(monkeypatch_fetch):
+    """今天=2026-08-31：当月8月15.12%，下月9月16.04%，差+0.92个百分点 → 基本持平；改成差1.5以上则标\"上升(累库)\"。"""
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_map={MB_REAL_ARTICLES[0][2]: MB_REAL_BODY_HTML})
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 8, 31))
+    finally:
+        rest()
+    assert r["month"] == "2026-08" and r["value"] == 15.12 and r["isForecast"] is False
+    assert r["next"]["month"] == "2026-09" and r["next"]["value"] == 16.04
+    assert r["trend"]["delta"] == 0.92 and r["trend"]["direction"] == "基本持平"
+    body2 = MB_REAL_BODY_HTML.replace("库消比达16.04%", "库消比达17.50%")
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_map={MB_REAL_ARTICLES[0][2]: body2})
+    try:
+        r2 = fd.fetch_mysteel_meal_balance(today=date(2026, 8, 31))
+    finally:
+        rest()
+    assert r2["trend"]["direction"] == "上升(累库)" and r2["trend"]["delta"] == 2.38
+    print("✅ 库消比：当月+下月+趋势方向(累库/去库)")
+
+
+def test_meal_balance_body_blocked_falls_back_to_summary(monkeypatch_fetch):
+    """★第二级回退：正文请求全部被拦(403)时，退回摘要。最新一篇摘要没数字→9月没有→往回找到8月
+    (7月那篇摘要里\"8月…库消比达15%\")，并且如实标注\"用了8月的数、正文没取到\"。"""
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_fail=True)
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["available"] is True and r["month"] == "2026-08" and r["value"] == 15.0, r
+    assert r["usedFallbackMonth"] is True and r["recordSource"] == "summary"
+    assert r["bodiesFetched"] == 0 and any("403" in n for n in r["bodyNotes"]), "必须如实说明正文没取到及原因"
+    print("✅ 库消比：正文被拦→退回摘要，如实标注用了8月的数")
+
+
+def test_meal_balance_third_level_weekly_stock_fallback(monkeypatch_fetch):
+    """★第三级回退：文章只有消费量，没有库消比也没有库存 → 用周度商业库存÷当月消费，方式标\"weekly\"(可信度较低)。"""
+    art = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://x/a.html", "2026年9月产量795万吨，消费779万吨，供需趋于宽松。")]
+    rest = _mb_install(monkeypatch_fetch, _mb_items(art), body_fail=True)
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29), weekly_stock={"available": True, "value": 125.0, "date": "2026-09-26"})
+        r_none = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29), weekly_stock=None)
+    finally:
+        rest()
+    assert r["available"] is True and r["method"] == "weekly" and r["value"] == round(125.0 / 779 * 100, 2) == 16.05, r
+    assert "可信度较低" in r["methodLabel"]
+    assert r_none["available"] is False, "没有周度库存可用时不能编造，应该不可用"
+    print("✅ 库消比：第三级回退=周度库存÷当月消费，标注可信度较低；没有周度库存就不可用")
+
+
+def test_meal_balance_weekly_cross_check_shown(monkeypatch_fetch):
+    """有文中明示值时，若周度库存也在，额外给出\"最新周度库存÷当月消费\"作交叉核对(不改变采用值)。"""
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_map={MB_REAL_ARTICLES[0][2]: MB_REAL_BODY_HTML})
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29), weekly_stock={"available": True, "value": 121.0, "date": "2026-09-26"})
+    finally:
+        rest()
+    assert r["value"] == 16.04 and r["method"] == "stated"
+    assert r["weeklyCheck"]["value"] == round(121.0 / 779 * 100, 2) == 15.53 and r["weeklyCheck"]["stockDate"] == "2026-09-26"
+    print("✅ 库消比：周度库存交叉核对(15.53%)与文中明示值(16.04%)并列展示")
+
+
+def test_meal_balance_month_rollover_uses_previous_month_record(monkeypatch_fetch):
+    """月初(10月1日)：9月底那篇还没发，当月(10月)没有记录 → 用最近一个月(9月)，标注usedFallbackMonth。"""
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_map={MB_REAL_ARTICLES[0][2]: MB_REAL_BODY_HTML})
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 10, 1))
+    finally:
+        rest()
+    assert r["month"] == "2026-09" and r["value"] == 16.04 and r["usedFallbackMonth"] is True, r
+    print("✅ 库消比：月初当月记录未发布时，沿用上月记录并标注")
+
+
+def test_meal_balance_failure_modes(monkeypatch_fetch):
+    # 最新文章太旧
+    old = [("Mysteel：全国豆粕供需平衡表（2026年6月）", "2026-06-30 17:28", "https://x/1", "6月产量800万吨，消费700万吨，库消比10.00%")]
+    rest = _mb_install(monkeypatch_fetch, _mb_items(old), body_fail=True)
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["available"] is False and "新鲜度" in r["reason"] and "停更" in r["reason"]
+    # 只有不是平衡表的文章
+    rest = _mb_install(monkeypatch_fetch, _mb_items([MB_REAL_ARTICLES[11]]), body_fail=True)
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["available"] is False and "豆粕供需平衡表" in r["reason"] and r["debug"]["skippedTitles"], r
+    # 搜索接口无返回 / 空结果 / resultCode异常
+    monkeypatch_fetch({})
+    r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    assert r["available"] is False and "无返回" in r["reason"]
+    monkeypatch_fetch({"searchapi/search/searchArticle": {"resultCode": 0, "total": 0, "dataList": []}})
+    assert "为空" in fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))["reason"]
+    monkeypatch_fetch({"searchapi/search/searchArticle": {"resultCode": 500}})
+    assert "resultCode=500" in fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))["reason"]
+    # 全部文章都解析不出任何单月数据
+    junk = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://x/j", "整体供强需弱，库消比仍处高位。")]
+    rest = _mb_install(monkeypatch_fetch, _mb_items(junk), body_fail=True)
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["available"] is False and "没有解析出任何单月" in r["reason"] and r["debug"]["bodyNotes"], r
+    print("✅ 库消比：文章太旧/不是平衡表/接口失败/空结果/全部解析不出，都给出明确原因")
+
+
+def test_meal_balance_implausible_values_rejected(monkeypatch_fetch):
+    """荒谬值不采用：库消比59%(超出1~40%)、月消费量9999万吨(超出300~1200)。"""
+    recs = fd._parse_meal_balance_text("9月产量795万吨，消费9999万吨，库存125万吨，库消比59%。", date(2026, 9, 28))
+    assert (2026, 9) in recs and recs[(2026, 9)]["stu"] is None and recs[(2026, 9)]["consumption"] is None, recs
+    assert fd._plausibility_problem("mealStu", 59.0) and not fd._plausibility_problem("mealStu", 5.94)
+    print("✅ 库消比：荒谬的库消比/消费量被丢弃")
+
+
+def test_meal_balance_request_shape(monkeypatch_fetch):
+    """请求体：跟用户抓包一致(query=全国豆粕供需平衡表，一年窗口，platform=pc，pageSize=20，sortType=complex)。"""
+    seen = {}
+    def fake_debug(url, headers=None, retries=3, timeout=20, post_data=None):
+        seen["url"], seen["payload"], seen["headers"] = url, post_data, headers
+        return {"resultCode": 0, "total": 0, "dataList": []}, {}
+    fd.fetch_json_debug = fake_debug
+    fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    p = seen["payload"]
+    assert seen["url"].endswith("/searchapi/search/searchArticle")
+    assert p["query"] == "全国豆粕供需平衡表" and p["platform"] == "pc" and p["pageSize"] == 20 and p["sortType"] == "complex" and p["pageNo"] == 1
+    assert p["startTime"] == "2025-09-29 00:00:00" and p["endTime"] == "2026-09-29 23:59:59", p
+    print("✅ 库消比：请求体与用户抓包一致")
+
+
+def test_esr_china_unknown_other_split(monkeypatch_fetch):
+    """★出口销售拆分：中国/未知目的地/其他分开统计；未知不算中国；4周滚动合计抹平目的地变更的跳动。
+    模拟目的地变更：第5周未知-200000、中国+200000(净销售合计不变)。"""
+    rows = []
+    for w in ["2026-05-28", "2026-06-04", "2026-06-11"]:
+        rows += [_esr_row(w, "CHINA", 50000), _esr_row(w, "UNKNOWN", 100000), _esr_row(w, "JAPAN", 50000)]
+    rows += [_esr_row("2026-06-18", "CHINA", 50000), _esr_row("2026-06-18", "UNKNOWN", 100000), _esr_row("2026-06-18", "JAPAN", 50000)]
+    rows += [_esr_row("2026-06-25", "CHINA", 250000), _esr_row("2026-06-25", "UNKNOWN", -200000), _esr_row("2026-06-25", "JAPAN", 50000)]
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows})
+    r = fd.fetch_esr_export_sales()
+    assert r["chinaNetSalesMT"] == 250000 and r["unknownNetSalesMT"] == -200000 and r["otherNetSalesMT"] == 50000
+    assert r["netSalesMT"] == 100000, "目的地变更不改变净销售合计"
+    assert r["china4wSumMT"] == 50000 * 3 + 250000 and r["unknown4wSumMT"] == 100000 * 3 - 200000
+    assert r["total4wSumMT"] == 200000 * 3 + 100000
+    assert r["chinaShare4wPct"] == round(400000 / 700000 * 100, 1)
+    assert r["chinaMatched"] is True and "CHINA" in r["countryNamesSeen"] and "UNKNOWN" in r["countryNamesSeen"]
+    # 中国名称没匹配上时要能被发现
+    rows2 = [_esr_row(w, "PEOPLES REP OF CN", 10000) for w in ["2026-06-18", "2026-06-25"]]
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows2})
+    r2 = fd.fetch_esr_export_sales()
+    assert r2["chinaMatched"] is False and "PEOPLES REP OF CN" in r2["countryNamesSeen"]
+    print("✅ ESR：中国/未知/其他拆分正确，目的地变更不影响总量，名称没匹配上时可被发现")
+
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -3714,7 +4124,7 @@ if __name__ == "__main__":
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
               test_noaa_outlook_point_outside_any_outlook_zone,
-              test_esr_code_lookup, test_esr_export_parsing, test_esr_picks_freshest_among_multiple_candidate_years,
+              test_esr_code_lookup, test_meal_balance_parses_real_body_and_ignores_page_noise, test_meal_balance_all_real_summaries, test_meal_balance_full_flow_uses_body, test_meal_balance_current_and_next_month_with_trend, test_meal_balance_body_blocked_falls_back_to_summary, test_meal_balance_third_level_weekly_stock_fallback, test_meal_balance_weekly_cross_check_shown, test_meal_balance_month_rollover_uses_previous_month_record, test_meal_balance_failure_modes, test_meal_balance_implausible_values_rejected, test_meal_balance_request_shape, test_esr_china_unknown_other_split, test_esr_uses_soybeans_not_meal, test_esr_export_parsing, test_esr_no_silent_fallback_to_shipments, test_esr_market_year_boundary_merges_weeks_without_double_count, test_psd_soybean_stocks_to_use_uses_total_use, test_psd_stocks_to_use_none_when_exports_missing, test_psd_target_market_year_rule, test_psd_picks_target_year_even_when_older_year_has_same_vintage, test_esr_picks_freshest_among_multiple_candidate_years,
               test_esr_code_lookup_distinguishes_failure_types,
               test_psd_code_lookup, test_psd_parsing,
               test_psd_fuzzy_matching, test_psd_debug_on_field_mismatch, test_drought_monitor_parsing,

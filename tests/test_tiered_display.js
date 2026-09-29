@@ -28,9 +28,9 @@ check('alert-box应该显示"12州加权平均"而不是写死的"八州"或简�
 // ===================== 测试3：PSD现在应该有alert-box了 =====================
 elements['psdBadge'] = makeEl('psdBadge');
 elements['psdContent'] = makeEl('psdContent');
-renderPsd({available:true, marketYear:2026, endingStocks:300, production:52000, domesticConsumption:34000, wasdeVintage:'2026年06月版'}, new Date().toISOString());
+renderPsd({available:true, commodity:'Oilseed, Soybean', marketYear:2026, marketYearLabel:'2026/27', endingStocks:8436, production:120700, domesticConsumption:61000, exports:62000, totalUse:123000, stocksToUsePct:6.9, wasdeVintage:'2026年06月版'}, new Date().toISOString());
 check('PSD现在应该有alert-box展示结论(之前完全没有)', elements['psdContent'].innerHTML.includes('alert-box'));
-check('PSD的alert-box应该带偏多/偏空文字', elements['psdContent'].innerHTML.includes('偏多') || elements['psdContent'].innerHTML.includes('偏空'));
+check('PSD的alert-box应该带库存消费比结论文字(6.9%=正常区间)', elements['psdContent'].innerHTML.includes('库存消费比6.9%') && elements['psdContent'].innerHTML.includes('正常区间'));
 check('PSD详细数据应该被收进details里', elements['psdContent'].innerHTML.includes('<details') && elements['psdContent'].innerHTML.includes('详细数据'));
 
 // ===================== 测试4：CBOT现在应该有alert-box，且方向正确 =====================
