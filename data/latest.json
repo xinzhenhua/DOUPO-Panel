@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-29T11:32:32.302982+00:00",
+  "generatedAt": "2026-09-29T13:14:32.489376+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 357.2,
-    "change": -4.5,
-    "changePct": -1.24,
+    "price": 357.7,
+    "change": -4.0,
+    "changePct": -1.11,
     "asOf": "2026-09-29T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -146,15 +146,13 @@
     "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html"
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.33,
-    "date": "2026-09-29",
-    "pigPrice": 10.17,
-    "cornPricePerTon": 2348.0,
-    "pigLatestDate": "2026-09-29",
-    "cornLatestDate": "2026-09-29",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn"
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fa41cd2a750>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
+    }
   },
   "sowInventory": {
     "available": true,
@@ -7068,15 +7066,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-17 14:15:00",
-        "open": 2862.0,
-        "high": 2868.0,
-        "low": 2861.0,
-        "close": 2868.0,
-        "volume": 449.0,
-        "hold": 690959.0
-      },
-      {
         "datetime": "2026-08-17 15:00:00",
         "open": 2868.0,
         "high": 2871.0,
@@ -8686,6 +8675,15 @@
         "close": 2978.0,
         "volume": 46.0,
         "hold": 838934.0
+      },
+      {
+        "datetime": "2026-09-29 22:00:00",
+        "open": 2984.0,
+        "high": 2986.0,
+        "low": 2971.0,
+        "close": 2975.0,
+        "volume": 60.0,
+        "hold": 837347.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10404,15 +10402,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-17 14:15:00",
-        "open": 3169.0,
-        "high": 3175.0,
-        "low": 3166.0,
-        "close": 3174.0,
-        "volume": 2391.0,
-        "hold": 2338696.0
-      },
-      {
         "datetime": "2026-08-17 15:00:00",
         "open": 3178.0,
         "high": 3178.0,
@@ -12022,6 +12011,15 @@
         "close": 3359.0,
         "volume": 381.0,
         "hold": 2490777.0
+      },
+      {
+        "datetime": "2026-09-29 22:00:00",
+        "open": 3368.0,
+        "high": 3371.0,
+        "low": 3350.0,
+        "close": 3357.0,
+        "volume": 152.0,
+        "hold": 2492464.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
