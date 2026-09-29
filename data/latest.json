@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-09-29T09:57:17.606728+00:00",
+  "generatedAt": "2026-09-29T11:32:32.302982+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 356.9,
-    "change": -4.8,
-    "changePct": -1.33,
+    "price": 357.2,
+    "change": -4.5,
+    "changePct": -1.24,
     "asOf": "2026-09-29T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
     "available": true,
-    "value": 62.15,
-    "date": "2026-09-28",
-    "rawContent": "9月28日成交方面，全国主要油厂豆粕成交12.94万吨，较前一交易日增3.42万吨，其中现货成交9.94万吨，较前一交易日增1.92万吨，远月基差成交3.00万吨，较前一交易日增1.50万吨。\r\n\r\n开机方面，今日全国动态全样本油厂开机率为62.15%，较前一日下降4.39%。",
+    "value": 60.95,
+    "date": "2026-09-29",
+    "rawContent": "9月29日成交方面，全国主要油厂豆粕成交12.89万吨，较前一交易日减0.05万吨，其中现货成交10.99万吨，较前一交易日增1.05万吨，远月基差成交1.90万吨，较前一交易日减1.10万吨。\r\n\r\n开机方面，今日全国动态全样本油厂开机率为60.95%，较前一日下降1.20%。",
     "source": "Mysteel快讯(全国动态全样本油厂开机率)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html"
   },
@@ -146,13 +146,15 @@
     "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html"
   },
   "hogRatio": {
-    "available": false,
-    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7ff22a817490>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-    "debug": {
-      "symbol": "外三元",
-      "errorType": "ConnectTimeout",
-      "retriesAttempted": 2
-    }
+    "available": true,
+    "value": 4.33,
+    "date": "2026-09-29",
+    "pigPrice": 10.17,
+    "cornPricePerTon": 2348.0,
+    "pigLatestDate": "2026-09-29",
+    "cornLatestDate": "2026-09-29",
+    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
+    "sourceUrl": "https://zhujia.zhuwang.com.cn"
   },
   "sowInventory": {
     "available": true,
