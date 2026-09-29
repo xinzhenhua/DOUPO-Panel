@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-29T09:47:54.122827+00:00",
+  "generatedAt": "2026-09-29T09:57:17.606728+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 356.5,
-    "change": -5.2,
-    "changePct": -1.44,
+    "price": 356.9,
+    "change": -4.8,
+    "changePct": -1.33,
     "asOf": "2026-09-29T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -56,6 +56,34 @@
     "articleTitle": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260928）",
     "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
     "sourceUrl": "https://ncp.mysteel.com/a/26092817/F4FE459E50746287.html"
+  },
+  "mysteelMealStu": {
+    "available": true,
+    "value": 16.04,
+    "month": "2026-09",
+    "monthLabel": "2026年9月",
+    "isForecast": true,
+    "usedFallbackMonth": false,
+    "method": "stated",
+    "methodLabel": "文章明示",
+    "recordSource": "body",
+    "stockWan": 125.0,
+    "consumptionWan": 779.0,
+    "productionWan": 795.0,
+    "next": null,
+    "trend": null,
+    "weeklyCheck": {
+      "stockWan": 129.64,
+      "stockDate": "2026-09-28",
+      "consumptionWan": 779.0,
+      "value": 16.64
+    },
+    "date": "2026-08-31",
+    "articleAgeDays": 29,
+    "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
+    "bodiesFetched": 2,
+    "source": "Mysteel文章(全国豆粕供需平衡表)",
+    "sourceUrl": "https://ncp.mysteel.com/a/26083118/BC0AFB400C5ACDC2.html"
   },
   "mysteelSoyImport": {
     "available": true,
@@ -118,15 +146,13 @@
     "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html"
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.33,
-    "date": "2026-09-29",
-    "pigPrice": 10.17,
-    "cornPricePerTon": 2348.0,
-    "pigLatestDate": "2026-09-29",
-    "cornLatestDate": "2026-09-29",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn"
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7ff22a817490>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
+    }
   },
   "sowInventory": {
     "available": true,
@@ -162,8 +188,18 @@
   },
   "crushMargins": {
     "sep": {
-      "available": false,
-      "reason": "以下合约价格缺失，无法计算压榨利润: 豆粕M2609(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
+      "available": true,
+      "contractMonth": 9,
+      "mealSymbol": "M2609",
+      "mealPrice": 3319.0,
+      "oilSymbol": "Y2609",
+      "oilPrice": 9200.0,
+      "beanSymbol": "B2609",
+      "beanPrice": 3910.0,
+      "grossMargin": 397.4,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
     },
     "may": {
       "available": true,
@@ -13282,25 +13318,95 @@
   },
   "exportSales": {
     "available": true,
+    "commodity": "Soybeans(大豆)",
     "weekEnding": "2026-09-17T00:00:00",
-    "marketYearUsed": 2026,
+    "marketYearUsed": 2027,
     "dataAgeDays": 12,
     "isStale": false,
-    "latestTotalMT": 360447,
-    "prevTotalMT": 308051,
-    "wowChangePct": 17.0,
-    "chinaLatestMT": 0,
+    "netSalesMT": 582432,
+    "prevNetSalesMT": 1690438,
+    "avg4wNetSalesMT": 2182958,
+    "vs4wAvgPct": -73.3,
+    "wowChangePct": -65.5,
+    "shipmentsMT": 775392,
+    "chinaNetSalesMT": 0,
+    "unknownNetSalesMT": 0,
+    "otherNetSalesMT": 582432,
+    "chinaShipmentsMT": 0,
+    "china4wSumMT": 0,
+    "unknown4wSumMT": 0,
+    "total4wSumMT": 6762023,
+    "chinaShare4wPct": 0.0,
+    "chinaMatched": false,
+    "countryNamesSeen": [],
+    "recentWeeks": [
+      {
+        "weekEnding": "2026-07-30T00:00:00",
+        "netSalesMT": 936077,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-08-06T00:00:00",
+        "netSalesMT": 1834983,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-08-13T00:00:00",
+        "netSalesMT": 1808026,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-08-20T00:00:00",
+        "netSalesMT": 2552242,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-08-27T00:00:00",
+        "netSalesMT": 1854251,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-03T00:00:00",
+        "netSalesMT": 2634902,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-10T00:00:00",
+        "netSalesMT": 1690438,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-17T00:00:00",
+        "netSalesMT": 582432,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      }
+    ],
     "source": "USDA-FAS ESR API",
     "sourceUrl": "https://apps.fas.usda.gov/esrqs/"
   },
   "supplyDemand": {
     "available": true,
-    "marketYear": 2025,
+    "commodity": "Oilseed, Soybean",
+    "marketYear": 2026,
+    "marketYearLabel": "2026/27",
     "wasdeVintage": "2026年09月版",
-    "endingStocks": 408.0,
-    "production": 57427.0,
-    "totalSupply": 58673.0,
-    "domesticConsumption": 39668.0,
+    "endingStocks": 8432.0,
+    "production": 123422.0,
+    "totalSupply": 132947.0,
+    "domesticConsumption": 78657.0,
+    "exports": 45858.0,
+    "crush": 75659.0,
+    "totalUse": 124515.0,
+    "stocksToUsePct": 6.8,
+    "unit": "千公吨(USDA PSD标准单位)",
     "source": "USDA-FAS PSD API (WASDE同源数据)",
     "sourceUrl": "https://apps.fas.usda.gov/psdonline/"
   }
