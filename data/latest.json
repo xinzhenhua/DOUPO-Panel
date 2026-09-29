@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-29T08:13:37.143926+00:00",
+  "generatedAt": "2026-09-29T09:47:54.122827+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 354.7,
-    "change": -7.0,
-    "changePct": -1.94,
+    "price": 356.5,
+    "change": -5.2,
+    "changePct": -1.44,
     "asOf": "2026-09-29T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -162,18 +162,8 @@
   },
   "crushMargins": {
     "sep": {
-      "available": true,
-      "contractMonth": 9,
-      "mealSymbol": "M2609",
-      "mealPrice": 3319.0,
-      "oilSymbol": "Y2609",
-      "oilPrice": 9200.0,
-      "beanSymbol": "B2609",
-      "beanPrice": 3910.0,
-      "grossMargin": 397.4,
-      "yieldMeal": 0.785,
-      "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+      "available": false,
+      "reason": "以下合约价格缺失，无法计算压榨利润: 豆粕M2609(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
     },
     "may": {
       "available": true,
@@ -195,10 +185,10 @@
       "mealSymbol": "M2701",
       "mealPrice": 3359.0,
       "oilSymbol": "Y2701",
-      "oilPrice": 8868.0,
+      "oilPrice": 8875.0,
       "beanSymbol": "B2701",
       "beanPrice": 4102.0,
-      "grossMargin": 175.4,
+      "grossMargin": 176.7,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
@@ -6099,7 +6089,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 92,
+    "totalBarsReturned": 93,
     "bars": [
       {
         "date": "2026-05-20",
@@ -7020,6 +7010,16 @@
         "volume": 157696.0,
         "hold": 848668.0,
         "settle": 2998.0
+      },
+      {
+        "date": "2026-09-29",
+        "open": 2978.0,
+        "high": 2982.0,
+        "low": 2950.0,
+        "close": 2978.0,
+        "volume": 213446.0,
+        "hold": 838802.0,
+        "settle": 2964.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -8655,7 +8655,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 169,
+    "totalBarsReturned": 170,
     "bars": [
       {
         "date": "2026-01-19",
@@ -10346,6 +10346,16 @@
         "volume": 1162962.0,
         "hold": 2575067.0,
         "settle": 3386.0
+      },
+      {
+        "date": "2026-09-29",
+        "open": 3359.0,
+        "high": 3371.0,
+        "low": 3327.0,
+        "close": 3359.0,
+        "volume": 1202408.0,
+        "hold": 2490712.0,
+        "settle": 3347.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
