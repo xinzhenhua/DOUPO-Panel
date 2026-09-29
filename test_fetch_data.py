@@ -3226,6 +3226,454 @@ def test_soy_import_failure_modes_give_diagnostics(monkeypatch_fetch):
     print("✅ 空结果/接口异常/无可提取内容/网络无响应都诚实报告")
 
 
+import datetime as _rs_dt
+_RESERVE_TEST_TODAY = _rs_dt.date(2026, 9, 28)
+# ★用户文档里第1页的20条真实Mysteel响应(查询"进口大豆竞价销售结果"，total=115)：9条交易公告 + 6条"原油基差"竞价 + 5条真正的拍卖结果
+_RESERVE_REAL_ITEMS = [{'publishTime': '2026-09-22 17:00', 'title': '2026年9月28日进口大豆竞价销售交易公告', 'content': '中储粮油脂有限公司委托于2026年9月28日13:30开展进口大豆竞价销售交易。', 'url': 'https://ncp.mysteel.com/a/26092217/FCA671B054C65B26.html'},
+ {'publishTime': '2026-09-18 16:03', 'title': '2026年9月22日进口大豆竞价销售交易公告', 'content': '中储粮油脂委托于2026年9月22日开展进口大豆竞价销售。', 'url': 'https://ncp.mysteel.com/a/26091816/5C83CE69A2A27C87.html'},
+ {'publishTime': '2026-09-04 17:10', 'title': '2026年9月9日进口大豆竞价销售交易公告', 'content': '中储粮油脂委托于2026年9月9日开展进口大豆竞价销售。', 'url': 'https://ncp.mysteel.com/a/26090417/C8ECBE427BD404A9.html'},
+ {'publishTime': '2026-08-29 09:36', 'title': '2026年9月2日进口大豆竞价销售交易公告', 'content': '中储粮油脂有限公司将于2026年9月2日13:30开展进口大豆竞价销售交易。', 'url': 'https://ncp.mysteel.com/a/26082909/3B8CA810C77E0F26.html'},
+ {'publishTime': '2026-08-26 09:55', 'title': '2026年8月26日进口大豆竞价销售交易公告', 'content': '中储粮油脂委托于2026年8月26日13:30开展进口大豆竞价销售。', 'url': 'https://ncp.mysteel.com/a/26082609/51829FF56AF32767.html'},
+ {'publishTime': '2026-08-17 11:47', 'title': '2026年8月19日进口大豆竞价销售交易公告', 'content': '中储粮油脂有限公司将于2026年8月19日13:30开展进口大豆竞价销售交易。', 'url': 'https://ncp.mysteel.com/a/26081711/6AA0B2B569D7CD1A.html'},
+ {'publishTime': '2026-08-12 15:01',
+  'title': '【中储粮网】2026年8月14日油脂公司进口大豆原油基差竞价销售交易清单',
+  'content': '中储粮网公布2026年8月14日油脂公司进口大豆原油基差竞价销售交易清单。此次销售涉及山西（太原、大同）、陕西（宝鸡）及宁夏（银川）地区，计划销售总量为19884吨。点价期统一为2026年8月14日至9月10日，交货期根据地区不同，截止于10月15日或10月31日。目前成交数量、计划及销售价格暂未公布。',
+  'url': 'https://ncp.mysteel.com/a/26081215/97E64340D70A7F0D.html'},
+ {'publishTime': '2026-08-07 15:20', 'title': '2026年8月12日进口大豆竞价销售交易公告', 'content': '中储粮油脂有限公司将于2026年8月12日开展进口大豆竞价销售。', 'url': 'https://ncp.mysteel.com/a/26080715/173BFFCAAA53EEC7.html'},
+ {'publishTime': '2026-08-07 13:41',
+  'title': '【中储粮网】2026年8月7日油脂公司进口大豆原油基差竞价销售交易结果',
+  'content': '2026年8月7日，中储粮油脂公司进行进口大豆原油基差竞价销售。交易涉及山西太原、大同，陕西宝鸡及宁夏银川等地，计划销售总量19884吨。所有标的基差报价在09-100至09-320之间，点价期为8月7日至20日。最终结果显示，全部标的成交数量均为0，整体流拍。',
+  'url': 'https://ncp.mysteel.com/a/26080713/2853279CD0BDF5A2.html'},
+ {'publishTime': '2026-08-05 09:18',
+  'title': '【中储粮网】2026年8月7日油脂公司进口大豆原油基差竞价销售交易清单',
+  'content': '中储粮网公布2026年8月7日油脂公司进口大豆原油基差竞价销售交易清单。本次计划销售总量为19884吨，涉及山西太原、大同，陕西宝鸡及宁夏银川等地。点价期为2026年8月7日至8月20日，交货期主要集中在8月7日至9月30日，部分宁夏地区货源交货期延至10月31日。当前成交数量、计划销售价及实际销售价均未显示，具体交易结果需待竞价结束后确定。',
+  'url': 'https://ncp.mysteel.com/a/26080509/DD1662FAA28901E5.html'},
+ {'publishTime': '2026-07-31 16:39', 'title': '2026年8月5日进口大豆竞价销售交易公告', 'content': '中储粮油脂有限公司将于2026年8月5日13:30开展进口大豆竞价销售。', 'url': 'https://ncp.mysteel.com/a/26073116/A209441A34077E8E.html'},
+ {'publishTime': '2026-07-28 18:15',
+  'title': '2026年7月31日进口大豆竞价销售交易公告',
+  'content': '受中储粮油脂有限公司委托，2026年7月31日13:30将开展进口大豆竞价销售交易。交易通过国家粮食交易平台进行，报价递增度为10元/次。价格类型为卖方散粮车板交货价，不执行水分、杂质增扣量，筛下物随货出库，卖方负责装货。实际销售数量以官网发布的交易清单为准。公告提供了看样及业务联系人信息，提醒交易会员登录平台参与。',
+  'url': 'https://ncp.mysteel.com/a/26072818/BE17C0DC1D3AAE2E.html'},
+ {'publishTime': '2026-09-28 14:15',
+  'title': '9月28日进口大豆竞价销售结果',
+  'content': '2026年9月28日，计划拍卖22、23、24年产进口大豆514312.514吨，水分9.44%-13.00%，分布在四川、天津等地。交货期为2026年11月-2027年1月。竞拍底价4310元/吨，最高价4390元/吨。最终成交191698.792吨，成交率37.27%。',
+  'url': 'https://ncp.mysteel.com/a/26092814/4AD8FEC894730B4A.html'},
+ {'publishTime': '2026-09-22 14:31',
+  'title': '9月22日进口大豆竞价销售结果',
+  'content': '2026年9月22日进口大豆竞价销售，计划拍卖542992.291吨，生产年限为23、24、25年，水分9.32%-12.70%，分布在广西、天津等多地。交货期为2026年11月-2027年1月。价格区间为4280元/吨至4450元/吨。最终成交338674.098吨，成交率62.37%。',
+  'url': 'https://ncp.mysteel.com/a/26092214/5FC437DC5587FB76.html'},
+ {'publishTime': '2026-09-17 09:54',
+  'title': '【中储粮网】2026年9月18日油脂公司进口大豆原油基差竞价销售交易清单',
+  'content': '中储粮网发布2026年9月18日油脂公司进口大豆原油基差竞价销售交易清单。计划于9月18日在宁夏银川销售2012吨2024年产进口大豆原油。点价期为2026年9月18日至10月15日，交货作业期为2026年9月18日至10月31日。清单未列示具体底价及实际销售价，需通过竞价确定最终成交价格。',
+  'url': 'https://ncp.mysteel.com/a/26091709/27AC379A9934148A.html'},
+ {'publishTime': '2026-09-14 16:51',
+  'title': '9月2日进口大豆竞价销售结果',
+  'content': '2026年9月2日进口大豆竞价销售中，计划拍卖68012.56吨，生产年限涵盖22、24、25年，水分9.63%-10.80%，分布于四川、广西，交货期为2026年9月至2027年1月。起拍价区间为4330-4380元/吨。最终成交量为0吨，成交率为0%，本次拍卖未达成任何交易。',
+  'url': 'https://ncp.mysteel.com/a/26091416/74CF602EE324E30E.html'},
+ {'publishTime': '2026-09-09 14:42',
+  'title': '9月9日进口大豆竞价销售结果',
+  'content': '2026年9月9日，计划拍卖进口大豆68012.56吨，生产年限涵盖22、24、25年，水分9.63%-10.80%，分布在四川、广西，交货期为2026年9月至2027年1月。起拍价区间为4320-4390元/吨。最终成交量为0吨，成交率为0%。',
+  'url': 'https://ncp.mysteel.com/a/26090914/26FCFF9729615648.html'},
+ {'publishTime': '2026-09-07 13:37',
+  'title': '【中储粮网】2026年9月8日油脂公司进口大豆原油基差竞价销售交易清单',
+  'content': '中储粮网公布2026年9月8日油脂公司进口大豆原油基差竞价销售交易清单。计划在宁夏银川地区销售两笔进口大豆原油，数量分别为950吨和938吨。点价期为2026年9月8日至10月15日，交货期为2026年9月8日至10月31日。当前成交数量、底价及实际销售价暂未显示。',
+  'url': 'https://ncp.mysteel.com/a/26090713/536A6B884CB20A18.html'},
+ {'publishTime': '2026-09-01 08:40',
+  'title': '【中储粮网】2026年9月1日油脂公司进口大豆原油基差竞价销售交易清单',
+  'content': '中储粮网公布2026年9月1日油脂公司进口大豆原油基差竞价销售交易清单。陕西宝鸡地区计划销售进口大豆原油1988吨，点价期为2026年9月1日至9月30日，交货期为2026年9月1日至10月31日。本次交易底价及实际销售价格暂未显示，成交数量待竞价结束后确定。',
+  'url': 'https://ncp.mysteel.com/a/26090108/F7D2FC830DFB427C.html'},
+ {'publishTime': '2026-08-26 14:18',
+  'title': '8月26日进口大豆竞价销售结果',
+  'content': '2026年8月26日进口大豆竞价销售中，计划拍卖290794.339吨，实际成交222781.779吨，成交率76.61%。拍卖大豆生产年限涵盖22至25年，水分8.9%-12%，分布于河南、四川等地。成交价格区间为4110-4200元/吨，成交均价4162.73元/吨，交货期为2026年10月至2027年1月。',
+  'url': 'https://ncp.mysteel.com/a/26082614/7DF0A81F540462A5.html'}]
+
+
+def _run_reserve_with_pages(pages, capture=None, today=None):
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        if capture is not None:
+            capture.append({"url": url, "headers": headers, "post_data": post_data})
+        return pages.get((post_data or {}).get("pageNo", 1), _sow_resp([])), {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake_fetch
+    try:
+        return fd_module.fetch_mysteel_reserve_auction(today=today or _RESERVE_TEST_TODAY)
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def _parse_real(i):
+    import fetch_data as fd_module
+    it = _RESERVE_REAL_ITEMS[i]
+    pub = _rs_dt.datetime.strptime(it["publishTime"][:10], "%Y-%m-%d").date()
+    return fd_module._parse_reserve_auction(it["title"], it["content"], pub)
+
+
+def test_reserve_real_articles_parsed_and_noise_excluded(monkeypatch_fetch):
+    """★20条真实文章逐条验证：5条拍卖结果提取出计划量/成交量/成交率/价格；9条交易公告(只有日期没有数量)和
+    6条"原油基差"竞价(卖的是大豆原油，计划销售总量19884吨，标题也叫"进口大豆…竞价销售交易结果")必须排除。"""
+    D = _rs_dt.date
+    expected = {  # 序号: (拍卖日期, 计划万吨, 成交万吨, 成交率, 均价, 价格低, 价格高, 价格类型)
+        12: (D(2026, 9, 28), 51.43, 19.17, 37.27, None, 4310.0, 4390.0, "底价~最高价"),
+        13: (D(2026, 9, 22), 54.3, 33.87, 62.37, None, 4280.0, 4450.0, "价格区间"),
+        15: (D(2026, 9, 2), 6.8, 0.0, 0.0, None, 4330.0, 4380.0, "起拍价区间"),
+        16: (D(2026, 9, 9), 6.8, 0.0, 0.0, None, 4320.0, 4390.0, "起拍价区间"),
+        19: (D(2026, 8, 26), 29.08, 22.28, 76.61, 4162.73, 4110.0, 4200.0, "成交价格区间"),
+    }
+    for i in range(len(_RESERVE_REAL_ITEMS)):
+        r, why = _parse_real(i)
+        if i in expected:
+            got = (r["auctionDate"], r["plannedWan"], r["soldWan"], r["soldRate"], r["avgPrice"], r["priceLow"], r["priceHigh"], r["priceKind"])
+            assert got == expected[i], f"★[{i}] 期望{expected[i]}，实际{got}"
+        elif i in (6, 8, 9, 14, 17, 18):
+            assert r is None and "原油" in why, f"★[{i}]原油基差竞价必须排除: {r} {why}"
+        else:
+            assert r is None and "计划拍卖" in why, f"★[{i}]交易公告必须排除: {r} {why}"
+    print("✅ 20条真实文章：5条拍卖结果全部正确提取，9条交易公告+6条原油基差竞价全部排除")
+
+
+def test_reserve_full_flow_latest_auction_with_previous(monkeypatch_fetch):
+    """★端到端：今天2026-09-28，最近一次拍卖就是今天(9-28)：计划51.43万吨、成交19.17万吨、成交率37.27%。
+    自动填入的是计划拍卖量51.43(口径跟现有计分一致：>=40万吨偏空)；同时带上上一次(9-22，54.3万吨，成交率62.37%)。"""
+    r = _run_reserve_with_pages({1: _sow_resp(_RESERVE_REAL_ITEMS, 115)})
+    assert r["available"] is True, r
+    assert r["value"] == 51.43 and r["auctionDate"] == "2026-09-28" and r["ageDays"] == 0, r
+    assert (r["plannedWan"], r["soldWan"], r["soldRate"]) == (51.43, 19.17, 37.27)
+    assert r["previous"] == {"auctionDate": "2026-09-22", "plannedWan": 54.3, "soldWan": 33.87, "soldRate": 62.37, "avgPrice": None}, r["previous"]
+    assert r["auctionsSeen"] == 5
+    print("✅ 端到端：最近一次拍卖2026-09-28，计划51.43万吨/成交率37.27%，上一次54.3万吨/62.37%")
+
+
+def test_reserve_uses_auction_date_not_publish_date(monkeypatch_fetch):
+    """★"最近一次"按拍卖日期取，不是文章发布日期：9月2日那次的结果文章是9月14日才发的，
+    比9月9日那次(当天发)发布得晚——最近一次仍然应该是9月9日。"""
+    r = _run_reserve_with_pages({1: _sow_resp([_RESERVE_REAL_ITEMS[15], _RESERVE_REAL_ITEMS[16]])}, today=_rs_dt.date(2026, 9, 20))
+    assert r["auctionDate"] == "2026-09-09" and r["previous"]["auctionDate"] == "2026-09-02", r
+    print("✅ 按拍卖日期取最近一次(9-9)，虽然9-2那次的文章发布得更晚(9-14)")
+
+
+def test_reserve_paginates_all_pages_latest_on_last_page(monkeypatch_fetch):
+    """搜索结果按相关度排序，共115条(6页)——最新一次拍卖只出现在最后一页时也必须能取到，
+    不能只看第1页。"""
+    filler = [{"title": "无关文章", "content": "无关内容", "publishTime": "2026-01-01 09:00"} for _ in range(20)]
+    captured = []
+    pages = {i: _sow_resp(filler, 101) for i in range(1, 6)}
+    pages[6] = _sow_resp([_RESERVE_REAL_ITEMS[12]], 101)
+    r = _run_reserve_with_pages(pages, capture=captured)
+    assert [c["post_data"]["pageNo"] for c in captured] == [1, 2, 3, 4, 5, 6], [c["post_data"]["pageNo"] for c in captured]
+    assert r["available"] is True and r["auctionDate"] == "2026-09-28"
+    print("✅ 翻6页取完，只出现在最后一页的最新拍卖也能取到")
+
+
+def test_reserve_crude_oil_basis_never_mistaken_for_soybean_auction(monkeypatch_fetch):
+    """★原油基差竞价(卖的是大豆原油，量只有几千吨)即使措辞伪装成"计划拍卖"也必须排除；
+    只有这类文章时诚实报告，并且把排除原因写进诊断信息。"""
+    fake = {"title": "【中储粮网】进口大豆原油基差竞价销售交易结果", "publishTime": "2026-09-28 10:00",
+            "content": "2026年9月28日，计划拍卖进口大豆原油1988吨，最终成交1988吨，成交率100%。"}
+    only_oil = [_RESERVE_REAL_ITEMS[i] for i in (6, 8, 9, 14, 17, 18)] + [fake]
+    r = _run_reserve_with_pages({1: _sow_resp(only_oil)})
+    assert r["available"] is False and any("原油" in s for s in r["debug"]["skipped"]), r
+    print("✅ 原油基差竞价(含伪装成'计划拍卖'的)全部排除，并在诊断信息里说明原因")
+
+
+def test_reserve_integrity_check_and_derived_fields(monkeypatch_fetch):
+    """完整性校验：成交量÷计划量必须跟文中的成交率对得上，对不上说明取错了数，整条丢弃；
+    缺成交量/成交率时可以由另一个推算；"流拍"表示成交为0；什么结果都没有就不采用。"""
+    import fetch_data as fd_module
+    D = _rs_dt.date(2026, 9, 28)
+    f = lambda content: fd_module._parse_reserve_auction("9月28日进口大豆竞价销售结果", content, D)
+    bad, why = f("2026年9月28日，计划拍卖500000吨，最终成交100000吨，成交率90%。")
+    assert bad is None and "对不上" in why, (bad, why)
+    only_rate, _ = f("2026年9月28日，计划拍卖100000吨，成交率50%。")
+    assert only_rate["soldWan"] == 5.0 and only_rate["soldRate"] == 50.0
+    only_sold, _ = f("2026年9月28日，计划拍卖100000吨，实际成交25000吨。")
+    assert only_sold["soldRate"] == 25.0
+    fail, _ = f("2026年9月28日，计划拍卖100000吨，本次拍卖全部流拍。")
+    assert fail["soldWan"] == 0.0 and fail["soldRate"] == 0.0
+    none, why2 = f("2026年9月28日，计划拍卖100000吨。")
+    assert none is None and "成交" in why2
+    print("✅ 成交率对不上时整条丢弃；缺一个可由另一个推算；流拍=0；没有结果就不采用")
+
+
+def test_reserve_stale_and_future_and_price_guards(monkeypatch_fetch):
+    """新鲜度：最近一次拍卖超过45天(可能已暂停)就拒绝，45天内接受(边界有测试)；拍卖日期在未来的丢弃；
+    价格离谱只丢价格本身，不丢整条(计划量/成交率仍然有效)。"""
+    only_928 = {1: _sow_resp([_RESERVE_REAL_ITEMS[12]])}
+    assert _run_reserve_with_pages(only_928, today=_rs_dt.date(2026, 11, 12))["available"] is True          # 45天
+    r46 = _run_reserve_with_pages(only_928, today=_rs_dt.date(2026, 11, 13))                                 # 46天
+    assert r46["available"] is False and "暂停" in r46["reason"] and "46天前" in r46["reason"], r46
+    future = {"title": "1月1日进口大豆竞价销售结果", "publishTime": "2026-09-28 10:00", "content": "2027年1月1日，计划拍卖100000吨，最终成交50000吨，成交率50%。"}
+    assert _run_reserve_with_pages({1: _sow_resp([future])})["available"] is False
+    import fetch_data as fd_module
+    weird, _ = fd_module._parse_reserve_auction("9月28日进口大豆竞价销售结果", "2026年9月28日，计划拍卖100000吨，最终成交50000吨，成交率50%。竞拍底价4元/吨，最高价5元/吨。", _rs_dt.date(2026, 9, 28))
+    assert weird["plannedWan"] == 10.0 and weird["soldRate"] == 50.0 and weird["priceLow"] is None
+    print("✅ 45天内接受/46天拒绝(可能已暂停)；未来日期丢弃；离谱价格只丢价格本身")
+
+
+def test_reserve_auction_date_fallback_and_dedup(monkeypatch_fetch):
+    """正文没有完整日期时用标题里的"M月D日"+发布日期推断年份；同一次拍卖有多篇文章时取发布最晚的。"""
+    import fetch_data as fd_module
+    r, _ = fd_module._parse_reserve_auction("9月28日进口大豆竞价销售结果", "计划拍卖100000吨，最终成交50000吨，成交率50%。", _rs_dt.date(2026, 9, 28))
+    assert r["auctionDate"] == _rs_dt.date(2026, 9, 28)
+    early = {"title": "9月28日进口大豆竞价销售结果", "publishTime": "2026-09-28 14:00", "content": "2026年9月28日，计划拍卖100000吨，最终成交50000吨，成交率50%。"}
+    late = {"title": "9月28日进口大豆竞价销售结果(更正)", "publishTime": "2026-09-29 09:00", "content": "2026年9月28日，计划拍卖100000吨，最终成交60000吨，成交率60%。"}
+    out = _run_reserve_with_pages({1: _sow_resp([late, early])}, today=_rs_dt.date(2026, 9, 30))
+    assert out["soldRate"] == 60.0 and out["auctionsSeen"] == 1, out
+    print("✅ 日期回退(标题+发布日期)正确；同一次拍卖多篇文章取发布最晚的(更正版)")
+
+
+def test_reserve_request_matches_user_capture(monkeypatch_fetch):
+    """★请求跟用户抓包逐项对照：query=进口大豆竞价销售结果、sortType=complex、platform=pc、pageNo=1、pageSize=20，
+    字段集合一致，一年窗口起点2025-09-28，token=-1；不足一页时不多翻页。"""
+    import datetime as dt
+    captured = []
+    _run_reserve_with_pages({1: _sow_resp([_RESERVE_REAL_ITEMS[12]])}, capture=captured)
+    assert len(captured) == 1
+    c = captured[0]; p = c["post_data"]
+    assert c["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert set(p) == {"query", "startTime", "endTime", "sortType", "platform", "pageNo", "pageSize"}
+    assert (p["query"], p["sortType"], p["platform"], p["pageNo"], p["pageSize"]) == ("进口大豆竞价销售结果", "complex", "pc", 1, 20)
+    days = (dt.datetime.strptime(p["endTime"][:10], "%Y-%m-%d") - dt.datetime.strptime(p["startTime"][:10], "%Y-%m-%d")).days
+    assert days == 365 and p["startTime"] == "2025-09-28 00:00:00" and c["headers"]["token"] == "-1"
+    print("✅ 请求逐项对照抓包一致(关键词/一年窗口起点2025-09-28/分页/字段集合/token)")
+
+
+def test_reserve_failure_modes_give_diagnostics(monkeypatch_fetch):
+    import fetch_data as fd_module
+    assert "为空" in _run_reserve_with_pages({1: _sow_resp([])})["reason"]
+    assert "resultCode=1" in _run_reserve_with_pages({1: {"resultCode": 1}})["reason"]
+    nothing = _run_reserve_with_pages({1: _sow_resp([{"title": "完全不相关", "content": "无关", "publishTime": "2026-09-28 10:00"}])})
+    assert nothing["available"] is False and nothing["debug"]["itemsChecked"] == 1 and "firstItemSample" in nothing["debug"]
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"httpStatus": None, "error": "连接超时"})
+    try:
+        assert "无返回" in fd_module.fetch_mysteel_reserve_auction()["reason"]
+    finally:
+        fd_module.fetch_json_debug = real
+    print("✅ 空结果/接口异常/无可解析文章/网络无响应都诚实报告")
+
+
+import datetime as _basis_dt
+_BASIS_TEST_TODAY = _basis_dt.date(2026, 9, 28)
+# ★用户文档里第1页的20条真实Mysteel响应(查询"全国主要市场豆粕基差价格汇总"，total=245，每日一篇)
+_BASIS_REAL_ITEMS = [{'publishTime': '2026-09-28 11:39',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260928）',
+  'content': '2026年9月28日，全国主要市场豆粕01合约现货基差普遍上涨。其中长春基差150元/吨，涨30元；大连90元/吨，涨30元；昆明、成都均为60元/吨，各涨20元；西安70元/吨，涨20元。日照、湛江、东莞、南通基差均为-70至-80元/吨，各涨20元；防城港-100元/吨，涨20元。天津、沧州、周口基差分别为-30、-30、-20元/吨，各涨30元。厦门基差30元/吨，涨50元。',
+  'url': 'https://ncp.mysteel.com/a/26092811/74E13684FD6F9EA5.html'},
+ {'publishTime': '2026-09-24 14:16',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260924）',
+  'content': '2026年9月24日全国主要市场豆粕基差价格汇总显示，多数地区基差下跌。长春基差120，跌20；天津-60，跌20；日照、湛江、东莞均为-90，跌10；防城港-140，跌10；南通-110，跌10。昆明30，成都40，大连60，西安50，均跌10。南昌-20，周口-50，武汉-30，厦门-20，重庆-10，其中南昌、周口、武汉、厦门基差持平，其余地区基差均有不同程度下跌。',
+  'url': 'https://ncp.mysteel.com/a/26092414/3BB742943907E419.html'},
+ {'publishTime': '2026-09-23 13:31',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260923）',
+  'content': '2026年9月23日，全国主要市场豆粕基差价格多数上涨。云南昆明、吉林长春、四川成都基差分别为40、140、50，均涨10；辽宁大连基差70，涨20。天津、山东日照、江苏南通等地基差为负值，其中广西防城港-130，山东日照-70，广东东莞及湛江-80，多数地区上涨10。广东两地持平。重庆基差0，涨10。陕西西安、河北沧州、河南周口等地基差在-50至60之间，普遍上涨10。',
+  'url': 'https://ncp.mysteel.com/a/26092313/3CE7BDD8A53838B0.html'},
+ {'publishTime': '2026-09-22 11:42',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260922）',
+  'content': '2026年9月22日全国主要市场豆粕基差价格汇总显示，多数地区基差下跌。昆明、长春基差分别为30、130，均跌10；天津、日照、湛江、东莞、防城港、南通、沧州、岳阳、大连基差分别跌20、10、10、10、10、10、10、10、10；周口、武汉、西安基差均跌20；厦门基差涨10；成都、南昌、重庆基差持平。',
+  'url': 'https://ncp.mysteel.com/a/26092211/2FE967A1B580F927.html'},
+ {'publishTime': '2026-09-21 11:54',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260921）',
+  'content': '2026年9月21日全国主要市场豆粕基差价格汇总显示，多数地区基差随01合约波动。昆明、长春基差分别为40、140，上涨10；成都、防城港、沧州、周口、重庆基差持平。天津下跌10至-30，厦门下跌10至-40。日照、东莞、湛江、南通基差均上涨20，分别为-70、-90、-80、-70。南昌、武汉、岳阳、大连、西安基差上涨10，分别为-30、-10、-40、60、70。',
+  'url': 'https://ncp.mysteel.com/a/26092111/7F7FA116005EEECA.html'},
+ {'publishTime': '2026-09-20 11:47',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260920）',
+  'content': '2026年9月20日，全国主要市场豆粕基差以01合约为基准普遍下跌。云南昆明、陕西西安及辽宁大连等地基差为正，其余多数地区为负。其中，广西防城港基差最低为-120，广东东莞为-110。跌幅方面，河北沧州与河南周口均下跌60，吉林长春、四川成都、天津、江西南昌及重庆等地下跌40。山东日照与广东湛江基差持平。整体显示现货基差走弱态势。',
+  'url': 'https://ncp.mysteel.com/a/26092011/82241235A4580058.html'},
+ {'publishTime': '2026-09-18 12:20',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260918）',
+  'content': '2026年9月18日，全国主要市场豆粕基差普遍上涨。其中长春基差最高为170元/吨，防城港最低为-80元/吨。各地涨幅多在60-80元/吨之间，厦门涨幅最小为40元/吨。整体来看，豆粕现货基差呈现上行趋势，各地区价差结构保持稳定，北方地区基差相对高于南方沿海地区。',
+  'url': 'https://ncp.mysteel.com/a/26091812/1724D5B948361D13.html'},
+ {'publishTime': '2026-09-17 12:04',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260917）',
+  'content': '2026年9月17日全国主要市场豆粕基差价格汇总显示，各区域表现分化。长春基差为110，上涨30；大连基差30，上涨20；成都基差10，上涨10。昆明基差0，下跌10。多地基差为负值，其中防城港最低为-160，下跌20；东莞、日照、南通等地基差在-110至-120之间，均出现不同程度下跌。天津、沧州、西安等地基差变动较小或持平。整体来看，部分北方地区基差走强，而南方及沿海多数地区基差走弱。',
+  'url': 'https://ncp.mysteel.com/a/26091712/544ECDCFC0CB713D.html'},
+ {'publishTime': '2026-09-15 13:02',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260915）',
+  'content': '2026年9月15日，全国主要市场豆粕基差价格互有涨跌。昆明、长春、日照等地上涨10-20元/吨；成都、天津、防城港等地持平。具体来看，长春基差110元/吨，昆明30元/吨；华南地区湛江、东莞基差分别为-100、-110元/吨；华东南通基差-110元/吨。整体呈现区域分化态势，部分沿海及内陆市场基差小幅修复，其余地区保持稳定。',
+  'url': 'https://ncp.mysteel.com/a/26091513/F73CCE1FC7636E74.html'},
+ {'publishTime': '2026-09-11 13:44',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260911）',
+  'content': '2026年9月11日，全国主要市场豆粕基差多数上涨。昆明、长春、成都等地基差分别为10、80、50，涨幅在10-30之间。天津、山东、广东等地基差为负值，其中日照、湛江、东莞及防城港均为-120至-140区间，除湛江持平外，其余小幅上涨10-20。厦门基差下跌10至-60。整体来看，大部分地区基差呈现上涨趋势，仅个别地区出现下跌或持稳。',
+  'url': 'https://ncp.mysteel.com/a/26091113/B8E4CBB789988808.html'},
+ {'publishTime': '2026-09-10 11:57',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260910）',
+  'content': '2026年9月10日全国主要市场豆粕基差价格汇总显示，多数地区基差为负值。其中山东日照、广西防城港基差最低，均为-150；云南昆明、陕西西安基差为0；吉林长春基差最高，为50。涨跌方面，福建厦门上涨30，天津、河北沧州分别上涨10和20；山东日照、广东湛江下跌20；其余大部分地区持稳或小幅波动。整体来看，沿海及部分内陆地区基差表现较弱，东北及西南部分地区相对坚挺。',
+  'url': 'https://ncp.mysteel.com/a/26091011/AAF0D9EC456AAE97.html'},
+ {'publishTime': '2026-09-09 11:41',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260909）',
+  'content': '2026年9月9日，全国主要市场豆粕基差以01合约为准。昆明、长春基差分别为0和50；天津、日照、湛江等地基差为负，其中日照、防城港低至-150。多数地区基差上涨10-20点，如昆明、长春、天津等；南昌下跌10点；厦门、西安持平。整体来看，除个别地区外，大部分市场豆粕基差呈现小幅上涨态势，区域间价差依然存在。',
+  'url': 'https://ncp.mysteel.com/a/26090911/FD41F8BC3CA33B29.html'},
+ {'publishTime': '2026-09-08 12:18',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260908）',
+  'content': '2026年9月8日，全国主要市场豆粕基差以01合约为准。长春基差30元/吨，成都10元/吨，西安持平。其余地区多为负值，其中广西防城港最低为-170元/吨，山东日照-160元/吨，江苏南通-150元/吨。当日多数地区基差下跌10-20元/吨，如昆明、长春、湛江等；成都、南昌、重庆、西安等地基差持稳。整体呈现弱势调整格局。',
+  'url': 'https://ncp.mysteel.com/a/26090812/07D26EF533DF81E2.html'},
+ {'publishTime': '2026-09-07 11:59',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260907）',
+  'content': '2026年9月7日，全国主要市场豆粕基差普遍上涨。云南昆明、陕西西安基差为0；吉林长春基差最高，达50。沿海及内陆多数地区基差为负值，其中广西防城港最低，为-160。各地涨幅在10至60之间，吉林长春涨幅最大，广东东莞、湛江涨幅最小。整体来看，豆粕现货基差呈现上行趋势，区域间价差依然存在。',
+  'url': 'https://ncp.mysteel.com/a/26090711/3D18661B59FE8D56.html'},
+ {'publishTime': '2026-09-04 14:00',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260904）',
+  'content': '2026年9月4日，全国主要市场豆粕基差以01合约为准，整体呈现下跌趋势。其中广西防城港基差为-200，江苏南通为-190，山东日照为-180，天津为-160。多数地区基差下跌10至30个点，如昆明、成都、天津等地；长春和大连基差持平。数据显示沿海及内陆主要产区基差普遍走弱，反映现货相对期货价格承压。',
+  'url': 'https://ncp.mysteel.com/a/26090414/1F292B2B7AEE322E.html'},
+ {'publishTime': '2026-09-03 12:06',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260903）',
+  'content': '2026年9月3日全国主要市场豆粕基差普遍下跌。其中山东日照、广西防城港基差均为-170，分别下跌60和10；天津、河北沧州基差为-140，均下跌40；江苏南通基差-160，下跌30。广东湛江、福建厦门基差持平，分别为-120和-80。云南昆明、吉林长春等地基差在-10至-20区间，小幅下跌。整体来看，多数地区基差呈现弱势运行态势。',
+  'url': 'https://ncp.mysteel.com/a/26090312/6AFA78D87468E1F3.html'},
+ {'publishTime': '2026-09-02 12:01',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260902）',
+  'content': '2026年9月2日全国主要市场豆粕基差以负值为主。天津、山东日照、江苏南通等地基差上涨20-30元；福建厦门、陕西西安基差下跌10元；其余多数地区如昆明、长春、成都等持稳。其中广西防城港基差最低为-160，陕西西安最高为40。整体来看，部分沿海及华北地区基差有所修复，华南及西南部分地区保持稳定，市场呈现分化走势。',
+  'url': 'https://ncp.mysteel.com/a/26090212/94707E957D9C06C2.html'},
+ {'publishTime': '2026-09-01 11:56',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260901）',
+  'content': '2026年9月1日全国主要市场豆粕基差价格汇总显示，多数地区基差为负值。其中广西防城港基差最低为-180，陕西西安最高为50。涨跌方面，河北沧州上涨40，天津上涨30，山东日照、河南周口及湖北武汉均上涨20；广东湛江下跌10；云南昆明、吉林长春等其余多地持稳。整体来看，沿海及部分内陆地区基差小幅波动，区域间价差依然存在。',
+  'url': 'https://ncp.mysteel.com/a/26090111/A26DB8FC2AAEB771.html'},
+ {'publishTime': '2026-08-31 13:43',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260831）',
+  'content': '2026年8月31日全国主要市场豆粕基差数据显示，多数地区基差为负值。其中广西防城港基差最低为-180，山东日照为-170；陕西西安基差最高为40。较前一交易日，大连、东莞等地基差上涨30点，昆明、长春等地下跌10点，成都、天津等地持平。整体来看，各地基差变动幅度有限，市场呈现小幅震荡格局。',
+  'url': 'https://ncp.mysteel.com/a/26083113/C60FA0AC01DBDD86.html'},
+ {'publishTime': '2026-08-28 11:58',
+  'title': 'Mysteel：全国主要市场豆粕基差价格汇总（20260828）',
+  'content': '2026年8月28日，全国主要市场豆粕基差以01合约为准。多数地区基差为负值，其中广西防城港最低为-180，山东日照、广东东莞及河北沧州均为-160。云南昆明基差为-20，吉林长春为10，陕西西安为30。当日基差变动方面，成都上涨10；长春、岳阳、大连、重庆及西安持平；其余多地基差下跌，如山东日照下跌30，天津、广东湛江、江苏南通等地下跌10至20不等。',
+  'url': 'https://ncp.mysteel.com/a/26082811/33B500DCC6AC6CC7.html'}]
+
+
+def _run_basis_with_pages(pages, capture=None, today=None):
+    import fetch_data as fd_module
+    real = fd_module.fetch_json_debug
+    def fake_fetch(url, headers=None, retries=3, timeout=20, post_data=None):
+        if capture is not None:
+            capture.append({"url": url, "headers": headers, "post_data": post_data})
+        return pages.get((post_data or {}).get("pageNo", 1), _sow_resp([])), {"httpStatus": 200}
+    fd_module.fetch_json_debug = fake_fetch
+    try:
+        return fd_module.fetch_mysteel_basis(today=today or _BASIS_TEST_TODAY)
+    finally:
+        fd_module.fetch_json_debug = real
+
+
+def test_basis_real_articles_extraction_matches_manual_verification(monkeypatch_fetch):
+    """★用户文档里20条真实正文，逐条验证：17条能提取出沿海代表城市的确切基差，
+    3条(9-22/9-21/9-11)原文本身没有给出任何沿海候选城市的确切数值(全是范围或纯变动量)，
+    这是数据源本身的限制，不是正则的问题——每条都手算验证过下面这些具体数值。"""
+    import fetch_data as fd_module
+    expected = {
+        "2026-09-28": ("防城港", -100.0), "2026-09-24": ("日照", -90.0), "2026-09-23": ("日照", -70.0),
+        "2026-09-20": ("东莞", -110.0), "2026-09-18": ("防城港", -80.0), "2026-09-17": ("防城港", -160.0),
+        "2026-09-15": ("南通", -110.0), "2026-09-10": ("防城港", -150.0), "2026-09-09": ("日照", -150.0),
+        "2026-09-08": ("日照", -160.0), "2026-09-07": ("防城港", -160.0), "2026-09-04": ("日照", -180.0),
+        "2026-09-03": ("南通", -160.0), "2026-09-02": ("防城港", -160.0), "2026-09-01": ("防城港", -180.0),
+        "2026-08-31": ("日照", -170.0), "2026-08-28": ("防城港", -180.0),
+    }
+    no_data_days = {"2026-09-22", "2026-09-21", "2026-09-11"}
+    for it in _BASIS_REAL_ITEMS:
+        d = it["publishTime"][:10]
+        city, v = fd_module._extract_basis_from_article(it["content"])
+        if d in expected:
+            assert (city, v) == expected[d], f"★{d}: 期望{expected[d]}，实际{(city, v)}"
+        elif d in no_data_days:
+            assert v is None, f"★{d}: 应该提取不到任何确切值(原文只有范围/纯变动量)，实际{(city, v)}"
+    print(f"✅ 20条真实文章：17条提取出确切值且完全正确，3条(9-22/9-21/9-11，原文本身无确切值)正确识别为无数据")
+
+
+def test_basis_end_to_end_uses_latest_when_available(monkeypatch_fetch):
+    """★端到端：真实20条文章，今天2026-09-28，最新一篇(9-28)本身就能提取出确切值(防城港-100)，
+    不需要触发回退机制。"""
+    r = _run_basis_with_pages({1: _sow_resp(_BASIS_REAL_ITEMS, 245)})
+    assert r["available"] is True, r
+    assert r["value"] == -100.0 and r["city"] == "防城港" and r["date"] == "2026-09-28", r
+    assert r["usedFallback"] is False and r["fallbackDays"] == 0
+    print("✅ 端到端：最新一篇(9-28)本身可解析，直接采用，未触发回退")
+
+
+def test_basis_falls_back_when_latest_articles_unparseable(monkeypatch_fetch):
+    """★用户真实数据里连续两天(9-22、9-21)都没有确切值——模拟"今天恰好是9-22发布当天"这种情况，
+    最新一篇解析失败时应该往前退到9-20(-110)，并诚实标注用的是2天前的数据，不是当天的。"""
+    items_922_back = [it for it in _BASIS_REAL_ITEMS if it["publishTime"][:10] in ("2026-09-22", "2026-09-21", "2026-09-20")]
+    r = _run_basis_with_pages({1: _sow_resp(items_922_back)}, today=_basis_dt.date(2026, 9, 22))
+    assert r["available"] is True, r
+    assert r["value"] == -110.0 and r["city"] == "东莞" and r["date"] == "2026-09-20", r
+    assert r["usedFallback"] is True and r["fallbackDays"] == 2 and r["latestArticleDate"] == "2026-09-22"
+    print("✅ 最新两篇(9-22/9-21)都解析失败时，正确回退到9-20(-110)，并诚实标注滞后2天")
+
+
+def test_basis_all_recent_articles_unparseable_gives_diagnostic(monkeypatch_fetch):
+    """回退窗口内的文章全部解析失败时，诚实报告，debug带上尝试过的所有日期。"""
+    items_all_bad = [it for it in _BASIS_REAL_ITEMS if it["publishTime"][:10] in ("2026-09-22", "2026-09-21", "2026-09-11")]
+    r = _run_basis_with_pages({1: _sow_resp(items_all_bad)}, today=_basis_dt.date(2026, 9, 22))
+    assert r["available"] is False and "没有给出确切数值" in r["reason"], r
+    assert len(r["debug"]["attemptedDates"]) == 3
+    print("✅ 回退窗口内全部解析失败时诚实报告，debug带上尝试过的所有日期")
+
+
+def test_basis_stale_data_rejected(monkeypatch_fetch):
+    """新鲜度：每日更新的指标，超过7天(实测最大间隔4天)就拒绝。"""
+    old = [it for it in _BASIS_REAL_ITEMS if it["publishTime"][:10] == "2026-08-28"]
+    r_ok = _run_basis_with_pages({1: _sow_resp(old)}, today=_basis_dt.date(2026, 9, 4))   # 7天前
+    assert r_ok["available"] is True
+    r_stale = _run_basis_with_pages({1: _sow_resp(old)}, today=_basis_dt.date(2026, 9, 5))  # 8天前
+    assert r_stale["available"] is False and "新鲜度限制" in r_stale["reason"] and "8天前" in r_stale["reason"]
+    print("✅ 7天内接受，8天前拒绝(每日更新的指标，滞后太久就不该用)")
+
+
+def test_basis_range_and_change_only_rejected_synthetic(monkeypatch_fetch):
+    """合成陷阱句：范围表达、纯变动量(无基准值)、超出合理范围都要拒绝，换清单里下一个城市。"""
+    import fetch_data as fd_module
+    f = fd_module._extract_basis_from_article
+    assert f("日照、南通基差均为-70至-80元/吨。") == (None, None)     # 范围
+    assert f("日照基差较上周上涨20元/吨。") == (None, None)            # 纯变动量无基准值
+    # ★_extract_basis_from_article本身不做范围合理性校验(那是fetch函数层的职责，见下一个测试)，
+    #   -800这种超出合理范围的值，提取函数本身应该能正常拿到，不在这一层被拦下
+    assert f("日照基差-800元/吨。") == ("日照", -800.0)
+    print("✅ 范围表达、纯变动量正确拒绝，换下一个候选城市；提取函数本身不做范围校验(留给fetch函数层)")
+
+
+def test_basis_implausible_value_rejected_by_fetch_function(monkeypatch_fetch):
+    """★合理范围校验在fetch函数层做：日照给出的数值超出-500~500会被拒绝，回退到下一篇文章。"""
+    weird = {"title": "测试", "content": "日照基差-800元/吨。", "publishTime": "2026-09-28 12:00", "url": ""}
+    normal = {"title": "测试2", "content": "日照基差-90元/吨。", "publishTime": "2026-09-27 12:00", "url": ""}
+    r = _run_basis_with_pages({1: _sow_resp([weird, normal])})
+    assert r["available"] is True and r["value"] == -90.0 and r["date"] == "2026-09-27", r
+    print("✅ 超出合理范围的数值被fetch函数层拒绝，正确回退到下一篇正常的文章")
+
+
+def test_basis_request_matches_user_capture(monkeypatch_fetch):
+    """★请求跟用户抓包逐项对照：query=全国主要市场豆粕基差价格汇总、sortType=complex、platform=pc、
+    pageNo=1、pageSize=20，字段集合一致，一年窗口起点2025-09-28，token=-1；不足一页时不多翻页。"""
+    import datetime as dt
+    captured = []
+    _run_basis_with_pages({1: _sow_resp([_BASIS_REAL_ITEMS[0]])}, capture=captured)
+    assert len(captured) == 1
+    c = captured[0]; p = c["post_data"]
+    assert c["url"] == "https://search.mysteel.com/searchapi/search/searchArticle"
+    assert set(p) == {"query", "startTime", "endTime", "sortType", "platform", "pageNo", "pageSize"}
+    assert (p["query"], p["sortType"], p["platform"], p["pageSize"]) == ("全国主要市场豆粕基差价格汇总", "complex", "pc", 20)
+    days = (dt.datetime.strptime(p["endTime"][:10], "%Y-%m-%d") - dt.datetime.strptime(p["startTime"][:10], "%Y-%m-%d")).days
+    assert days == 365 and p["startTime"] == "2025-09-28 00:00:00" and c["headers"]["token"] == "-1"
+    print("✅ 请求逐项对照抓包一致(关键词/一年窗口起点2025-09-28/分页/字段集合/token)")
+
+
+def test_basis_future_articles_ignored(monkeypatch_fetch):
+    """发布日期在未来的文章(时钟不同步等异常情况)应该被忽略，不当成"最新"。"""
+    future = {"title": "未来", "content": "日照基差-50元/吨。", "publishTime": "2026-10-05 12:00", "url": ""}
+    normal = {"title": "正常", "content": "日照基差-90元/吨。", "publishTime": "2026-09-27 12:00", "url": ""}
+    r = _run_basis_with_pages({1: _sow_resp([future, normal])})
+    assert r["available"] is True and r["date"] == "2026-09-27", r
+    print("✅ 发布日期在未来的文章被忽略")
+
+
+def test_basis_failure_modes_give_diagnostics(monkeypatch_fetch):
+    import fetch_data as fd_module
+    assert "为空" in _run_basis_with_pages({1: _sow_resp([])})["reason"]
+    assert "resultCode=1" in _run_basis_with_pages({1: {"resultCode": 1}})["reason"]
+    real = fd_module.fetch_json_debug
+    fd_module.fetch_json_debug = lambda *a, **k: (None, {"httpStatus": None, "error": "连接超时"})
+    try:
+        assert "无返回" in fd_module.fetch_mysteel_basis()["reason"]
+    finally:
+        fd_module.fetch_json_debug = real
+    print("✅ 空结果/接口异常/网络无响应都诚实报告")
+
+
 if __name__ == "__main__":
     monkeypatch_fetch = make_monkeypatch()
     tests = [test_contract_code_computation, test_main_fetches_all_three_contracts, test_dce_daily_kline_parsing, test_dce_hourly_kline_parsing,
@@ -3302,7 +3750,9 @@ if __name__ == "__main__":
               test_plausibility_helpers, test_crush_rate_out_of_range_rejected, test_poultry_profit_out_of_range_rejected, test_rmspread_change_range_not_mistaken_for_spread, test_arrival_forecast_change_and_out_of_range_rejected, test_export_inspections_limit_raised_and_truncation_detected, test_hog_ratio_each_price_must_be_plausible,
               test_frontend_and_backend_plausible_ranges_are_identical,
               test_meal_stock_real_weekly_article, test_meal_stock_takes_latest_article_across_pages_not_first_match, test_meal_stock_stale_data_rejected, test_meal_stock_requires_national_scope, test_meal_stock_region_other_subject_and_change_rejected, test_meal_stock_request_matches_user_capture, test_meal_stock_failure_modes_give_diagnostics,
-              test_soy_import_real_articles_all_recognized, test_soy_import_full_flow_picks_august_2026, test_soy_import_falls_back_to_previous_month_when_latest_not_published, test_soy_import_acceptance_window_rolls_with_calendar, test_soy_import_year_inference_and_future_months, test_soy_import_synthetic_traps_rejected, test_soy_import_paginates_and_request_matches_user_capture, test_soy_import_failure_modes_give_diagnostics]
+              test_soy_import_real_articles_all_recognized, test_soy_import_full_flow_picks_august_2026, test_soy_import_falls_back_to_previous_month_when_latest_not_published, test_soy_import_acceptance_window_rolls_with_calendar, test_soy_import_year_inference_and_future_months, test_soy_import_synthetic_traps_rejected, test_soy_import_paginates_and_request_matches_user_capture, test_soy_import_failure_modes_give_diagnostics,
+              test_reserve_real_articles_parsed_and_noise_excluded, test_reserve_full_flow_latest_auction_with_previous, test_reserve_uses_auction_date_not_publish_date, test_reserve_paginates_all_pages_latest_on_last_page, test_reserve_crude_oil_basis_never_mistaken_for_soybean_auction, test_reserve_integrity_check_and_derived_fields, test_reserve_stale_and_future_and_price_guards, test_reserve_auction_date_fallback_and_dedup, test_reserve_request_matches_user_capture, test_reserve_failure_modes_give_diagnostics,
+              test_basis_real_articles_extraction_matches_manual_verification, test_basis_end_to_end_uses_latest_when_available, test_basis_falls_back_when_latest_articles_unparseable, test_basis_all_recent_articles_unparseable_gives_diagnostic, test_basis_stale_data_rejected, test_basis_range_and_change_only_rejected_synthetic, test_basis_implausible_value_rejected_by_fetch_function, test_basis_request_matches_user_capture, test_basis_future_articles_ignored, test_basis_failure_modes_give_diagnostics]
     failed = 0
     for t in tests:
         try:

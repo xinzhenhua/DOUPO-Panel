@@ -943,6 +943,9 @@ PLAUSIBLE_RANGES = {
     "arrivalForecast": (200.0, 2000.0, "万吨"),  # 月度大豆到港预报
     "mealStock": (10.0, 600.0, "万吨"),          # 豆粕商业库存
     "soyImport": (200.0, 2000.0, "万吨"),        # 中国大豆月度进口量(2026年最低401.9，最高约1400)
+    "reserveAuction": (0.1, 300.0, "万吨"),      # 国储进口大豆单次计划拍卖量(实测6.8~54.3)
+    "soyAuctionPrice": (2000.0, 8000.0, "元/吨"),  # 国储进口大豆拍卖价格(实测4110~4450)
+    "meaBasis": (-500.0, 500.0, "元/吨"),        # 豆粕现货基差(实测-200~+170)
     "hogRatio": (1.0, 20.0, ""),                # 猪粮比
     "pigPrice": (3.0, 40.0, "元/公斤"),          # 外三元生猪价格
     "cornPricePerTon": (1000.0, 6000.0, "元/吨"),  # 玉米价格
@@ -1728,6 +1731,366 @@ def fetch_mysteel_soy_import(today=None):
         "monthsSeen": [label(x) for x in months_seen],
         "source": "Mysteel文章(海关总署中国大豆进口量)",
         "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 最近一次国储进口大豆拍卖：改用Mysteel文章搜索(沿用前面几个指标的思路)。用户在文档里贴了真实响应
+# (查询"进口大豆竞价销售结果"，一年窗口，total=115，展开了第1页20条完整正文)。
+#
+# ★现有计分逻辑是"拍卖量>=40万吨→供给端主动增投，偏空"，输入框占位符"如54.3"正好是9月22日那次的
+#   计划拍卖量(542992吨=54.3万吨)——所以这个指标的口径是**计划拍卖量(万吨)**，自动填这个数，计分逻辑不动。
+#   成交量/成交率/成交价格作为参考信息一起抓下来展示(文档里用户问过"能不能把成交率和成交价格也加上来
+#   一起判断")；要不要把成交率纳入计分，是单独的分析决策，没有擅自改。
+#
+# ★20条真实文章里混着三类完全不同的东西，必须分开：
+#   ① 交易公告("2026年9月28日进口大豆竞价销售交易公告"，正文只有一句"中储粮油脂委托于…开展竞价销售")——
+#      没有数量，天然排除(要求正文有"计划拍卖"+成交结果)；
+#   ② **原油基差竞价**("【中储粮网】…油脂公司进口大豆原油基差竞价销售交易结果"，"计划销售总量19884吨")——
+#      卖的是大豆**原油**不是大豆，量只有几千吨，标题也带"进口大豆…竞价销售交易结果"，最容易混进来。
+#      标题或正文出现"原油"/"基差"就排除；
+#   ③ 真正的"进口大豆竞价销售结果"——提取计划拍卖量、成交量、成交率、价格。
+#
+# ★写法有变化(5条真实结果，措辞都不一样)："计划拍卖22、23、24年产进口大豆514312.514吨"(年产夹在中间)/
+#   "计划拍卖542992.291吨"/"计划拍卖进口大豆68012.56吨"；"最终成交191698.792吨"/"最终成交量为0吨"/
+#   "实际成交222781.779吨"；价格有"竞拍底价4310元/吨，最高价4390元/吨"、"价格区间为4280元/吨至4450元/吨"、
+#   "起拍价区间为4330-4380元/吨"、"成交价格区间为4110-4200元/吨，成交均价4162.73元/吨"四种。
+#   完整性校验：成交量÷计划量必须跟文中的成交率对得上(误差1个百分点内)，对不上说明取错了数，整条丢弃。
+#
+# ★"最近一次"按**拍卖日期**取最大(不是文章发布日期——9月2日那次的结果文章是9月14日才发的)。国储拍卖
+#   可能暂停，所以新鲜度放宽到45天(实测拍卖间隔最长13天)，超过就拒绝并提示"可能已暂停拍卖"。
+#   搜索结果共115条(6页)，按相关度排序，最新一次不一定在第1页，所以翻页收齐(最多8页)。
+RESERVE_MAX_AGE_DAYS = 45
+_RESERVE_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+_RESERVE_TITLE_MD_RE = re.compile(r"(\d{1,2})月(\d{1,2})日")
+
+
+def _parse_reserve_auction(title, content, pub_date):
+    """解析一篇"进口大豆竞价销售结果"文章。成功返回(dict, None)，不是目标文章/解析不了返回(None, 原因)。"""
+    title, content = str(title or ""), str(content or "")
+    if any(w in title or w in content for w in ("原油", "基差")):
+        return None, "原油基差竞价(卖的是大豆原油，不是大豆)"
+    m = re.search(r"计划拍卖.{0,25}?(?<![\d.])(\d+\.?\d*)吨", content)
+    if not m:
+        return None, "没有'计划拍卖X吨'(不是拍卖结果文章，比如交易公告)"
+    planned_t = float(m.group(1))
+    sold = re.search(r"(?:最终|实际)成交(?:量)?(?:为)?(?<![\d.])(\d+\.?\d*)吨", content)
+    rate = re.search(r"成交率(?:为)?(\d+\.?\d*)%", content)
+    sold_t = float(sold.group(1)) if sold else None
+    rate_v = float(rate.group(1)) if rate else None
+    if sold_t is None and rate_v is None:
+        if "流拍" in content or "未达成" in content:
+            sold_t, rate_v = 0.0, 0.0
+        else:
+            return None, "没有成交量/成交率，看不出成交结果"
+    if planned_t <= 0:
+        return None, "计划拍卖量为0"
+    if sold_t is None:
+        sold_t = round(planned_t * rate_v / 100.0, 3)
+    if rate_v is None:
+        rate_v = round(sold_t / planned_t * 100.0, 2)
+    if sold_t > planned_t * 1.001 or abs(sold_t / planned_t * 100.0 - rate_v) > 1.0:
+        return None, f"成交量{sold_t:g}吨/计划{planned_t:g}吨算出的成交率跟文中的{rate_v:g}%对不上，可能取错了数"
+    # 拍卖日期：优先正文里第一个"YYYY年M月D日"，没有就用标题里的"M月D日"+按发布日期推断年份
+    dm = _RESERVE_DATE_RE.search(content)
+    try:
+        if dm:
+            auction_date = _date_cls(int(dm.group(1)), int(dm.group(2)), int(dm.group(3)))
+        else:
+            tm = _RESERVE_TITLE_MD_RE.search(title)
+            if not tm:
+                return None, "找不到拍卖日期"
+            cand = _date_cls(pub_date.year, int(tm.group(1)), int(tm.group(2)))
+            auction_date = cand if cand <= pub_date else _date_cls(pub_date.year - 1, cand.month, cand.day)
+    except ValueError:
+        return None, "拍卖日期无效"
+    planned_wan, sold_wan = round(planned_t / 10000.0, 2), round(sold_t / 10000.0, 2)
+    if _plausibility_problem("reserveAuction", planned_wan):
+        return None, _plausibility_problem("reserveAuction", planned_wan)
+    # 价格(参考信息)：超出合理范围的价格只丢掉价格本身，不丢整条
+    avg = re.search(r"成交均价(\d+\.?\d*)元/吨", content)
+    rng = re.search(r"(起拍价区间|成交价格区间|价格区间)为(\d+\.?\d*)(?:元/吨)?(?:至|-|－)(\d+\.?\d*)元/吨", content)
+    base = re.search(r"竞拍底价(\d+\.?\d*)元/吨，最高价(\d+\.?\d*)元/吨", content)
+    price_low = price_high = avg_price = None
+    price_kind = None
+    if rng:
+        price_low, price_high, price_kind = float(rng.group(2)), float(rng.group(3)), rng.group(1)
+    elif base:
+        price_low, price_high, price_kind = float(base.group(1)), float(base.group(2)), "底价~最高价"
+    if avg:
+        avg_price = float(avg.group(1))
+    if any(v is not None and _plausibility_problem("soyAuctionPrice", v) for v in (price_low, price_high, avg_price)):
+        price_low = price_high = avg_price = price_kind = None
+    return {
+        "auctionDate": auction_date, "plannedWan": planned_wan, "soldWan": sold_wan, "soldRate": round(rate_v, 2),
+        "avgPrice": avg_price, "priceLow": price_low, "priceHigh": price_high, "priceKind": price_kind,
+    }, None
+
+
+def fetch_mysteel_reserve_auction(today=None):
+    """通过Mysteel文章搜索"进口大豆竞价销售结果"(中储粮国储进口大豆拍卖)，翻页收齐后取拍卖日期最新的一次。
+    自动填入的是计划拍卖量(万吨)，成交量/成交率/成交价格作为参考信息。today参数只给测试用。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)  # 跟用户抓包的请求一致(2025-09-28到2026-09-28)
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    page_size, max_pages = 20, 8  # 实测total=115(6页)，上限放到8页(160条)留余量
+    by_date = {}  # 拍卖日期 -> (发布日期, 解析结果, item)：同一次拍卖有多篇文章时取发布最晚的
+    items_checked = 0
+    skipped = []
+    first_item = None
+
+    for page in range(1, max_pages + 1):
+        payload = {
+            "query": "进口大豆竞价销售结果",
+            "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+            "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+            "sortType": "complex",
+            "platform": "pc",
+            "pageNo": page,
+            "pageSize": page_size,
+        }
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False,
+                        "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            items_checked += 1
+            if first_item is None:
+                first_item = item
+            try:
+                pub_date = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                pub_date = today
+            parsed, why = _parse_reserve_auction(item.get("title"), item.get("content"), pub_date)
+            if parsed is None:
+                if "计划拍卖" not in why and len(skipped) < 8:  # 交易公告太多，不记；只记有价值的排除原因
+                    skipped.append(f"{str(item.get('title'))[:30]}: {why}")
+                continue
+            if parsed["auctionDate"] > today:
+                continue  # 拍卖日期在未来，不可能有结果
+            key = parsed["auctionDate"]
+            if key not in by_date or pub_date >= by_date[key][0]:
+                by_date[key] = (pub_date, parsed, item)
+        total = data.get("total") or 0
+        if len(data_list) < page_size or page * page_size >= total:
+            break
+
+    if not by_date:
+        return {"available": False,
+                "reason": "搜索结果里没有一篇能解析出'计划拍卖X吨…成交率X%'的拍卖结果文章(可能措辞变了，或者最近没有拍卖)",
+                "debug": {"itemsChecked": items_checked, "skipped": skipped, "firstItemSample": first_item}}
+
+    dates = sorted(by_date, reverse=True)
+    pub_date, latest, item = by_date[dates[0]]
+    age = (today - latest["auctionDate"]).days
+    if age > RESERVE_MAX_AGE_DAYS:
+        return {"available": False,
+                "reason": (f"最近一次拍卖是{age}天前({latest['auctionDate'].isoformat()})，超过{RESERVE_MAX_AGE_DAYS}天的新鲜度限制，"
+                           f"可能国储已暂停拍卖；为避免把旧数据当成最近一次，不采用"),
+                "debug": {"latestAuctionDate": latest["auctionDate"].isoformat(), "plannedWan": latest["plannedWan"], "itemsChecked": items_checked}}
+
+    previous = None
+    if len(dates) > 1:
+        pd_, prev, _ = by_date[dates[1]]
+        previous = {"auctionDate": prev["auctionDate"].isoformat(), "plannedWan": prev["plannedWan"],
+                    "soldWan": prev["soldWan"], "soldRate": prev["soldRate"], "avgPrice": prev["avgPrice"]}
+    return {
+        "available": True,
+        "value": latest["plannedWan"],          # 自动填入m_reserve的是计划拍卖量(万吨)
+        "auctionDate": latest["auctionDate"].isoformat(),
+        "ageDays": age,
+        "plannedWan": latest["plannedWan"],
+        "soldWan": latest["soldWan"],
+        "soldRate": latest["soldRate"],
+        "avgPrice": latest["avgPrice"],
+        "priceLow": latest["priceLow"], "priceHigh": latest["priceHigh"], "priceKind": latest["priceKind"],
+        "previous": previous,
+        "auctionsSeen": len(dates),
+        "date": pub_date.isoformat(),
+        "articleTitle": item.get("title"),
+        "source": "Mysteel文章(中储粮进口大豆竞价销售结果)",
+        "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 全国主要市场豆粕现货基差：改用Mysteel文章搜索(每日一篇"全国主要市场豆粕基差价格汇总")。
+#
+# ★用户提出"要不要分沿海/内陆区域平均或加权"，先研究了用户文档里的20条真实正文和讨论——
+#   现有UI标签本身写的是"全国平均"，计分逻辑只看正负号；用户在讨论里也承认"全国平均"这个
+#   概念本身有点模糊(基差正负是"地点和强弱的标签"，不是"多空对错")。逐城市完整解析、按沿海/
+#   内陆分组算平均，在这个数据源的自然语言表达方式下不现实——20条真实正文里，同一天最多
+#   20多个城市，但经常只有5-8个给了确切数值，其余全是"多地基差为负值"这种模糊描述，逐城市
+#   解析的可靠性会远低于之前做过的任何一个指标。
+# ★最终跟用户确认的方案(方案A)：不分区，只抓**沿海代表城市**的基差当全国代理指标——理由是
+#   "全国豆粕定价的核心锚在沿海"(用户讨论里的原话)，且沿海城市的确切数值出现频率相对更高。
+#   按优先级依次尝试"日照(山东，最核心的沿海压榨基地)→南通→东莞→湛江→防城港→厦门→天津"，
+#   取清单里第一个能在文章里找到**确切数值**(不是范围、不是只有涨跌幅度)的城市。
+#
+# ★同一句话里，同一个城市的基差可能是：确切值("日照-70")、范围("日照…均为-70至-80")、
+#   共享值("日照、湛江、东莞均为-90")、"最低/最高"修饰("防城港最低为-80")、纯变动量没有
+#   基准值("日照…上涨20")——只接受前三种能给出确切数值的写法，范围和纯变动量一律跳过、
+#   尝试清单里下一个城市。这个正则设计(见MYSTEEL_BASIS_CITY_PATTERN_TMPL)拿用户提供的
+#   20条真实正文全部逐条手算验证过：17/20天能提取出确切值且完全正确，另外3天(9-22/9-21/9-11)
+#   原文本身没有给出任何沿海候选城市的确切数值(不是正则的问题)，属于数据源本身的局限，诚实报告。
+#
+# ★"最新一篇解析失败"时不直接放弃：往前找最近几篇(最多7篇)里第一个能提取出确切值的——
+#   20条真实样本里有连续两天(9-22、9-21)都没有确切值，如果只看"最新一篇"，失败率会不必要地
+#   偏高；往前找几天内最近一个能用的值更稳健，结果里会诚实标注"实际用的是哪天的数据"，跟
+#   最新一篇的发布日期不一样时会提示滞后了几天。
+BASIS_MAX_AGE_DAYS = 7  # 每日更新，实测最大发布间隔4天(周末/节假日)，留一些余量
+BASIS_FALLBACK_LOOKBACK = 7  # 最新一篇解析失败时，最多往前找几篇
+_BASIS_ALL_CITIES = ["长春", "大连", "昆明", "成都", "西安", "日照", "湛江", "东莞", "南通",
+                     "防城港", "天津", "沧州", "周口", "厦门", "南昌", "武汉", "重庆", "岳阳"]
+_BASIS_COASTAL_PRIORITY = ["日照", "南通", "东莞", "湛江", "防城港", "厦门", "天津"]
+_BASIS_CHANGE_WORDS = ("涨", "跌", "升", "降", "增", "减")
+
+
+def _find_city_basis(content, city):
+    """在content里找city紧跟着的确切基差数值(不是范围、不是纯变动量)。城市名后面允许用
+    "、/，/及"连接其他已知城市名(共享同一个值)，再接"(基差)?(最低|最高)?[，,]?(均为|为|低至|达)?"
+    这几种连接词组合，最后是数字。数字后面紧跟"至/-数字"说明是范围，拒绝。"""
+    others = "|".join(sorted([c for c in _BASIS_ALL_CITIES if c != city], key=len, reverse=True))
+    pat = re.compile(rf"{re.escape(city)}((?:[、，及](?:{others}))*)(基差)?(最低|最高)?[，,]?(均为|为|低至|达)?(-?\d)")
+    for m in pat.finditer(content):
+        gap = m.group(1) or ""
+        if any(w in gap for w in _BASIS_CHANGE_WORDS):
+            continue
+        num_start = m.start(5)
+        num_str = re.match(r"-?\d+\.?\d*", content[num_start:]).group(0)
+        num_end = num_start + len(num_str)
+        if re.match(r"^(至|-\d|－\d|~\d)", content[num_end:num_end + 3]):
+            continue  # 后面紧跟"至-80"这种，是范围不是确切值
+        return float(num_str)
+    return None
+
+
+def _extract_basis_from_article(content):
+    """按沿海优先级依次尝试，返回(城市, 数值)或(None, None)。"""
+    for city in _BASIS_COASTAL_PRIORITY:
+        v = _find_city_basis(content, city)
+        if v is not None:
+            return city, v
+    return None, None
+
+
+def fetch_mysteel_basis(today=None):
+    """通过Mysteel文章搜索"全国主要市场豆粕基差价格汇总"(每日一篇)，从最新几篇里找第一篇能
+    解析出沿海代表城市确切基差的，作为全国基差的代理值。today参数只给测试用。"""
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)
+    headers = {
+        "token": "-1",
+        "Origin": "https://search.mysteel.com",
+        "Referer": "https://search.mysteel.com/fastcomment.html",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    page_size, max_pages = 20, 5
+    all_items = []
+    items_checked = 0
+    first_item = None
+
+    for page in range(1, max_pages + 1):
+        payload = {
+            "query": "全国主要市场豆粕基差价格汇总",
+            "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+            "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"),
+            "sortType": "complex",
+            "platform": "pc",
+            "pageNo": page,
+            "pageSize": page_size,
+        }
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False,
+                        "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break
+        data_list = data.get("dataList") or []
+        if page == 1 and not data_list:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for item in data_list:
+            if not isinstance(item, dict):
+                continue
+            items_checked += 1
+            if first_item is None:
+                first_item = item
+            try:
+                pub_date = datetime.strptime(str(item.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            if pub_date > today:
+                continue
+            all_items.append((pub_date, item))
+        total = data.get("total") or 0
+        if len(data_list) < page_size or page * page_size >= total:
+            break
+
+    if not all_items:
+        return {"available": False,
+                "reason": "搜索结果里没有一篇带有效发布日期的基差汇总文章",
+                "debug": {"itemsChecked": items_checked, "firstItemSample": first_item}}
+
+    all_items.sort(key=lambda x: x[0], reverse=True)
+    latest_date = all_items[0][0]
+    attempted = []
+    for pub_date, item in all_items[:BASIS_FALLBACK_LOOKBACK]:
+        content = str(item.get("content") or "")
+        city, value = _extract_basis_from_article(content)
+        if value is None:
+            attempted.append(pub_date.isoformat())
+            continue
+        if _plausibility_problem("meaBasis", value):
+            attempted.append(f"{pub_date.isoformat()}({city}={value:g}超出合理范围)")
+            continue
+        age = (today - pub_date).days
+        if age > BASIS_MAX_AGE_DAYS:
+            return {"available": False,
+                    "reason": f"最近能解析出基差的一篇也是{age}天前({pub_date.isoformat()})的，超过{BASIS_MAX_AGE_DAYS}天的新鲜度限制，不采用",
+                    "debug": {"latestArticleDate": latest_date.isoformat(), "attempted": attempted, "itemsChecked": items_checked}}
+        return {
+            "available": True,
+            "value": value,
+            "city": city,
+            "date": pub_date.isoformat(),
+            "latestArticleDate": latest_date.isoformat(),
+            "usedFallback": pub_date != latest_date,
+            "fallbackDays": (latest_date - pub_date).days,
+            "articleTitle": item.get("title"),
+            "source": f"Mysteel文章(全国主要市场豆粕基差价格汇总，{city}代表沿海)",
+            "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
+        }
+
+    return {
+        "available": False,
+        "reason": f"最近{len(attempted)}篇文章里，沿海代表城市(日照/南通/东莞/湛江/防城港/厦门/天津)都没有给出确切数值(可能都是模糊描述或范围)",
+        "debug": {"latestArticleDate": latest_date.isoformat(), "attemptedDates": attempted, "itemsChecked": items_checked},
     }
 
 
@@ -3342,6 +3705,8 @@ def main():
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": fetch_mysteel_meal_stock(),
         "mysteelSoyImport": fetch_mysteel_soy_import(),
+        "mysteelReserveAuction": fetch_mysteel_reserve_auction(),
+        "mysteelBasis": fetch_mysteel_basis(),
         "hogRatio": fetch_hog_ratio(),
         "sowInventory": fetch_mysteel_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),

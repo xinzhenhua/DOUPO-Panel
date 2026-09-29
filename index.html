@@ -677,6 +677,8 @@ async function loadSyncedData(){
     refreshMysteelArrivalForecast(); // 到港预报同样改自动抓取
     refreshMysteelMealStock(); // 豆粕商业库存同样改自动抓取
     refreshMysteelSoyImport(); // 上月大豆进口量同样改自动抓取
+    refreshMysteelReserveAuction(); // 国储拍卖同样改自动抓取
+    refreshMysteelBasis(); // 现货基差同样改自动抓取
     refreshHogRatio(); // 猪粮比改自动抓取(akshare/玄田数据)
     refreshSowInventory(); // 能繁母猪存栏改自动抓取(akshare/玄田数据)
   }catch(e){
@@ -709,7 +711,7 @@ function renderParsedInfo(elId, parsed, unit){
  *  数值；这里再检查一次——防止后端逻辑出错、或者拿到别的版本生成的旧数据时，把明显荒谬的数字
  *  (比如"豆粕库存0.7万吨"，其实是"较上周增加0.7万吨"里的变动量)自动填进输入框。范围故意放宽，
  *  只挡明显荒谬的值。两边的表必须一致(有测试保证)。*/
-const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"soyImport":[200,2000,"万吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
+const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
 function sanityProblem(key, value){
   const r = SANITY_RANGES[key];
   if(!r) return null;
@@ -906,6 +908,70 @@ function refreshMysteelSoyImport(){
   badge.innerHTML = `🤖 自动抓取(Mysteel/海关总署)：<b>${si.value}万吨</b>${si.monthLabel?`(${si.monthLabel})`:''}
     <button class="ai-use-btn" onclick="useAiValue('m_import', ${si.value})">采用</button><br>
     文章发布日期：${si.date}`;
+}
+
+/** 最近一次国储进口大豆拍卖：改自动抓取(Mysteel文章搜索"进口大豆竞价销售结果")。
+ *  ★自动填入的是"计划拍卖量"(万吨)——跟现有计分口径一致(>=40万吨偏空)；成交量/成交率/成交价格
+ *  只作为参考信息展示(成交率低说明市场接货意愿弱，实际增加的供给远小于计划量)，
+ *  并带上上一次拍卖的成交率，方便看趋势。计分逻辑没有改动。*/
+function refreshMysteelReserveAuction(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_reserve');
+  if(!data || !badge) return;
+  const ra = data.mysteelReserveAuction;
+  if(!ra || !ra.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${ra?ra.reason:'未知原因'}` + renderDebugInfo(ra?ra.debug:null);
+    }
+    return;
+  }
+  if(blockIfImplausible(badge, 'reserveAuction', ra.value, '国储拍卖量')) return;
+  const inputEl = document.getElementById('m_reserve');
+  if(inputEl && !inputEl.value){
+    inputEl.value = ra.value;
+    saveManualAndRefresh();
+  }
+  const price = ra.avgPrice ? `成交均价${ra.avgPrice}元/吨`
+    : (ra.priceLow ? `${ra.priceKind||'价格'}${ra.priceLow}-${ra.priceHigh}元/吨` : '');
+  const detail = [`成交${ra.soldWan}万吨`, `成交率${ra.soldRate}%`, price].filter(Boolean).join(' · ');
+  const prev = ra.previous
+    ? `<br>上一次(${ra.previous.auctionDate})：计划${ra.previous.plannedWan}万吨 · 成交率${ra.previous.soldRate}%` : '';
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel/中储粮)：<b>${ra.value}万吨</b>(计划拍卖量，${ra.auctionDate}拍卖)
+    <button class="ai-use-btn" onclick="useAiValue('m_reserve', ${ra.value})">采用</button><br>
+    ${detail}${prev}`;
+}
+
+/** 全国主要市场豆粕现货基差：改自动抓取(Mysteel文章搜索"全国主要市场豆粕基差价格汇总")。
+ *  ★用户讨论过要不要分沿海/内陆区域计算，最终定案：不分区，只取**沿海代表城市**(日照/南通/
+ *  东莞/湛江/防城港/厦门/天津，按此优先级)的确切基差值当全国代理指标(理由：全国定价核心锚
+ *  在沿海)。同时可能"最新一篇解析失败"而用了前几天的数据，前端诚实标注实际用的是哪天，
+ *  跟最新一篇发布日期不同时额外提示滞后了几天。*/
+function refreshMysteelBasis(){
+  const data = window._syncedData;
+  const badge = document.getElementById('ai_basis');
+  if(!data || !badge) return;
+  const mb = data.mysteelBasis;
+  if(!mb || !mb.available){
+    if(badge.className !== 'ai-suggest fresh'){
+      badge.className = 'ai-suggest unavailable';
+      badge.innerHTML = `🤖 自动抓取失败：${mb?mb.reason:'未知原因'}` + renderDebugInfo(mb?mb.debug:null);
+    }
+    return;
+  }
+  if(blockIfImplausible(badge, 'meaBasis', mb.value, '豆粕现货基差')) return;
+  const inputEl = document.getElementById('m_basis');
+  if(inputEl && !inputEl.value){
+    inputEl.value = mb.value;
+    saveManualAndRefresh();
+  }
+  const fallbackNote = mb.usedFallback
+    ? `<br>⚠️ 最新一篇(${mb.latestArticleDate})没能解析出确切值，用的是${mb.fallbackDays}天前的数据` : '';
+  badge.className = 'ai-suggest fresh';
+  badge.innerHTML = `🤖 自动抓取(Mysteel/${mb.city}代表沿海)：<b>${mb.value}元/吨</b>
+    <button class="ai-use-btn" onclick="useAiValue('m_basis', ${mb.value})">采用</button><br>
+    日期：${mb.date}${fallbackNote}`;
 }
 
 /** 猪粮比 + 能繁母猪存栏：改自动抓取(akshare的futures_hog_supply接口，
