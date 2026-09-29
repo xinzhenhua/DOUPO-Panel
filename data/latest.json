@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T18:34:55.165987+00:00",
+  "generatedAt": "2026-09-29T19:20:51.531758+00:00",
   "cbotPrice": {
     "available": true,
     "price": 359.2,
@@ -146,13 +146,15 @@
     "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html"
   },
   "hogRatio": {
-    "available": false,
-    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fddbb3107d0>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-    "debug": {
-      "symbol": "外三元",
-      "errorType": "ConnectTimeout",
-      "retriesAttempted": 2
-    }
+    "available": true,
+    "value": 4.32,
+    "date": "2026-09-30",
+    "pigPrice": 10.06,
+    "cornPricePerTon": 2329.0,
+    "pigLatestDate": "2026-09-30",
+    "cornLatestDate": "2026-09-30",
+    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
+    "sourceUrl": "https://zhujia.zhuwang.com.cn"
   },
   "sowInventory": {
     "available": true,
