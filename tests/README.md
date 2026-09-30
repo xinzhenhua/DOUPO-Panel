@@ -69,4 +69,4 @@ node test_planting_brl.js
 
 ## Python侧测试(在项目根目录运行)
 - `python3 test_fetch_data.py`：后端抓取/解析(部分测试依赖agrobr/akshare，缺少时会在那一项报错)
-- `python3 test_history.py`：v82新增，历史序列存取/合并/分位/日常累积/四项回填(用临时目录，不会写进仓库的data/history)
+- `python3 test_history.py`：v82新增(v83扩充)，历史序列存取/合并/分位/日常累积/四项回填/校准摘要/周度库存校验点(用临时目录，不会写进仓库的data/history)

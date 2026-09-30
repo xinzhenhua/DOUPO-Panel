@@ -1642,7 +1642,9 @@ _MB_MONTH_TOKEN = re.compile(
 _MB_PRODUCTION_RE = re.compile(r"产量[^0-9。；;]{0,8}?(\d+\.?\d*)万吨")
 _MB_CONSUMPTION_RE = re.compile(r"消费(?:量)?[^0-9。；;]{0,8}?(\d+\.?\d*)万吨")
 _MB_STOCK_RE = re.compile(r"(?<!期初)库存[^0-9。；;]{0,10}?(\d+\.?\d*)万吨")
-_MB_STU_RE = re.compile(r"库消比[^0-9。；;]{0,8}?(\d+\.?\d*)%(?!\s*[-—–至到~]\s*\d)")   # 后面紧跟"-16%"/"至10.5%"的是区间，不取
+# ★库消比的叫法：近12个月的文章都写"库消比"；更早的文章(2024-05~2025-09)回填时全部给不出数，怀疑叫法不同，
+#   先兼容几种常见写法(库存消费比/库存消耗比/库销比)。这是猜测，回填报告里会带上给不出数的月份的原文片段来验证。
+_MB_STU_RE = re.compile(r"(?:库消比|库存消费比|库存消耗比|库销比)[^0-9。；;]{0,8}?(\d+\.?\d*)%(?!\s*[-—–至到~]\s*\d)")   # 后面紧跟"-16%"/"至10.5%"的是区间，不取
 _MB_STU_ANY_RE = re.compile(r"库消比")
 
 
@@ -1656,9 +1658,10 @@ def _nearest_year_for_month(month, pub_date):
     return best[1]
 
 
-def _parse_meal_balance_text(text, pub_date):
+def _parse_meal_balance_text(text, pub_date, keep_text=False):
     """从一段文字(正文或摘要)里解析出"单月"记录：{(年,月): {production, consumption, stock, stu, stuSource}}。
-    只处理单月片段；"8-11月""3月至6月"这种区间片段整体跳过(区间里的数字没法对应到具体某个月)。"""
+    只处理单月片段；"8-11月""3月至6月"这种区间片段整体跳过(区间里的数字没法对应到具体某个月)。
+    keep_text=True时，每条记录额外带上seg(该月片段原文前200字)，仅用于回填诊断，正常抓取不用。"""
     text = re.sub(r"\s+", "", str(text or ""))
     tokens = list(_MB_MONTH_TOKEN.finditer(text))
     records = {}
@@ -1677,6 +1680,8 @@ def _parse_meal_balance_text(text, pub_date):
                 break
         seg = text[m.end():end]
         rec = records.setdefault((year, month), {"production": None, "consumption": None, "stock": None, "stu": None, "stuStated": False})
+        if keep_text and "seg" not in rec:
+            rec["seg"] = seg[:200]
         def first(rx):
             mm = rx.search(seg)
             return float(mm.group(1)) if mm else None
@@ -1698,6 +1703,8 @@ def _parse_meal_balance_text(text, pub_date):
             if abs(rec["stock"] / rec["consumption"] * 100 - rec["stu"]) > MEAL_STU_CONSISTENCY_TOL:
                 rec["stock"] = None     # 多半是月中低点/期初值，不是月末库存：库消比以文中明示为准，库存不展示
         if all(rec[k] is None for k in ("production", "consumption", "stock", "stu")):
+            if keep_text and rec.get("seg"):
+                continue       # 诊断模式下保留"有月份标记但一个数都没解析出"的记录，回填报告要展示它的原文
             del records[key]
     return records
 

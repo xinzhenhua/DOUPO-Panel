@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock；默认all)"
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,calibrate；默认all；calibrate=不联网，只重新生成校准摘要)"
         default: "all"
       start:
         description: "Mysteel两项的起始日期"
         default: "2020-01-01"
       no_bodies:
-        description: "国内库消比不抓文章正文，只用摘要(true/false)"
+        description: "Mysteel两项不抓文章正文，只用搜索摘要(true/false)；默认false，抓正文才能补全周度库存"
         default: "false"
 
 permissions:
@@ -27,7 +27,7 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: 拉取仓库代码
         uses: actions/checkout@v4
