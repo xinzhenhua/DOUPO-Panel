@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-30T02:39:12.878217+00:00",
+  "generatedAt": "2026-09-30T06:36:17.783971+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 359.1,
-    "change": -1.0,
-    "changePct": -0.28,
-    "asOf": "2026-09-30T02:25:08+00:00",
+    "price": 359.0,
+    "change": -1.1,
+    "changePct": -0.31,
+    "asOf": "2026-09-30T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
@@ -101,15 +101,20 @@
     "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
     "sourceUrl": "https://ncp.mysteel.com/a/26092817/F4FE459E50746287.html",
     "history": {
-      "n": 0,
+      "n": 69,
       "minPoints": 12,
       "asOf": "2026-09-28",
-      "since": null,
-      "percentile": null,
-      "min": null,
-      "max": null,
-      "median": null,
-      "seasonal": null
+      "since": "2022-06-20",
+      "percentile": 100.0,
+      "min": 14.92,
+      "max": 118.0,
+      "median": 72.1,
+      "seasonal": {
+        "month": 9,
+        "n": 5,
+        "percentile": 100.0,
+        "median": 51.16
+      }
     }
   },
   "mysteelMealStu": {
@@ -140,15 +145,20 @@
     "source": "Mysteel文章(全国豆粕供需平衡表)",
     "sourceUrl": "https://ncp.mysteel.com/a/26083118/BC0AFB400C5ACDC2.html",
     "history": {
-      "n": 0,
+      "n": 19,
       "minPoints": 12,
       "asOf": "2026-09",
-      "since": null,
-      "percentile": null,
-      "min": null,
-      "max": null,
-      "median": null,
-      "seasonal": null
+      "since": "2024-05",
+      "percentile": 68.4,
+      "min": 1.56,
+      "max": 20.95,
+      "median": 13.77,
+      "seasonal": {
+        "month": 9,
+        "n": 1,
+        "percentile": null,
+        "median": null
+      }
     }
   },
   "mysteelSoyImport": {
@@ -223,24 +233,24 @@
   },
   "mysteelBasis": {
     "available": true,
-    "value": -50.0,
-    "city": "日照",
-    "date": "2026-09-29",
-    "latestArticleDate": "2026-09-29",
+    "value": -100.0,
+    "city": "南通",
+    "date": "2026-09-30",
+    "latestArticleDate": "2026-09-30",
     "usedFallback": false,
     "fallbackDays": 0,
-    "articleTitle": "Mysteel：全国主要市场豆粕基差价格汇总（20260929）",
-    "source": "Mysteel文章(全国主要市场豆粕基差价格汇总，日照代表沿海)",
-    "sourceUrl": "https://ncp.mysteel.com/a/26092912/61D0E83811BC8C2D.html",
+    "articleTitle": "Mysteel：全国主要市场豆粕基差价格汇总（20260930）",
+    "source": "Mysteel文章(全国主要市场豆粕基差价格汇总，南通代表沿海)",
+    "sourceUrl": "https://ncp.mysteel.com/a/26093011/89D3504084E63D26.html",
     "history": {
-      "n": 0,
+      "n": 1,
       "minPoints": 12,
-      "asOf": "2026-09-29",
-      "since": null,
+      "asOf": "2026-09-30",
+      "since": "2026-09-29",
       "percentile": null,
-      "min": null,
-      "max": null,
-      "median": null,
+      "min": -50.0,
+      "max": -50.0,
+      "median": -50.0,
       "seasonal": null
     }
   },
@@ -7189,15 +7199,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-18 10:00:00",
-        "open": 2891.0,
-        "high": 2912.0,
-        "low": 2882.0,
-        "close": 2906.0,
-        "volume": 34331.0,
-        "hold": 690916.0
-      },
-      {
         "datetime": "2026-08-18 11:15:00",
         "open": 2906.0,
         "high": 2918.0,
@@ -8802,11 +8803,20 @@
       {
         "datetime": "2026-09-30 11:15:00",
         "open": 2992.0,
-        "high": 2998.0,
+        "high": 3001.0,
         "low": 2989.0,
+        "close": 3000.0,
+        "volume": 21066.0,
+        "hold": 834434.0
+      },
+      {
+        "datetime": "2026-09-30 14:15:00",
+        "open": 2999.0,
+        "high": 3000.0,
+        "low": 2987.0,
         "close": 2991.0,
-        "volume": 1.0,
-        "hold": 836151.0
+        "volume": 4573.0,
+        "hold": 835805.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10525,15 +10535,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-18 10:00:00",
-        "open": 3212.0,
-        "high": 3232.0,
-        "low": 3201.0,
-        "close": 3223.0,
-        "volume": 381740.0,
-        "hold": 2411216.0
-      },
-      {
         "datetime": "2026-08-18 11:15:00",
         "open": 3224.0,
         "high": 3245.0,
@@ -12138,11 +12139,20 @@
       {
         "datetime": "2026-09-30 11:15:00",
         "open": 3383.0,
-        "high": 3385.0,
+        "high": 3390.0,
         "low": 3375.0,
-        "close": 3378.0,
-        "volume": 135.0,
-        "hold": 2483882.0
+        "close": 3386.0,
+        "volume": 123531.0,
+        "hold": 2482242.0
+      },
+      {
+        "datetime": "2026-09-30 14:15:00",
+        "open": 3386.0,
+        "high": 3387.0,
+        "low": 3370.0,
+        "close": 3375.0,
+        "volume": 27952.0,
+        "hold": 2469790.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -13515,15 +13525,20 @@
     "source": "USDA-FAS ESR API",
     "sourceUrl": "https://apps.fas.usda.gov/esrqs/",
     "history": {
-      "n": 4,
+      "n": 625,
       "minPoints": 12,
       "asOf": "2026-09-17",
-      "since": "2026-08-20",
-      "percentile": null,
-      "min": 7131328,
-      "max": 8849421,
-      "median": 8390667.5,
-      "seasonal": null,
+      "since": "2014-09-25",
+      "percentile": 84.8,
+      "min": -610910,
+      "max": 13827327,
+      "median": 3337855,
+      "seasonal": {
+        "month": 9,
+        "n": 48,
+        "percentile": 47.9,
+        "median": 7059727.5
+      },
       "basis": "近4周净销售合计"
     }
   },
@@ -13545,14 +13560,14 @@
     "source": "USDA-FAS PSD API (WASDE同源数据)",
     "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
     "history": {
-      "n": 0,
+      "n": 20,
       "minPoints": 12,
       "asOf": "2026",
-      "since": null,
-      "percentile": null,
-      "min": null,
-      "max": null,
-      "median": null,
+      "since": "2006",
+      "percentile": 60.0,
+      "min": 2.65,
+      "max": 23.39,
+      "median": 6.35,
       "seasonal": null
     }
   }
