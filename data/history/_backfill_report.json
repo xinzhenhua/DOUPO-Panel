@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-30T03:26:30.562524+00:00",
+  "generatedAt": "2026-09-30T13:02:52.186335+00:00",
   "series": [
     {
       "key": "us_stocks_to_use",
@@ -246,7 +246,7 @@
         "2026-06"
       ],
       "notes": [
-        "平衡表文章27篇(搜索总数33)；正文可用17篇",
+        "平衡表文章28篇(搜索总数34)；正文可用18篇",
         "有月份标记但给不出库消比的月份共9个(原文片段见unusableMonths)"
       ],
       "unusableMonths(前12个，附该月片段原文)": [
@@ -339,165 +339,742 @@
       ]
     },
     {
-      "key": "meal_stock",
-      "name": "国内豆粕商业库存(周度)",
-      "unit": "万吨",
+      "key": "crush_margin",
+      "series": [
+        {
+          "key": "crush_margin_sep",
+          "name": "盘面压榨毛利(9月合约，4-7月窗口)",
+          "unit": "元/吨",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        },
+        {
+          "key": "crush_margin_may",
+          "name": "盘面压榨毛利(5月合约，12-3月窗口)",
+          "unit": "元/吨",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        },
+        {
+          "key": "crush_margin_jan",
+          "name": "盘面压榨毛利(1月合约，8-11月窗口)",
+          "unit": "元/吨",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        }
+      ],
+      "contracts": [
+        {
+          "type": "sep",
+          "contract": "1809",
+          "failed": [
+            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "1909",
+          "failed": [
+            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2009",
+          "failed": [
+            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2109",
+          "failed": [
+            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2209",
+          "failed": [
+            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2309",
+          "failed": [
+            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2409",
+          "failed": [
+            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2509",
+          "failed": [
+            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2609",
+          "failed": [
+            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "contract": "2709",
+          "failed": [
+            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "1805",
+          "failed": [
+            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "1905",
+          "failed": [
+            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2005",
+          "failed": [
+            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2105",
+          "failed": [
+            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2205",
+          "failed": [
+            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2305",
+          "failed": [
+            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2405",
+          "failed": [
+            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2505",
+          "failed": [
+            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2605",
+          "failed": [
+            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "contract": "2705",
+          "failed": [
+            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "1801",
+          "failed": [
+            "M1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "1901",
+          "failed": [
+            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2001",
+          "failed": [
+            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2101",
+          "failed": [
+            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2201",
+          "failed": [
+            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2301",
+          "failed": [
+            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2401",
+          "failed": [
+            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2501",
+          "failed": [
+            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2601",
+          "failed": [
+            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "contract": "2701",
+          "failed": [
+            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "Y2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "B2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        }
+      ],
+      "notes": [
+        "共30个合约，30个有合约取不到(已到期/未上市/接口问题)，见contracts里的failed"
+      ]
+    },
+    {
+      "key": "term_spread",
+      "series": [
+        {
+          "key": "term_spread_sep",
+          "name": "月差9-1(占近月价格%，4-7月窗口)",
+          "unit": "%",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        },
+        {
+          "key": "term_spread_may",
+          "name": "月差5-9(占近月价格%，12-3月窗口)",
+          "unit": "%",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        },
+        {
+          "key": "term_spread_jan",
+          "name": "月差1-5(占近月价格%，8-11月窗口)",
+          "unit": "%",
+          "freq": "seasonal-daily",
+          "added": 0,
+          "total": 0,
+          "first": null,
+          "last": null
+        }
+      ],
+      "pairs": [
+        {
+          "type": "sep",
+          "near": "M1809",
+          "far": "M1901",
+          "failed": [
+            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M1909",
+          "far": "M2001",
+          "failed": [
+            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2009",
+          "far": "M2101",
+          "failed": [
+            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2109",
+          "far": "M2201",
+          "failed": [
+            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2209",
+          "far": "M2301",
+          "failed": [
+            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2309",
+          "far": "M2401",
+          "failed": [
+            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2409",
+          "far": "M2501",
+          "failed": [
+            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2509",
+          "far": "M2601",
+          "failed": [
+            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2609",
+          "far": "M2701",
+          "failed": [
+            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "sep",
+          "near": "M2709",
+          "far": "M2801",
+          "failed": [
+            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2801(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M1805",
+          "far": "M1809",
+          "failed": [
+            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M1905",
+          "far": "M1909",
+          "failed": [
+            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2005",
+          "far": "M2009",
+          "failed": [
+            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2105",
+          "far": "M2109",
+          "failed": [
+            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2205",
+          "far": "M2209",
+          "failed": [
+            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2305",
+          "far": "M2309",
+          "failed": [
+            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2405",
+          "far": "M2409",
+          "failed": [
+            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2505",
+          "far": "M2509",
+          "failed": [
+            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2605",
+          "far": "M2609",
+          "failed": [
+            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "may",
+          "near": "M2705",
+          "far": "M2709",
+          "failed": [
+            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M1801",
+          "far": "M1805",
+          "failed": [
+            "M1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M1901",
+          "far": "M1905",
+          "failed": [
+            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2001",
+          "far": "M2005",
+          "failed": [
+            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2101",
+          "far": "M2105",
+          "failed": [
+            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2201",
+          "far": "M2205",
+          "failed": [
+            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2301",
+          "far": "M2305",
+          "failed": [
+            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2401",
+          "far": "M2405",
+          "failed": [
+            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2501",
+          "far": "M2505",
+          "failed": [
+            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2601",
+          "far": "M2605",
+          "failed": [
+            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        },
+        {
+          "type": "jan",
+          "near": "M2701",
+          "far": "M2705",
+          "failed": [
+            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
+            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+          ]
+        }
+      ],
+      "notes": [
+        "共30对合约，30对有合约取不到(已到期/未上市/接口问题)，见pairs里的failed"
+      ]
+    },
+    {
+      "key": "feed_days",
+      "name": "饲料企业豆粕库存天数(周度)",
+      "unit": "天",
       "freq": "weekly",
-      "added": 70,
-      "total": 70,
-      "first": "2022-06-20",
-      "last": "2026-09-28",
-      "min": 14.92,
-      "max": 129.64,
-      "median": 72.85,
+      "added": 265,
+      "total": 265,
+      "first": "2021-05-21",
+      "last": "2026-09-24",
+      "min": 4.35,
+      "max": 12.64,
+      "median": 8.1,
       "lowest3": [
         {
-          "d": "2022-11-21",
-          "v": 14.92
+          "d": "2025-04-25",
+          "v": 4.35
         },
         {
-          "d": "2022-11-14",
-          "v": 17.06
+          "d": "2025-05-09",
+          "v": 4.45
         },
         {
-          "d": "2022-11-07",
-          "v": 18.91
+          "d": "2025-05-02",
+          "v": 5.04
         }
       ],
       "highest3": [
         {
-          "d": "2026-09-28",
-          "v": 129.64
+          "d": "2022-01-28",
+          "v": 12.64
         },
         {
-          "d": "2025-09-30",
-          "v": 118.0
+          "d": "2026-02-13",
+          "v": 12.59
         },
         {
-          "d": "2026-09-21",
-          "v": 117.32
+          "d": "2026-02-06",
+          "v": 12.37
         }
       ],
       "outliers(稳健z>6)": [],
       "gapsOver10Days": [
-        "2023-01-03→2023-10-30",
-        "2023-10-30→2023-12-04",
-        "2023-12-04→2024-01-02",
-        "2024-02-05→2024-02-19",
-        "2024-07-01→2024-12-24",
-        "2024-12-25→2025-09-30",
-        "2025-09-30→2026-07-13",
-        "2026-07-27→2026-08-10",
-        "2026-08-31→2026-09-14"
+        "2021-07-23→2021-08-06",
+        "2021-10-29→2021-11-12",
+        "2021-12-10→2022-01-21",
+        "2022-01-28→2022-02-11",
+        "2023-01-20→2023-02-03",
+        "2023-09-28→2023-10-13",
+        "2024-02-02→2024-02-19",
+        "2024-09-27→2024-10-11",
+        "2025-01-24→2025-02-07",
+        "2025-09-26→2025-10-10",
+        "2026-02-13→2026-02-27"
       ],
       "notes": [
-        "搜索到750篇(总数750)；抓了230篇正文；提取结果统计见extractStats"
+        "搜到《饲料企业豆粕库存天数调查》270篇(搜索总数291)，抓了5篇正文"
       ],
       "extractStats": {
-        "提取成功(来自摘要)": 12,
-        "不像周度库存文章(标题/摘要没有第N周，标题也没有库存+大豆/豆粕)": 508,
-        "正文取到但没有可用的全国豆粕库存": 124,
-        "提取成功(来自正文)": 106
+        "提取成功(来自摘要)": 265,
+        "摘要和正文都没提取出库存天数": 5
       },
-      "rejectedSamples(每类前5篇)": {
-        "不像周度库存文章": [
-          {
-            "pub": "2026-09-23",
-            "title": "Mysteel数据：2026年国庆期间国内主要油厂大豆、菜籽开停机计划情况汇总",
-            "text": "Mysteel调查显示，2026年国庆期间国内动态全样本油厂大豆开机率约30.34%，同比下降13.38%；压榨量约111.14万吨，同比减少67.98万吨。因豆粕库存充足，开机率预计创近五年最低。菜籽开机率约40.24%，同比上升35.58%；压榨量约13.83万吨，同比增加12.23万吨。受供应"
-          },
-          {
-            "pub": "2026-09-21",
-            "title": "[隆众聚焦]：紧抓季节需求 复合肥秋季市场推进中",
-            "text": "进入9月中下旬，国内复合肥秋播用肥进入集中落地阶段，小麦底肥补货需求到底还存多少，旺季特征是否还能显化？ 一、 大部区域抓住有利天气抢收成熟作物 目前，全国大部玉米和一季稻处于灌浆乳熟阶段，江汉和西南地区大部处于成熟收获期；全国大部大豆处于鼓粒期，江南大部晚稻处于孕穗抽穗期，华南大部晚稻处于拔节孕穗"
-          },
-          {
-            "pub": "2026-08-31",
-            "title": "Mysteel月报：8月豆粕多重因素共振继续上涨",
-            "text": "8月国内豆粕现货价格受外盘成本驱动上涨，沿海市场价环比涨160-250元/吨至3190-3240元/吨。尽管进口大豆到港及油厂压榨量维持高位，库存处于同期高位导致基本面压力显著，呈现“期强现弱”特征，基差走弱至-140-170元/吨，但进口成本快速抬升并向国内传导，推动各地区现货价格跟随期货同步跟涨"
-          },
-          {
-            "pub": "2026-08-29",
-            "title": "Mysteel解读：8月华东豆粕承压 四季度或改善可期",
-            "text": "8月国内豆粕供应宽松，华东因库存相对可控及“价格洼地”优势，推动贸易流向重构。下游需求疲软，饲料企业多随用随采，现货上涨缺乏支撑，连粕呈区间偏强震荡。展望四季度，随着进口大豆到港减少及养殖需求季节性回暖，供需矛盾有望缓和，价格重心或小幅上移。但在全球丰产背景下，行情难现趋势性大涨，需关注美豆天气及买"
-          },
-          {
-            "pub": "2026-08-12",
-            "title": "Mysteel早报：全国玉米副产品价格趋弱调整（20260812）",
-            "text": "全国玉米副产品价格趋弱调整，山东、黑龙江等地蛋白粉及胚芽粕部分下跌，市场暗降促销，下游补库情绪平淡，预计今日弱稳运行。豆粕方面，夜盘连粕下跌，CBOT大豆收跌。华北油厂开机率高位，库存累加致现货压力凸显，但贸易商成本抬升支撑价格坚挺，下游采购谨慎。预计今日华北豆粕现货在3030-3070元/吨区间运"
-          }
-        ],
-        "正文取到但没有可用的全国豆粕库存": [
-          {
-            "pub": "2026-09-07",
-            "title": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260907）",
-            "text": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260907） 2026-09-07 16:26 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 内容由AI生成 2026年第36周，全国主要油厂大豆及豆粕库存双双下降，未执行合同显著上升。 特别声明：为了数据更能贴合市场变化趋势，My"
-          },
-          {
-            "pub": "2026-08-03",
-            "title": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260803）",
-            "text": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260803） 2026-08-03 16:08 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 内容由AI生成 据Mysteel数据，2026年第31周全国主要油厂大豆及豆粕库存均上升。 特别声明：为了数据更能贴合市场变化趋势，Mys"
-          },
-          {
-            "pub": "2026-07-06",
-            "title": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260706）",
-            "text": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260706） 2026-07-06 16:56 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 2026年第27周，全国主要油厂大豆库存环比增加4.14%，同比增幅22.27%；豆粕库存环比减少2.45%，同比减幅11.88%；未执行"
-          },
-          {
-            "pub": "2026-07-03",
-            "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260703）",
-            "text": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260703） 2026-07-03 16:51 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 截至7月3日，全国饲料企业豆粕物理库存为7.41天，环比微增0.17天，同比下滑0.50天。供应端受7月超千万吨大豆到港及油厂高开机"
-          },
-          {
-            "pub": "2026-06-29",
-            "title": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260629）",
-            "text": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260629） 2026-06-29 16:42 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 第26周大豆库存小幅上升0.42%，同比增幅超12%；豆粕库存同步增长3.07%，同比增加7.42%。未执行合同大幅减少12.44%，但同"
-          }
-        ]
+      "failedSamples(前8篇)": [
+        {
+          "pub": "2022-01-14",
+          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220114）",
+          "reason": "提取不出库存天数(措辞可能不同)",
+          "summary": "Mysteel农产品对全国主要地区调查显示，截止到2022年1月14日当周（第2周），国内饲料企业豆粕库存天数（物理库存天数）为10.85，较前一周增加1.33天，增幅13.97%库存天数整体大幅增加本周豆粕市场价格震荡回落，现货价格相对坚挺，基差持续走强在春节备货的推动下，大部分地区饲料企业库存天数明显增加，局部地区",
+          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220114） 2022-01-14 21:41 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> Mysteel 农产品 对全国主要地区调查显示，截止到2022年1月14日当周（第2周），国内饲料企业豆粕库存天数（物理库存天数）为10.85，较前一周增加1.33天，增幅13.97%。库存天数整体大幅增加。本周豆粕"
+        },
+        {
+          "pub": "2022-01-07",
+          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220107）",
+          "reason": "提取不出库存天数(措辞可能不同)",
+          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2022年1月7日当周（第1周），国内饲料企业豆粕库存天数（物理库存天数）为9.52，较前一周减少0.4天，减幅4.04%。",
+          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220107） 2022-01-07 19:02 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到202 2 年 1 月 7 日当周（第 1 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.52 ，较前一周 减少0.4 天， 减 幅 4.04 %。库"
+        },
+        {
+          "pub": "2021-12-31",
+          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211231）",
+          "reason": "提取不出库存天数(措辞可能不同)",
+          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月31日当周（第52周），国内饲料企业豆粕库存天数（物理库存天数）为9.92，较前一周增加0.26天，增幅2.67%。",
+          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211231） 2021-12-31 17:39 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2021年1 2 月 31 日当周（第 52 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.92 ，较前一周 增加0.26 天， 增 幅 2.67 %"
+        },
+        {
+          "pub": "2021-12-24",
+          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211224）",
+          "reason": "提取不出库存天数(措辞可能不同)",
+          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月24日当周（第51周），国内饲料企业豆粕库存天数（物理库存天数）为9.66，较前一周减少0.49天，减幅4.83%。",
+          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211224） 2021-12-24 19:02 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2 021 年 1 2 月 24 日当周（第 51 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.66 ，较前一周 减少 0.49 天， 减 幅 4."
+        },
+        {
+          "pub": "2021-12-17",
+          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211217）",
+          "reason": "提取不出库存天数(措辞可能不同)",
+          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月17日当周（第50周），国内饲料企业豆粕库存天数（物理库存天数）为10.15，较前一周减少0.19天，减幅1.81%。",
+          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211217） 2021-12-17 18:49 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2 021 年 1 2 月 17 日当周（第 50 周），国内饲料企业豆粕库存天数（物理库存天数）为 10.15 ，较前一周 减少 0. 19 天， 减 幅 "
+        }
+      ],
+      "momIndependentCheck(连续两周库存之差 vs 文章写的环比)": {
+        "comparable": 39,
+        "matched": 39,
+        "mismatched": 0,
+        "examples": []
       },
-      "spotChecks(独立来源Mysteel英文站周报)": [
+      "knownSampleCheck": [
         {
-          "week": "2026年第5周",
-          "expected": 93.04,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第15周",
-          "expected": 62.05,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第16周",
-          "expected": 61.38,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第22周",
-          "expected": 34.74,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第23周",
-          "expected": 50.65,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第27周",
-          "expected": 72.47,
-          "result": "缺失(附近没有回填点)"
-        },
-        {
-          "week": "2026年第31周",
-          "expected": 100.34,
-          "got": 96.73,
-          "gotDate": "2026-07-27",
-          "result": "不一致"
-        },
-        {
-          "week": "2026年第35周",
-          "expected": 116.73,
-          "got": 116.73,
-          "gotDate": "2026-08-31",
+          "date": "2026-07-03",
+          "expected": {
+            "value": 7.41,
+            "mom": 0.17,
+            "yoy": -0.5
+          },
+          "got": {
+            "value": 7.41,
+            "mom": 0.17,
+            "yoy": -0.5
+          },
           "result": "通过"
         }
       ]
@@ -626,9 +1203,38 @@
         "p90": 20.33,
         "p95": 20.84
       },
-      "currentThresholds": {
+      "currentThresholds(v84: 松阈值14→16)": {
         "tight<=10": 20.0,
-        "loose>=14": 50.0
+        "loose>=14": 50.0,
+        "loose>=16": 35.0
+      },
+      "byFestivalCohort": {
+        "春节扰动月": {
+          "n": 4,
+          "values": [
+            7.4,
+            9.86,
+            15.54,
+            20.95
+          ]
+        },
+        "平常月": {
+          "n": 16,
+          "quantiles": {
+            "p5": 4.85,
+            "p10": 8.05,
+            "p20": 10.66,
+            "p25": 11.16,
+            "p50": 14.45,
+            "p75": 16.37,
+            "p80": 16.57,
+            "p90": 18.74,
+            "p95": 20.41
+          },
+          "share>=14%": 50.0,
+          "share>=16%": 37.5,
+          "share<=10%": 12.5
+        }
       },
       "allValues": {
         "2024-05": 13.77,
@@ -651,6 +1257,41 @@
         "2026-07": 13.19,
         "2026-08": 15.12,
         "2026-09": 16.04
+      }
+    },
+    "feed_days": {
+      "n": 265,
+      "quantiles": {
+        "p5": 6.21,
+        "p10": 6.78,
+        "p20": 7.22,
+        "p25": 7.43,
+        "p50": 8.1,
+        "p75": 9.2,
+        "p80": 9.4,
+        "p90": 9.89,
+        "p95": 10.59
+      },
+      "coverage": "样本连续，可用",
+      "medianByMonth": {
+        "01": 10.07,
+        "02": 8.82,
+        "03": 7.79,
+        "04": 7.34,
+        "05": 6.69,
+        "06": 7.32,
+        "07": 8.05,
+        "08": 8.55,
+        "09": 9.3,
+        "10": 8.05,
+        "11": 7.87,
+        "12": 8.46
+      },
+      "momIndependentCheck": {
+        "comparable": 39,
+        "matched": 39,
+        "mismatched": 0,
+        "examples": []
       }
     },
     "meal_stock": {
@@ -677,46 +1318,55 @@
         "2025": 1,
         "2026": 10
       },
+      "coverage": "样本不连续：跨1561天应有约224期，实际只有70期(31%)",
       "spotChecks(独立来源Mysteel英文站周报)": [
         {
-          "week": "2026年第5周",
+          "week": "2026-W05",
           "expected": 93.04,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第15周",
+          "week": "2026-W12",
+          "expected": 67.05,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W13",
+          "expected": 67.68,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W15",
           "expected": 62.05,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第16周",
+          "week": "2026-W16",
           "expected": 61.38,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第22周",
+          "week": "2026-W22",
           "expected": 34.74,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第23周",
+          "week": "2026-W23",
           "expected": 50.65,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第27周",
+          "week": "2026-W27",
           "expected": 72.47,
-          "result": "缺失(附近没有回填点)"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第31周",
+          "week": "2026-W31",
           "expected": 100.34,
-          "got": 96.73,
-          "gotDate": "2026-07-27",
-          "result": "不一致"
+          "result": "缺失(没有这一周的点)"
         },
         {
-          "week": "2026年第35周",
+          "week": "2026-W35",
           "expected": 116.73,
           "got": 116.73,
           "gotDate": "2026-08-31",
