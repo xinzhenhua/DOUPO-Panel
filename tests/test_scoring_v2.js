@@ -5,7 +5,7 @@ const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
 window._selectedContract = 'sep';
-H.setMockedMonth(7);   // 固定7月(9月合约窗口)，不随真实日期变化
+H.setMockedMonth(5);   // 固定5月(9月合约窗口，作物票"参与"档×1)，不随真实日期变化
 
 const ALL = ['crush','stock','stu','basis','arrival','hogratio','sows','import','poultry','rmspread','reserve'];
 function reset(){
@@ -28,22 +28,22 @@ const html = ()=>makeEl('alertContent').innerHTML;
 
 // ===================== 1. 净倾向 = 分数÷有效指标数；门槛0.22 =====================
 neutralBaseline(); updateOverallAlert();
-check('★12个投票全中性：应显示"信号混合"，有效12/12', html().includes('信号混合') && html().includes('有效12/12'));
+check('★10个投票全中性：应显示"信号混合"，有效10/10(国储拍卖、能繁母猪已移出评分)', html().includes('信号混合') && html().includes('有效10/10'));
 check('全中性时基本面方向为中性(供三方共振读取)', window._fundamentalDirection === '中性');
 
 neutralBaseline(); window._psdSignal=1; window._fxSignal=1; updateOverallAlert();
-check('★12个投票中2票偏多(2÷13=15%<22%)：仍是信号混合，不下方向结论', html().includes('信号混合 +2（净倾向+15%）') && window._fundamentalDirection === '中性');
+check('★10个投票(有效票权11，国内供应松紧占2)中2票偏多(2÷11=18%<22%)：仍是信号混合，不下方向结论', html().includes('信号混合 +2（净倾向+18%）') && window._fundamentalDirection === '中性');
 
 neutralBaseline(); window._psdSignal=1; window._fxSignal=1; window._esrSignal=1; updateOverallAlert();
-check('★12个投票(有效票权13，国内供应松紧占2)中3票偏多(3÷13=23%≥22%)：综合偏多', html().includes('综合偏多 +3（净倾向+23%）') && window._fundamentalDirection === '偏多');
+check('★10个投票(有效票权11)中3票偏多(3÷11=27%≥22%)：综合偏多', html().includes('综合偏多 +3（净倾向+27%）') && window._fundamentalDirection === '偏多');
 
 neutralBaseline(); window._psdSignal=-1; window._fxSignal=-1; window._esrSignal=-1; updateOverallAlert();
-check('★3票偏空 → 综合偏空，方向"偏空"(-3÷13=-23%)', html().includes('综合偏空 -3（净倾向-23%）') && window._fundamentalDirection === '偏空');
-check('结论框写明多/中/空分布', html().includes('0多 9中 3空'));
+check('★3票偏空 → 综合偏空，方向"偏空"(-3÷11=-27%)', html().includes('综合偏空 -3（净倾向-27%）') && window._fundamentalDirection === '偏空');
+check('结论框写明多/中/空分布', html().includes('0多 7中 3空'));
 
 // 有效指标变少时门槛按比例降低：8票中2票偏多=25%
-neutralBaseline(); ['poultry','rmspread','reserve','sows'].forEach(k=>makeEl('m_'+k).value=''); window._psdSignal=1; window._fxSignal=1; updateOverallAlert();
-check('★有效指标少(8个投票，有效票权9)时门槛按比例降低：2票偏多(2÷9=22%)即综合偏多', html().includes('综合偏多 +2（净倾向+22%）') && html().includes('有效8/12'));
+neutralBaseline(); ['poultry','rmspread'].forEach(k=>makeEl('m_'+k).value=''); window._psdSignal=1; window._fxSignal=1; updateOverallAlert();
+check('★有效指标少(8个投票，有效票权9)时门槛按比例降低：2票偏多(2÷9=22%)即综合偏多', html().includes('综合偏多 +2（净倾向+22%）') && html().includes('有效8/10'));
 
 // ===================== 2. 数据不足：有效指标<5不下结论 =====================
 reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8';
@@ -53,7 +53,7 @@ check('★数据不足时基本面方向置空(不让三方共振沿用旧值)',
 check('数据不足时仍显示供需表格，方便看缺哪些', html().includes('sd-table'));
 
 // 覆盖率低(有效5/12=42%<60%)：能下结论，但提示可信度较低
-reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8'; makeEl('m_sows').value='3600';
+reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
 window._psdSignal = 1; updateOverallAlert();
 check('★有效5项(<60%覆盖)：给出结论但提示"有效指标偏少，结论可信度较低"', html().includes('综合偏多') && html().includes('有效指标偏少'));
 
@@ -74,17 +74,26 @@ check('★到港+进口同时偏多 → 合并偏多，只占1格', /sd-cell sd-
 check('详细理由里说明"合并为1票"', html().includes('合并为1票'));
 
 // ===================== 4. 出口销售信号：本周净销售 vs 近4周均值 =====================
-check('★净销售较4周均值+60%(>40%) → 偏多', esrSignalFrom({vs4wAvgPct:60, avg4wNetSalesMT:500000}) === 1);
-check('★净销售较4周均值-60% → 偏空', esrSignalFrom({vs4wAvgPct:-60, avg4wNetSalesMT:500000}) === -1);
-check('★+30%(区间内) → 中性', esrSignalFrom({vs4wAvgPct:30, avg4wNetSalesMT:500000}) === 0);
-check('★4周均值只有5万吨(<10万吨基数太小) → 中性，不因小基数上的大百分比乱报信号', esrSignalFrom({vs4wAvgPct:400, avg4wNetSalesMT:50000}) === 0);
-check('★历史周数不足(没有4周均值) → null，不投票', esrSignalFrom({vs4wAvgPct:null, avg4wNetSalesMT:null}) === null);
+const seasonal = (pct,n)=>({history:{n:300, percentile:50, seasonal:{month:9, n:n===undefined?40:n, percentile:pct, median:1}}});
+check('★近4周净销售合计在往年同月分位85% → 偏多', esrSignalFrom(seasonal(85)) === 1);
+check('★分位80%(边界) → 偏多；79.9% → 中性', esrSignalFrom(seasonal(80)) === 1 && esrSignalFrom(seasonal(79.9)) === 0);
+check('★分位15% → 偏空；20%(边界)偏空；20.1% → 中性', esrSignalFrom(seasonal(15)) === -1 && esrSignalFrom(seasonal(20)) === -1 && esrSignalFrom(seasonal(20.1)) === 0);
+check('★分位50% → 中性', esrSignalFrom(seasonal(50)) === 0);
+check('★同月样本不足20个 → null，不投票', esrSignalFrom(seasonal(95, 19)) === null && esrSignalFrom(seasonal(95, 20)) === 1);
+check('★没有history/seasonal字段(刚部署、历史还没累积) → null，不投票——旧的±40%规则已弃用', esrSignalFrom({vs4wAvgPct:60, avg4wNetSalesMT:500000}) === null && esrSignalFrom({history:{n:300, seasonal:null}}) === null && esrSignalFrom({history:{n:5, seasonal:{month:9,n:0,percentile:null}}}) === null);
+check('★最新一周是市场年度切换周 → null(净销售含结转，虚高)，即使历史分位很高', esrSignalFrom(Object.assign({latestIsRollover:true}, seasonal(99))) === null);
 
 elements['esrBadge']=makeEl('esrBadge'); elements['esrContent']=makeEl('esrContent');
 const esrNew = {available:true, commodity:'Soybeans(大豆)', weekEnding:'2026-09-24', marketYearUsed:2026, dataAgeDays:5, isStale:false,
-  netSalesMT:1200000, prevNetSalesMT:800000, avg4wNetSalesMT:700000, vs4wAvgPct:71.4, wowChangePct:50, shipmentsMT:900000, chinaNetSalesMT:450000, chinaShipmentsMT:0};
+  netSalesMT:1200000, prevNetSalesMT:800000, avg4wNetSalesMT:700000, vs4wAvgPct:71.4, wowChangePct:50, shipmentsMT:900000, chinaNetSalesMT:450000, chinaShipmentsMT:0,
+  history:{n:300, minPoints:12, since:'2014-10', percentile:90, min:1, max:9, median:4, basis:'近4周净销售合计', seasonal:{month:9, n:40, percentile:88, median:3}}};
 renderEsr(esrNew, new Date().toISOString());
-check('★出口销售渲染：偏多信号写入window._esrSignal', window._esrSignal === 1);
+check('★出口销售渲染：历史同月分位88%→偏多，写入window._esrSignal', window._esrSignal === 1 && makeEl('esrContent').innerHTML.includes('分位88%'));
+renderEsr(Object.assign({}, esrNew, {history:undefined}), new Date().toISOString());
+check('★没有历史样本时：信号null，界面说明"历史同月样本不足，暂不判断方向"', window._esrSignal === null && makeEl('esrContent').innerHTML.includes('历史同月样本不足'));
+renderEsr(Object.assign({}, esrNew, {latestIsRollover:true, vs4wAvgPct:null, wowChangePct:null, total4wSumMT:null}), new Date().toISOString());
+check('★最新周是市场年度切换周：信号null，界面说明净销售含结转、虚高，且不显示"较近4周均值"', window._esrSignal === null && makeEl('esrContent').innerHTML.includes('市场年度切换周') && !makeEl('esrContent').innerHTML.includes('较近4周均值--'));
+renderEsr(esrNew, new Date().toISOString());
 check('★出口销售详情：显示中国净销售、装船量、4周均值，并说明净销售≠装船量', makeEl('esrContent').innerHTML.includes('450,000') && makeEl('esrContent').innerHTML.includes('本周装船量') && makeEl('esrContent').innerHTML.includes('近4周均值') && makeEl('esrContent').innerHTML.includes('净销售=当周新签'));
 renderEsr({available:true, weekEnding:'2026-09-24', marketYearUsed:2026, latestTotalMT:308051, prevTotalMT:248336, wowChangePct:24.0, chinaLatestMT:0}, new Date().toISOString());
 check('★★旧版后端数据(豆粕口径，装船量冒充净销售)：必须忽略，信号null，提示等待重新同步', window._esrSignal === null && makeEl('esrContent').innerHTML.includes('旧版本后端') && makeEl('esrBadge').textContent.includes('旧版'));

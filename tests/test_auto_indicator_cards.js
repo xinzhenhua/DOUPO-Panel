@@ -20,10 +20,10 @@ const hosts = {'cards-supply': {html:''}, 'cards-demand': {html:''}};
 Object.keys(hosts).forEach(id=>{ const el = makeEl(id); el.insertAdjacentHTML = (pos, h)=>{ hosts[id].html += h; }; });
 buildIndicatorCards();
 const allHtml = hosts['cards-supply'].html + hosts['cards-demand'].html;
-check('★一共生成11张指标卡片(含国内豆粕库消比)', (allHtml.match(/class="card" id="card_/g)||[]).length === 11);
-check('★供应区7张(开机率/库存/库消比/基差/到港/进口/国储)、需求区4张(猪粮比/能繁/肉鸡/豆菜粕价差)',
-  (hosts['cards-supply'].html.match(/id="card_/g)||[]).length === 7 && (hosts['cards-demand'].html.match(/id="card_/g)||[]).length === 4);
-check('★每张卡片都有"查看详情 / 手动修正"折叠区', (allHtml.match(/查看详情 \/ 手动修正/g)||[]).length === 11);
+check('★一共生成12张指标卡片(含国内豆粕库消比、饲料企业豆粕库存天数)', (allHtml.match(/class="card" id="card_/g)||[]).length === 12);
+check('★供应区7张(开机率/库存/库消比/基差/到港/进口/国储)、需求区5张(猪粮比/能繁/肉鸡/饲料库存天数/豆菜粕价差)',
+  (hosts['cards-supply'].html.match(/id="card_/g)||[]).length === 7 && (hosts['cards-demand'].html.match(/id="card_/g)||[]).length === 5);
+check('★每张卡片都有"查看详情 / 手动修正"折叠区', (allHtml.match(/查看详情 \/ 手动修正/g)||[]).length === 12);
 check('★每张卡片都有常驻的结论框容器(alert_xxx)和状态徽标(badge_xxx)', AUTO_INDICATORS.every(c=>allHtml.includes(`id="alert_${c.key}"`) && allHtml.includes(`id="badge_${c.key}"`)));
 check('★手动输入框放在折叠区里(m_xxx全部存在)', AUTO_INDICATORS.every(c=>allHtml.includes(`id="${c.inputId}"`)));
 check('★页面上不再有"采用"按钮', !allHtml.includes('采用'));
@@ -60,7 +60,7 @@ resetKey('basis');
 window._syncedData = {mysteelBasis:{available:true, value:-100, city:'日照', date:dayStr(20), usedFallback:false}};   // 基差日度，7天算过期
 refreshMysteelBasis();
 check('★过期数据照样显示数值', makeEl('m_basis').value == '-100');
-check('★徽标标出已过期天数并说明不计分', makeEl('badge_basis').textContent.includes('20天前') && makeEl('badge_basis').textContent.includes('不计分'));
+check('★徽标标出"数据过期"并说明不计分(具体错过几个交易日写在详情里)', makeEl('badge_basis').textContent.includes('数据过期') && makeEl('badge_basis').textContent.includes('不计分') && makeEl('ai_basis').innerHTML.includes('错过') && makeEl('ai_basis').innerHTML.includes('个大商所交易日'));
 check('★结论框说明不参与综合评分', makeEl('alert_basis').innerHTML.includes('不参与综合评分'));
 check('★过期数据的信号被排除(供需表格里现货基差是空格，不是偏空)', /sd-cell sd-empty">现货基差/.test(makeEl('alertContent').innerHTML));
 
@@ -117,6 +117,6 @@ check('★旧版存储的输入框值不会被当成手动修正读回来', make
 // ===================== 8. 其它：同步数据还没回来不报错 =====================
 delete window._syncedData;
 let ok = true; try { AUTO_INDICATORS.forEach(c=>refreshAutoIndicator(c.key)); } catch(e){ ok = false; }
-check('★window._syncedData为空时11个指标刷新都不报错', ok);
+check('★window._syncedData为空时12个指标刷新都不报错', ok);
 
 H.printSummary();

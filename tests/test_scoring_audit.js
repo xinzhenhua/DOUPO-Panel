@@ -2,6 +2,7 @@ const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 
 eval(H.loadDashboardJs());
+H.setMockedMonth(5);   // 固定5月：9月合约作物票在"参与"档(×1)，票数不随真实日期变化(季节档位见test_seasonal.js)
 // ★脚本eval时会自动按"今天"的真实日期跑一次selectContract(getDefaultContractByDate())，
 //   这个测试假设的是9月合约(sep)语境下的评分规则，明确覆盖一次，
 //   不要让测试结果跟着"今天实际是几月"变来变去。
@@ -30,13 +31,16 @@ window._cbotSignal = 1;
 
 updateOverallAlert();
 
-check('★严格审计：9个投票全部偏多，其中"国内豆粕供应松紧"票权2 → 总分应精确是+10，净倾向仍是+100%',
-  elements['alertContent'].innerHTML.includes('综合偏多 +10（'));
-check('★有效指标数应精确显示为9(净倾向=9÷9=+100%)', elements['alertContent'].innerHTML.includes('有效9/') && elements['alertContent'].innerHTML.includes('净倾向+100%'));
-check('★验证CBOT确实不参与评分：即使window._cbotSignal=1，总分也不是+11', !elements['alertContent'].innerHTML.includes('+11（'));
+// 这个场景里作物4个子信号全部偏多 → 天气开关打开：作物票按主导档×2，其余8个投票票权减半(×0.5)：2+8×0.5=6
+// 手算：8个有效投票(供应5：作物/美豆库消比/国内松紧/到港进口/汇率；需求3：出口/基差/猪粮比；能繁已移出评分)，天气开关打开：作物×2，其余7票×0.5 → 2+3.5=+5.5
+check('★严格审计：8个投票全部偏多，天气开关打开(作物×2、其余7票×0.5) → 总分应精确是+5.5，净倾向仍是+100%',
+  elements['alertContent'].innerHTML.includes('综合偏多 +5.5（'));
+check('★天气开关打开时页面有"天气主导行情"提示', elements['alertContent'].innerHTML.includes('天气主导行情'));
+check('★有效指标数应精确显示为8(净倾向=5.5÷5.5=+100%)', elements['alertContent'].innerHTML.includes('有效8/') && elements['alertContent'].innerHTML.includes('净倾向+100%'));
+check('★验证CBOT确实不参与评分：即使window._cbotSignal=1，总分也不是+11', !elements['alertContent'].innerHTML.includes('+10（'));
 
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★严格审计：供需表格里应该恰好有9个"偏多"格子(5供应+4需求)', posCount === 9);
+check('★严格审计：供需表格里应该恰好有8个"偏多"格子(5供应+3需求)', posCount === 8);
 check('★合并后的两个新标签应该出现', elements['alertContent'].innerHTML.includes('国内豆粕供应松紧') && elements['alertContent'].innerHTML.includes('大豆到港/进口'));
 check('★合并前的单独标签不应再各占一格', !/sd-cell sd-\w+">(开机率|商业库存|到港预报|进口量)/.test(elements['alertContent'].innerHTML));
 check('供需表格应该显示"作物生长状况综合"这个合并后的标签(9月合约默认，标签格式已更新为动态可切换)', elements['alertContent'].innerHTML.includes('作物生长状况综合'));

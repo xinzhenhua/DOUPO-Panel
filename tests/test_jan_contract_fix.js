@@ -84,7 +84,9 @@ window._harvestSignal=1;
 H.setMockedMonth(10); // 播种生长期，权重55/45，两者都偏多，合成应为偏多
 selectContract('jan');
 // 10月有效投票：作物(南美)、库存消费比、国内豆粕供应松紧、大豆到港/进口、汇率、收获进度 = 6票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求。国储拍卖/巴西播种没数据不投票
-check('★1月合约(10月)：12个有效投票全偏多，总分应精确为+13(国内豆粕供应松紧票权2)', elements['alertContent'].innerHTML.includes('综合偏多 +13（') && elements['alertContent'].innerHTML.includes('有效12/14'));
+// 手算：有效11票(供应6：作物/美豆库消比/国内松紧/到港进口/汇率/收获进度；需求5：出口/基差/猪粮比/肉鸡/豆菜粕；能繁、国储拍卖已移出评分)；
+// 南美天气+产量都偏多→天气开关打开：作物×2，其余10票×0.5 → 2+5=+7；投票总数12(含没数据的巴西播种进度)
+check('★1月合约(10月)：11个有效投票全偏多，天气开关打开，总分应精确为+7', elements['alertContent'].innerHTML.includes('综合偏多 +7（') && elements['alertContent'].innerHTML.includes('有效11/12'));
 H.clearMockedMonth();
 
 

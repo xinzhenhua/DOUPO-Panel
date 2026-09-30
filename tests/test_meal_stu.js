@@ -5,7 +5,7 @@ const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
 window._selectedContract = 'sep';
-H.setMockedMonth(7);
+H.setMockedMonth(5);   // 5月：作物票"参与"档(×1)
 const AUTO = window._autoIndicators;
 const dayStr = n => new Date(Date.now() - n*86400000).toISOString().slice(0,10);
 
@@ -27,7 +27,7 @@ window._syncedData = {mysteelMealStu: stuData({next:{month:'2026-10', monthLabel
   weeklyCheck:{stockWan:121, stockDate:'2026-09-26', consumptionWan:779, value:15.53}})};
 refreshMysteelMealStu();
 check('★库消比输入框被自动覆盖为16.04', makeEl('m_stu').value == '16.04');
-check('★结论框：16.04%≥14% → 偏空，写明阈值', makeEl('alert_stu').innerHTML.includes('alert-box bear') && makeEl('alert_stu').innerHTML.includes('≥14%') && makeEl('alert_stu').innerHTML.includes('供应宽松'));
+check('★结论框：16.04%≥16% → 偏空，写明阈值', makeEl('alert_stu').innerHTML.includes('alert-box bear') && makeEl('alert_stu').innerHTML.includes('≥16%') && makeEl('alert_stu').innerHTML.includes('供应宽松'));
 check('★徽标：自动 + 文章发布日期', makeEl('badge_stu').textContent.includes('自动') && makeEl('badge_stu').className.includes('badge-auto'));
 const d = makeEl('ai_stu').innerHTML;
 check('详情：标明是预测值+月份', d.includes('2026年9月(预测)库消比16.04%'));
@@ -40,8 +40,8 @@ check('★详情：显示周度库存交叉核对(15.53%)并说明不是月末�
 reset(); window._syncedData = {mysteelMealStu: stuData()}; refreshMysteelMealStu();
 check('★没有下月数据时如实说明"正文只公开到第2个月"', makeEl('ai_stu').innerHTML.includes('暂无下月数据'));
 
-// 判定阈值边界：≤10偏多，≥14偏空，之间中性
-[[9.99,'bull'],[10,'bull'],[10.01,'neutral'],[12.45,'neutral'],[13.99,'neutral'],[14,'bear'],[5.94,'bull']].forEach(([v,cls])=>{
+// 判定阈值边界：≤10偏多，≥16偏空(v84从14上调：20个月度值里≥14占50%)，之间中性
+[[9.99,'bull'],[10,'bull'],[10.01,'neutral'],[12.45,'neutral'],[14,'neutral'],[15.99,'neutral'],[16,'bear'],[5.94,'bull']].forEach(([v,cls])=>{
   reset(); window._syncedData = {mysteelMealStu: stuData({value:v})}; refreshMysteelMealStu();
   check(`库消比${v}% → ${cls}`, makeEl('alert_stu').innerHTML.includes('alert-box '+cls));
 });
@@ -95,13 +95,13 @@ check('供需表格里该格标注×2', /sd-cell sd-\w+">国内豆粕供应松�
 
 // ===================== 5. 评分：双倍票权 =====================
 baseNeutral(); makeEl('m_stu').value='16'; updateOverallAlert();   // 国内组偏空(票权2)，其余全中性：-2÷13=-15% → 不下结论
-check('★国内供应松紧单独偏空：-2÷13=-15%，不够22% → 信号混合(不会单凭这一组下方向结论)', html().includes('信号混合 -2（净倾向-15%）') && window._fundamentalDirection==='中性');
+check('★国内供应松紧单独偏空：-2÷11=-18%，不够22% → 信号混合(不会单凭这一组下方向结论)', html().includes('信号混合 -2（净倾向-18%）') && window._fundamentalDirection==='中性');
 baseNeutral(); makeEl('m_stu').value='16'; window._psdSignal=-1; updateOverallAlert();
-check('★再加一个同向指标(美豆库消比偏空)：-3÷13=-23% → 综合偏空(它算2票，但需要有另一个证据)', html().includes('综合偏空 -3（净倾向-23%）') && window._fundamentalDirection==='偏空');
+check('★再加一个同向指标(美豆库消比偏空)：-3÷11=-27% → 综合偏空(它算2票，但需要有另一个证据)', html().includes('综合偏空 -3（净倾向-27%）') && window._fundamentalDirection==='偏空');
 baseNeutral(); window._psdSignal=-1; window._fxSignal=-1; updateOverallAlert();
-check('对照：不是国内组的两个指标偏空只算2票：-2÷13=-15% → 信号混合', html().includes('信号混合 -2（净倾向-15%）'));
+check('对照：不是国内组的两个指标偏空只算2票：-2÷11=-18% → 信号混合', html().includes('信号混合 -2（净倾向-18%）'));
 baseNeutral(); makeEl('m_stu').value=''; makeEl('m_stock').value=''; makeEl('m_crush').value=''; updateOverallAlert();
-check('★国内组没有任何数据时不投票，也不占票权(其余11个投票全中性→有效11/12)', html().includes('有效11/12') && tightCell()==='sd-empty');
+check('★国内组没有任何数据时不投票，也不占票权(其余9个投票全中性→有效9/10)', html().includes('有效9/10') && tightCell()==='sd-empty');
 
 // ===================== 6. ESR中国/未知/其他展示 =====================
 elements['esrBadge']=makeEl('esrBadge'); elements['esrContent']=makeEl('esrContent');
@@ -116,7 +116,7 @@ check('★ESR详情：本周分目的地(中国/未知/其他)', e.includes('本
 check('★ESR详情：近4周合计+中国占比', e.includes('近4周合计') && e.includes('中国 900,000 吨') && e.includes('占总量30%') && e.includes('未知目的地 300,000 吨'));
 check('★ESR详情：说明未知不能直接当中国、以及为什么中国采购量不参与打分', e.includes('目的地变更') && e.includes('不能直接当成中国') && e.includes('只展示、不参与打分'));
 check('中国匹配正常时不出现警告', !e.includes('没有在数据里匹配到'));
-check('★出口销售信号仍然只看总净销售(+71.4%→偏多)，跟中国拆分无关', window._esrSignal === 1);
+check('★出口销售信号只看总净销售的历史同月分位(没有history字段→不判方向)，跟中国拆分无关', window._esrSignal === null);
 renderEsr(Object.assign({}, esr, {chinaMatched:false, countryNamesSeen:['PEOPLES REP OF CN','JAPAN']}), new Date().toISOString());
 check('★中国名称没匹配上时明确警告并列出国家名', makeEl('esrContent').innerHTML.includes('没有在数据里匹配到') && makeEl('esrContent').innerHTML.includes('PEOPLES REP OF CN'));
 const oldShape = Object.assign({}, esr); ['unknownNetSalesMT','otherNetSalesMT','china4wSumMT','unknown4wSumMT','total4wSumMT','chinaShare4wPct','chinaMatched','countryNamesSeen'].forEach(k=>delete oldShape[k]);

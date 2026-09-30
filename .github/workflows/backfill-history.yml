@@ -1,14 +1,15 @@
 name: 回填历史数据
 
 # 一次性、手动触发(Actions标签页 → 回填历史数据 → Run workflow)。
-# 回填四项：美豆库消比(PSD)、美豆出口净销售(ESR)、国内豆粕库消比(Mysteel月度平衡表)、豆粕周度库存(Mysteel周度)。
+# 默认回填四项：美豆库消比(PSD)、美豆出口净销售(ESR)、国内豆粕库消比(Mysteel月度平衡表)、盘面压榨毛利、月差/期限结构(均为新浪日K线，各合约建议交易窗口内的逐日数据)。
+# 豆粕周度库存的回填补不全(摘要没数字、2026年6月起正文改版)，不在默认里，改成每小时同步时顺带累积；需要时可 only=meal_stock。
 # 跑完会提交 data/history/*.json 和 data/history/_backfill_report.json(每个序列的点数/起止日期/缺失月份/最小最大值)，
 # 把报告发给我可以据此校准阈值、并发现解析出错的地方。
 on:
   workflow_dispatch:
     inputs:
       only:
-        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,calibrate；默认all；calibrate=不联网，只重新生成校准摘要)"
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,calibrate；默认all=前四项；margin=盘面压榨毛利；spread=月差/期限结构；calibrate=不联网，只重新生成校准摘要)"
         default: "all"
       start:
         description: "Mysteel两项的起始日期"

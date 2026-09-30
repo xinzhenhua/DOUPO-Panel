@@ -2,6 +2,7 @@ const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 
 eval(H.loadDashboardJs());
+H.setMockedMonth(5);   // 固定5月：9月合约作物票在"参与"档(×1)，票数不随真实日期变化(季节档位见test_seasonal.js)
 // ★脚本eval时会自动按"今天"的真实日期跑一次selectContract(getDefaultContractByDate())，
 //   这个测试假设的是9月合约(sep)语境下的评分规则，明确覆盖一次，
 //   不要让测试结果跟着"今天实际是几月"变来变去。
@@ -41,10 +42,11 @@ window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1
 window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 updateOverallAlert();
 // 供应5票+需求6票(出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差)
-check('★票数审计：全部信号偏多时，总分应精确为+12(11个投票，其中国内豆粕供应松紧票权2)',
-  elements['alertContent'].innerHTML.includes('综合偏多 +12（'));
+// 手算：10个有效投票，天气开关打开：作物×2，其余9票×0.5 → 2+4.5=+6.5
+check('★票数审计：全部信号偏多时，总分应精确为+6.5(10个投票；作物4个子信号全偏多→天气开关：作物×2，其余9票×0.5)',
+  elements['alertContent'].innerHTML.includes('综合偏多 +6.5（'));
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★供需表格应精确显示11个偏多格子', posCount === 11);
+check('★供需表格应精确显示10个偏多格子', posCount === 10);
 check('供需表格需求侧应显示"豆菜粕价差"这个新标签', elements['alertContent'].innerHTML.includes('豆菜粕价差'));
 
 

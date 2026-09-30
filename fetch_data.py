@@ -44,6 +44,9 @@ import urllib.parse
 from datetime import datetime, timezone, timedelta
 from datetime import date as _date_cls
 
+import cn_calendar
+import history_store
+
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
 USDA_BASE = "https://api.fas.usda.gov/api"
@@ -244,6 +247,23 @@ def _is_unknown_dest(row):
     return "unknown" in (row.get("countryName") or "").lower()
 
 
+def _adjust_rollover_weeks(weekly):
+    """★市场年度切换周(周截止日在8/31~9/6)的净销售系统性偏高：12年逐年的这一周都是尖峰(比前后两周高一到三倍，
+    2020年564万吨)。推断原因：新年度第一周的"本年度净销售"里带入了上年度已经报过的"下年度销售"(结转)，
+    而我们把 本年度净销售+下年度净销售 加总，等于把结转的部分重复算了一次。
+    处理：切换周用相邻两周的均值代替(两边都在才行)。返回(调整后的列表, 最新一周本身是不是切换周, 被调整的周)。"""
+    out = [dict(w) for w in weekly]
+    adjusted = []
+    keys = ("netSalesMT", "chinaNetSalesMT", "unknownNetSalesMT", "otherNetSalesMT")
+    for i, w in enumerate(out):
+        if history_store.is_rollover_week(str(w["weekEnding"])[:10]) and 0 < i < len(out) - 1:
+            for k in keys:
+                w[k] = round((weekly[i - 1][k] + weekly[i + 1][k]) / 2)
+            w["rolloverAdjusted"] = True
+            adjusted.append(str(w["weekEnding"])[:10])
+    return out, history_store.is_rollover_week(str(out[-1]["weekEnding"])[:10]), adjusted
+
+
 def fetch_esr_export_sales():
     code, code_lookup_debug = get_soybean_esr_code()
     if not code:
@@ -330,11 +350,17 @@ def fetch_esr_export_sales():
             "chinaShipmentsMT": sum(_num(r.get("weeklyExports")) for r in china),
         })
 
+    weekly, latest_is_rollover, rollover_adjusted = _adjust_rollover_weeks(weekly)
     latest, prev = weekly[-1], weekly[-2]
     trailing = weekly[-5:-1]  # 最新一周之前的4周，作为\"近期常态\"基准，比单看环比噪音小得多
     avg4 = round(sum(x["netSalesMT"] for x in trailing) / 4) if len(trailing) == 4 else None
     vs4w = round((latest["netSalesMT"] - avg4) / abs(avg4) * 100, 1) if avg4 else None
     wow = round((latest["netSalesMT"] - prev["netSalesMT"]) / abs(prev["netSalesMT"]) * 100, 1) if prev["netSalesMT"] else None
+    if latest_is_rollover:
+        # 最新一周本身就是切换周：没法用相邻两周代替(下一周还没出)，含结转的数字不能拿来比，一律不给
+        vs4w = wow = None
+    last4 = weekly[-4:]
+    sum4 = (lambda key: None if latest_is_rollover else sum(x[key] for x in last4))
 
     try:
         latest_date_parsed = datetime.fromisoformat(latest["weekEnding"].replace("Z", "+00:00"))
@@ -363,11 +389,13 @@ def fetch_esr_export_sales():
         "otherNetSalesMT": latest["otherNetSalesMT"],
         "chinaShipmentsMT": latest["chinaShipmentsMT"],
         # 近4周(含最新周)滚动合计：抹平\"未知→中国\"目的地变更造成的单周跳动
-        "china4wSumMT": sum(x["chinaNetSalesMT"] for x in weekly[-4:]),
-        "unknown4wSumMT": sum(x["unknownNetSalesMT"] for x in weekly[-4:]),
-        "total4wSumMT": sum(x["netSalesMT"] for x in weekly[-4:]),
-        "chinaShare4wPct": (round(sum(x["chinaNetSalesMT"] for x in weekly[-4:]) / sum(x["netSalesMT"] for x in weekly[-4:]) * 100, 1)
-                            if sum(x["netSalesMT"] for x in weekly[-4:]) > 0 else None),
+        "china4wSumMT": sum4("chinaNetSalesMT"),
+        "unknown4wSumMT": sum4("unknownNetSalesMT"),
+        "total4wSumMT": sum4("netSalesMT"),
+        "chinaShare4wPct": (round(sum4("chinaNetSalesMT") / sum4("netSalesMT") * 100, 1)
+                            if (not latest_is_rollover and sum4("netSalesMT") > 0) else None),
+        "latestIsRollover": latest_is_rollover,               # 最新一周是市场年度切换周(净销售含结转，虚高)：不判方向
+        "rolloverAdjustedWeeks": rollover_adjusted,          # 已经用相邻两周均值代替的切换周
         "chinaMatched": any(_is_china(r) for _, (_, rs) in week_rows.items() for r in rs),
         "countryNamesSeen": sorted(country_names_seen)[:60],
         "recentWeeks": [{"weekEnding": x["weekEnding"], "netSalesMT": x["netSalesMT"],
@@ -1034,6 +1062,7 @@ PLAUSIBLE_RANGES = {
     "rmSpread": (100.0, 3000.0, "元/吨"),        # 豆菜粕现货价差(变动幅度一般只有几十，会被挡掉)
     "arrivalForecast": (200.0, 2000.0, "万吨"),  # 月度大豆到港预报
     "mealStock": (10.0, 600.0, "万吨"),          # 豆粕商业库存
+    "feedDays": (1.0, 30.0, "天"),              # 饲料企业豆粕库存天数(常态约5~10天；见到的样本7.41天)
     "mealStu": (1.0, 40.0, "%"),                # 国内豆粕库消比(月末库存÷当月消费；近12个月实测5.94~16.30)
     "soyImport": (200.0, 2000.0, "万吨"),        # 中国大豆月度进口量(2026年最低401.9，最高约1400)
     "reserveAuction": (0.1, 300.0, "万吨"),      # 国储进口大豆单次计划拍卖量(实测6.8~54.3)
@@ -1597,10 +1626,23 @@ def fetch_mysteel_meal_stock(today=None):
                 "reason": f"只找到了{age}天前({pub_date.isoformat()})的库存数据，超过{MEAL_STOCK_MAX_AGE_DAYS}天的新鲜度限制，为避免把旧数据当成最新值，不采用",
                 "debug": {"latestArticleDate": pub_date.isoformat(), "latestValue": value, "candidates": len(candidates), "itemsChecked": items_checked}}
     wm = _MEAL_WEEK_RE.search(str(item.get("content") or "") + str(item.get("title") or ""))
+    # ★搜索窗口里所有能提取出数字的周(不只是最新一周)，交给历史序列累积：回填时Mysteel周报大多补不全，
+    #   靠每次抓取顺带把窗口里已有的周补齐，缺的周从此不再缺。同一发布日期只留一条，最多60周。
+    seen_days, recent = set(), []
+    for c_pub, c_val, c_item in sorted(candidates, key=lambda c: c[0], reverse=True):
+        if c_pub in seen_days:
+            continue
+        seen_days.add(c_pub)
+        cwm = _MEAL_WEEK_RE.search(str(c_item.get("content") or "") + str(c_item.get("title") or ""))
+        recent.append({"date": c_pub.isoformat(), "value": c_val,
+                       "week": f"{cwm.group(1)}年第{int(cwm.group(2))}周" if cwm else None})
+        if len(recent) >= 60:
+            break
     return {
         "available": True,
         "value": value,
         "date": pub_date.isoformat(),
+        "recentWeeks": recent,
         "weekLabel": f"{wm.group(1)}年第{int(wm.group(2))}周" if wm else None,
         "articleTitle": item.get("title"),
         "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
@@ -1906,11 +1948,17 @@ def fetch_mysteel_meal_balance(today=None, weekly_stock=None):
 
     pub, item = chosen["pub"], chosen["item"]
     method_label = {"stated": "文章明示", "computed": "由库存÷消费推算", "weekly": "周度库存÷当月预计消费(可信度较低)"}[method]
+    festival = cn_calendar.holiday_month_context(chosen_key[0], chosen_key[1])
+    if nxt is not None:
+        nxt["festival"] = cn_calendar.holiday_month_context(nk[0], nk[1])
     result = {
         "available": True,
         "value": value,
         "month": f"{chosen_key[0]}-{chosen_key[1]:02d}",
         "monthLabel": f"{chosen_key[0]}年{chosen_key[1]}月",
+        # ★长假扰动：库消比=月末库存÷当月消费量，长假前后月消费骤变，比值被机械压低/抬高，跟供应松紧无关。
+        #   name=春节(level=strong)：前端不按固定阈值判方向；name=国庆(level=mild)：仍计分，但这一组票权降一档(见cn_calendar)。
+        "festival": festival,
         # 记录的月份晚于文章发布的月份 = 预测值(比如8月31日发布的文章里的9月)
         "isForecast": (chosen_key[0] * 12 + chosen_key[1]) > (pub.year * 12 + pub.month),
         "usedFallbackMonth": used_fallback_month,
@@ -1927,6 +1975,171 @@ def fetch_mysteel_meal_balance(today=None, weekly_stock=None):
     if body_notes:
         result["bodyNotes"] = body_notes     # 正文没取到时如实说明(用的是摘要)，部署后看一眼就知道Actions那边能不能抓到正文
     return result
+
+
+# ---------------------------------------------------------------------------
+# 饲料企业豆粕库存天数(Mysteel每周《全国主要地区饲料企业豆粕库存天数调查》)
+#
+# ★为什么要：需求端目前只有猪粮比/肉鸡利润/豆菜粕价差这类间接指标，缺一个直接的——
+#   饲料厂手里的豆粕还能用几天。天数高=库存充足，近期采购需求偏弱；天数低=需要补库，采购需求偏强。
+#   (之前我说它是付费数据，可能说错了：它跟豆粕库存同一个搜索接口，摘要里直接有数字。)
+# ★数据形态：只见过这一篇真实样本(2026-07-03那期)——
+#   "截至7月3日，全国饲料企业豆粕物理库存为7.41天，环比微增0.17天，同比下滑0.50天。"
+#   注意"环比微增0.17天""同比下滑0.50天"也是"X天"，不能把它们当成库存天数——所以库存天数必须紧跟在"库存"后面，
+#   中间不能夹着"环比/同比"。别的周的措辞我没见过，所以提取不出时如实说明，不猜。
+# ★评分：只有历史分位可用时才投票(≥80%偏空、≤20%偏多)，样本不足时只显示——不为它编绝对阈值(见前端)。
+# ---------------------------------------------------------------------------
+FEED_DAYS_QUERY = "全国主要地区饲料企业豆粕库存天数调查"
+FEED_DAYS_TITLE_KEY = "饲料企业豆粕库存天数"
+FEED_DAYS_MAX_AGE_DAYS = 30                 # 每周一期，超过30天没有新的说明可能停更
+_FEED_VALUE_RE = re.compile(r"库存(?:天数)?(?P<gap>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天")
+# ★措辞不止一种(用户2026-09-30贴的20期真实摘要)：多数写"环比…/同比…"，但9月24日和5~6月初那几期写"较上期增0.32天""较上一期减0.08天""较去年同期增0.63天"，
+#   只认"环比/同比"会漏掉这5期。
+_FEED_CHANGE_RE = {
+    "mom": re.compile(r"(?:环比|较上一?期)(?P<w>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天"),
+    "yoy": re.compile(r"(?:同比|较去年同期)(?P<w>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天"),
+}
+_FEED_UP = ("增", "升", "涨", "上")
+_FEED_DOWN = ("降", "减", "跌", "下", "缩", "回落")
+_FEED_TITLE_DATE_RE = re.compile(r"[（(](\d{8})[)）]")
+
+
+def _extract_feed_days(text):
+    """从一段文字里提取(库存天数, 环比天数, 同比天数)。返回(result或None, 拒绝原因列表)。
+    环比/同比带方向：增/升/涨=正，降/减/跌/下滑=负，"持平"=0；方向词认不出来时不给数(None)，不猜符号。"""
+    text = re.sub(r"\s+", "", str(text or ""))
+    rejected = []
+    value = None
+    for m in _FEED_VALUE_RE.finditer(text):
+        if "比" in m.group("gap"):
+            rejected.append(f"{m.group('v')}天: 紧跟在'环比/同比'后面，是变动量不是库存天数")
+            continue
+        v = float(m.group("v"))
+        problem = _plausibility_problem("feedDays", v)
+        if problem:
+            rejected.append(f"{v:g}天: {problem}")
+            continue
+        value = v
+        break
+    if value is None:
+        return None, rejected
+    out = {"value": value, "mom": None, "yoy": None}
+    for key, rx in _FEED_CHANGE_RE.items():
+        m = rx.search(text)
+        if not m:
+            if key == "mom" and ("环比持平" in text or "较上期持平" in text or "较上一期持平" in text):
+                out["mom"] = 0.0
+            if key == "yoy" and ("同比持平" in text or "较去年同期持平" in text):
+                out["yoy"] = 0.0
+            continue
+        word, v = m.group("w"), float(m.group("v"))
+        if any(w in word for w in _FEED_UP):
+            out[key] = v
+        elif any(w in word for w in _FEED_DOWN):
+            out[key] = -v
+        elif "持平" in word:
+            out[key] = 0.0
+    return out, rejected
+
+
+def _feed_asof_date(item, pub):
+    """数据日期：优先用标题里的(20260703)，否则用发布日期。"""
+    m = _FEED_TITLE_DATE_RE.search(str(item.get("title") or ""))
+    if m:
+        try:
+            return datetime.strptime(m.group(1), "%Y%m%d").date()
+        except ValueError:
+            pass
+    return pub
+
+
+def fetch_mysteel_feed_days(today=None):
+    if today is None:
+        now_bj = datetime.now(timezone.utc) + timedelta(hours=8)
+        today = now_bj.date()
+    else:
+        now_bj = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_bj = now_bj - timedelta(days=365)
+    headers = {"token": "-1", "Origin": "https://search.mysteel.com", "Referer": "https://search.mysteel.com/fastcomment.html",
+               "X-Requested-With": "XMLHttpRequest"}
+    arts, rejected_all, items_checked, skipped = [], [], 0, []
+    for page in range(1, 4):
+        payload = {"query": FEED_DAYS_QUERY, "startTime": start_bj.strftime("%Y-%m-%d 00:00:00"),
+                   "endTime": now_bj.strftime("%Y-%m-%d 23:59:59"), "sortType": "complex", "platform": "pc", "pageNo": page, "pageSize": 20}
+        data, debug = fetch_json_debug(MYSTEEL_ARTICLE_SEARCH_URL, headers=headers, post_data=payload)
+        if data is None or not isinstance(data, dict) or data.get("resultCode") != 0:
+            if page == 1:
+                if data is None:
+                    return {"available": False, "reason": "Mysteel文章搜索接口无返回数据", "debug": debug}
+                return {"available": False, "reason": f"接口返回异常(resultCode={data.get('resultCode') if isinstance(data, dict) else '未知'})",
+                        "debug": {"rawSnippet": debug.get("rawSnippet")}}
+            break
+        lst = data.get("dataList") or []
+        if page == 1 and not lst:
+            return {"available": False, "reason": "搜索结果为空(最近一年内没有匹配的文章)", "debug": {"total": data.get("total")}}
+        for it in lst:
+            if not isinstance(it, dict):
+                continue
+            items_checked += 1
+            title = str(it.get("title") or "")
+            if FEED_DAYS_TITLE_KEY not in title:
+                skipped.append(title[:40])
+                continue
+            try:
+                pub = datetime.strptime(str(it.get("publishTime", ""))[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            arts.append((pub, it))
+        total = data.get("total") or 0
+        if len(lst) < 20 or page * 20 >= total:
+            break
+    if not arts:
+        return {"available": False, "reason": "搜索结果里没有标题含'饲料企业豆粕库存天数'的文章",
+                "debug": {"itemsChecked": items_checked, "skippedTitles": skipped[:10]}}
+    arts.sort(key=lambda a: a[0], reverse=True)
+
+    weeks = {}      # 数据日期 → {value, mom, yoy, source, item}
+    for idx, (pub, it) in enumerate(arts):
+        res, rej = _extract_feed_days(it.get("content"))
+        rejected_all.extend(rej)
+        src = "summary"
+        if res is None and idx < 2 and it.get("url"):
+            # 最新两篇摘要里没有数：抓正文再试一次(只取标题→免责声明之间，避免导航/推荐文章的干扰)
+            raw, dbg = fetch_text_debug(it["url"], headers={"Referer": "https://ncp.mysteel.com/"})
+            if raw:
+                region = _extract_article_region(_html_to_text(raw), str(it.get("title") or ""))
+                res, rej2 = _extract_feed_days(region)
+                rejected_all.extend(rej2)
+                src = "body"
+        if res is None:
+            continue
+        d = _feed_asof_date(it, pub)
+        if d not in weeks or pub > weeks[d]["pub"]:
+            weeks[d] = dict(res, pub=pub, source=src, item=it)
+    if not weeks:
+        return {"available": False, "reason": "最近几篇《饲料企业豆粕库存天数调查》里都没能提取出库存天数(措辞可能变了)",
+                "debug": {"articlesChecked": len(arts), "rejected": rejected_all[:10],
+                          "newestSample": str(arts[0][1].get("content") or "")[:300]}}
+    latest_d = max(weeks)
+    w = weeks[latest_d]
+    age = (today - latest_d).days
+    if age > FEED_DAYS_MAX_AGE_DAYS:
+        return {"available": False, "reason": f"最新一期是{age}天前({latest_d.isoformat()})，超过{FEED_DAYS_MAX_AGE_DAYS}天的新鲜度限制，可能停更；不采用",
+                "debug": {"latestDate": latest_d.isoformat(), "value": w["value"]}}
+    recent = [{"date": d.isoformat(), "value": x["value"], "mom": x["mom"], "yoy": x["yoy"]}
+              for d, x in sorted(weeks.items(), reverse=True)[:60]]
+    return {
+        "available": True, "value": w["value"], "date": latest_d.isoformat(),
+        "momDays": w["mom"], "yoyDays": w["yoy"],
+        # 去年同期的库存天数 = 本期 - 同比变动量(文章里的同比是"比去年同期高/低多少天")；同比没有数字时为None
+        "lastYearValue": round(w["value"] - w["yoy"], 2) if w["yoy"] is not None else None,
+        # 备货-假期窗口：长假前饲料厂提前提货，库存天数被抬高，不代表真实需求强弱(见cn_calendar.holiday_window)
+        "holiday": cn_calendar.holiday_window(latest_d),
+        "articleTitle": w["item"].get("title"), "publishDate": w["pub"].isoformat(), "extractedFrom": w["source"],
+        "recentWeeks": recent,
+        "source": "Mysteel文章(全国主要地区饲料企业豆粕库存天数调查)",
+        "sourceUrl": w["item"].get("url") or "https://search.mysteel.com/fastcomment.html",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -3335,10 +3548,16 @@ def fetch_crush_margin(contract_month, now=None):
     oil_price = oil_data["bars"][-1]["close"]
     bean_price = bean_data["bars"][-1]["close"]
     gross_margin = round(meal_price * CRUSH_YIELD_MEAL + oil_price * CRUSH_YIELD_OIL - bean_price, 1)
+    # 数据日期：三个合约最新一根K线的日期，取最早的那个(三者不一致时以最旧的为准，诚实标注)；用于判断新鲜度和写入历史
+    bar_dates = [d[ "bars"][-1].get("date") for d in (meal_data, oil_data, bean_data)]
+    bar_dates = [str(x)[:10] for x in bar_dates if x]
+    margin_date = min(bar_dates) if bar_dates else None
 
     return {
         "available": True,
         "contractMonth": contract_month,
+        "date": margin_date,
+        "datesAligned": len(set(bar_dates)) == 1 if bar_dates else None,
         "mealSymbol": meal_symbol, "mealPrice": meal_price,
         "oilSymbol": oil_symbol, "oilPrice": oil_price,
         "beanSymbol": bean_symbol, "beanPrice": bean_price,
@@ -3346,6 +3565,71 @@ def fetch_crush_margin(contract_month, now=None):
         "yieldMeal": CRUSH_YIELD_MEAL, "yieldOil": CRUSH_YIELD_OIL,
         "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
     }
+
+
+# ---------------------------------------------------------------------------
+# 月差/期限结构：近月合约 - 远月合约(大商所标准月差：9-1、5-9、1-5)
+#   9月合约看 9-1(M{yy}09 对 次年M{yy+1}01)；5月合约看 5-9(M{yy}05 对 M{yy}09)；1月合约看 1-5(M{yy}01 对 M{yy}05)。
+#   即"这个合约对下一个活跃合约"，跟着合约切换，跟榨利同一套思路。
+# ★符号：spread = 近月 - 远月。>0 近强远弱(backwardation，近端偏紧)；<0 远强近弱(contango，远月升水)。
+#   ⚠️粮食可以储存，远月升水(contango)是"持有成本"造成的正常状态，所以**正负本身不是信号**——
+#   只能看它跟历史同期比的位置(分位)。用"价差占近月价格的百分比"(spreadPct)而不是元/吨：不同年份价格水平不同(2500 vs 4000)，
+#   绝对价差没法跨年比较。
+# ---------------------------------------------------------------------------
+TERM_SPREAD_FAR = {9: (1, 1), 5: (9, 0), 1: (5, 0)}      # 合约月份 → (远月月份, 远月比近月晚几年)
+
+
+def term_spread_symbols(contract_month, now=None):
+    """近月/远月合约代码。近月复用get_current_contract_code(比如9月合约在2026年7月是M2609)；远月按上表推。"""
+    near = get_current_contract_code(contract_month, now, prefix="M")
+    far_month, year_add = TERM_SPREAD_FAR[contract_month]
+    yy = (int(near[1:3]) + year_add) % 100
+    return near, f"M{yy:02d}{far_month:02d}"
+
+
+def fetch_term_spread(contract_month, now=None):
+    """指定合约月份(9/5/1)的近远月价差。两个合约都要抓到收盘价，缺一个整体不可用(不用0硬凑)。"""
+    near_sym, far_sym = term_spread_symbols(contract_month, now)
+    near_data = fetch_dce_daily_kline(near_sym, max_rows=1)
+    far_data = fetch_dce_daily_kline(far_sym, max_rows=1)
+    missing = []
+    if not near_data.get("available") or not near_data.get("bars"):
+        missing.append(f"近月{near_sym}({near_data.get('reason', '未知原因')})")
+    if not far_data.get("available") or not far_data.get("bars"):
+        missing.append(f"远月{far_sym}({far_data.get('reason', '未知原因')})")
+    if missing:
+        return {"available": False, "reason": f"以下合约价格缺失，无法计算月差: {'; '.join(missing)}"}
+    near_bar, far_bar = near_data["bars"][-1], far_data["bars"][-1]
+    near_price, far_price = near_bar["close"], far_bar["close"]
+    if not near_price:
+        return {"available": False, "reason": f"近月{near_sym}收盘价为0/空，无法计算价差占比"}
+    dates = [str(b.get("date"))[:10] for b in (near_bar, far_bar) if b.get("date")]
+    return {
+        "available": True, "contractMonth": contract_month,
+        "date": min(dates) if dates else None,
+        "datesAligned": len(set(dates)) == 1 if dates else None,
+        "nearSymbol": near_sym, "nearPrice": near_price, "farSymbol": far_sym, "farPrice": far_price,
+        "spread": round(near_price - far_price, 1),
+        "spreadPct": round((near_price - far_price) / near_price * 100, 2),
+        "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
+    }
+
+
+def term_spread_series(near_bars, far_bars):
+    """两条日K线 → 逐日{日期: 价差占近月价格的百分比}。只算两个合约都有收盘价、近月价格非0的日期。"""
+    def to_map(bars):
+        return {str(b.get("date"))[:10]: b.get("close") for b in bars if b.get("date") and b.get("close") is not None}
+    n, f = to_map(near_bars), to_map(far_bars)
+    return {d: round((n[d] - f[d]) / n[d] * 100, 2) for d in sorted(set(n) & set(f)) if n[d]}
+
+
+def crush_margin_series(meal_bars, oil_bars, bean_bars):
+    """三条日K线 → 逐日盘面毛利{日期: 毛利}。只算三者都有收盘价的日期(缺一个就不算，跟单日算法一致)。
+    回填历史用：同一个合约月份(比如2509)的豆粕/豆油/豆二，各自的上市周期一致。"""
+    def to_map(bars):
+        return {str(b.get("date"))[:10]: b.get("close") for b in bars if b.get("date") and b.get("close") is not None}
+    m, o, b = to_map(meal_bars), to_map(oil_bars), to_map(bean_bars)
+    return {d: round(m[d] * CRUSH_YIELD_MEAL + o[d] * CRUSH_YIELD_OIL - b[d], 1) for d in sorted(set(m) & set(o) & set(b))}
 
 
 # ★确认过的境内外资独资期货公司(实测查证，不是猜测)：这4家目前都是100%外资控股的
@@ -4108,6 +4392,11 @@ def main():
         "may": fetch_crush_margin(5),
         "jan": fetch_crush_margin(1),
     }
+    term_spreads = {
+        "sep": fetch_term_spread(9),
+        "may": fetch_term_spread(5),
+        "jan": fetch_term_spread(1),
+    }
 
     _meal_stock_result = fetch_mysteel_meal_stock()   # 周度库存：自己要展示，也给库消比的回退/交叉核对用
 
@@ -4120,6 +4409,7 @@ def main():
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": _meal_stock_result,
         "mysteelMealStu": fetch_mysteel_meal_balance(weekly_stock=_meal_stock_result),
+        "mysteelFeedDays": fetch_mysteel_feed_days(),
         "mysteelSoyImport": fetch_mysteel_soy_import(),
         "mysteelReserveAuction": fetch_mysteel_reserve_auction(),
         "mysteelBasis": fetch_mysteel_basis(),
@@ -4127,6 +4417,7 @@ def main():
         "sowInventory": fetch_mysteel_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
+        "termSpreads": term_spreads,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
         "exportInspections": fetch_us_export_inspections(),
         "droughtMonitor": fetch_drought_monitor(),

@@ -5,7 +5,7 @@ const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
 window._selectedContract = 'sep';
-H.setMockedMonth(7);
+H.setMockedMonth(5);   // 5月：9月合约的作物票在"参与"档(×1)，票数好算；季节档位另见test_seasonal.js
 const AUTO = window._autoIndicators;
 const V = (label, side, signal, weight)=>({label, side, signal, weight: weight||1});
 
@@ -79,14 +79,14 @@ check('★全中性：3条维度条形都显示', (html().match(/class="dim-row"
 check('★全中性(信号混合)：不评置信度，说明"多空力量接近"', html().includes('多空力量接近') && !html().includes('结论置信度') && window._fundamentalConfidence===null);
 check('市场结构维度只有基差1项，界面标"样本少"', html().includes('样本少·1项'));
 check('★市场结构列出现在表格里(3列)，基差在这一列', html().includes('<th>市场结构</th>') && /sd-cell sd-\w+">现货基差/.test(html()));
-check('★window._dimensions已暴露(供后续三方共振等使用)，且是拆分后的结果', window._dimensions && window._dimensions.supply.n===6 && window._dimensions.demand.n===5 && window._dimensions.structure.n===1);
+check('★window._dimensions已暴露(供后续三方共振等使用)，且是拆分后的结果(供给5票：作物/美豆库消比/国内松紧/到港进口/汇率；需求4票：出口/猪粮比/肉鸡/豆菜粕；国储拍卖、能繁母猪已移出评分)', window._dimensions && window._dimensions.supply.n===5 && window._dimensions.demand.n===4 && window._dimensions.structure.n===1);
 check('页面上有"不是买卖信号"的提示', html().includes('不是买卖信号'));
 
 // 供给偏空(-100%)、需求偏多(+40%)：方向分歧
-neutral(); supplyBear(); makeEl('m_hogratio').value='8'; makeEl('m_sows').value='3600'; updateOverallAlert();
-check('★分歧场景：供给端-100%、需求端+40%', window._dimensions.supply.ratio===-1 && Math.abs(window._dimensions.demand.ratio-0.4)<1e-9);
-check('★分歧场景：综合仍偏空(-7+2=-5，÷13=-38%)', html().includes('综合偏空 -5（净倾向-38%）') && window._fundamentalDirection==='偏空');
-check('★分歧场景：弹出"方向分歧"提示，点名两个维度和各自数值', html().includes('方向分歧') && html().includes('供给端偏空(-100%)') && html().includes('需求端偏多(+40%)') && html().includes('不要只看总分'));
+neutral(); supplyBear(); makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2'; updateOverallAlert();
+check('★分歧场景：供给端-100%、需求端+50%(猪粮比、肉鸡利润偏多，出口/豆菜粕中性：2÷4)', window._dimensions.supply.ratio===-1 && Math.abs(window._dimensions.demand.ratio-0.5)<1e-9);
+check('★分歧场景：综合仍偏空(供给6票权全空+需求2偏多=-4，÷有效票权11=-36%)', html().includes('综合偏空 -4（净倾向-36%）') && window._fundamentalDirection==='偏空');
+check('★分歧场景：弹出"方向分歧"提示，点名两个维度和各自数值', html().includes('方向分歧') && html().includes('供给端偏空(-100%)') && html().includes('需求端偏多(+50%)') && html().includes('不要只看总分'));
 check('★分歧场景：置信度降为中，理由含"方向分歧"', html().includes('结论置信度：中') && window._fundamentalConfidence==='中');
 check('★偏空依据里带出主导因素(含双倍票权的国内供应松紧)', html().includes('偏空依据：') && html().includes('国内豆粕供应松紧 ×2'));
 check('偏多依据里列出猪粮比/能繁母猪', html().includes('偏多依据：') && html().includes('猪粮比') && html().includes('能繁母猪'));
@@ -106,10 +106,10 @@ reset(); makeEl('m_crush').value='35'; updateOverallAlert();
 check('★数据不足时维度和置信度置空，不沿用上一次的旧值', html().includes('数据不足') && window._dimensions===null && window._fundamentalConfidence===null);
 
 // 条形方向：偏空向左(neg)，偏多向右(pos)
-neutral(); supplyBear(); makeEl('m_hogratio').value='8'; makeEl('m_sows').value='3600'; updateOverallAlert();
+neutral(); supplyBear(); makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2'; updateOverallAlert();
 const rows = html().match(/<div class="dim-row">.*?<\/div><\/div>|<div class="dim-row">.*?<span class="dim-n">[^<]*<\/span><\/div>/g) || [];
 check('★供给端条形向左(绿/neg)，需求端条形向右(红/pos)', /供给端.*?dim-bar neg/.test(rows[0]||'') && /需求端.*?dim-bar pos/.test(rows[1]||''));
-check('条形宽度=|净倾向|×50%：供给-100%→50%，需求+40%→20%', (rows[0]||'').includes('width:50.0%') && (rows[1]||'').includes('width:20.0%'));
+check('条形宽度=|净倾向|×50%：供给-100%→50%，需求+50%→25%', (rows[0]||'').includes('width:50.0%') && (rows[1]||'').includes('width:25.0%'));
 
 // 分歧不受"样本少"的维度干扰：基差偏多(单项)不应和供给偏空构成分歧
 neutral(); supplyBear(); makeEl('m_basis').value='100'; updateOverallAlert();

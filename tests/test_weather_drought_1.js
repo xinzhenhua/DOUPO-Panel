@@ -28,9 +28,12 @@ window._psdSignal = 0;
 
 updateOverallAlert();
 
-check('7项全偏多字段 → 每个指示器都应该是pos(偏多/红色)',
-  ['ind_crush','ind_stock','ind_basis','ind_arrival','ind_hogratio','ind_sows','ind_import'].map(id=>elements[id].className),
-  new Array(7).fill('field-ind pos'));
+check('6项全偏多字段 → 每个指示器都应该是pos(偏多/红色)',
+  ['ind_crush','ind_stock','ind_basis','ind_arrival','ind_hogratio','ind_import'].map(id=>elements[id].className),
+  new Array(6).fill('field-ind pos'));
+// v87：能繁母猪是季度指标、方向未定，只作背景参考，不计分(不再显示偏多/偏空)
+check('★能繁母猪(<3700)不再显示偏多：标记为"不计分"(neutral)', elements['ind_sows'].className, 'field-ind neutral');
+check('能繁母猪的标记文字是"不计分"', elements['ind_sows'].textContent.includes('不计分'), true);
 
 check('7项全偏多 → alertCard应显示"综合偏多"',
   elements['alertContent'].innerHTML.includes('综合偏多'), true);

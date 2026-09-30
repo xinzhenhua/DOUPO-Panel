@@ -50,9 +50,9 @@ check('★库消比16.04%判偏空、历史分位91%：一致，无提示', !ai.
 
 // 不一致：库消比14.5%判偏空，但历史分位只有40%
 resetKey('stu');
-window._syncedData.mysteelMealStu = Object.assign({}, window._syncedData.mysteelMealStu, {value:14.5, history:hist({percentile:40})});
+window._syncedData.mysteelMealStu = Object.assign({}, window._syncedData.mysteelMealStu, {value:16.5, history:hist({percentile:40})});
 refreshMysteelMealStu();
-check('★库消比14.5%(≥14判偏空)但历史分位40%：详情里提示阈值可能偏松', makeEl('ai_stu').innerHTML.includes('绝对阈值判<b>偏空</b>') && makeEl('ai_stu').innerHTML.includes('40%'));
+check('★库消比16.5%(≥16判偏空)但历史分位40%：详情里提示阈值可能偏松', makeEl('ai_stu').innerHTML.includes('绝对阈值判<b>偏空</b>') && makeEl('ai_stu').innerHTML.includes('40%'));
 
 // 基差(pol=+1)：-100判偏空，历史分位若只有60%(即基差并不算低)也应提示
 resetKey('basis');

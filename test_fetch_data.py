@@ -161,7 +161,9 @@ def test_esr_no_silent_fallback_to_shipments(monkeypatch_fetch):
 
 
 def test_esr_market_year_boundary_merges_weeks_without_double_count(monkeypatch_fetch):
-    """9月初市场年度切换：4周均值要用到上一年度最后几周；同一周不能被两个年度重复计入。"""
+    """9月初市场年度切换：同一周不能被两个年度重复计入；切换周(9/3在8/31~9/6内)用相邻两周均值代替(见rollover测试)。
+    周次：08-13/08-20/08-27=100000，09-03(切换周，原始100000)，09-10=300000(最新)。
+    调整后09-03=(08-27的100000+09-10的300000)/2=200000；最新周之前4周=[08-13,08-20,08-27,09-03]，均值125000。"""
     old_year = [_esr_row("2026-08-13", "China", 100000), _esr_row("2026-08-20", "China", 100000),
                 _esr_row("2026-08-27", "China", 100000)]
     new_year = [_esr_row("2026-09-03", "China", 100000), _esr_row("2026-09-10", "China", 300000),
@@ -175,79 +177,40 @@ def test_esr_market_year_boundary_merges_weeks_without_double_count(monkeypatch_
     result = fd.fetch_esr_export_sales()
     assert result["available"] is True
     assert result["weekEnding"] == "2026-09-10" and result["marketYearUsed"] == 2026
-    assert result["avg4wNetSalesMT"] == 100000, f"4周均值应把交界周只算一次，实际{result['avg4wNetSalesMT']}"
-    assert result["vs4wAvgPct"] == 200.0
+    assert result["avg4wNetSalesMT"] == 125000, f"交界周只算一次+切换周被均值代替后，4周均值应=125000，实际{result['avg4wNetSalesMT']}"
+    assert result["vs4wAvgPct"] == 140.0
     print("✅ 市场年度交界：上一年度最后几周并入4周均值，交界周不重复计")
 
 
-def test_psd_soybean_stocks_to_use_uses_total_use(monkeypatch_fetch):
-    """★库存消费比=期末库存÷(国内消费+出口)。用CME公布的2026/27平衡表量级手算验证：
-    期末库存8,436千吨(310百万蒲)、国内消费约61,000、出口约62,000 → 约6.9%。"""
-    data = [
-        {"attributeName": "Ending Stocks", "value": 8436}, {"attributeName": "Production", "value": 120700},
-        {"attributeName": "Total Supply", "value": 135000}, {"attributeName": "Domestic Consumption", "value": 61000},
-        {"attributeName": "Exports", "value": 62000}, {"attributeName": "Crush", "value": 60000},
-    ]
-    monkeypatch_fetch({"psd/commodities": MOCK_PSD_COMMODITIES, "psd/commodity": data})
-    r = fd.fetch_psd_supply_demand()
-    assert r["available"] is True
-    assert r["totalUse"] == 123000
-    assert r["stocksToUsePct"] == round(8436 / 123000 * 100, 1) == 6.9
-    assert r["exports"] == 62000 and r["crush"] == 60000
-    assert "豆粕" not in r["commodity"] and "Meal" not in r["commodity"]
-    print("✅ PSD：大豆库存消费比=期末库存/(国内消费+出口)，手算验证6.9%")
+def test_esr_rollover_week_is_replaced_by_neighbor_average(monkeypatch_fetch):
+    """★12年历史里每年市场年度切换周(8/31~9/6)都是尖峰(推断：新年度第一周带入了上年度已报过的下年度销售)。
+    切换周用相邻两周均值代替，避免把结转的销售重复算一次。"""
+    rows = []
+    for w, v in [("2026-08-13", 100000), ("2026-08-20", 100000), ("2026-08-27", 100000), ("2026-09-03", 900000),   # 09-03是切换周，虚高
+                 ("2026-09-10", 100000), ("2026-09-17", 100000)]:
+        rows += [_esr_row(w, "CHINA", v // 2), _esr_row(w, "JAPAN", v // 2)]
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows})
+    r = fd.fetch_esr_export_sales()
+    assert r["rolloverAdjustedWeeks"] == ["2026-09-03"] and r["latestIsRollover"] is False
+    assert r["prevNetSalesMT"] == 100000, "上周(09-10)不是切换周，不变"
+    # 09-03被(08-27:100000 + 09-10:100000)/2=100000代替：近4周(08-27,09-03,09-10,09-17)合计=400000，不是1,200,000
+    assert r["total4wSumMT"] == 400000, r["total4wSumMT"]
+    assert r["avg4wNetSalesMT"] == 100000 and r["vs4wAvgPct"] == 0.0
+    assert r["chinaNetSalesMT"] == 50000 and r["china4wSumMT"] == 200000, "中国/未知/其他同样用相邻周代替"
+    print("✅ ESR：市场年度切换周用相邻两周均值代替，不再虚高")
 
 
-def test_psd_stocks_to_use_none_when_exports_missing(monkeypatch_fetch):
-    """缺Exports字段时，库存消费比给None，不能只除以国内消费硬算一个偏大的比值。"""
-    data = [{"attributeName": "Ending Stocks", "value": 8436}, {"attributeName": "Domestic Consumption", "value": 61000}]
-    monkeypatch_fetch({"psd/commodities": MOCK_PSD_COMMODITIES, "psd/commodity": data})
-    r = fd.fetch_psd_supply_demand()
-    assert r["stocksToUsePct"] is None and r["totalUse"] is None
-    print("✅ PSD：缺出口数据时库存消费比为None，不硬算")
-
-
-def test_psd_target_market_year_rule(monkeypatch_fetch):
-    """5月WASDE起首次发布新年度预估：5-12月用当年，1-4月用上一年。"""
-    from datetime import datetime as _dt
-    f = fd._psd_target_market_year
-    assert f(_dt(2026, 9, 29)) == 2026, "9月底：2026/27已开始，应取2026(旧逻辑会取到已结束的2025)"
-    assert f(_dt(2026, 7, 10)) == 2026, "7月：9月合约窗口看新作物，取2026"
-    assert f(_dt(2026, 5, 12)) == 2026
-    assert f(_dt(2027, 1, 15)) == 2026, "1月：仍在2026/27年度内"
-    assert f(_dt(2027, 4, 30)) == 2026, "4月：新年度预估要5月才发布"
-    print("✅ PSD目标年度规则：5-12月取当年，1-4月取上一年")
-
-
-def test_psd_picks_target_year_even_when_older_year_has_same_vintage(monkeypatch_fetch):
-    """回归：旧版本在两个年度WASDE版本月份相同时取第一个(已结束的旧年度)。"""
-    import fetch_data as _fd
-    real_dt = _fd.datetime
-    class FakeDT(real_dt):
-        @classmethod
-        def now(cls, tz=None):
-            return real_dt(2026, 9, 29, tzinfo=tz)
-    _fd.datetime = FakeDT
-    try:
-        def rows(year, es):
-            return [{"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 1, "value": es},
-                    {"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 2, "value": 60000},
-                    {"marketYear": str(year), "calendarYear": "2026", "month": "09", "attributeId": 3, "value": 60000}]
-        def fake_debug(url, headers=None, retries=3, timeout=20, post_data=None):
-            if "psd/commodities" in url: return MOCK_PSD_COMMODITIES, {}
-            if "commodityAttributes" in url: return [{"attributeId": 1, "attributeName": "Ending Stocks"},
-                                                      {"attributeId": 2, "attributeName": "Domestic Consumption"},
-                                                      {"attributeId": 3, "attributeName": "Exports"}], {}
-            if "year/2025" in url: return rows(2025, 9000), {"httpStatus": 200}
-            if "year/2026" in url: return rows(2026, 6000), {"httpStatus": 200}
-            return None, {"httpStatus": 404}
-        fd.fetch_json_debug = fake_debug
-        r = fd.fetch_psd_supply_demand()
-        assert r["marketYear"] == 2026 and r["marketYearLabel"] == "2026/27", r
-        assert r["endingStocks"] == 6000
-        print("✅ PSD：9月底取2026/27年度，不会停在已结束的2025/26")
-    finally:
-        _fd.datetime = real_dt
+def test_esr_latest_week_is_rollover_blocks_comparisons(monkeypatch_fetch):
+    """最新一周本身就是切换周(周五刚发布时正是9月初)：下一周还没出，没法代替，含结转的数字不能拿来比 → 一律给None。"""
+    rows = []
+    for w, v in [("2026-08-13", 100000), ("2026-08-20", 100000), ("2026-08-27", 100000), ("2026-09-03", 900000)]:
+        rows += [_esr_row(w, "CHINA", v)]
+    monkeypatch_fetch({"esr/commodities": MOCK_ESR_COMMODITIES, "esr/exports": rows})
+    r = fd.fetch_esr_export_sales()
+    assert r["available"] is True and r["latestIsRollover"] is True and r["rolloverAdjustedWeeks"] == []
+    assert r["netSalesMT"] == 900000, "原始数字照常展示(标注为切换周)"
+    assert r["vs4wAvgPct"] is None and r["wowChangePct"] is None and r["total4wSumMT"] is None and r["china4wSumMT"] is None and r["chinaShare4wPct"] is None
+    print("✅ ESR：最新周是切换周时不给4周合计/相对均值/环比")
 
 
 def test_psd_code_lookup(monkeypatch_fetch):
@@ -4059,6 +4022,50 @@ def test_meal_balance_request_shape(monkeypatch_fetch):
     print("✅ 库消比：请求体与用户抓包一致")
 
 
+
+def test_meal_stock_recent_weeks_collects_every_extractable_week(monkeypatch_fetch):
+    """★累积用：搜索窗口里所有能提取出数字的周都放进recentWeeks(同一发布日期一条)，不只是最新一周。"""
+    def art(pub, val, wk):
+        return {"title": f"Mysteel数据：全国主要区域大豆及豆粕库存统计", "publishTime": pub + " 16:00",
+                "content": f"2026年第{wk}周，全国主要油厂大豆库存上升，豆粕库存{val}万吨，较上周增加"}
+    items = [art("2026-09-21", 117.32, 38), art("2026-09-14", 111.0, 37), art("2026-09-14", 111.0, 37),
+             {"title": "Mysteel：某无关文章", "publishTime": "2026-09-10 10:00", "content": "价格上涨"}]
+    monkeypatch_fetch({"searchapi/search/searchArticle": {"resultCode": 0, "total": 4, "dataList": items}})
+    r = fd.fetch_mysteel_meal_stock(today=date(2026, 9, 22))
+    assert r["available"] and r["value"] == 117.32 and r["date"] == "2026-09-21"
+    assert r["recentWeeks"] == [{"date": "2026-09-21", "value": 117.32, "week": "2026年第38周"},
+                                {"date": "2026-09-14", "value": 111.0, "week": "2026年第37周"}], r["recentWeeks"]
+    print("✅ 周度库存：recentWeeks收齐窗口里所有能提取的周(去重)")
+
+
+def test_meal_balance_result_carries_festival_context(monkeypatch_fetch):
+    """★库消比结果带上春节扰动信息：2026年9月不受影响；把'今天'挪到2027年2月(春节2月6日)就是扰动月。"""
+    rest = _mb_install(monkeypatch_fetch, _mb_items(), body_map={MB_REAL_ARTICLES[0][2]: MB_REAL_BODY_HTML})
+    try:
+        r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
+    finally:
+        rest()
+    assert r["festival"]["disturbed"] is False and r["festival"]["festivalDate"] == "2026-02-17"
+    # 构造一篇2027年2月发布、写2月记录的文章
+    art = [("Mysteel：全国豆粕供需平衡表（2027年2月）", "2027-02-05 16:00", "https://x/f", "2027年2月产量600万吨，消费500万吨，期末库存100万吨，库消比20.00%。")]
+    rest = _mb_install(monkeypatch_fetch, _mb_items(art), body_fail=True)
+    try:
+        r2 = fd.fetch_mysteel_meal_balance(today=date(2027, 2, 8))
+    finally:
+        rest()
+    assert r2["month"] == "2027-02" and r2["festival"]["disturbed"] is True and r2["festival"]["phase"] == "假期停摆", r2["festival"]
+    assert r2["festival"]["name"] == "春节" and r2["festival"]["level"] == "strong"
+    # 国庆：10月是轻度扰动月
+    art3 = [("Mysteel：全国豆粕供需平衡表（2026年10月）", "2026-09-30 16:00", "https://x/n", "2026年10月产量700万吨，消费690万吨，期末库存100万吨，库消比14.50%。")]
+    rest = _mb_install(monkeypatch_fetch, _mb_items(art3), body_fail=True)
+    try:
+        r3 = fd.fetch_mysteel_meal_balance(today=date(2026, 10, 2))
+    finally:
+        rest()
+    assert r3["month"] == "2026-10" and r3["festival"]["name"] == "国庆" and r3["festival"]["level"] == "mild" and r3["festival"]["disturbed"] is True
+    print("✅ 库消比：结果带长假扰动信息(2027年2月=春节strong；2026年10月=国庆mild)")
+
+
 def test_esr_china_unknown_other_split(monkeypatch_fetch):
     """★出口销售拆分：中国/未知目的地/其他分开统计；未知不算中国；4周滚动合计抹平目的地变更的跳动。
     模拟目的地变更：第5周未知-200000、中国+200000(净销售合计不变)。"""
@@ -4124,7 +4131,7 @@ if __name__ == "__main__":
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
               test_noaa_outlook_point_outside_any_outlook_zone,
-              test_esr_code_lookup, test_meal_balance_parses_real_body_and_ignores_page_noise, test_meal_balance_all_real_summaries, test_meal_balance_full_flow_uses_body, test_meal_balance_current_and_next_month_with_trend, test_meal_balance_body_blocked_falls_back_to_summary, test_meal_balance_third_level_weekly_stock_fallback, test_meal_balance_weekly_cross_check_shown, test_meal_balance_month_rollover_uses_previous_month_record, test_meal_balance_failure_modes, test_meal_balance_implausible_values_rejected, test_meal_balance_request_shape, test_esr_china_unknown_other_split, test_esr_uses_soybeans_not_meal, test_esr_export_parsing, test_esr_no_silent_fallback_to_shipments, test_esr_market_year_boundary_merges_weeks_without_double_count, test_psd_soybean_stocks_to_use_uses_total_use, test_psd_stocks_to_use_none_when_exports_missing, test_psd_target_market_year_rule, test_psd_picks_target_year_even_when_older_year_has_same_vintage, test_esr_picks_freshest_among_multiple_candidate_years,
+              test_esr_code_lookup, test_meal_stock_recent_weeks_collects_every_extractable_week, test_meal_balance_result_carries_festival_context, test_esr_rollover_week_is_replaced_by_neighbor_average, test_esr_latest_week_is_rollover_blocks_comparisons, test_meal_balance_parses_real_body_and_ignores_page_noise, test_meal_balance_all_real_summaries, test_meal_balance_full_flow_uses_body, test_meal_balance_current_and_next_month_with_trend, test_meal_balance_body_blocked_falls_back_to_summary, test_meal_balance_third_level_weekly_stock_fallback, test_meal_balance_weekly_cross_check_shown, test_meal_balance_month_rollover_uses_previous_month_record, test_meal_balance_failure_modes, test_meal_balance_implausible_values_rejected, test_meal_balance_request_shape, test_esr_china_unknown_other_split, test_esr_uses_soybeans_not_meal, test_esr_export_parsing, test_esr_no_silent_fallback_to_shipments, test_esr_market_year_boundary_merges_weeks_without_double_count, test_psd_soybean_stocks_to_use_uses_total_use, test_psd_stocks_to_use_none_when_exports_missing, test_psd_target_market_year_rule, test_psd_picks_target_year_even_when_older_year_has_same_vintage, test_esr_picks_freshest_among_multiple_candidate_years,
               test_esr_code_lookup_distinguishes_failure_types,
               test_psd_code_lookup, test_psd_parsing,
               test_psd_fuzzy_matching, test_psd_debug_on_field_mismatch, test_drought_monitor_parsing,

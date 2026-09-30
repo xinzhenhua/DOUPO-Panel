@@ -24,6 +24,9 @@ import json
 import os
 import re
 import statistics
+from datetime import date as _date, timedelta as _timedelta
+
+import cn_calendar
 
 HISTORY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "history")
 MIN_POINTS = 12            # 算"总体历史分位"至少需要的样本数，不够就只显示"历史积累中"，不给一个没有统计意义的百分位
@@ -35,6 +38,7 @@ SERIES_META = {
     "esr_net_sales": {"name": "美豆出口净销售(周度，全部国家)", "unit": "吨", "freq": "weekly"},
     "meal_stu": {"name": "国内豆粕库存消费比(月度)", "unit": "%", "freq": "monthly"},
     "meal_stock": {"name": "国内豆粕商业库存(周度)", "unit": "万吨", "freq": "weekly"},
+    "feed_days": {"name": "饲料企业豆粕库存天数(周度)", "unit": "天", "freq": "weekly"},
     # ---- 只能日常累积 ----
     "crush_rate": {"name": "油厂开机率", "unit": "%", "freq": "weekly"},
     "basis": {"name": "豆粕现货基差(沿海代表)", "unit": "元/吨", "freq": "daily"},
@@ -45,6 +49,21 @@ SERIES_META = {
     "sow_inventory": {"name": "能繁母猪存栏(季度末)", "unit": "万头", "freq": "quarterly"},
     "poultry_profit": {"name": "白羽肉鸡养殖利润", "unit": "元/只", "freq": "weekly"},
     "rm_spread": {"name": "豆菜粕价差", "unit": "元/吨", "freq": "weekly"},
+    # ---- 盘面压榨毛利(可回填：新浪日K线；只存各合约的"建议交易窗口"内的点，所以不同年份的同一窗口可比) ----
+    # freq='seasonal-daily'：日频但只有窗口内的点，样本密度检查不适用；分位只看"往年同月"(seasonal)
+    "crush_margin_sep": {"name": "盘面压榨毛利(9月合约，4-7月窗口)", "unit": "元/吨", "freq": "seasonal-daily"},
+    "crush_margin_may": {"name": "盘面压榨毛利(5月合约，12-3月窗口)", "unit": "元/吨", "freq": "seasonal-daily"},
+    "crush_margin_jan": {"name": "盘面压榨毛利(1月合约，8-11月窗口)", "unit": "元/吨", "freq": "seasonal-daily"},
+    # ---- 月差/期限结构：近月-远月，占近月价格的百分比(不同年份价格水平不同，绝对价差不可比)；窗口同榨利 ----
+    "term_spread_sep": {"name": "月差9-1(占近月价格%，4-7月窗口)", "unit": "%", "freq": "seasonal-daily"},
+    "term_spread_may": {"name": "月差5-9(占近月价格%，12-3月窗口)", "unit": "%", "freq": "seasonal-daily"},
+    "term_spread_jan": {"name": "月差1-5(占近月价格%，8-11月窗口)", "unit": "%", "freq": "seasonal-daily"},
+}
+# 每个合约类型的建议交易窗口(与前端合约选择里的窗口一致)：(合约月份, 窗口内的日历月, 窗口月份落在合约到期年的前一年的哪些月)
+CRUSH_MARGIN_WINDOWS = {
+    "sep": {"contractMonth": 9, "months": [4, 5, 6, 7], "prevYearMonths": []},
+    "may": {"contractMonth": 5, "months": [12, 1, 2, 3], "prevYearMonths": [12]},
+    "jan": {"contractMonth": 1, "months": [8, 9, 10, 11], "prevYearMonths": [8, 9, 10, 11]},
 }
 
 
@@ -157,27 +176,120 @@ def rolling_sum(points, window=4, max_gap_days=10):
     return out
 
 
-def summarize(points, value, cur_d, freq=None):
+# 样本代表性要求(仅周度/日度/月度序列)：既要跨度够长，又不能是"东一个西一个"的稀疏样本。
+# ★第一次回填里豆粕周度库存有70个点，但2023年只有3个、2025年只有1个、中间空了近两年——直接算百分位会严重失真
+#   (比如漏掉了2026年5月34.74万吨的真实低点)，所以样本不连续时明确说"不连续"，不给百分位。
+MIN_SPAN_DAYS = {"weekly": 180, "daily": 180, "monthly": 330}
+MIN_DENSITY = 0.5           # 实际期数 ÷ 跨度内应有期数，低于它算不连续
+RECENT_WINDOW_DAYS = 730    # 整体不连续时退回只看最近这么多天
+
+
+def _to_date(d):
+    m = re.match(r"^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?", str(d))
+    if not m:
+        return None
+    return _date(int(m.group(1)), int(m.group(2) or 1), int(m.group(3) or 1))
+
+
+def coverage_problem(points, freq):
+    """样本是否有代表性。返回None(可用)或原因文字。points已剔除当前点。"""
+    if freq not in MIN_SPAN_DAYS or len(points) < 2:
+        return None
+    d0, d1 = _to_date(points[0]["d"]), _to_date(points[-1]["d"])
+    if not d0 or not d1:
+        return None
+    span = (d1 - d0).days
+    if span < MIN_SPAN_DAYS[freq]:
+        return f"样本只跨{span}天，不足{MIN_SPAN_DAYS[freq]}天"
+    expected = {"weekly": span / 7 + 1, "daily": span * 5 / 7 + 1, "monthly": span / 30.4 + 1}[freq]
+    density = len(points) / expected
+    if density < MIN_DENSITY:
+        return f"样本不连续：跨{span}天应有约{int(expected)}期，实际只有{len(points)}期({int(density * 100)}%)"
+    return None
+
+
+def summarize(points, value, cur_d, freq=None, cohort_fn=None):
     """当前值value(日期cur_d)在历史里的位置。参考样本里剔除cur_d自己(不能拿自己跟自己比)。
+    percentile：全部历史样本里的分位。样本<MIN_POINTS期，或样本不连续/跨度太短(coverage_problem)时为None——宁可说"积累中"也不给失真的分位。
     seasonal：同一个日历月、不同年份的样本(周度/日度/月度序列才有)；同年份的不算，避免跟当前值高度相关的近邻点混进来。
-    样本不够(<MIN_POINTS)时percentile=None，界面显示"历史积累中"。"""
+    cohort：cohort_fn(点)→类别标签(如'春节扰动月'/'平常月')；只跟当前值同类别的历史点比(至少4个)——
+            春节前后月消费骤变，春节月的库消比只能跟往年春节月比，不能跟平常月比。"""
     refs = [p for p in points if p["d"] != cur_d and _is_num(p.get("v"))]
+    window = None
+    problem = coverage_problem(refs, freq) if len(refs) >= MIN_POINTS else None
+    if problem and freq in MIN_SPAN_DAYS:
+        # ★整体样本不连续(比如早年零零散散、近两年才开始逐周累积)时，退回只看最近RECENT_WINDOW_DAYS天：
+        #   近两年连续的话就用它，不让早年的零散点永久拖累；近两年也不连续才说"不给分位"。
+        last = _to_date(refs[-1]["d"])
+        recent = [p for p in refs if last and _to_date(p["d"]) and (last - _to_date(p["d"])).days <= RECENT_WINDOW_DAYS]
+        if len(recent) >= MIN_POINTS and coverage_problem(recent, freq) is None:
+            refs, problem, window = recent, None, f"整体样本不连续，仅用最近{RECENT_WINDOW_DAYS // 365}年的连续样本({recent[0]['d']}起)"
     vals = [p["v"] for p in refs]
     n = len(vals)
     out = {"n": n, "minPoints": MIN_POINTS, "asOf": cur_d, "since": refs[0]["d"] if refs else None,
-           "percentile": None, "min": None, "max": None, "median": None, "seasonal": None}
+           "percentile": None, "min": None, "max": None, "median": None, "seasonal": None, "cohort": None, "sparse": None, "window": window}
     if n:
         out["min"], out["max"], out["median"] = round(min(vals), 2), round(max(vals), 2), round(statistics.median(vals), 2)
-    if n >= MIN_POINTS:
+    if n >= MIN_POINTS and problem is None:
         out["percentile"] = percentile_rank(value, vals)
+    elif problem:
+        out["sparse"] = problem
     cy, cm = _year_month(cur_d)
-    if cm is not None and freq not in ("yearly",):
+    if cm is not None and freq not in ("yearly",) and problem is None:
         same = [p["v"] for p in refs if _year_month(p["d"])[1] == cm and _year_month(p["d"])[0] != cy]
         if len(same) >= MIN_SEASONAL_POINTS:
             out["seasonal"] = {"month": cm, "n": len(same), "percentile": percentile_rank(value, same),
                                "median": round(statistics.median(same), 2)}
         elif same:
             out["seasonal"] = {"month": cm, "n": len(same), "percentile": None, "median": None}
+    if cohort_fn is not None:
+        label = cohort_fn({"d": cur_d})
+        same_c = [p["v"] for p in refs if cohort_fn(p) == label]
+        if label:
+            out["cohort"] = {"label": label, "n": len(same_c),
+                             "percentile": percentile_rank(value, same_c) if len(same_c) >= MIN_SEASONAL_POINTS else None,
+                             "median": round(statistics.median(same_c), 2) if same_c else None}
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 出口净销售的两类数据毛病(第一次回填报告里发现的)
+# ---------------------------------------------------------------------------
+# ① 美国政府停摆(2018-12-22~2019-01-25)导致ESR周报延迟、补发：2019-02-14这一周净销售677万吨，而前一周是0
+#    (稳健异常检测z=9.0，相邻周0和212万吨)，2019-01-03是-61万吨。这段时间的周度数字不可靠，剔除。
+ESR_ARTIFACT_RANGES = [("2018-12-20", "2019-02-28")]
+
+
+def is_rollover_week(d):
+    """市场年度切换周：周截止日落在8月31日~9月6日(恰好包含9月1日的那一周)。
+    ② 每年切换周的净销售系统性偏高：报告里12年逐年的这一周都是尖峰(比前后两周高一到三倍，2020年564万吨)。
+       原因(推断)：新年度第一周的"本年度净销售"里带入了上年度已经报过的"下年度销售"(结转)，
+       而我们把 本年度净销售+下年度净销售 加总，等于把结转的部分重复算了一次。"""
+    try:
+        m, day = int(str(d)[5:7]), int(str(d)[8:10])
+    except ValueError:
+        return False
+    return (m == 8 and day == 31) or (m == 9 and day <= 6)
+
+
+def clean_esr_points(points, max_gap_days=10):
+    """出口周度序列的清洗(读取时做，落盘的原始点不动)：剔除政府停摆期间的点；
+    市场年度切换周用相邻两周的均值代替(前后两周都在、且间隔正常才代替，否则丢弃这个点)。"""
+    pts = [p for p in sorted(points, key=lambda p: p["d"])
+           if not any(a <= p["d"][:10] <= b for a, b in ESR_ARTIFACT_RANGES)]
+    out = []
+    for i, p in enumerate(pts):
+        if not is_rollover_week(p["d"]):
+            out.append(p)
+            continue
+        if 0 < i < len(pts) - 1:
+            try:
+                g1 = (_date.fromisoformat(p["d"][:10]) - _date.fromisoformat(pts[i - 1]["d"][:10])).days
+                g2 = (_date.fromisoformat(pts[i + 1]["d"][:10]) - _date.fromisoformat(p["d"][:10])).days
+            except ValueError:
+                continue
+            if g1 <= max_gap_days and g2 <= max_gap_days:
+                out.append({"d": p["d"], "v": (pts[i - 1]["v"] + pts[i + 1]["v"]) / 2, "x": {"rolloverAdjusted": True}})
     return out
 
 
@@ -209,7 +321,6 @@ def _simple_specs():
         ("mysteelPoultryProfit", "poultry_profit", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
         ("mysteelRmSpread", "rm_spread", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
         ("hogRatio", "hog_ratio", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
-        ("mysteelMealStock", "meal_stock", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
         ("mysteelArrivalForecast", "arrival_forecast",
          lambda r: (f"{int(r['forecastYear']):04d}-{int(r['forecastMonth']):02d}", r.get("value"), _day(r.get("date")), None)),
         ("mysteelSoyImport", "soy_import", lambda r: (_month_from_label(r.get("monthLabel")), r.get("value"), _day(r.get("date")), None)),
@@ -251,22 +362,101 @@ def update_and_attach(result, base_dir=None):
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花，不能拖垮主流程
             note(rk, e)
 
-    # 国内库消比：只记"文章明示/由库存÷消费推算"的月度值；"周度库存÷预计消费"是回退推算，不是月度平衡表的数，不进历史
+    # 国内豆粕周度库存：把搜索窗口里所有能提取出数字的周都记下来(recentWeeks)，不只是最新一周——
+    #   回填时Mysteel周报大多没法补全(摘要没数字、正文改版)，所以靠每次抓取顺带把窗口里已有的周补齐，缺的周从此不再缺。
+    try:
+        res = result.get("mysteelMealStock")
+        if isinstance(res, dict) and res.get("available") and _is_num(res.get("value")):
+            pts = []
+            for w in (res.get("recentWeeks") or []) + [{"date": res.get("date"), "value": res.get("value"), "week": res.get("weekLabel")}]:
+                d = _day(w.get("date"))
+                if d and _is_num(w.get("value")):
+                    p = {"d": d, "v": w["value"]}
+                    if w.get("week"):
+                        p["x"] = {"week": w["week"]}
+                    pts.append(p)
+            series, changed = record_points("meal_stock", pts, base_dir)
+            if changed:
+                touched.append("meal_stock")
+            res["history"] = summarize(series["points"], res["value"], _day(res.get("date")), series["freq"])
+    except Exception as e:  # noqa: BLE001
+        note("mysteelMealStock", e)
+
+    # 饲料企业豆粕库存天数：搜索窗口里所有能提取出数字的周(recentWeeks)都记下来——第一次运行就能一次性累积出整段历史，
+    #   不需要单独回填；环比/同比(文章里写的变动量)存在x里。
+    try:
+        res = result.get("mysteelFeedDays")
+        if isinstance(res, dict) and res.get("available") and _is_num(res.get("value")):
+            pts = []
+            for w in list(res.get("recentWeeks") or []) + [{"date": res.get("date"), "value": res.get("value"), "mom": res.get("momDays"), "yoy": res.get("yoyDays")}]:
+                d = _day(w.get("date"))
+                if d and _is_num(w.get("value")):
+                    p = {"d": d, "v": w["value"]}
+                    x = {k: w[k] for k in ("mom", "yoy") if _is_num(w.get(k))}
+                    if x:
+                        p["x"] = x
+                    pts.append(p)
+            series, changed = record_points("feed_days", pts, base_dir)
+            if changed:
+                touched.append("feed_days")
+            res["history"] = summarize(series["points"], res["value"], _day(res.get("date")), series["freq"])
+    except Exception as e:  # noqa: BLE001
+        note("mysteelFeedDays", e)
+
+    # 盘面压榨毛利：三个合约各存一条序列(逐日追加)；分位只看"往年同月"——毛利的绝对数没有意义(没扣加工费，几乎永远为正)，
+    #   只有跟历史同期比才知道"油厂现在的压榨动力强还是弱"。需要往年数据(回填)，没有回填时seasonal为空，前端不据此计分。
+    try:
+        for k in ("sep", "may", "jan"):
+            res = (result.get("crushMargins") or {}).get(k)
+            if not (isinstance(res, dict) and res.get("available") and res.get("date") and _is_num(res.get("grossMargin"))):
+                continue
+            key = "crush_margin_" + k
+            series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["grossMargin"], "x": {"contract": res.get("mealSymbol")}}], base_dir)
+            if changed:
+                touched.append(key)
+            res["history"] = summarize(series["points"], res["grossMargin"], _day(res["date"]), series["freq"])
+    except Exception as e:  # noqa: BLE001
+        note("crushMargins", e)
+
+    # 月差/期限结构：跟榨利同一套——三个合约类型各存一条序列，分位只看"往年同月"(粮食的月差有强烈的季节性，比如5-9月差受南美到港节奏影响)。
+    try:
+        for k in ("sep", "may", "jan"):
+            res = (result.get("termSpreads") or {}).get(k)
+            if not (isinstance(res, dict) and res.get("available") and res.get("date") and _is_num(res.get("spreadPct"))):
+                continue
+            key = "term_spread_" + k
+            series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["spreadPct"], "x": {"near": res.get("nearSymbol"), "far": res.get("farSymbol"), "spread": res.get("spread")}}], base_dir)
+            if changed:
+                touched.append(key)
+            res["history"] = summarize(series["points"], res["spreadPct"], _day(res["date"]), series["freq"])
+    except Exception as e:  # noqa: BLE001
+        note("termSpreads", e)
+
+    # 国内库消比：只记"文章明示/由库存÷消费推算"的月度值；"周度库存÷预计消费"是回退推算，不是月度平衡表的数，不进历史。
+    #   同时存下当月库存/消费/产量(以后要做"春节调整后库消比"、按同类月份比较时用得上)。
+    #   分位按"同类月份"比：春节扰动月只跟往年春节扰动月比，平常月只跟平常月比(cn_calendar)。
     try:
         res = result.get("mysteelMealStu")
-        if isinstance(res, dict) and res.get("available") and res.get("method") in ("stated", "computed") and _is_num(res.get("value")):
-            pt = {"d": res["month"], "v": res["value"], "pub": _day(res.get("date"))}
-            series, changed = record_points("meal_stu", [pt], base_dir)
-            if changed:
-                touched.append("meal_stu")
-            res["history"] = summarize(series["points"], res["value"], res["month"], "monthly")
-        elif isinstance(res, dict) and res.get("available") and _is_num(res.get("value")):
-            series = load_series("meal_stu", base_dir)
-            res["history"] = summarize(series["points"], res["value"], res.get("month"), "monthly")
+        if isinstance(res, dict) and res.get("available") and _is_num(res.get("value")):
+            if res.get("method") in ("stated", "computed"):
+                x = {"how": res["method"]}
+                for k, src in (("stock", "stockWan"), ("consumption", "consumptionWan"), ("production", "productionWan")):
+                    if _is_num(res.get(src)):
+                        x[k] = res[src]
+                pt = {"d": res["month"], "v": res["value"], "pub": _day(res.get("date")), "x": x}
+                series, changed = record_points("meal_stu", [pt], base_dir)
+                if changed:
+                    touched.append("meal_stu")
+            else:
+                series = load_series("meal_stu", base_dir)
+            res["history"] = summarize(series["points"], res["value"], res["month"], "monthly",
+                                       cohort_fn=lambda p: cn_calendar.festival_cohort(p["d"]))
     except Exception as e:  # noqa: BLE001
         note("mysteelMealStu", e)
 
-    # 出口净销售：把最近8周逐周记下来(每周都补齐)，分位用"近4周合计"跟历史同一口径的4周合计比
+    # 出口净销售：把最近8周逐周记下来(每周都补齐，原始值不动)；分位用"近4周合计"跟历史同口径比较，
+    #   比较前先做清洗(剔除政府停摆期间、市场年度切换周用相邻两周均值代替，见clean_esr_points)。
+    #   最新一周本身就是切换周时不给分位(前端也不据此判方向)。
     try:
         res = result.get("exportSales")
         if isinstance(res, dict) and res.get("available") and res.get("commodity"):
@@ -282,8 +472,8 @@ def update_and_attach(result, base_dir=None):
             if changed:
                 touched.append("esr_net_sales")
             cur4 = res.get("total4wSumMT")
-            if _is_num(cur4):
-                roll = rolling_sum(series["points"], 4)
+            if _is_num(cur4) and not res.get("latestIsRollover"):
+                roll = rolling_sum(clean_esr_points(series["points"]), 4)
                 res["history"] = summarize(roll, cur4, _day(res.get("weekEnding")), "weekly")
                 res["history"]["basis"] = "近4周净销售合计"
     except Exception as e:  # noqa: BLE001
