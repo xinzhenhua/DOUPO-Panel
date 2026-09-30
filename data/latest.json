@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-30T12:54:49.722381+00:00",
+  "generatedAt": "2026-09-30T13:50:17.089934+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 362.4,
-    "change": 2.3,
-    "changePct": 0.64,
+    "price": 363.4,
+    "change": 3.3,
+    "changePct": 0.92,
     "asOf": "2026-09-30T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -24,7 +24,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelPoultryProfit": {
@@ -43,7 +46,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelRmSpread": {
@@ -68,7 +74,10 @@
       "min": 846.7,
       "max": 846.7,
       "median": 846.7,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelArrivalForecast": {
@@ -89,13 +98,68 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelMealStock": {
     "available": true,
     "value": 129.64,
     "date": "2026-09-28",
+    "recentWeeks": [
+      {
+        "date": "2026-09-28",
+        "value": 129.64,
+        "week": "2026年第39周"
+      },
+      {
+        "date": "2026-09-21",
+        "value": 117.32,
+        "week": "2026年第38周"
+      },
+      {
+        "date": "2026-09-14",
+        "value": 110.99,
+        "week": "2026年第37周"
+      },
+      {
+        "date": "2026-08-31",
+        "value": 116.73,
+        "week": "2026年第35周"
+      },
+      {
+        "date": "2026-08-24",
+        "value": 110.98,
+        "week": "2026年第34周"
+      },
+      {
+        "date": "2026-08-17",
+        "value": 115.38,
+        "week": "2026年第33周"
+      },
+      {
+        "date": "2026-08-10",
+        "value": 109.03,
+        "week": "2026年第32周"
+      },
+      {
+        "date": "2026-07-27",
+        "value": 96.73,
+        "week": "2026年第30周"
+      },
+      {
+        "date": "2026-07-20",
+        "value": 89.97,
+        "week": "2026年第29周"
+      },
+      {
+        "date": "2026-07-13",
+        "value": 77.95,
+        "week": "2026年第28周"
+      }
+    ],
     "weekLabel": "2026年第39周",
     "articleTitle": "Mysteel数据：全国主要区域大豆及豆粕库存统计（20260928）",
     "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
@@ -105,16 +169,14 @@
       "minPoints": 12,
       "asOf": "2026-09-28",
       "since": "2022-06-20",
-      "percentile": 100.0,
+      "percentile": null,
       "min": 14.92,
       "max": 118.0,
       "median": 72.1,
-      "seasonal": {
-        "month": 9,
-        "n": 5,
-        "percentile": 100.0,
-        "median": 51.16
-      }
+      "seasonal": null,
+      "cohort": null,
+      "sparse": "样本不连续：跨1554天应有约223期，实际只有69期(30%)",
+      "window": null
     }
   },
   "mysteelMealStu": {
@@ -122,6 +184,15 @@
     "value": 16.04,
     "month": "2026-09",
     "monthLabel": "2026年9月",
+    "festival": {
+      "festivalDate": "2026-02-17",
+      "coreDays": 0,
+      "disturbed": false,
+      "phase": null,
+      "bias": null,
+      "name": null,
+      "level": null
+    },
     "isForecast": true,
     "usedFallbackMonth": false,
     "method": "stated",
@@ -158,7 +229,355 @@
         "n": 1,
         "percentile": null,
         "median": null
+      },
+      "cohort": {
+        "label": "平常月",
+        "n": 15,
+        "percentile": 66.7,
+        "median": 13.77
+      },
+      "sparse": null,
+      "window": null
+    }
+  },
+  "mysteelFeedDays": {
+    "available": true,
+    "value": 8.55,
+    "date": "2026-09-24",
+    "momDays": 0.32,
+    "yoyDays": -1.05,
+    "lastYearValue": 9.6,
+    "holiday": {
+      "name": "国庆",
+      "daysTo": -7,
+      "phase": "节前备货",
+      "holidayDate": "2026-10-01"
+    },
+    "articleTitle": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260924）",
+    "publishDate": "2026-09-24",
+    "extractedFrom": "summary",
+    "recentWeeks": [
+      {
+        "date": "2026-09-24",
+        "value": 8.55,
+        "mom": 0.32,
+        "yoy": -1.05
+      },
+      {
+        "date": "2026-09-18",
+        "value": 8.23,
+        "mom": 0.08,
+        "yoy": -1.19
+      },
+      {
+        "date": "2026-09-11",
+        "value": 8.15,
+        "mom": -0.22,
+        "yoy": -1.07
+      },
+      {
+        "date": "2026-09-04",
+        "value": 8.37,
+        "mom": 0.27,
+        "yoy": -0.43
+      },
+      {
+        "date": "2026-08-28",
+        "value": 8.1,
+        "mom": 0.52,
+        "yoy": -0.77
+      },
+      {
+        "date": "2026-08-21",
+        "value": 7.58,
+        "mom": 0.1,
+        "yoy": -0.93
+      },
+      {
+        "date": "2026-08-14",
+        "value": 7.48,
+        "mom": 0.0,
+        "yoy": -0.87
+      },
+      {
+        "date": "2026-08-07",
+        "value": 7.48,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2026-07-31",
+        "value": 7.54,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2026-07-24",
+        "value": 7.57,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2026-07-17",
+        "value": 7.63,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2026-07-10",
+        "value": 7.58,
+        "mom": 0.17,
+        "yoy": -0.34
+      },
+      {
+        "date": "2026-07-03",
+        "value": 7.41,
+        "mom": 0.17,
+        "yoy": -0.5
+      },
+      {
+        "date": "2026-06-26",
+        "value": 7.24,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2026-06-18",
+        "value": 7.15,
+        "mom": 0.09,
+        "yoy": -0.59
+      },
+      {
+        "date": "2026-06-12",
+        "value": 7.06,
+        "mom": 0.12,
+        "yoy": 0.23
+      },
+      {
+        "date": "2026-06-05",
+        "value": 6.94,
+        "mom": -0.08,
+        "yoy": 0.63
+      },
+      {
+        "date": "2026-05-29",
+        "value": 7.02,
+        "mom": 0.41,
+        "yoy": 1.03
+      },
+      {
+        "date": "2026-05-22",
+        "value": 6.61,
+        "mom": -0.14,
+        "yoy": 0.88
+      },
+      {
+        "date": "2026-05-15",
+        "value": 6.75,
+        "mom": -0.58,
+        "yoy": 1.61
+      },
+      {
+        "date": "2026-05-08",
+        "value": 7.33,
+        "mom": -0.71,
+        "yoy": 2.88
+      },
+      {
+        "date": "2026-04-30",
+        "value": 8.04,
+        "mom": -0.41,
+        "yoy": 3.0
+      },
+      {
+        "date": "2026-04-24",
+        "value": 8.45,
+        "mom": 0.02,
+        "yoy": 4.1
+      },
+      {
+        "date": "2026-04-17",
+        "value": 8.43,
+        "mom": -0.38,
+        "yoy": 2.51
+      },
+      {
+        "date": "2026-04-10",
+        "value": 8.81,
+        "mom": -0.59,
+        "yoy": 2.34
+      },
+      {
+        "date": "2026-04-03",
+        "value": 9.4,
+        "mom": 0.05,
+        "yoy": 1.75
+      },
+      {
+        "date": "2026-03-27",
+        "value": 9.35,
+        "mom": 0.53,
+        "yoy": 1.16
+      },
+      {
+        "date": "2026-03-20",
+        "value": 8.82,
+        "mom": 0.18,
+        "yoy": 0.19
+      },
+      {
+        "date": "2026-03-13",
+        "value": 8.64,
+        "mom": -0.5,
+        "yoy": -1.34
+      },
+      {
+        "date": "2026-03-06",
+        "value": 9.14,
+        "mom": -0.75,
+        "yoy": -0.99
+      },
+      {
+        "date": "2026-02-27",
+        "value": 9.89,
+        "mom": -2.7,
+        "yoy": 0.05
+      },
+      {
+        "date": "2026-02-13",
+        "value": 12.59,
+        "mom": 0.22,
+        "yoy": 4.84
+      },
+      {
+        "date": "2026-02-06",
+        "value": 12.37,
+        "mom": 1.04,
+        "yoy": 3.83
+      },
+      {
+        "date": "2026-01-30",
+        "value": 11.33,
+        "mom": 1.12,
+        "yoy": 0.35
+      },
+      {
+        "date": "2026-01-23",
+        "value": 10.21,
+        "mom": 0.27,
+        "yoy": -0.56
+      },
+      {
+        "date": "2026-01-16",
+        "value": 9.94,
+        "mom": 0.41,
+        "yoy": -0.31
+      },
+      {
+        "date": "2026-01-09",
+        "value": 9.53,
+        "mom": 0.13,
+        "yoy": 0.14
+      },
+      {
+        "date": "2026-01-04",
+        "value": 9.4,
+        "mom": -0.05,
+        "yoy": 1.21
+      },
+      {
+        "date": "2025-12-26",
+        "value": 9.45,
+        "mom": 0.22,
+        "yoy": 1.01
+      },
+      {
+        "date": "2025-12-19",
+        "value": 9.23,
+        "mom": 0.1,
+        "yoy": 1.2
+      },
+      {
+        "date": "2025-12-12",
+        "value": 9.13,
+        "mom": 0.64,
+        "yoy": 1.05
+      },
+      {
+        "date": "2025-12-05",
+        "value": 8.49,
+        "mom": 0.32,
+        "yoy": 0.77
+      },
+      {
+        "date": "2025-11-28",
+        "value": 8.17,
+        "mom": 0.19,
+        "yoy": 0.29
+      },
+      {
+        "date": "2025-11-21",
+        "value": 7.98,
+        "mom": -0.25,
+        "yoy": 0.0
+      },
+      {
+        "date": "2025-11-14",
+        "value": 8.23,
+        "mom": 0.47,
+        "yoy": -0.31
+      },
+      {
+        "date": "2025-11-07",
+        "value": 7.75,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2025-10-31",
+        "value": 8.02,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2025-10-24",
+        "value": 7.95,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2025-10-17",
+        "value": 7.93,
+        "mom": null,
+        "yoy": null
+      },
+      {
+        "date": "2025-10-10",
+        "value": 8.34,
+        "mom": null,
+        "yoy": null
       }
+    ],
+    "source": "Mysteel文章(全国主要地区饲料企业豆粕库存天数调查)",
+    "sourceUrl": "https://ncp.mysteel.com/a/26092417/B46706E8534B0E24.html",
+    "history": {
+      "n": 264,
+      "minPoints": 12,
+      "asOf": "2026-09-24",
+      "since": "2021-05-21",
+      "percentile": 60.8,
+      "min": 4.35,
+      "max": 12.64,
+      "median": 8.09,
+      "seasonal": {
+        "month": 9,
+        "n": 23,
+        "percentile": 13.0,
+        "median": 9.45
+      },
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelSoyImport": {
@@ -192,7 +611,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelReserveAuction": {
@@ -228,7 +650,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelBasis": {
@@ -251,7 +676,10 @@
       "min": -50.0,
       "max": -50.0,
       "median": -50.0,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "hogRatio": {
@@ -273,7 +701,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "sowInventory": {
@@ -299,7 +730,10 @@
       "min": null,
       "max": null,
       "median": null,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "cftcManagedMoney": {
@@ -323,6 +757,8 @@
     "sep": {
       "available": true,
       "contractMonth": 9,
+      "date": "2026-09-14",
+      "datesAligned": true,
       "mealSymbol": "M2609",
       "mealPrice": 3319.0,
       "oilSymbol": "Y2609",
@@ -332,11 +768,27 @@
       "grossMargin": 397.4,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-14",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     },
     "may": {
       "available": true,
       "contractMonth": 5,
+      "date": "2026-09-30",
+      "datesAligned": true,
       "mealSymbol": "M2705",
       "mealPrice": 2986.0,
       "oilSymbol": "Y2705",
@@ -346,11 +798,27 @@
       "grossMargin": 166.7,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-30",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     },
     "jan": {
       "available": true,
       "contractMonth": 1,
+      "date": "2026-09-30",
+      "datesAligned": true,
       "mealSymbol": "M2701",
       "mealPrice": 3372.0,
       "oilSymbol": "Y2701",
@@ -360,7 +828,104 @@
       "grossMargin": 177.8,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费"
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-30",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
+    }
+  },
+  "termSpreads": {
+    "sep": {
+      "available": true,
+      "contractMonth": 9,
+      "date": "2026-09-14",
+      "datesAligned": false,
+      "nearSymbol": "M2609",
+      "nearPrice": 3319.0,
+      "farSymbol": "M2701",
+      "farPrice": 3372.0,
+      "spread": -53.0,
+      "spreadPct": -1.6,
+      "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-14",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
+    },
+    "may": {
+      "available": true,
+      "contractMonth": 5,
+      "date": "2026-09-30",
+      "datesAligned": true,
+      "nearSymbol": "M2705",
+      "nearPrice": 2986.0,
+      "farSymbol": "M2709",
+      "farPrice": 3078.0,
+      "spread": -92.0,
+      "spreadPct": -3.08,
+      "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-30",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
+    },
+    "jan": {
+      "available": true,
+      "contractMonth": 1,
+      "date": "2026-09-30",
+      "datesAligned": true,
+      "nearSymbol": "M2701",
+      "nearPrice": 3372.0,
+      "farSymbol": "M2705",
+      "farPrice": 2986.0,
+      "spread": 386.0,
+      "spreadPct": 11.45,
+      "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
+      "history": {
+        "n": 0,
+        "minPoints": 12,
+        "asOf": "2026-09-30",
+        "since": null,
+        "percentile": null,
+        "min": null,
+        "max": null,
+        "median": null,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     }
   },
   "brazilPlantingProgress": {
@@ -13478,8 +14043,8 @@
     "isStale": false,
     "netSalesMT": 582432,
     "prevNetSalesMT": 1690438,
-    "avg4wNetSalesMT": 2182958,
-    "vs4wAvgPct": -73.3,
+    "avg4wNetSalesMT": 1967319,
+    "vs4wAvgPct": -70.4,
     "wowChangePct": -65.5,
     "shipmentsMT": 775392,
     "chinaNetSalesMT": 0,
@@ -13488,8 +14053,13 @@
     "chinaShipmentsMT": 0,
     "china4wSumMT": 0,
     "unknown4wSumMT": 0,
-    "total4wSumMT": 6762023,
+    "total4wSumMT": 5899465,
     "chinaShare4wPct": 0.0,
+    "latestIsRollover": false,
+    "rolloverAdjustedWeeks": [
+      "2025-09-04",
+      "2026-09-03"
+    ],
     "chinaMatched": false,
     "countryNamesSeen": [],
     "recentWeeks": [
@@ -13525,7 +14095,7 @@
       },
       {
         "weekEnding": "2026-09-03T00:00:00",
-        "netSalesMT": 2634902,
+        "netSalesMT": 1772344,
         "chinaNetSalesMT": 0,
         "unknownNetSalesMT": 0
       },
@@ -13545,20 +14115,23 @@
     "source": "USDA-FAS ESR API",
     "sourceUrl": "https://apps.fas.usda.gov/esrqs/",
     "history": {
-      "n": 625,
+      "n": 610,
       "minPoints": 12,
       "asOf": "2026-09-17",
-      "since": "2014-09-25",
-      "percentile": 84.8,
-      "min": -610910,
-      "max": 13827327,
-      "median": 3337855,
+      "since": "2014-10-02",
+      "percentile": 79.5,
+      "min": 19,
+      "max": 11244808,
+      "median": 3273978.0,
       "seasonal": {
         "month": 9,
-        "n": 48,
-        "percentile": 47.9,
-        "median": 7059727.5
+        "n": 47,
+        "percentile": 57.4,
+        "median": 4928017.5
       },
+      "cohort": null,
+      "sparse": null,
+      "window": null,
       "basis": "近4周净销售合计"
     }
   },
@@ -13588,7 +14161,10 @@
       "min": 2.65,
       "max": 23.39,
       "median": 6.35,
-      "seasonal": null
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   }
 }
