@@ -1,0 +1,57 @@
+name: 回填历史数据
+
+# 一次性、手动触发(Actions标签页 → 回填历史数据 → Run workflow)。
+# 回填四项：美豆库消比(PSD)、美豆出口净销售(ESR)、国内豆粕库消比(Mysteel月度平衡表)、豆粕周度库存(Mysteel周度)。
+# 跑完会提交 data/history/*.json 和 data/history/_backfill_report.json(每个序列的点数/起止日期/缺失月份/最小最大值)，
+# 把报告发给我可以据此校准阈值、并发现解析出错的地方。
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock；默认all)"
+        default: "all"
+      start:
+        description: "Mysteel两项的起始日期"
+        default: "2020-01-01"
+      no_bodies:
+        description: "国内库消比不抓文章正文，只用摘要(true/false)"
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 运行回填脚本(只用标准库，不需要安装依赖)
+        env:
+          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+          ONLY: ${{ github.event.inputs.only }}
+          START: ${{ github.event.inputs.start }}
+          NO_BODIES: ${{ github.event.inputs.no_bodies }}
+        run: |
+          EXTRA=""
+          if [ "$NO_BODIES" = "true" ]; then EXTRA="--no-bodies"; fi
+          python3 backfill_history.py --only "$ONLY" --start "$START" $EXTRA
+
+      - name: 提交历史数据
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/history/
+          git diff --staged --quiet || git commit -m "回填历史数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push

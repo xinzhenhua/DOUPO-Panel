@@ -15,7 +15,7 @@ cd tests
 bash run_all_tests.sh
 ```
 
-会自动跑完全部测试文件(v81时为52个)，汇总显示总共通过了多少项测试。
+会自动跑完全部测试文件(v82时为53个)，汇总显示总共通过了多少项测试。
 
 如果只想跑某一个文件（比如只关心5月合约相关的逻辑）：
 
@@ -29,6 +29,7 @@ node test_planting_brl.js
 |---|---|
 | `test_weather_drought_1/2/3.js` | 天气/干旱监测/PSD渲染，综合评分基础逻辑 |
 | `test_auto_indicator_cards.js` | v79新增：10个指标卡片的生成、自动覆盖、失败保留、过期不计分、手动修正与存储 |
+| `test_history_display.js` | v82新增：历史分位展示(积累中/分位/同月分位)、与绝对阈值的一致性提示、PSD/ESR详情接入 |
 | `test_dimensions.js` | v81新增：三维度拆分/分歧/置信度(含变异检查过的门槛)、拆分与总分的不变式、界面条形与提示 |
 | `test_meal_stu.js` | v80新增：国内豆粕库消比卡片、组内权重50/30/20、国内组双倍票权、ESR中国/未知拆分展示 |
 | `test_scoring_v2.js` | v79新增：净倾向归一化、数据不足、合并投票、出口销售信号 |
@@ -64,3 +65,8 @@ node test_planting_brl.js
   设置，`H.clearMockedMonth()`还原。
 - 每次修改`../index.html`后，直接重新运行`./run_all_tests.sh`即可验证有没有破坏现有功能——
   测试会自动读取最新的`index.html`内容，不需要额外的构建/编译步骤。
+
+
+## Python侧测试(在项目根目录运行)
+- `python3 test_fetch_data.py`：后端抓取/解析(部分测试依赖agrobr/akshare，缺少时会在那一项报错)
+- `python3 test_history.py`：v82新增，历史序列存取/合并/分位/日常累积/四项回填(用临时目录，不会写进仓库的data/history)

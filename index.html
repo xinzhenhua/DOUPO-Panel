@@ -602,6 +602,44 @@ function sanityProblem(key, value){
   return null;
 }
 
+// ===================== 历史分位展示 =====================
+// history来自后端history_store.py：{n, since, percentile, min, max, median, seasonal:{month,n,percentile}, minPoints}。
+// 样本不足minPoints(12)期时只显示"历史积累中"，不给一个没有统计意义的百分位。
+// 一致性提示：绝对阈值(暂定值)判偏多/偏空，但这个值在历史分布里并不站在对应的一侧 → 提示阈值可能需要校准，
+// 这正是"用历史回填来校准暂定阈值"要找的东西。pol=+1表示"数值越高越偏多"，-1表示"数值越高越偏空"。
+const HISTORY_POLARITY = {crush:-1, stock:-1, stu:-1, basis:1, arrival:-1, import:-1, hogratio:1, sows:-1, poultry:1, rmspread:-1};
+function histNum(v){
+  if(v==null || isNaN(v)) return '--';
+  const a = Math.abs(v);
+  return a>=10000 ? Math.round(v).toLocaleString() : String(Math.round(v*100)/100);
+}
+function historyBlock(h, opt){
+  opt = opt || {};
+  if(!h || typeof h !== 'object' || h.n == null) return '';
+  const unit = opt.unit || '', label = opt.label || '历史分位';
+  if(h.percentile == null){
+    const need = h.minPoints || 12;
+    const range = (h.n>0 && h.min!=null) ? `；目前区间${histNum(h.min)}～${histNum(h.max)}${unit}` : '';
+    return `📈 ${label}：历史积累中——已有${h.n}期${h.since?`(自${h.since})`:''}，满${need}期后显示分位${range}`;
+  }
+  const pct = h.percentile;
+  const band = pct<20 ? '偏低' : pct>80 ? '偏高' : '中等';
+  let out = `📈 ${label}：<b>${pct}%</b>(${band}) · 共${h.n}期(${h.since}起)，最低${histNum(h.min)}～最高${histNum(h.max)}${unit}，中位${histNum(h.median)}${unit}`;
+  if(h.basis) out = out.replace('共'+h.n+'期', h.basis+'，共'+h.n+'期');
+  if(h.seasonal && h.seasonal.percentile != null)
+    out += `<br>　同月(${h.seasonal.month}月)分位：<b>${h.seasonal.percentile}%</b>(${h.seasonal.n}个往年同月，中位${histNum(h.seasonal.median)}${unit})`;
+  if(opt.pol && opt.dir!=null){
+    const bp = opt.pol===1 ? pct : 100-pct;      // "偏多程度"分位：越高越偏多
+    if(opt.dir===1 && bp < 50)
+      out += `<br>　⚠️ 绝对阈值判<b>偏多</b>，但这个值在历史分布里只是${pct}%——两者不一致，阈值可能偏松，等历史数据校准`;
+    else if(opt.dir===-1 && bp > 50)
+      out += `<br>　⚠️ 绝对阈值判<b>偏空</b>，但这个值在历史分布里只是${pct}%——两者不一致，阈值可能偏松，等历史数据校准`;
+    else if(opt.dir===0 && (bp>=90 || bp<=10))
+      out += `<br>　ℹ️ 落在中性区间，但历史分位已到${pct}%(历史极端区域)，阈值可能偏宽`;
+  }
+  return out;
+}
+
 /** 数值不合理时：不填入、不参与评分，只在详情里显示警告。返回true表示已拦截。*/
 function blockIfImplausible(aiEl, key, value, label){
   const problem = sanityProblem(key, value);
@@ -800,7 +838,8 @@ function refreshAutoIndicator(key){
   ai.className = 'ai-suggest ' + (st.stale ? 'stale' : 'fresh');
   ai.innerHTML = `🤖 自动抓取(${cfg.sourceName})：<b>${ex.valueText}</b><br>${ex.detail}`
     + (st.stale ? `<br>⚠️ 这个指标${cfg.freq}更新，已过了${age}天(超过${cfg.maxAgeDays}天视为过期)，仍显示但<b>不参与综合评分</b>` : '')
-    + (ex.warn ? `<br>${ex.warn}` : '');
+    + (ex.warn ? `<br>${ex.warn}` : '')
+    + (src.history ? '<br>' + historyBlock(src.history, {unit:cfg.unit, pol:HISTORY_POLARITY[key], dir:MANUAL_RULES[key](ex.value)[0]}) : '');
   updateOverallAlert();
 }
 
@@ -2366,6 +2405,7 @@ function renderEsr(esr, genAt){
     <div class="ir"><div class="il">本周分目的地(净销售)</div><div class="iv"><span class="gold">中国 ${fmt(esr.chinaNetSalesMT)} 吨</span>${esr.unknownNetSalesMT!=null?`　未知目的地 ${fmt(esr.unknownNetSalesMT)} 吨　其他 ${fmt(esr.otherNetSalesMT)} 吨`:''}</div></div>
     ${esr.china4wSumMT!=null?`<div class="ir"><div class="il">近4周合计</div><div class="iv"><span class="gold">中国 ${fmt(esr.china4wSumMT)} 吨${esr.chinaShare4wPct!=null?`(占总量${esr.chinaShare4wPct}%)`:''}</span>　未知目的地 ${fmt(esr.unknown4wSumMT)} 吨</div></div>`:''}
     ${esr.chinaMatched===false?`<div class="alert-box neutral"><span class="at">⚠️ 没有在数据里匹配到"中国"</span>国家名匹配是按名称里含"china"做的，可能接口里写法不同。接口里出现过的国家名：${(esr.countryNamesSeen||[]).slice(0,25).join('、')||'无'}</div>`:''}
+    ${esr.history ? `<div class="ir"><div class="il">历史位置</div><div class="iv" style="font-size:10.5px;line-height:1.7">${historyBlock(esr.history, {unit:'吨', label:'历史分位', pol:1, dir:sig})}</div></div>` : ''}
     <div class="ir"><div class="il">本周装船量(已发货)</div><div class="iv">${fmt(esr.shipmentsMT)} 吨　<span style="color:var(--t3)">中国${fmt(esr.chinaShipmentsMT)}吨</span></div></div>
     <div style="font-size:10px;color:var(--t3);margin-top:6px">净销售=当周新签的出口合同(买家的采购意愿)；装船量=已经发走的货，是滞后的执行结果，不混在一起看。<br>"未知目的地"不能直接当成中国：买家国家明确后，ESR是在那一周记一笔目的地变更(未知记负、具体国家记正)，历史周数不会回头修改，所以单周的中国数字忽小忽大，看近4周合计更稳。<b>中国采购量只展示、不参与打分</b>——中国买美豆对CBOT是利多，但3-5个月后到港会增加国内供给，对国内豆粕是利空，方向相反，所以不直接计分。信号阈值(±${ESR_SIGNAL.pct}%、4周均值≥${ESR_SIGNAL.minBaseMT.toLocaleString()}吨才判断)是暂定值。数据来源：${esr.source}</div>
     </div></details>
@@ -2429,6 +2469,7 @@ function renderPsd(psd, genAt){
     <div class="ir"><div class="il">出口</div><div class="iv">${fmt(psd.exports)}</div></div>
     <div class="ir"><div class="il">总用量(国内消费+出口)</div><div class="iv">${fmt(psd.totalUse)}</div></div>
     ${ratioHtml}
+    ${psd.history ? `<div class="ir"><div class="il">历史位置</div><div class="iv" style="font-size:10.5px;line-height:1.7">${historyBlock(psd.history, {unit:'%', label:'历史分位(按市场年度)', pol:-1, dir:window._psdSignal})}</div></div>` : ''}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">单位为${psd.unit||'USDA标准计量单位'}，具体含义请对照 <a href="https://apps.fas.usda.gov/psdonline/" style="color:var(--b)" target="_blank">PSD Online</a> 核对</div>
     </div></details>
     ${mismatchWarning}

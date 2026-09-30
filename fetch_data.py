@@ -4144,6 +4144,14 @@ def main():
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
 
+    # ★历史序列：把各指标最新值追加进data/history/*.json，并给对应结果挂上history(历史分位摘要)。
+    #   出任何错都只打印警告——历史是锦上添花，绝不能让latest.json写不出来。
+    try:
+        import history_store
+        history_store.update_and_attach(result, base_dir=os.path.join(os.path.dirname(OUTPUT_PATH), "history"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] 历史序列更新失败(不影响其它数据): {type(e).__name__}: {e}", file=sys.stderr)
+
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)

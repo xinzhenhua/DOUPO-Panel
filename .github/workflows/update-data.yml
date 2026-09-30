@@ -34,6 +34,11 @@ on:
 permissions:
   contents: write  # 需要这个权限才能把抓到的数据提交回仓库
 
+# 数据写入类的工作流(每小时同步/历史回填)共用同一个并发组，排队执行，避免两个任务同时push互相冲突
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
@@ -63,6 +68,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/latest.json
+          # 历史序列(data/history/)：首次运行前目录可能不存在，所以单独add，失败不影响主数据的提交
+          git add data/history/ 2>/dev/null || true
           # 如果数据没变化就不产生空提交
           git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
