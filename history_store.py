@@ -39,6 +39,10 @@ SERIES_META = {
     "meal_stu": {"name": "国内豆粕库存消费比(月度)", "unit": "%", "freq": "monthly"},
     "meal_stock": {"name": "国内豆粕商业库存(周度)", "unit": "万吨", "freq": "weekly"},
     "feed_days": {"name": "饲料企业豆粕库存天数(周度)", "unit": "天", "freq": "weekly"},
+    # ---- 每天记录两个系统的方向(record_systems.py)：v=基本面(仅供需票)的净倾向(-1~+1)，x里是其余字段(市场结构方向/综合/价格/覆盖情况/规则版本) ----
+    "systems_sep": {"name": "每日系统方向记录(9月合约：基本面仅供需 + 市场结构 + 价格)", "unit": "净倾向", "freq": "daily"},
+    "systems_may": {"name": "每日系统方向记录(5月合约：基本面仅供需 + 市场结构 + 价格)", "unit": "净倾向", "freq": "daily"},
+    "systems_jan": {"name": "每日系统方向记录(1月合约：基本面仅供需 + 市场结构 + 价格)", "unit": "净倾向", "freq": "daily"},
     # ---- 只能日常累积 ----
     "crush_rate": {"name": "油厂开机率", "unit": "%", "freq": "weekly"},
     "basis": {"name": "豆粕现货基差(沿海代表)", "unit": "元/吨", "freq": "daily"},

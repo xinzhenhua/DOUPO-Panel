@@ -57,6 +57,8 @@ check('开机率50%（中性区间）→ 应显示neutral(灰色)而非空',
   elements['ind_crush'].className, 'field-ind neutral');
 
 // 场景5：验证之前完全没接入打分的3个字段，现在确实生效了
+// ★固定月份=9、合约=1月(这个场景当初写的时候的真实条件)：不固定的话，10月1日起1月合约不再计入美国作物票，票数掉到5项以下，测试会莫名失败
+H.setMockedMonth(9); window._selectedContract = 'jan';
 elements['m_crush'].value=''; elements['m_stock'].value=''; elements['m_basis'].value='';
 elements['m_hogratio'].value=''; elements['m_import'].value='';
 elements['m_arrival'].value = '150'; // 偏多 +1

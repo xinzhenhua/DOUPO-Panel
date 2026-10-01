@@ -98,7 +98,7 @@ check('★全部偏空：三套一致，界面显示"三套一致，结论对权
 // 共振面板带上权重敏感
 const calm = {status:'calm', label:'外资平静'};
 let r = computeResonanceStatus('偏多','偏多',calm,{confidence:'中', reasons:[], divergence:null, weatherDominant:null, robust:'结论对权重敏感(等权中性、分组等权偏多、现行偏空)'});
-check('★三方共振面板也提示"基本面结论对权重敏感"', r.detail.includes('基本面结论对权重敏感'));
+check('★三方共振面板也提示"综合预警结论对权重敏感"', r.detail.includes('综合预警结论对权重敏感'));
 
 // 数据不足分支不留旧状态
 reset(); makeEl('m_crush').value='35'; updateOverallAlert();

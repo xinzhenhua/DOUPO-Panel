@@ -26,6 +26,8 @@ renderNoaaOutlook({available:true, byState:mockNoaaByState, avgWorseningPct:15.0
 check('NOAA展望渲染结果应该包含<svg>条形图', elements['noaaOutlookContent'].innerHTML.includes('<svg'));
 
 // ===================== 集成测试3：综合预警应该包含仪表盘+状态点图 =====================
+// ★固定月份=9、合约=1月：这个场景靠"1月合约8-9月计入美国作物票"凑够5项有效投票；不固定的话，10月1日起默认合约/票数构成变了，测试会莫名失败
+H.setMockedMonth(9); window._selectedContract = 'jan';
 ['m_crush','m_stock','m_basis','m_arrival','m_hogratio','m_sows','m_import'].forEach(id=>{
   elements[id] = makeEl(id);
   elements[id].value = '';

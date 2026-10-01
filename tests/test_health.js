@@ -21,6 +21,7 @@ function reset(){
   window._esrSignal=0; window._fxSignal=0; window._psdSignal=0; window._esrQuality=null; window._esrPending=null;
   window._crushSignal=0; window._crushQuality={m:1,why:''}; window._crushStatus='ok';
   window._spreadSignal=0; window._spreadQuality={m:1,why:''}; window._spreadStatus='ok';
+  window._vpSignal=0; window._vpQuality={m:1,why:''}; window._vpStatus='ok'; window._vpReason='';
   window._saWeatherSignal=null; window._saPsdSignal=null; window._plantingSignal=null; window._brlSignal=null; window._harvestSignal=null; window._brazilPlantingSignal=null;
   window._selectedContract='sep'; window._syncedData = {generatedAt: iso(2026,9,30,9,58)};
 }
@@ -93,10 +94,10 @@ check('沿用浏览器保存的手动值：🟡降权(来源和日期无法核�
 reset();
 h = computeDataHealth(NOW);
 const sigNames = c=>{ window._selectedContract=c; return computeDataHealth(NOW).rows.filter(r=>r.kind==='signal').map(r=>r.name).join(','); };
-check('★9月合约：美豆库消比/出口销售/汇率 + 美国天气预报/NOAA展望/干旱监测/优良率', sigNames('sep') === '美豆库存消费比(USDA),出口销售(USDA),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,美国天气预报,NOAA展望,干旱监测,美豆优良率');
-check('★5月合约：南美天气/南美产量/播种进度/雷亚尔(不含美国天气)', sigNames('may') === '美豆库存消费比(USDA),出口销售(USDA),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,南美天气,南美产量(PSD),美豆播种进度,巴西雷亚尔汇率');
+check('★9月合约：美豆库消比/出口销售/汇率 + 美国天气预报/NOAA展望/干旱监测/优良率', sigNames('sep') === '美豆库存消费比(USDA),出口销售(USDA),量价关系(DCE),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,美国天气预报,NOAA展望,干旱监测,美豆优良率');
+check('★5月合约：南美天气/南美产量/播种进度/雷亚尔(不含美国天气)', sigNames('may') === '美豆库存消费比(USDA),出口销售(USDA),量价关系(DCE),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,南美天气,南美产量(PSD),美豆播种进度,巴西雷亚尔汇率');
 H.setMockedMonth(11);
-check('★1月合约11月：南美+收获进度+巴西播种(美国天气不含)', sigNames('jan') === '美豆库存消费比(USDA),出口销售(USDA),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,南美天气,南美产量(PSD),美豆收获进度,巴西大豆播种进度');
+check('★1月合约11月：南美+收获进度+巴西播种(美国天气不含)', sigNames('jan') === '美豆库存消费比(USDA),出口销售(USDA),量价关系(DCE),月差/期限结构(DCE),盘面压榨毛利(DCE),人民币汇率,南美天气,南美产量(PSD),美豆收获进度,巴西大豆播种进度');
 H.setMockedMonth(9);
 check('★1月合约9月：多出美国四项(灌浆收尾期仍计入)', sigNames('jan').includes('美国天气预报') && sigNames('jan').includes('美豆优良率'));
 H.setMockedMonth(5); window._selectedContract='sep';
@@ -144,6 +145,22 @@ check('★月差抓取失败：⚪无数据，是投票指标，整体变红', r
 window._spreadSignal = 1; window._spreadStatus = 'ok'; window._spreadQuality = {m:0.5, why:'盘面数据晚了一期'};
 check('月差晚了一期：🟡降权×0.5', computeDataHealth(NOW).rows.find(r=>r.key==='sig:月差/期限结构(DCE)').state==='degraded');
 
+
+// ===================== 3d. 量价关系：门槛没过=⏳不是异常；K线过期/拿不到=⚪无数据 =====================
+reset();
+window._vpSignal = null; window._vpStatus = 'gated'; window._vpReason = '持仓量只有近120日峰值的36%(移仓/交割期，持仓量变动是机械的)'; window._vpQuality = null;
+h = computeDataHealth(NOW);
+check('★量价门槛没过(移仓/交割期)：⏳暂不计分，写明原因，不算投票指标、不拉红整体', row(h,'sig:量价关系(DCE)').state==='pending' && row(h,'sig:量价关系(DCE)').icon==='⏳' && row(h,'sig:量价关系(DCE)').detail.includes('移仓/交割期') && row(h,'sig:量价关系(DCE)').votes===false);
+window._vpStatus = 'insufficient'; window._vpReason = 'K线只有10根，不足25根';
+check('K线不足：同样⏳', computeDataHealth(NOW).rows.find(r=>r.key==='sig:量价关系(DCE)').state==='pending');
+window._vpStatus = 'stale'; window._vpReason = 'K线已过期，合约可能已到期'; window._vpSignal = null;
+h = computeDataHealth(NOW);
+check('★K线过期(合约可能已到期)：⚪无数据，是投票指标，整体变红——这是真的有问题，跟"门槛没过"区分开', row(h,'sig:量价关系(DCE)').state==='nodata' && row(h,'sig:量价关系(DCE)').votes===true && h.level==='red');
+window._vpStatus = 'unavailable'; window._vpReason = '当前合约的日K线不可用';
+check('日K线拿不到：⚪无数据', computeDataHealth(NOW).rows.find(r=>r.key==='sig:量价关系(DCE)').state==='nodata');
+window._vpSignal = 1; window._vpStatus = 'ok'; window._vpQuality = {m:0.5, why:'K线数据晚了一期'};
+check('K线晚了一期：🟡降权×0.5', computeDataHealth(NOW).rows.find(r=>r.key==='sig:量价关系(DCE)').state==='degraded');
+
 // ===================== 4. 整体等级 =====================
 reset();
 const okAll = {crush:'50',stock:'70',basis:'0',arrival:'900',import:'900',hogratio:'6',poultry:'1',rmspread:'550',stu:'12',feed:'8'};
@@ -177,7 +194,7 @@ let html = makeEl('healthContent').innerHTML;
 check('★面板渲染：汇总行、同步框、缺席投票、折叠的全部指标', html.includes('正常') && html.includes('每小时同步') && html.includes('没有参与评分的投票') && html.includes('大豆到港/进口') && html.includes('查看全部指标状态'));
 check('面板里有数据质量分', html.includes('数据质量分'));
 check('徽标反映整体等级', makeEl('healthBadge').textContent.length > 0 && makeEl('healthBadge').className.includes('badge'));
-check('全部指标状态里每个指标一行(12个指标+实时信号9个)', (html.match(/class="ir"/g)||[]).length === 12 + 9);
+check('全部指标状态里每个指标一行(12个指标+实时信号10个)', (html.match(/class="ir"/g)||[]).length === 12 + 10);
 check('★有问题的项在折叠区外就能看到(无数据的猪粮比以外的问题项)', html.includes('还没有抓取到数据'));
 // 数据不足分支也会渲染面板
 reset(); makeEl('m_crush').value='35';

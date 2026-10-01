@@ -1777,6 +1777,28 @@ def _extract_article_region(text, title):
     return text[start:end]
 
 
+# ★来源是"外部响应"的URL(比如Mysteel搜索结果里每篇文章的url)必须过域名白名单才允许请求。
+#   这类URL不是我们写死的，如果搜索接口被劫持/污染/返回异常数据，没有校验的话，Actions(带着USDA_API_KEY等环境变量运行)会去访问任意地址。
+#   只允许https + 精确的Mysteel域名；不接受http、带用户名密码的URL(user@host技巧)、域名后缀欺骗(如 ncp.mysteel.com.evil.com)。
+TRUSTED_ARTICLE_HOSTS = ("ncp.mysteel.com", "www.mysteel.com", "m.mysteel.com", "ncp.m.mysteel.com")
+
+
+def is_trusted_article_url(url, allowed_hosts=TRUSTED_ARTICLE_HOSTS):
+    """url是否是https、主机名恰好在白名单里、没有用户名密码、没有奇怪端口。"""
+    from urllib.parse import urlsplit
+    try:
+        u = urlsplit(str(url).strip())
+    except ValueError:
+        return False
+    if u.scheme != "https" or u.username is not None or u.password is not None:
+        return False
+    try:
+        port = u.port
+    except ValueError:
+        return False
+    return (u.hostname or "").lower() in allowed_hosts and port in (None, 443)
+
+
 def fetch_text_debug(url, headers=None, retries=2, timeout=20):
     """GET一个网页，返回(文本, debug)。跟fetch_json_debug同一套错误处理，只是不做JSON解析。"""
     headers = dict(headers or {})
@@ -1866,7 +1888,7 @@ def fetch_mysteel_meal_balance(today=None, weekly_stock=None):
     body_notes, bodies_fetched = [], 0
     for idx, (pub, item) in enumerate(articles[:4]):
         sources = []
-        if idx < MEAL_BALANCE_BODY_FETCH_LIMIT and item.get("url"):
+        if idx < MEAL_BALANCE_BODY_FETCH_LIMIT and item.get("url") and is_trusted_article_url(item["url"]):
             raw, dbg = fetch_text_debug(item["url"], headers={"Referer": "https://ncp.mysteel.com/"})
             if raw:
                 region = _extract_article_region(_html_to_text(raw), str(item.get("title") or ""))
@@ -2103,7 +2125,7 @@ def fetch_mysteel_feed_days(today=None):
         res, rej = _extract_feed_days(it.get("content"))
         rejected_all.extend(rej)
         src = "summary"
-        if res is None and idx < 2 and it.get("url"):
+        if res is None and idx < 2 and it.get("url") and is_trusted_article_url(it["url"]):
             # 最新两篇摘要里没有数：抓正文再试一次(只取标题→免责声明之间，避免导航/推荐文章的干扰)
             raw, dbg = fetch_text_debug(it["url"], headers={"Referer": "https://ncp.mysteel.com/"})
             if raw:

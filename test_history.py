@@ -345,15 +345,15 @@ def test_backfill_meal_stock_fetches_bodies_when_summary_has_no_numbers():
     (下面是合成样本，格式参照9月21日那篇真实摘要；正文里写的是Mysteel周报的常见句式。)"""
     def art(pub, week, summary, url):
         return {"title": f"Mysteel：{week}全国主要区域大豆及豆粕库存统计", "publishTime": pub + " 09:00", "content": summary, "url": url}
-    items = [art("2026-08-31", "2026年第35周", "全国主要油厂大豆库存下降，豆粕库存上升，未执行合同减少。", "https://x/35"),
-             art("2026-05-29", "2026年第22周", "全国主要油厂大豆库存上升，豆粕库存上升。", "https://x/22"),
-             art("2026-05-30", "2026年第22周", "更正版：全国主要油厂大豆库存上升。", "https://x/22b"),     # 同一周的更晚一篇，应取代
-             art("2026-06-08", "2026年第23周", "本周库存数据发布。", "https://x/23"),                       # 正文请求会失败
-             {"title": "Mysteel：豆粕现货价格日评", "publishTime": "2026-06-09 09:00", "content": "价格上涨", "url": "https://x/other"},   # 不像周度库存文章
-             {"title": "Mysteel：华东豆粕库存", "publishTime": "2026-06-10 09:00", "content": "华东豆粕库存45万吨", "url": "https://x/east"}]
-    bodies = {"https://x/35": "<h1>Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计</h1><p>2026年第35周，全国主要油厂大豆库存827.97万吨，较上周减少11.13万吨，豆粕库存116.73万吨，较上周增加5.75万吨。</p>免责声明：xx",
-              "https://x/22": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>全国主要油厂大豆库存662.88万吨，豆粕库存34.74万吨，较上周增加3.56万吨。</p>免责声明：xx",
-              "https://x/22b": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>更正：全国主要油厂豆粕库存34.80万吨，较上周增加3.62万吨。</p>免责声明：xx"}
+    items = [art("2026-08-31", "2026年第35周", "全国主要油厂大豆库存下降，豆粕库存上升，未执行合同减少。", "https://ncp.mysteel.com/a/35.html"),
+             art("2026-05-29", "2026年第22周", "全国主要油厂大豆库存上升，豆粕库存上升。", "https://ncp.mysteel.com/a/22.html"),
+             art("2026-05-30", "2026年第22周", "更正版：全国主要油厂大豆库存上升。", "https://ncp.mysteel.com/a/22b.html"),     # 同一周的更晚一篇，应取代
+             art("2026-06-08", "2026年第23周", "本周库存数据发布。", "https://ncp.mysteel.com/a/23.html"),                       # 正文请求会失败
+             {"title": "Mysteel：豆粕现货价格日评", "publishTime": "2026-06-09 09:00", "content": "价格上涨", "url": "https://ncp.mysteel.com/a/other.html"},   # 不像周度库存文章
+             {"title": "Mysteel：华东豆粕库存", "publishTime": "2026-06-10 09:00", "content": "华东豆粕库存45万吨", "url": "https://ncp.mysteel.com/a/east.html"}]
+    bodies = {"https://ncp.mysteel.com/a/35.html": "<h1>Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计</h1><p>2026年第35周，全国主要油厂大豆库存827.97万吨，较上周减少11.13万吨，豆粕库存116.73万吨，较上周增加5.75万吨。</p>免责声明：xx",
+              "https://ncp.mysteel.com/a/22.html": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>全国主要油厂大豆库存662.88万吨，豆粕库存34.74万吨，较上周增加3.56万吨。</p>免责声明：xx",
+              "https://ncp.mysteel.com/a/22b.html": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>更正：全国主要油厂豆粕库存34.80万吨，较上周增加3.62万吨。</p>免责声明：xx"}
     fetched = []
     def fake_text(url, headers=None, retries=2, timeout=20):
         fetched.append(url)
@@ -364,8 +364,8 @@ def test_backfill_meal_stock_fetches_bodies_when_summary_has_no_numbers():
         assert pts["2026-08-31"]["v"] == 116.73 and pts["2026-08-31"]["x"] == {"week": "2026-W35"}, pts
         assert "2026-05-29" not in pts and pts["2026-05-30"]["v"] == 34.8, "同一周有两篇时取发布更晚的"
         assert "2026-06-08" not in pts and "2026-06-09" not in pts and "2026-06-10" not in pts
-        assert "https://x/other" not in fetched, "不像周度库存文章(标题没有第N周/库存)不抓正文，省请求"
-        assert "https://x/east" in fetched, "标题含'库存'+'豆粕'的按周度候选处理(会抓正文，抓不到/提取不出就如实归类，不会采用区域数据)"
+        assert "https://ncp.mysteel.com/a/other.html" not in fetched, "不像周度库存文章(标题没有第N周/库存)不抓正文，省请求"
+        assert "https://ncp.mysteel.com/a/east.html" in fetched, "标题含'库存'+'豆粕'的按周度候选处理(会抓正文，抓不到/提取不出就如实归类，不会采用区域数据)"
         st = rep["extractStats"]
         assert st["提取成功(来自正文)"] == 3 and st["正文请求失败"] == 2 and any("不像周度库存文章" in k for k in st), st
         assert all(x["text"] == "HTTP 403" for x in rep["rejectedSamples(每类前5篇)"]["正文请求失败"])
@@ -376,7 +376,7 @@ def test_backfill_meal_stock_fetches_bodies_when_summary_has_no_numbers():
 
 
 def test_backfill_meal_stock_no_bodies_flag():
-    items = [{"title": "Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计", "publishTime": "2026-08-31 09:00", "content": "全国主要油厂豆粕库存上升。", "url": "https://x/35"}]
+    items = [{"title": "Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计", "publishTime": "2026-08-31 09:00", "content": "全国主要油厂豆粕库存上升。", "url": "https://ncp.mysteel.com/a/35.html"}]
     calls = []
     with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 1, "dataList": items}, {}), fetch_text_debug=lambda *a, **k: calls.append(1) or (None, {})):
         rep = bf.backfill_meal_stock(base_dir=d, today=date(2026, 9, 29), fetch_bodies=False)
@@ -397,8 +397,8 @@ def test_meal_balance_ratio_name_variants_and_keep_text():
 
 
 def test_backfill_meal_stu_reports_unusable_month_text_and_body_problems():
-    old = [("Mysteel：全国10月豆粕供需平衡表", "2025-09-30 14:41", "https://x/old", "简析：2025年9月油厂维持高开机高压榨，豆粕物理库存处于饱和状态，整体消化进度偏慢。"),
-           ("Mysteel：全国豆粕供需平衡表（2026年5月）", "2026-05-29 14:41", "https://x/may", MB_REAL_ARTICLES[3][3])]
+    old = [("Mysteel：全国10月豆粕供需平衡表", "2025-09-30 14:41", "https://ncp.mysteel.com/a/old.html", "简析：2025年9月油厂维持高开机高压榨，豆粕物理库存处于饱和状态，整体消化进度偏慢。"),
+           ("Mysteel：全国豆粕供需平衡表（2026年5月）", "2026-05-29 14:41", "https://ncp.mysteel.com/a/may.html", MB_REAL_ARTICLES[3][3])]
     items = [{"title": t, "publishTime": pt, "url": u, "content": c} for (t, pt, u, c) in old]
     with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 2, "dataList": items}, {}), fetch_text_debug=lambda url, **k: ("<html>免责声明</html>", {})):
         rep = bf.backfill_meal_stu(base_dir=d, today=date(2026, 9, 29))
@@ -799,7 +799,7 @@ FEED_REAL_SUMMARY = "Mysteel数据：全国主要地区饲料企业豆粕库存�
 
 
 def _feed_item(pub, asof8, text, url=None, title_extra=""):
-    return {"title": f"Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（{asof8}）{title_extra}", "publishTime": pub + " 16:51", "url": url or f"https://x/{asof8}", "content": text}
+    return {"title": f"Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（{asof8}）{title_extra}", "publishTime": pub + " 16:51", "url": url or f"https://ncp.mysteel.com/a/{asof8}.html", "content": text}
 
 
 def test_feed_days_mom_check_uses_consecutive_weeks():
@@ -818,11 +818,11 @@ def test_backfill_feed_days_from_real_sample_and_synthetic_weeks():
     """真实样本(07-03)+ 3个合成周(格式照真实样本写)：摘要提得出的走摘要，摘要没数的抓正文，抓不到的如实报告。"""
     items = [_feed_item("2026-07-03", "20260703", FEED_REAL_SUMMARY),
              _feed_item("2026-06-26", "20260626", "截至6月26日，全国饲料企业豆粕物理库存为7.24天，环比下降0.06天，同比增加0.31天。"),       # 合成：7.41-0.17=7.24 ✓
-             _feed_item("2026-06-19", "20260619", "本期调查结果发布，详见正文。", url="https://x/body19"),                                      # 合成：摘要没数字→抓正文
-             _feed_item("2026-06-12", "20260612", "本期调查结果发布。", url="https://x/fail12"),                                              # 合成：正文请求失败
+             _feed_item("2026-06-19", "20260619", "本期调查结果发布，详见正文。", url="https://ncp.mysteel.com/a/body19.html"),                                      # 合成：摘要没数字→抓正文
+             _feed_item("2026-06-12", "20260612", "本期调查结果发布。", url="https://ncp.mysteel.com/a/fail12.html"),                                              # 合成：正文请求失败
              _feed_item("2026-06-05", "20260605", "截至6月5日，全国饲料企业豆粕物理库存为7.10天，环比微增0.20天。", title_extra=""),         # 合成
-             {"title": "Mysteel：豆粕现货价格日评", "publishTime": "2026-06-04 10:00", "url": "https://x/other", "content": "价格上涨"}]     # 不是这个指标
-    bodies = {"https://x/body19": "<h1>Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260619）</h1><p>截至6月19日，全国饲料企业豆粕物理库存为7.30天，环比增加0.20天，同比下滑0.10天。</p>免责声明：xx"}
+             {"title": "Mysteel：豆粕现货价格日评", "publishTime": "2026-06-04 10:00", "url": "https://ncp.mysteel.com/a/other.html", "content": "价格上涨"}]     # 不是这个指标
+    bodies = {"https://ncp.mysteel.com/a/body19.html": "<h1>Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260619）</h1><p>截至6月19日，全国饲料企业豆粕物理库存为7.30天，环比增加0.20天，同比下滑0.10天。</p>免责声明：xx"}
     fetched = []
     def fake_text(url, headers=None, retries=2, timeout=20):
         fetched.append(url)
@@ -835,7 +835,7 @@ def test_backfill_feed_days_from_real_sample_and_synthetic_weeks():
         assert pts["2026-06-26"]["x"] == {"mom": -0.06, "yoy": 0.31}, "'环比下降0.06天'→-0.06，'同比增加0.31天'→+0.31"
         assert pts["2026-06-19"]["v"] == 7.30 and pts["2026-06-19"]["x"]["mom"] == 0.2, "摘要没数字→抓正文取到"
         assert pts["2026-06-05"]["x"] == {"mom": 0.2}, "只写了环比、没写同比：同比不存(不猜)"
-        assert "https://x/other" not in fetched, "标题不含'饲料企业豆粕库存天数'的不处理"
+        assert "https://ncp.mysteel.com/a/other.html" not in fetched, "标题不含'饲料企业豆粕库存天数'的不处理"
         st = rep["extractStats"]
         assert st["提取成功(来自摘要)"] == 3 and st["提取成功(来自正文)"] == 1 and st["正文请求失败"] == 1, st
         assert rep["failedSamples(前8篇)"][0]["reason"].startswith("正文请求失败") and rep["failedSamples(前8篇)"][0]["pub"] == "2026-06-12"
@@ -863,7 +863,7 @@ def test_backfill_feed_days_failure_modes():
     with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 1, "dataList": [{"title": "Mysteel：某无关文章", "publishTime": "2026-06-04 10:00", "content": "x"}]}, {})):
         r = bf.backfill_feed_days(base_dir=d, today=date(2026, 7, 10))
         assert "没有搜到" in r["error"] and r["skippedTitles"] == ["Mysteel：某无关文章"]
-    items = [_feed_item("2026-07-03", "20260703", "本期调查发布。", url="https://x/a"), _feed_item("2026-06-26", "20260626", "本期调查发布。", url="https://x/b")]
+    items = [_feed_item("2026-07-03", "20260703", "本期调查发布。", url="https://ncp.mysteel.com/a/a.html"), _feed_item("2026-06-26", "20260626", "本期调查发布。", url="https://ncp.mysteel.com/a/b.html")]
     with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 2, "dataList": items}, {}), fetch_text_debug=lambda url, **k: ("<html>免责声明</html>", {})):
         r = bf.backfill_feed_days(base_dir=d, today=date(2026, 7, 10))
         assert r["total"] == 0 or r.get("added") == 0

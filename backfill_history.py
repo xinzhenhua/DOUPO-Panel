@@ -356,7 +356,7 @@ def backfill_meal_stu(base_dir=None, start=None, today=None, fetch_bodies=True, 
     bodies_ok = 0
     body_problems = []   # 正文没取到/没解析出东西的文章：原因+原文片段，回填报告里给出来，方便修解析规则
     for idx, (pub, it) in enumerate(arts):
-        if fetch_bodies and idx < max_bodies and it.get("url"):
+        if fetch_bodies and idx < max_bodies and it.get("url") and fd.is_trusted_article_url(it["url"]):
             raw, dbg = fd.fetch_text_debug(it["url"], headers={"Referer": "https://ncp.mysteel.com/"})
             if raw:
                 region = fd._extract_article_region(fd._html_to_text(raw), str(it.get("title") or ""))
@@ -433,7 +433,7 @@ def backfill_meal_stock(base_dir=None, start=None, today=None, max_pages=40, fet
                 break
         weeklike = bool(fd._MEAL_WEEK_RE.search(title + content)) or ("库存" in title and ("大豆" in title or "豆粕" in title))
         week_src = title + content
-        if val is None and fetch_bodies and weeklike and bodies < max_bodies and it.get("url"):
+        if val is None and fetch_bodies and weeklike and bodies < max_bodies and it.get("url") and fd.is_trusted_article_url(it["url"]):
             raw, dbg = fd.fetch_text_debug(it["url"], headers={"Referer": "https://ncp.mysteel.com/"})
             bodies += 1
             time.sleep(sleep_s)
@@ -574,7 +574,7 @@ def backfill_feed_days(base_dir=None, start=None, today=None, fetch_bodies=True,
         res, _rej = fd._extract_feed_days(content)
         how = "summary"
         region = ""
-        if res is None and fetch_bodies and bodies < max_bodies and it.get("url"):
+        if res is None and fetch_bodies and bodies < max_bodies and it.get("url") and fd.is_trusted_article_url(it["url"]):
             raw, dbg = fd.fetch_text_debug(it["url"], headers={"Referer": "https://ncp.mysteel.com/"})
             bodies += 1
             time.sleep(sleep_s)

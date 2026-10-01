@@ -174,7 +174,8 @@ def test_esr_market_year_boundary_merges_weeks_without_double_count(monkeypatch_
         if "marketYear/2026" in url: return new_year, {"httpStatus": 200}
         return None, {}
     fd.fetch_json_debug = fake_debug
-    result = fd.fetch_esr_export_sales()
+    with frozen_now(2026, 9, 17):          # 最新一周是2026-09-10；固定"现在"，候选市场年度才是2025/2026/2027
+        result = fd.fetch_esr_export_sales()
     assert result["available"] is True
     assert result["weekEnding"] == "2026-09-10" and result["marketYearUsed"] == 2026
     assert result["avg4wNetSalesMT"] == 125000, f"交界周只算一次+切换周被均值代替后，4周均值应=125000，实际{result['avg4wNetSalesMT']}"
@@ -302,7 +303,8 @@ def test_esr_picks_freshest_among_multiple_candidate_years(monkeypatch_fetch):
     fd.fetch_json_debug = fake_debug
     fd.fetch_json = lambda *a, **k: fake_debug(*a, **k)[0]
 
-    result = fd.fetch_esr_export_sales()
+    with frozen_now(2026, 7, 9):          # 最新一周是2026-07-02；固定"现在"，候选市场年度才是2025/2026/2027
+        result = fd.fetch_esr_export_sales()
     assert result["available"] is True
     assert result["weekEnding"] == "2026-07-02", \
         f"应该选中2026年这个真正最新的候选年份，而不是停在2025-10-02的旧年度，实际: {result['weekEnding']}"
@@ -657,7 +659,8 @@ def test_soybean_condition_yoy_and_five_year_avg_full_integration(monkeypatch_fe
     fd.fetch_json_debug = fake_fetch
 
     try:
-        result = fd.fetch_soybean_condition()
+        with frozen_now(2026, 9, 25):
+            result = fd.fetch_soybean_condition()
         assert result["available"] is True
         assert result["goodExcellentPct"] == 58.0, f"8+50=58，实际{result['goodExcellentPct']}"
         assert len(call_log) == 6, f"应该发起6次请求(今年+往前5年)，实际{len(call_log)}次"
@@ -691,7 +694,8 @@ def test_us_harvest_progress_yoy_and_five_year_avg(monkeypatch_fetch):
         return ({"data": rows}, {"httpStatus": 200}) if rows else (None, {"error": "无数据"})
     fd.fetch_json_debug = fake_fetch
     try:
-        result = fd.fetch_us_harvest_progress()
+        with frozen_now(2026, 9, 25):
+            result = fd.fetch_us_harvest_progress()
         assert result["available"] is True
         assert result["pctHarvested"] == 12.0
         assert result["yoyValue"] == 8.0, f"★去年同期收获率应该是8，实际{result['yoyValue']}"
@@ -1223,7 +1227,14 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
             fd.get_current_contract_code(5, now),  # M2705
             fd.get_current_contract_code(1, now),  # M2701
         }
-        fd.main()
+        # ★期望值用的是固定的"现在"(2026-07-12)，被测的main()内部却用真实时钟——两者在9月30日前碰巧一致，10月1日起就对不上了。
+        #   把get_current_contract_code的默认时钟也固定成同一个"现在"(跟期望值同一个时钟)。
+        _orig_gccc = fd.get_current_contract_code
+        fd.get_current_contract_code = lambda contract_month, now_=None, prefix="M": _orig_gccc(contract_month, now_ or now, prefix)
+        try:
+            fd.main()
+        finally:
+            fd.get_current_contract_code = _orig_gccc
 
         # ★压榨利润功能上线后，fetch_dce_daily_kline还会被拿去查豆油(Y)/豆二(B)合约价格，
         #   daily_calls不再是"只有这3个M合约"了，改成检查这3个M合约都在里面(子集关系)，
@@ -1692,8 +1703,34 @@ def test_dce_kline_missing_akshare_gives_clear_reason(monkeypatch_fetch):
     print("✅ 确认fetch_dce_daily_kline有ImportError兜底，且错误信息包含具体修复建议")
 
 
+import contextlib as _contextlib
+
+
+@_contextlib.contextmanager
+def frozen_now(year=2026, month=9, day=25):
+    """★固定fetch_data模块里的"现在"。产品代码用now.year取"今年"的数据(正确)，而这些测试的模拟数据把"今年"写死成2026——
+    不固定的话，真实时钟走到2027年，产品代码会去请求year=2027，模拟数据里没有这一年，测试就莫名失败(换时钟检查发现的)。
+    只替换fd.datetime这个名字，不碰全局datetime(全局替换会让pandas等C扩展段错误)。"""
+    import datetime as _dtm
+    fixed = _dtm.datetime(year, month, day, 3, 0, tzinfo=_dtm.timezone.utc)
+    class _FD(_dtm.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
+    real = fd.datetime
+    fd.datetime = _FD
+    try:
+        yield
+    finally:
+        fd.datetime = real
+
+
 def make_monkeypatch():
-    """一个简化的手动 monkeypatch 工具，替换 fetch_json / fetch_json_debug 让它们返回预设的模拟数据。"""
+    """一个简化的手动 monkeypatch 工具，替换 fetch_json / fetch_json_debug 让它们返回预设的模拟数据。
+
+    ★同时把fd.time.sleep替换成空操作：NOAA展望每次调用要查96个点、点与点之间sleep(0.5)，4个NOAA测试合计真睡168秒，
+      整套测试因此慢到容易被超时误杀(2026-10-01打包前就撞上了)。测试里的数据都是模拟的，不需要等。"""
+    fd.time.sleep = lambda s: None
     def _patch(url_map):
         def fake_fetch_json(url, headers=None, retries=3, timeout=20, post_data=None):
             for key, val in url_map.items():
@@ -3928,7 +3965,7 @@ def test_meal_balance_body_blocked_falls_back_to_summary(monkeypatch_fetch):
 
 def test_meal_balance_third_level_weekly_stock_fallback(monkeypatch_fetch):
     """★第三级回退：文章只有消费量，没有库消比也没有库存 → 用周度商业库存÷当月消费，方式标\"weekly\"(可信度较低)。"""
-    art = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://x/a.html", "2026年9月产量795万吨，消费779万吨，供需趋于宽松。")]
+    art = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://ncp.mysteel.com/a/a.html", "2026年9月产量795万吨，消费779万吨，供需趋于宽松。")]
     rest = _mb_install(monkeypatch_fetch, _mb_items(art), body_fail=True)
     try:
         r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29), weekly_stock={"available": True, "value": 125.0, "date": "2026-09-26"})
@@ -3966,7 +4003,7 @@ def test_meal_balance_month_rollover_uses_previous_month_record(monkeypatch_fetc
 
 def test_meal_balance_failure_modes(monkeypatch_fetch):
     # 最新文章太旧
-    old = [("Mysteel：全国豆粕供需平衡表（2026年6月）", "2026-06-30 17:28", "https://x/1", "6月产量800万吨，消费700万吨，库消比10.00%")]
+    old = [("Mysteel：全国豆粕供需平衡表（2026年6月）", "2026-06-30 17:28", "https://ncp.mysteel.com/a/1.html", "6月产量800万吨，消费700万吨，库消比10.00%")]
     rest = _mb_install(monkeypatch_fetch, _mb_items(old), body_fail=True)
     try:
         r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
@@ -3989,7 +4026,7 @@ def test_meal_balance_failure_modes(monkeypatch_fetch):
     monkeypatch_fetch({"searchapi/search/searchArticle": {"resultCode": 500}})
     assert "resultCode=500" in fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))["reason"]
     # 全部文章都解析不出任何单月数据
-    junk = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://x/j", "整体供强需弱，库消比仍处高位。")]
+    junk = [("Mysteel：全国豆粕供需平衡表（2026年9月）", "2026-09-28 16:00", "https://ncp.mysteel.com/a/j.html", "整体供强需弱，库消比仍处高位。")]
     rest = _mb_install(monkeypatch_fetch, _mb_items(junk), body_fail=True)
     try:
         r = fd.fetch_mysteel_meal_balance(today=date(2026, 9, 29))
@@ -4047,7 +4084,7 @@ def test_meal_balance_result_carries_festival_context(monkeypatch_fetch):
         rest()
     assert r["festival"]["disturbed"] is False and r["festival"]["festivalDate"] == "2026-02-17"
     # 构造一篇2027年2月发布、写2月记录的文章
-    art = [("Mysteel：全国豆粕供需平衡表（2027年2月）", "2027-02-05 16:00", "https://x/f", "2027年2月产量600万吨，消费500万吨，期末库存100万吨，库消比20.00%。")]
+    art = [("Mysteel：全国豆粕供需平衡表（2027年2月）", "2027-02-05 16:00", "https://ncp.mysteel.com/a/f.html", "2027年2月产量600万吨，消费500万吨，期末库存100万吨，库消比20.00%。")]
     rest = _mb_install(monkeypatch_fetch, _mb_items(art), body_fail=True)
     try:
         r2 = fd.fetch_mysteel_meal_balance(today=date(2027, 2, 8))
@@ -4056,7 +4093,7 @@ def test_meal_balance_result_carries_festival_context(monkeypatch_fetch):
     assert r2["month"] == "2027-02" and r2["festival"]["disturbed"] is True and r2["festival"]["phase"] == "假期停摆", r2["festival"]
     assert r2["festival"]["name"] == "春节" and r2["festival"]["level"] == "strong"
     # 国庆：10月是轻度扰动月
-    art3 = [("Mysteel：全国豆粕供需平衡表（2026年10月）", "2026-09-30 16:00", "https://x/n", "2026年10月产量700万吨，消费690万吨，期末库存100万吨，库消比14.50%。")]
+    art3 = [("Mysteel：全国豆粕供需平衡表（2026年10月）", "2026-09-30 16:00", "https://ncp.mysteel.com/a/n.html", "2026年10月产量700万吨，消费690万吨，期末库存100万吨，库消比14.50%。")]
     rest = _mb_install(monkeypatch_fetch, _mb_items(art3), body_fail=True)
     try:
         r3 = fd.fetch_mysteel_meal_balance(today=date(2026, 10, 2))

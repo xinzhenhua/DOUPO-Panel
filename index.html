@@ -152,8 +152,13 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
 </div>
 
-<!-- ============ 综合基本面预警：紧跟在合约选择下方，一打开就看到结论 ============ -->
+<!-- ============ 综合预警：紧跟在合约选择下方，一打开就看到结论 ============
+     v94：原来叫"综合基本面预警"，但它其实把基差/月差/量价(来自价格本身的市场结构票)也算了进去，叫"基本面"名不副实——
+     改叫"综合预警"。纯基本面(仅供需票)和市场结构各自的方向，见下方三方共振面板。 -->
 <div class="card" id="alertCard" style="border-color:var(--gold)">
+  <div class="card-head">
+    <div class="card-title">📊 综合预警<span style="font-size:9px;color:var(--t3);font-weight:400">· 供需 + 市场结构(基差/月差/量价)合起来的倾向，不是纯基本面</span></div>
+  </div>
   <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
 </div>
 
@@ -363,6 +368,15 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
     <span class="badge" id="spreadBadge">检查中...</span>
   </div>
   <div id="spreadContent" class="loading">正在读取同步数据...</div>
+</div>
+
+<div class="stitle">📊 量价关系(价格 × 持仓量，跟随合约切换)</div>
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">增仓上涨/增仓下跌：有没有新资金在确认价格方向</div>
+    <span class="badge" id="vpBadge">检查中...</span>
+  </div>
+  <div id="vpContent" class="loading">正在读取同步数据...</div>
 </div>
 
 </div><!-- /main -->
@@ -587,6 +601,7 @@ async function loadSyncedData(){
     refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
     refreshCrushMarginForContract(window._selectedContract || getDefaultContractByDate()); // 压榨利润同样要在数据到达后按当前合约重新渲染一次
     refreshTermSpreadForContract(window._selectedContract || getDefaultContractByDate()); // 月差同理
+    refreshVolumePriceForContract(window._selectedContract || getDefaultContractByDate()); // 量价关系同理
     refreshBrazilPlantingDisplay(); // ★必须在下面的updateOverallAlert()之前调用，否则评分逻辑读到的window._brazilPlantingSignal还是上一次的旧值(或者undefined)
     refreshMysteelCrushRate(); // 10个原手动指标：抓取成功就直接覆盖输入框(不再有采用按钮)；失败/过期/不合理时如实说明，不覆盖
     refreshMysteelPoultryProfit(); // 白羽肉鸡养殖利润同样改自动抓取
@@ -2100,14 +2115,15 @@ function computeForeignCapitalActivity(positionRankData){
  *  的原则一致：透明列出，不下结论。外资活跃时的"参考价值降低"提示，是转述自
  *  博主经验("外资开始搞事情时，其他信号先放一边")的一种谨慎提醒，不是本项目
  *  自己发明的判断依据。*/
-/** 基本面结论的可靠性说明(置信度/供需分歧/天气主导)，来自updateOverallAlert写入的window._fundamentalMeta。没有就返回空串。 */
+/** 综合预警结论的可靠性说明(置信度/供需分歧/天气主导/权重敏感)，来自updateOverallAlert写入的window._fundamentalMeta(变量名是历史遗留，
+ *  它描述的是顶部"综合预警"——全部投票合起来的结论，不是"仅供需"的纯基本面)。没有就返回空串。 */
 function fundamentalMetaNote(meta){
   if(!meta) return '';
   const parts = [];
-  if(meta.confidence) parts.push(`基本面结论置信度：${meta.confidence}${meta.confidence==='低' && meta.reasons && meta.reasons.length ? `(${meta.reasons.join('；')})` : ''}`);
-  if(meta.divergence) parts.push(`基本面内部${meta.divergence}`);
-  if(meta.weatherDominant) parts.push(`基本面正处于天气主导行情(${meta.weatherDominant})，其它基本面指标只作参考`);
-  if(meta.robust) parts.push(`基本面${meta.robust}`);
+  if(meta.confidence) parts.push(`综合预警置信度：${meta.confidence}${meta.confidence==='低' && meta.reasons && meta.reasons.length ? `(${meta.reasons.join('；')})` : ''}`);
+  if(meta.divergence) parts.push(`综合预警内部${meta.divergence}`);
+  if(meta.weatherDominant) parts.push(`综合预警正处于天气主导行情(${meta.weatherDominant})，其它指标只作参考`);
+  if(meta.robust) parts.push(`综合预警${meta.robust}`);
   return parts.length ? `；${parts.join('；')}` : '';
 }
 function computeResonanceStatus(techDirection, fundDirection, foreignActivity, fundMeta){
@@ -2120,7 +2136,7 @@ function computeResonanceStatus(techDirection, fundDirection, foreignActivity, f
   const foreignNote = foreignActivity.status==='unavailable' ? '(外资数据暂不可用)' : '(外资平静)';
   if(techDirection && fundDirection && techDirection===fundDirection && techDirection!=='中性'){
     const lowConf = !!(fundMeta && fundMeta.confidence==='低');
-    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}${lowConf?'(基本面置信度低，共振的可靠性打折)':''}`,
+    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}${lowConf?'(综合预警置信度低，共振的可靠性打折)':''}`,
             detail:`两者方向一致${foreignNote}${fundamentalMetaNote(fundMeta)}，仅供参考，不构成操作建议`};
   }
   if(!techDirection || !fundDirection){
@@ -2132,20 +2148,41 @@ function computeResonanceStatus(techDirection, fundDirection, foreignActivity, f
 /** 三方共振第③块：读取window上的三方状态，渲染成面板HTML。
  *  技术面/外资状态由renderKline()写入，基本面状态由updateOverallAlert()写入——
  *  两边各自更新完都会调用这个函数刷新一次，不需要互相等待对方，谁先算完先占位。*/
+/** 基本面(仅供需票) vs 市场结构：只描述状态，不给操作建议。fund/struct: {direction:'偏多'|'偏空'|'中性'|null, thin?}
+ *  ⚠️市场结构(基差/月差/量价)来自价格本身，跟技术面同源——它俩一致不算独立证据；基本面才是独立于价格的那一个。 */
+function computeSystemsDivergence(fund, struct){
+  if(!fund || !fund.direction) return {cls:'neutral', title:'基本面数据不足，无法与市场结构比较', detail:''};
+  if(!struct || !struct.direction) return {cls:'neutral', title:'市场结构暂无信号', detail:'基差/月差/量价都没有可用信号(历史样本还在积累，或量价可用性门槛没过)'};
+  if(struct.thin) return {cls:'neutral', title:`市场结构样本少(仅1项：${struct.direction})`, detail:'只有1个市场结构指标有信号，不足以跟基本面比较'};
+  const f = fund.direction, t = struct.direction;
+  if(f === t && f !== '中性') return {cls: f==='偏多'?'bull':'bear', title:`基本面与市场结构同向：${f}`, detail:'供需面和盘面定价方式一致。注意：市场结构来自价格本身，跟技术面同源，二者一致不算独立证据'};
+  if(f !== '中性' && t !== '中性') return {cls:'warn', title:`背离：基本面${f}、市场结构${t}`,
+    detail: f==='偏多' ? '供需面有支撑，但盘面的基差/月差/量价没有确认——背离本身是需要关注的信息' : '供需面偏弱，但盘面的基差/月差/量价没有确认下跌——背离本身是需要关注的信息'};
+  if(f === '中性' && t === '中性') return {cls:'neutral', title:'基本面与市场结构都中性', detail:''};       // ★必须先判"都中性"，否则会被下一行吞掉
+  if(f === '中性') return {cls:'warn', title:`基本面中性、市场结构${t}`, detail:'主要是盘面的定价方式/资金在推动，缺少供需面的支撑(锚)'};
+  return {cls:'neutral', title:`基本面${f}、市场结构中性`, detail:'盘面还没有确认基本面的方向'};
+}
 function renderResonancePanel(){
   const el = document.getElementById('resonanceContent');
   if(!el) return;
   const techDirection = window._technicalDirection || null;
-  const fundDirection = window._fundamentalDirection || null;
+  // 基本面方向：优先用"不含市场结构"的纯供需版本(updateOverallAlert算出)；没有时(旧调用)退回含市场结构的总方向
+  const pure = window._fundamentalPure;
+  const fundDirection = pure ? pure.direction : (window._fundamentalDirection || null);
+  const structure = window._structureSystem || null;
   const foreignActivity = window._foreignActivity || {status:'unavailable', label:'外资持仓数据暂不可用'};
   const status = computeResonanceStatus(techDirection, fundDirection, foreignActivity, window._fundamentalMeta || null);
+  const sysDiv = pure ? computeSystemsDivergence({direction: fundDirection}, structure) : null;
+  const structTxt = !structure ? '加载中...' : !structure.direction ? '暂无信号' : `${structure.direction}${structure.thin?'(仅1项)':''}`;
   const rows = [
     `技术面：${techDirection || '加载中...'}`,
-    `基本面：${fundDirection || '加载中...'}`,
+    `基本面${pure?'(仅供需，不含市场结构)':''}：${fundDirection || (pure ? '数据不足' : '加载中...')}`,
+    `市场结构(基差/月差/量价)：${structTxt}`,
     `外资动向：${foreignActivity.label}`,
   ].join(' · ');
-  el.innerHTML = `<div class="alert-box ${status.cls}"><span class="at">${status.title}</span>${status.detail}</div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}</div>`;
+  el.innerHTML = `<div class="alert-box ${status.cls}"><span class="at">${status.title}</span>${status.detail}</div>`
+    + (sysDiv ? `<div class="alert-box ${sysDiv.cls}"><span class="at">${sysDiv.title}</span>${sysDiv.detail}</div>` : '')
+    + `<div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}<br>顶部"综合预警"的总分把基差/月差/量价也算了进去(所以它不是纯基本面)；这里的"基本面"只含供给/需求票，才能跟"市场结构"分开比较。</div>`;
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
@@ -2345,6 +2382,7 @@ function contractHiddenGroups(month){
   if(month==='jan' && (nowMonth===8 || nowMonth===9)) return ctx.hide.filter(g=>g!=='group-us-weather');
   return ctx.hide;
 }
+window._contractRecommended = {sep: CONTRACT_CONTEXT.sep.recommendedMonths, may: CONTRACT_CONTEXT.may.recommendedMonths, jan: CONTRACT_CONTEXT.jan.recommendedMonths};   // 每天记录方向时标"是否在该合约的推荐交易窗口内"
 function selectContract(month){
   ['sep','may','jan'].forEach(m=>{
     document.getElementById('tab-'+m).classList.toggle('active', m===month);
@@ -2361,6 +2399,7 @@ function selectContract(month){
   refreshKlineForContract(month); // 技术面(K线/MACD/RSI/成交量)也要跟着切换到对应合约的数据
   refreshCrushMarginForContract(month); // 压榨利润也是按合约月份算的，同样要跟着切换
   refreshTermSpreadForContract(month); // 月差同理
+  refreshVolumePriceForContract(month); // 量价关系同理
   updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
 }
 
@@ -2852,6 +2891,137 @@ function renderTermSpread(sp, genAt){
   `;
   updateOverallAlert();
 }
+// ===================== 量价关系(v93)：价格 × 持仓量 × 成交量，归"市场结构" =====================
+// 回答的问题：价格这一周的涨跌，有没有新资金在确认？——这是市场"当下用什么方式定价"，不是供需应该值多少钱。
+//   增仓上涨=新多头入场(偏多)；增仓下跌=新空头入场(偏空)；
+//   减仓上涨=更多是空头回补/多头兑现，上涨缺乏新资金确认；减仓下跌=多头离场为主，下跌缺乏新空头——这两种都判中性(不投票)。
+//   成交量(5日均量/20日均量)只作确认展示，不改变信号。
+// ★真实数据教训(M2609全生命周期)：持仓量5月14日见顶271万手，之后一路下降，8月底塌到2.8万手——8月价格从3092涨到3337、
+//   持仓量却从88万手掉到2.8万手。按"价涨减仓=上涨乏力"来读会得出完全错误的结论，那是**移仓和交割**造成的机械下降，不是资金离场。
+//   所以先过三道可用性门槛，没过就只显示、不计分：
+//     ① 持仓量≥50万手(低于它说明还不是主力合约/已在交割；主力合约通常在百万手量级——绝对数，暂定)
+//     ② 持仓量≥近120日峰值的60%(低于它说明已进入移仓/交割期，持仓量变动是机械的)
+//     ③ 距合约月第一天≥45天(移仓通常在交割月前1~2个月开始；M2609真实数据里通过门槛的区间是1/27~7/17，正好覆盖推荐的4-7月窗口)
+// 死区：5日价格/持仓变动都要超过"最近60个滚动5日变动的稳健σ(MAD)×0.5"才算涨/跌、增/减——阈值跟着这个合约自己的波动走，不用固定百分比。
+// ⚠️它跟技术面同源(都来自价格)，跟"基本面"不是独立证据；这里只回答"资金是否在确认"。所有阈值都是暂定值，没有回测。
+const VP = {N:5, WIN:60, DZ_K:0.5, MIN_OI:500000, RUNOFF:0.6, LOOKBACK:120, DELIVERY_DAYS:45, MIN_BARS:25, VOL_HI:1.2, VOL_LO:0.8};
+function vpMedian(xs){ const a = xs.slice().sort((p,q)=>p-q), n = a.length; return n%2 ? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2; }
+function vpRobustSigma(xs){ const m = vpMedian(xs); return 1.4826 * vpMedian(xs.map(x=>Math.abs(x-m))); }
+function vpDayMs(dateStr){ const a = String(dateStr).slice(0,10).split('-').map(Number); return Date.UTC(a[0], a[1]-1, a[2]); }
+/** 合约代码(M2609)→合约月第一天(UTC毫秒)；解析不了返回null */
+function vpContractStartMs(symbol){
+  const m = /^M(\d{2})(\d{2})$/.exec(String(symbol||''));
+  return m ? Date.UTC(2000+parseInt(m[1],10), parseInt(m[2],10)-1, 1) : null;
+}
+/** 在第i根K线(含)之前的信息上做量价分析(用于逐日对拍和实盘)。 */
+function vpAt(bars, i, startMs){
+  if(i < VP.MIN_BARS) return {gate:`数据不足(至少需要${VP.MIN_BARS}根K线)`};
+  const b = bars[i], oi = b.hold;
+  const lo = Math.max(0, i - VP.LOOKBACK + 1);
+  let peak = 0; for(let k=lo; k<=i; k++) peak = Math.max(peak, bars[k].hold);
+  const daysTo = startMs == null ? null : Math.round((startMs - vpDayMs(b.date)) / 86400000);
+  let gate = null;
+  if(oi < VP.MIN_OI) gate = `持仓量${Math.round(oi).toLocaleString()}手低于${VP.MIN_OI.toLocaleString()}手(还不是主力合约/已在交割)`;
+  else if(peak && oi < VP.RUNOFF*peak) gate = `持仓量只有近${VP.LOOKBACK}日峰值的${Math.round(oi/peak*100)}%(移仓/交割期，持仓量变动是机械的)`;
+  else if(daysTo !== null && daysTo < VP.DELIVERY_DAYS) gate = `距合约月第一天只剩${daysTo}天(移仓/交割期)`;
+  const pc = (b.close / bars[i-VP.N].close - 1) * 100;
+  const oc = bars[i-VP.N].hold ? (oi / bars[i-VP.N].hold - 1) * 100 : null;
+  const prs = [], ois = [];
+  for(let k=Math.max(VP.N, i-VP.WIN+1); k<=i; k++){
+    prs.push((bars[k].close / bars[k-VP.N].close - 1) * 100);
+    if(bars[k-VP.N].hold) ois.push((bars[k].hold / bars[k-VP.N].hold - 1) * 100);
+  }
+  const dzp = VP.DZ_K * vpRobustSigma(prs);
+  const dzo = ois.length > 3 ? VP.DZ_K * vpRobustSigma(ois) : null;
+  const pdir = pc > dzp ? 1 : pc < -dzp ? -1 : 0;
+  const odir = (oc === null || dzo === null) ? null : (oc > dzo ? 1 : oc < -dzo ? -1 : 0);
+  let signal = 0;
+  if(gate === null && odir === 1) signal = pdir === 1 ? 1 : pdir === -1 ? -1 : 0;     // 只有"增仓"象限投票
+  const mean = a => a.reduce((x,y)=>x+y, 0) / a.length;
+  const vol5 = mean(bars.slice(i-4, i+1).map(x=>x.volume)), vol20 = mean(bars.slice(i-19, i+1).map(x=>x.volume));
+  return {gate, pc, oc, dzp, dzo, pdir, odir, signal, volRatio: vol20 ? vol5/vol20 : null, peak, daysTo, oi};
+}
+/** 量价分析(最新一根)：返回{status:'ok'|'gated'|'stale'|'insufficient', ...}。 */
+function volumePriceAnalysis(bars, symbol, atMs){
+  atMs = atMs == null ? clockNow() : atMs;
+  if(!Array.isArray(bars) || bars.length < VP.MIN_BARS) return {status:'insufficient', reason:`K线只有${bars ? bars.length : 0}根，不足${VP.MIN_BARS}根`};
+  const last = bars[bars.length-1];
+  if(last.hold == null || last.volume == null) return {status:'insufficient', reason:'K线里没有持仓量/成交量字段'};
+  const fr = freshnessOf({cadence:'trading', maxAgeDays:30}, last.date, atMs);
+  const r = vpAt(bars, bars.length-1, vpContractStartMs(symbol));
+  const status = fr.state === 'stale' ? 'stale' : r.gate ? 'gated' : 'ok';
+  const quad = r.odir === 1 ? (r.pdir === 1 ? '增仓上涨' : r.pdir === -1 ? '增仓下跌' : '增仓横盘')
+             : r.odir === -1 ? (r.pdir === 1 ? '减仓上涨' : r.pdir === -1 ? '减仓下跌' : '减仓横盘')
+             : (r.pdir === 1 ? '持仓平稳上涨' : r.pdir === -1 ? '持仓平稳下跌' : '价格持仓均平稳');
+  return Object.assign({status, fresh: fr, date: last.date, quadrant: quad, volLabel: r.volRatio == null ? '' : r.volRatio >= VP.VOL_HI ? '放量' : r.volRatio <= VP.VOL_LO ? '缩量' : '平量'}, r);
+}
+const VP_MEANING = {
+  '增仓上涨': '新多头资金入场，上涨有增量资金确认 → 偏多',
+  '增仓下跌': '新空头资金入场，下跌有增量资金确认 → 偏空',
+  '增仓横盘': '持仓在增加但价格没走出方向，多空在博弈，方向待定',
+  '减仓上涨': '更多是空头回补/多头兑现，上涨缺乏新资金确认，不判方向',
+  '减仓下跌': '多头离场为主，下跌缺乏新空头，动能在衰减，不判方向',
+  '减仓横盘': '资金在离场，价格也没方向',
+  '持仓平稳上涨': '价格上涨但持仓变化不大(在这个合约自己的波动范围内)，没有新资金的明显确认',
+  '持仓平稳下跌': '价格下跌但持仓变化不大，没有新资金的明显确认',
+  '价格持仓均平稳': '价格和持仓都在这个合约自己的正常波动范围内',
+};
+function renderVolumePrice(dailyData, genAt){
+  const badge = document.getElementById('vpBadge'), el = document.getElementById('vpContent');
+  window._vpSignal = null; window._vpQuality = null; window._vpStatus = 'unavailable'; window._vpReason = '';
+  if(!el){ updateOverallAlert(); return; }
+  if(!dailyData || !dailyData.available || !dailyData.bars || !dailyData.bars.length){
+    badge.textContent = '⚪ 暂无数据'; badge.className = 'badge badge-offline';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">${dailyData ? dailyData.reason : '当前合约的日K线还没有同步(旧版数据/接口失败)'}</span></div>`;
+    window._vpReason = '当前合约的日K线不可用';
+    updateOverallAlert(); return;
+  }
+  badge.textContent = '🟢 已同步 ' + fmtTime(genAt); badge.className = 'badge badge-auto';
+  const a = volumePriceAnalysis(dailyData.bars, dailyData.symbol);
+  if(a.status === 'insufficient'){
+    window._vpStatus = 'insufficient'; window._vpReason = a.reason;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">数据不足，暂不计分</span>${a.reason}</div>`;
+    updateOverallAlert(); return;
+  }
+  const sig = a.status === 'ok' ? a.signal : null;
+  window._vpSignal = sig;
+  window._vpQuality = a.fresh.state === 'late' ? {m:QUALITY_DISCOUNT, why:'K线数据晚了一期'} : {m:1, why:''};
+  window._vpStatus = a.status;
+  window._vpReason = a.status === 'gated' ? a.gate : a.status === 'stale' ? `K线已过期(${a.fresh.detail})，合约可能已到期` : '';
+  const cls = sig===1 ? 'bull' : sig===-1 ? 'bear' : 'neutral';
+  const f = n => (n>0?'+':'') + (Math.round(n*100)/100);
+  const head = a.status === 'stale' ? `K线数据已过期，不参与评分`
+    : a.status === 'gated' ? `量价关系暂不可用：${a.gate}`
+    : `${a.quadrant}：${VP_MEANING[a.quadrant].split(' → ')[0]}`;
+  const tail = a.status === 'ok' ? (sig!==0 ? '　参与综合评分' : '　中性(不投票)') : '　暂不计入综合评分';
+  el.innerHTML = `
+    <div class="alert-box ${a.status==='ok' ? cls : 'neutral'}"><span class="at">${head}</span>${a.status==='ok' ? `近${VP.N}日价格${f(a.pc)}%、持仓量${a.oc===null?'--':f(a.oc)}%、成交量${a.volLabel}(5日均量/20日均量=${a.volRatio===null?'--':a.volRatio.toFixed(2)})` : `合约${dailyData.symbol}，最新K线${a.date}`}${tail}</div>
+    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
+    <div class="grid2">
+      <div class="stat"><span class="sv ${a.pc>0?'pos':a.pc<0?'neg':'neutral'}">${f(a.pc)}%</span><div class="sl">近${VP.N}日价格变动(死区±${a.dzp.toFixed(2)}%)</div></div>
+      <div class="stat"><span class="sv ${a.oc>0?'pos':a.oc<0?'neg':'neutral'}">${a.oc===null?'--':f(a.oc)+'%'}</span><div class="sl">近${VP.N}日持仓量变动(死区±${a.dzo===null?'--':a.dzo.toFixed(1)}%)</div></div>
+      <div class="stat"><span class="sv neutral">${Math.round(a.oi).toLocaleString()}</span><div class="sl">持仓量(手)</div></div>
+      <div class="stat"><span class="sv neutral">${a.peak ? Math.round(a.oi/a.peak*100) : '--'}%</span><div class="sl">占近${VP.LOOKBACK}日峰值</div></div>
+    </div>
+    <div style="font-size:10.5px;line-height:1.7;margin-top:6px">
+      ${a.gate ? `象限(<b style="color:var(--gold)">不可靠</b>)：${a.quadrant}——⚠️门槛未通过，持仓量的变动是移仓/交割造成的机械变化，<b>不能</b>按"${a.quadrant}"的常规含义去读<br>` : `象限：<b>${a.quadrant}</b>——${VP_MEANING[a.quadrant]}<br>`}
+      可用性门槛：${a.gate ? `<b style="color:var(--gold)">未通过</b>——${a.gate}` : '三道都通过(持仓量≥50万手、≥近120日峰值的60%、距合约月≥45天)'}
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">
+      为什么先过门槛：持仓量在交割月前会机械性下降(移仓、交割)。真实数据里M2609的持仓量5月14日见顶271万手、8月底塌到2.8万手——8月价格从3092涨到3337，如果按"价涨减仓=上涨乏力"来读会得出完全错误的结论。
+      只有"增仓"象限投票(新资金确认了方向)；减仓上涨/减仓下跌只是资金离场，不判方向。死区=近60个滚动5日变动的稳健σ×0.5，跟着合约自己的波动走。成交量只作确认展示，不改变信号。<br>
+      ⚠️量价关系跟技术面同源(都来自价格)，跟基本面不是独立证据；阈值(50万手/60%/45天/0.5σ)都是暂定值，没有回测。
+    </div>
+    </div></details>`;
+  updateOverallAlert();
+}
+function refreshVolumePriceForContract(month){
+  const data = window._syncedData;
+  if(!data) return;
+  const prefix = {sep:'M09', may:'M05', jan:'M01'}[month];
+  renderVolumePrice(data['dce'+prefix+'Daily'], data.generatedAt);
+}
+
 function refreshTermSpreadForContract(month){
   const data = window._syncedData;
   if(!data || !data.termSpreads) return;
@@ -3118,6 +3288,12 @@ function signalHealthRows(contract, month){
   const eq = window._esrQuality;
   add('出口销售(USDA)', window._esrSignal, eq && eq.m < 1 ? {state:'degraded', icon:'🟡', label:`降权×${eq.m}`, detail:eq.why} : null, window._esrPending || null);
   {
+    const vq = window._vpQuality, vs = window._vpStatus;
+    // 门槛没过/K线不足：⏳暂不计分(不是异常)；K线过期或拿不到：⚪无数据(投票指标)
+    add('量价关系(DCE)', window._vpSignal, vq && vq.m < 1 ? {state:'degraded', icon:'🟡', label:`降权×${vq.m}`, detail:vq.why} : null,
+        (vs === 'gated' || vs === 'insufficient') ? (window._vpReason || '可用性门槛未通过，暂不计分') : null);
+  }
+  {
     const sq = window._spreadQuality;
     add('月差/期限结构(DCE)', window._spreadSignal, sq && sq.m < 1 ? {state:'degraded', icon:'🟡', label:`降权×${sq.m}`, detail:sq.why} : null,
         window._spreadStatus === 'pending' ? '历史同期样本还在积累(需要先回填，或每天累积)，月差的正负本身不是信号，暂不计分' : null);
@@ -3193,6 +3369,12 @@ function renderDataHealth(){
   el.innerHTML = `<div style="font-size:11.5px;margin-bottom:6px">${parts.join(' · ')}${h.quality!==null?` · 数据质量分 <b>${Math.round(h.quality*100)}%</b>`:''}</div>${syncBox}${probHtml}${missHtml}`
     + `<details class="tier-details"><summary>查看全部指标状态(${h.rows.length}项) ▸</summary><div class="tier-body">${h.rows.map(rowHtml).join('')}</div></details>`;
 }
+
+// ★评分规则版本号：每天记录两个系统的方向时会一并记下它(scripts/snapshot_systems.js→data/history/systems_*.json)。
+//   以后只要改了阈值/权重/投票清单/门槛这类会改变方向的规则，就必须递增——否则几个月后检验"背离有没有信息"时，
+//   会把不同规则算出来的方向混在一起，结论没有意义。
+const SCORING_VERSION = 'v95';
+window._scoringVersion = SCORING_VERSION;
 
 // ===================== 季节性档位 + 天气开关 =====================
 // 权重不能靠历史数据拟合(每个合约每年只有一个生长季，10年才约10个样本)，所以只用粗档位，依据产业逻辑，不用85%、45%这种看起来很精确的数：
@@ -3338,7 +3520,7 @@ const VOTE_GROUP_RULES = [
   [/^国内豆粕供应松紧|^大豆到港\/进口|^盘面压榨毛利/, 'domestic'],
   [/^猪粮比|^肉鸡养殖利润|^豆菜粕价差|^饲料企业豆粕库存天数/, 'demand'],
   [/^人民币汇率/, 'cost'],
-  [/^现货基差|^月差\/期限结构/, 'feedback'],
+  [/^现货基差|^月差\/期限结构|^量价关系/, 'feedback'],
 ];
 function voteGroup(label){
   for(const [rx, g] of VOTE_GROUP_RULES) if(rx.test(label)) return g;
@@ -3581,6 +3763,14 @@ function updateOverallAlert(){
     window._esrSignal===1 ? '美豆出口净销售在历史同期处于高位 → 偏多' : window._esrSignal===-1 ? '美豆出口净销售在历史同期处于低位 → 偏空' : null,
     1, null, (window._esrQuality||{m:1}).m, (window._esrQuality||{}).why);
   addVote('现货基差', 'structure', sig.basis, null, 1, null, qualityOf('basis').m, qualityOf('basis').why);
+  // 量价关系：归"市场结构"。只有渲染过量价卡片(!==undefined)才进投票清单；门槛没过/数据不足时信号为null，作为"缺席的投票"如实列出
+  if(window._vpSignal !== undefined){
+    const vq = window._vpQuality || {m:1, why:''};
+    addVote('量价关系(价格×持仓量)', 'structure', window._vpSignal,
+      window._vpSignal===1 ? '量价关系：增仓上涨 → 新多头资金入场，上涨有增量资金确认，偏多'
+      : window._vpSignal===-1 ? '量价关系：增仓下跌 → 新空头资金入场，下跌有增量资金确认，偏空'
+      : window._vpSignal===0 ? '量价关系：没有"增仓"确认(减仓/持仓平稳/价格横盘)，中性' : null, 1, null, vq.m, vq.why);
+  }
   // 月差/期限结构：跟基差一起构成"市场结构"维度。只有渲染过月差卡片(!==undefined)才进投票清单；没有信号时作为"缺席的投票"如实列出
   if(window._spreadSignal !== undefined){
     const sq = window._spreadQuality || {m:1, why:''};
@@ -3607,6 +3797,15 @@ function updateOverallAlert(){
 
   // ---- 汇总：净倾向 = 票权加权分数 ÷ 有效票权合计 ----
   const overall = tallyVotes(votes);
+  // ★两个独立系统(v93)：基本面="供需应该让价格往哪走"(只含供给/需求票)；市场结构="市场当下用什么方式定价"(基差/月差/量价)。
+  //   顶部总分仍是全部投票合起来(含市场结构票)，这里另外算"不含市场结构"的基本面，专门用来跟市场结构比较——
+  //   两者背离本身就是信息(基本面偏多而盘面不认可，或反过来)，混在一个总分里就看不见了。
+  {
+    const ft = tallyVotes(votes.filter(v=>v.side !== 'structure')), stt = tallyVotes(votes.filter(v=>v.side === 'structure'));
+    window._fundamentalPure = {direction: ft.n >= MIN_VALID_VOTES ? dirWord(dirOfRatio(ft.ratio)) : null, ratio: ft.ratio, n: ft.n};
+    window._structureSystem = {direction: stt.n >= 1 ? dirWord(dirOfRatio(stt.ratio)) : null, ratio: stt.ratio, n: stt.n, thin: stt.n === 1,
+      items: votes.filter(v=>v.side === 'structure' && v.signal !== null).map(v=>({label: v.label.split('(')[0], signal: v.signal}))};
+  }
   const quality = qualitySummary(votes);
   window._quality = quality;
   const robust = computeSchemes(votes, overall.ratio);
@@ -3639,6 +3838,7 @@ function updateOverallAlert(){
       <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')||'暂无数据'}</div></details>`;
     window._fundamentalDirection = null; // 三方共振第③块输入：数据不够时明确置空，不留着上一次的旧值
     window._dimensions = null; window._fundamentalConfidence = null; window._fundamentalMeta = null;
+    window._fundamentalPure = null; window._structureSystem = null; window._composite = null;
     renderResonancePanel();
     renderDataHealth();
     return;
@@ -3651,6 +3851,7 @@ function updateOverallAlert(){
   else{ cls='neutral'; title=`信号混合 ${score>0?'+':''}${fmtScore(score)}（净倾向${pct>0?'+':''}${pct}%）`; }
   // 三方共振第③块输入：跟上面alert-box样式用同一套判定，"基本面：偏多"跟详细面板里的"综合偏多"不会对不上
   window._fundamentalDirection = ratio>=DIRECTION_RATIO ? '偏多' : ratio<=-DIRECTION_RATIO ? '偏空' : '中性';
+  window._composite = {direction: window._fundamentalDirection, ratio, score, n, total: votes.length};    // 综合预警的数值版本(每天记录用)
 
   const lowCoverage = n / votes.length < 0.6;
   // 置信度只在综合方向明确时评级；信号混合时说明"多空力量接近"，并单独提示两侧是否在打架
@@ -3679,7 +3880,7 @@ function updateOverallAlert(){
   // 仪表：量程±66%，这样1/3分界线正好落在±22%(=方向判定门槛)，指针落在哪一段跟文字结论一致
   const gauge = renderGaugeSVG(pct, -66, 66, '%');
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${weatherHtml}${dimHtml}${divergenceHtml}${confHtml}${robustHtml}${qualityHtml}${driversHtml(votes)}${sdTable}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是基本面倾向，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是综合倾向(供需 + 市场结构)，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
   renderResonancePanel();
   renderDataHealth();

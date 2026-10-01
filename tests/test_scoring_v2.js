@@ -84,6 +84,7 @@ check('★没有history/seasonal字段(刚部署、历史还没累积) → null�
 check('★最新一周是市场年度切换周 → null(净销售含结转，虚高)，即使历史分位很高', esrSignalFrom(Object.assign({latestIsRollover:true}, seasonal(99))) === null);
 
 elements['esrBadge']=makeEl('esrBadge'); elements['esrContent']=makeEl('esrContent');
+window._nowMs = Date.UTC(2026, 9, 1, 2, 0);   // ★固定"现在"=2026-10-01：下面的ESR数据日期是固定的weekEnding='2026-09-24'，新鲜度判断读时钟——不固定的话，真实时钟走到12月它就"过期"了
 const esrNew = {available:true, commodity:'Soybeans(大豆)', weekEnding:'2026-09-24', marketYearUsed:2026, dataAgeDays:5, isStale:false,
   netSalesMT:1200000, prevNetSalesMT:800000, avg4wNetSalesMT:700000, vs4wAvgPct:71.4, wowChangePct:50, shipmentsMT:900000, chinaNetSalesMT:450000, chinaShipmentsMT:0,
   history:{n:300, minPoints:12, since:'2014-10', percentile:90, min:1, max:9, median:4, basis:'近4周净销售合计', seasonal:{month:9, n:40, percentile:88, median:3}}};

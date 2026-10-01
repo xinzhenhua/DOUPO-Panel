@@ -63,6 +63,25 @@ jobs:
           NASS_API_KEY: ${{ secrets.NASS_API_KEY }}
         run: python3 fetch_data.py
 
+      # ★每天记录两个系统的方向(基本面仅供需票、市场结构)——用jsdom无头运行页面自己的评分代码，评分逻辑只有一份。
+      #   用来几个月后检验"基本面与市场结构的背离到底有没有信息"。详见 scripts/snapshot_systems.js、record_systems.py。
+      #   ⚠️这几步全部 continue-on-error：失败(jsdom装不上、页面出错、联网被限流)绝不能影响上面的数据同步和下面的提交。
+      - name: 设置 Node 环境(无头运行页面的评分代码)
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 安装 jsdom
+        continue-on-error: true
+        run: npm install --no-save --no-audit --no-fund jsdom@30.1.1
+
+      - name: 记录两个系统的方向(基本面/市场结构)
+        continue-on-error: true
+        run: |
+          node scripts/snapshot_systems.js --html index.html --latest data/latest.json --out /tmp/systems_snapshot.json
+          python3 record_systems.py /tmp/systems_snapshot.json
+
       - name: 提交更新后的数据文件
         run: |
           git config user.name "github-actions[bot]"

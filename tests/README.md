@@ -15,7 +15,7 @@ cd tests
 bash run_all_tests.sh
 ```
 
-会自动跑完全部测试文件(v92时为61个)，汇总显示总共通过了多少项测试。
+会自动跑完全部测试文件(v95时为64个)，汇总显示总共通过了多少项测试。
 
 如果只想跑某一个文件（比如只关心5月合约相关的逻辑）：
 
@@ -29,6 +29,9 @@ node test_planting_brl.js
 |---|---|
 | `test_weather_drought_1/2/3.js` | 天气/干旱监测/PSD渲染，综合评分基础逻辑 |
 | `test_auto_indicator_cards.js` | v79新增：10个指标卡片的生成、自动覆盖、失败保留、过期不计分、手动修正与存储 |
+| `test_snapshot.js` | v95新增：无头快照脚本(jsdom，没装会跳过；本地运行需NODE_PATH指向含jsdom的node_modules) |
+| `test_volume_price.js` | v93新增：量价关系(242根真实K线逐日对拍、三道门槛、象限、死区、进评分/市场结构维度、合约切换、健康度) |
+| `test_systems.js` | v93新增：基本面(仅供需)与市场结构两个独立系统、背离描述、共振面板 |
 | `test_term_spread.js` | v92新增：月差/期限结构(分位信号、正负本身不是信号、合约切换路径、进评分、市场结构维度2项、健康度) |
 | `test_feed_days.js` | v91新增：饲料企业豆粕库存天数(用真实20期：卡片/环比同比/趋势/分位规则/长假备货窗口降权/进评分/健康度) |
 | `test_health.js` | v89新增：数据健康度面板(指标状态、实时信号按合约、缺席投票、同步是否还活着、整体等级、渲染) |
@@ -81,3 +84,7 @@ node test_planting_brl.js
 
 - `python3 test_feed_days.py`：v91新增，饲料企业豆粕库存天数后端(用真实20期逐期核对解析器、完整抓取流程、节假日窗口、历史累积与分位)
 - `python3 test_term_spread.py`：v92新增，月差后端(合约代码推导/百分比口径/抓取/历史累积/回填窗口与取不到的合约对/校准摘要)
+
+- 真实数据夹具：`tests/data/m2609_daily_with_expected.json`(用户仓库里M2609的242根日K线 + 独立Python参考实现算出的逐日期望值)
+- `python3 test_record_systems.py`：v95新增，每天记录两个系统的方向(合并策略/分析/工作流配置)
+- `python3 test_url_safety.py`：v95.1新增，来自外部响应的URL必须过Mysteel域名白名单(含库消比/饲料库存天数/回填三条路径的端到端)
