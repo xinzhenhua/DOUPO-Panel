@@ -1,27 +1,63 @@
 {
-  "generatedAt": "2026-10-01T11:04:33.405718+00:00",
+  "generatedAt": "2026-10-01T14:23:36.774503+00:00",
   "series": [
     {
       "key": "us_stocks_to_use",
-      "error": "找不到大豆的PSD商品编码",
-      "debug": {
-        "url": "https://api.fas.usda.gov/api/psd/commodities",
-        "error": "<urlopen error [Errno -3] Temporary failure in name resolution>",
-        "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
-      }
+      "name": "美豆库存消费比(按市场年度)",
+      "unit": "%",
+      "freq": "yearly",
+      "added": 21,
+      "total": 21,
+      "first": "2006",
+      "last": "2026",
+      "min": 2.65,
+      "max": 23.39,
+      "median": 6.55,
+      "lowest3": [
+        {
+          "d": "2013",
+          "v": 2.65
+        },
+        {
+          "d": "2009",
+          "v": 4.49
+        },
+        {
+          "d": "2012",
+          "v": 4.52
+        }
+      ],
+      "highest3": [
+        {
+          "d": "2018",
+          "v": 23.39
+        },
+        {
+          "d": "2006",
+          "v": 18.62
+        },
+        {
+          "d": "2019",
+          "v": 13.62
+        }
+      ],
+      "notes": [
+        "接口无返回的年份: [2027]",
+        "所有年份字段齐全"
+      ]
     },
     {
       "key": "esr_net_sales",
       "name": "美豆出口净销售(周度，全部国家)",
       "unit": "吨",
       "freq": "weekly",
-      "added": 629,
-      "total": 629,
+      "added": 630,
+      "total": 630,
       "first": "2014-09-04",
-      "last": "2026-09-17",
+      "last": "2026-09-24",
       "min": -610910,
       "max": 6772242,
-      "median": 801407,
+      "median": 804844,
       "lowest3": [
         {
           "d": "2019-01-03",
@@ -314,31 +350,39 @@
           "name": "盘面压榨毛利(9月合约，4-7月窗口)",
           "unit": "元/吨",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 2,
-          "first": "2026-09-14",
-          "last": "2026-09-30",
-          "min": 152.8,
-          "max": 397.4,
-          "median": 397.4,
+          "added": 654,
+          "total": 654,
+          "first": "2019-04-01",
+          "last": "2026-07-31",
+          "min": 22.0,
+          "max": 229.4,
+          "median": 138.5,
           "lowest3": [
             {
-              "d": "2026-09-30",
-              "v": 152.8
+              "d": "2022-07-28",
+              "v": 22.0
             },
             {
-              "d": "2026-09-14",
-              "v": 397.4
+              "d": "2022-05-30",
+              "v": 26.2
+            },
+            {
+              "d": "2022-04-01",
+              "v": 27.5
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-14",
-              "v": 397.4
+              "d": "2025-07-28",
+              "v": 229.4
             },
             {
-              "d": "2026-09-30",
-              "v": 152.8
+              "d": "2024-06-21",
+              "v": 225.0
+            },
+            {
+              "d": "2024-06-24",
+              "v": 219.3
             }
           ]
         },
@@ -347,23 +391,39 @@
           "name": "盘面压榨毛利(5月合约，12-3月窗口)",
           "unit": "元/吨",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 1,
-          "first": "2026-09-30",
-          "last": "2026-09-30",
-          "min": 166.7,
-          "max": 166.7,
-          "median": 166.7,
+          "added": 638,
+          "total": 638,
+          "first": "2018-12-03",
+          "last": "2026-03-31",
+          "min": 39.0,
+          "max": 238.2,
+          "median": 140.9,
           "lowest3": [
             {
-              "d": "2026-09-30",
-              "v": 166.7
+              "d": "2023-01-20",
+              "v": 39.0
+            },
+            {
+              "d": "2022-12-14",
+              "v": 40.4
+            },
+            {
+              "d": "2022-03-22",
+              "v": 41.6
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-30",
-              "v": 166.7
+              "d": "2021-03-30",
+              "v": 238.2
+            },
+            {
+              "d": "2025-03-25",
+              "v": 233.7
+            },
+            {
+              "d": "2024-12-17",
+              "v": 232.4
             }
           ]
         },
@@ -372,23 +432,39 @@
           "name": "盘面压榨毛利(1月合约，8-11月窗口)",
           "unit": "元/吨",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 1,
-          "first": "2026-09-30",
+          "added": 607,
+          "total": 607,
+          "first": "2019-08-01",
           "last": "2026-09-30",
-          "min": 177.8,
-          "max": 177.8,
-          "median": 177.8,
+          "min": -2.9,
+          "max": 241.2,
+          "median": 138.6,
           "lowest3": [
             {
-              "d": "2026-09-30",
-              "v": 177.8
+              "d": "2020-09-21",
+              "v": -2.9
+            },
+            {
+              "d": "2022-11-25",
+              "v": 20.8
+            },
+            {
+              "d": "2022-11-24",
+              "v": 22.3
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-30",
-              "v": 177.8
+              "d": "2024-10-18",
+              "v": 241.2
+            },
+            {
+              "d": "2024-10-17",
+              "v": 239.5
+            },
+            {
+              "d": "2024-11-21",
+              "v": 238.0
             }
           ]
         }
@@ -398,275 +474,281 @@
           "type": "sep",
           "contract": "1809",
           "failed": [
-            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1809(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "Y1809(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "B1809(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "sep",
           "contract": "1909",
-          "failed": [
-            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 233,
+          "daysInWindow": 82,
+          "first": "2019-04-01",
+          "last": "2019-07-31"
         },
         {
           "type": "sep",
           "contract": "2009",
-          "failed": [
-            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 231,
+          "daysInWindow": 82,
+          "first": "2020-04-01",
+          "last": "2020-07-31"
         },
         {
           "type": "sep",
           "contract": "2109",
-          "failed": [
-            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 235,
+          "daysInWindow": 82,
+          "first": "2021-04-01",
+          "last": "2021-07-30"
         },
         {
           "type": "sep",
           "contract": "2209",
-          "failed": [
-            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 195,
+          "daysInWindow": 80,
+          "first": "2022-04-01",
+          "last": "2022-07-29"
         },
         {
           "type": "sep",
           "contract": "2309",
-          "failed": [
-            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 234,
+          "daysInWindow": 80,
+          "first": "2023-04-03",
+          "last": "2023-07-31"
         },
         {
           "type": "sep",
           "contract": "2409",
-          "failed": [
-            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 234,
+          "daysInWindow": 82,
+          "first": "2024-04-01",
+          "last": "2024-07-31"
         },
         {
           "type": "sep",
           "contract": "2509",
-          "failed": [
-            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 234,
+          "daysInWindow": 83,
+          "first": "2025-04-01",
+          "last": "2025-07-31"
         },
         {
           "type": "sep",
           "contract": "2609",
-          "failed": [
-            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 238,
+          "daysInWindow": 83,
+          "first": "2026-04-01",
+          "last": "2026-07-31"
         },
         {
           "type": "sep",
           "contract": "2709",
-          "failed": [
-            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 11,
+          "daysInWindow": 0,
+          "first": null,
+          "last": null
         },
         {
           "type": "may",
           "contract": "1805",
           "failed": [
-            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1805(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "Y1805(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "B1805(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "may",
           "contract": "1905",
-          "failed": [
-            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 243,
+          "daysInWindow": 78,
+          "first": "2018-12-03",
+          "last": "2019-03-29"
         },
         {
           "type": "may",
           "contract": "2005",
-          "failed": [
-            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 237,
+          "daysInWindow": 80,
+          "first": "2019-12-02",
+          "last": "2020-03-31"
         },
         {
           "type": "may",
           "contract": "2105",
-          "failed": [
-            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 237,
+          "daysInWindow": 81,
+          "first": "2020-12-01",
+          "last": "2021-03-31"
         },
         {
           "type": "may",
           "contract": "2205",
-          "failed": [
-            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 229,
+          "daysInWindow": 81,
+          "first": "2021-12-01",
+          "last": "2022-03-31"
         },
         {
           "type": "may",
           "contract": "2305",
-          "failed": [
-            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 224,
+          "daysInWindow": 81,
+          "first": "2022-12-01",
+          "last": "2023-03-31"
         },
         {
           "type": "may",
           "contract": "2405",
-          "failed": [
-            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 235,
+          "daysInWindow": 79,
+          "first": "2023-12-01",
+          "last": "2024-03-29"
         },
         {
           "type": "may",
           "contract": "2505",
-          "failed": [
-            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 236,
+          "daysInWindow": 79,
+          "first": "2024-12-02",
+          "last": "2025-03-31"
         },
         {
           "type": "may",
           "contract": "2605",
-          "failed": [
-            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 236,
+          "daysInWindow": 79,
+          "first": "2025-12-01",
+          "last": "2026-03-31"
         },
         {
           "type": "may",
           "contract": "2705",
-          "failed": [
-            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 94,
+          "daysInWindow": 0,
+          "first": null,
+          "last": null
         },
         {
           "type": "jan",
           "contract": "1801",
           "failed": [
-            "M1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1801(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "Y1801(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "B1801(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "jan",
           "contract": "1901",
           "failed": [
-            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1901(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "Y1901(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "B1901(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "jan",
           "contract": "2001",
-          "failed": [
-            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 231,
+          "daysInWindow": 81,
+          "first": "2019-08-01",
+          "last": "2019-11-29"
         },
         {
           "type": "jan",
           "contract": "2101",
-          "failed": [
-            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 226,
+          "daysInWindow": 80,
+          "first": "2020-08-03",
+          "last": "2020-11-30"
         },
         {
           "type": "jan",
           "contract": "2201",
-          "failed": [
-            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 227,
+          "daysInWindow": 80,
+          "first": "2021-08-02",
+          "last": "2021-11-30"
         },
         {
           "type": "jan",
           "contract": "2301",
-          "failed": [
-            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 225,
+          "daysInWindow": 82,
+          "first": "2022-08-01",
+          "last": "2022-11-30"
         },
         {
           "type": "jan",
           "contract": "2401",
-          "failed": [
-            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 233,
+          "daysInWindow": 82,
+          "first": "2023-08-01",
+          "last": "2023-11-30"
         },
         {
           "type": "jan",
           "contract": "2501",
-          "failed": [
-            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 233,
+          "daysInWindow": 80,
+          "first": "2024-08-01",
+          "last": "2024-11-29"
         },
         {
           "type": "jan",
           "contract": "2601",
-          "failed": [
-            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 238,
+          "daysInWindow": 80,
+          "first": "2025-08-01",
+          "last": "2025-11-28"
         },
         {
           "type": "jan",
           "contract": "2701",
-          "failed": [
-            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "Y2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "B2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysAll3": 171,
+          "daysInWindow": 42,
+          "first": "2026-08-03",
+          "last": "2026-09-30"
         }
       ],
+      "prunedOutOfWindow": {
+        "sep": 2,
+        "may": 1,
+        "jan": 0
+      },
       "notes": [
-        "共30个合约，30个有合约取不到(已到期/未上市/接口问题)，见contracts里的failed"
+        "共30个合约，4个有合约取不到(已到期/未上市/接口问题)，见contracts里的failed",
+        "清理了窗口外的旧点：{'sep': 2, 'may': 1, 'jan': 0}"
       ]
     },
     {
@@ -677,23 +759,39 @@
           "name": "月差9-1(占近月价格%，4-7月窗口)",
           "unit": "%",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 1,
-          "first": "2026-09-14",
-          "last": "2026-09-14",
-          "min": -1.6,
-          "max": -1.6,
-          "median": -1.6,
+          "added": 654,
+          "total": 654,
+          "first": "2019-04-01",
+          "last": "2026-07-31",
+          "min": -3.11,
+          "max": 10.04,
+          "median": -0.51,
           "lowest3": [
             {
-              "d": "2026-09-14",
-              "v": -1.6
+              "d": "2019-04-12",
+              "v": -3.11
+            },
+            {
+              "d": "2019-04-26",
+              "v": -3.09
+            },
+            {
+              "d": "2019-04-29",
+              "v": -3.08
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-14",
-              "v": -1.6
+              "d": "2023-07-31",
+              "v": 10.04
+            },
+            {
+              "d": "2023-07-26",
+              "v": 9.34
+            },
+            {
+              "d": "2023-07-27",
+              "v": 9.14
             }
           ]
         },
@@ -702,23 +800,39 @@
           "name": "月差5-9(占近月价格%，12-3月窗口)",
           "unit": "%",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 1,
-          "first": "2026-09-30",
-          "last": "2026-09-30",
-          "min": -3.08,
-          "max": -3.08,
-          "median": -3.08,
+          "added": 638,
+          "total": 638,
+          "first": "2018-12-03",
+          "last": "2026-03-31",
+          "min": -6.53,
+          "max": 4.74,
+          "median": -1.86,
           "lowest3": [
             {
-              "d": "2026-09-30",
-              "v": -3.08
+              "d": "2024-12-19",
+              "v": -6.53
+            },
+            {
+              "d": "2024-12-18",
+              "v": -6.47
+            },
+            {
+              "d": "2024-12-17",
+              "v": -6.31
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-30",
-              "v": -3.08
+              "d": "2022-03-08",
+              "v": 4.74
+            },
+            {
+              "d": "2022-03-17",
+              "v": 4.67
+            },
+            {
+              "d": "2022-03-18",
+              "v": 4.54
             }
           ]
         },
@@ -727,23 +841,39 @@
           "name": "月差1-5(占近月价格%，8-11月窗口)",
           "unit": "%",
           "freq": "seasonal-daily",
-          "added": 0,
-          "total": 1,
-          "first": "2026-09-30",
+          "added": 607,
+          "total": 607,
+          "first": "2019-08-01",
           "last": "2026-09-30",
-          "min": 11.45,
-          "max": 11.45,
-          "median": 11.45,
+          "min": -2.27,
+          "max": 15.36,
+          "median": 6.68,
           "lowest3": [
             {
-              "d": "2026-09-30",
-              "v": 11.45
+              "d": "2020-11-25",
+              "v": -2.27
+            },
+            {
+              "d": "2020-11-24",
+              "v": -2.21
+            },
+            {
+              "d": "2020-11-30",
+              "v": -2.08
             }
           ],
           "highest3": [
             {
-              "d": "2026-09-30",
-              "v": 11.45
+              "d": "2023-09-15",
+              "v": 15.36
+            },
+            {
+              "d": "2023-09-14",
+              "v": 15.26
+            },
+            {
+              "d": "2023-08-29",
+              "v": 15.15
             }
           ]
         }
@@ -754,89 +884,96 @@
           "near": "M1809",
           "far": "M1901",
           "failed": [
-            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1809(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "M1901(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "sep",
           "near": "M1909",
           "far": "M2001",
-          "failed": [
-            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 159,
+          "daysInWindow": 82,
+          "first": "2019-04-01",
+          "last": "2019-07-31"
         },
         {
           "type": "sep",
           "near": "M2009",
           "far": "M2101",
-          "failed": [
-            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 82,
+          "first": "2020-04-01",
+          "last": "2020-07-31"
         },
         {
           "type": "sep",
           "near": "M2109",
           "far": "M2201",
-          "failed": [
-            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 162,
+          "daysInWindow": 82,
+          "first": "2021-04-01",
+          "last": "2021-07-30"
         },
         {
           "type": "sep",
           "near": "M2209",
           "far": "M2301",
-          "failed": [
-            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 161,
+          "daysInWindow": 80,
+          "first": "2022-04-01",
+          "last": "2022-07-29"
         },
         {
           "type": "sep",
           "near": "M2309",
           "far": "M2401",
-          "failed": [
-            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 162,
+          "daysInWindow": 80,
+          "first": "2023-04-03",
+          "last": "2023-07-31"
         },
         {
           "type": "sep",
           "near": "M2409",
           "far": "M2501",
-          "failed": [
-            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 162,
+          "daysInWindow": 82,
+          "first": "2024-04-01",
+          "last": "2024-07-31"
         },
         {
           "type": "sep",
           "near": "M2509",
           "far": "M2601",
-          "failed": [
-            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 159,
+          "daysInWindow": 83,
+          "first": "2025-04-01",
+          "last": "2025-07-31"
         },
         {
           "type": "sep",
           "near": "M2609",
           "far": "M2701",
-          "failed": [
-            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 83,
+          "first": "2026-04-01",
+          "last": "2026-07-31"
         },
         {
           "type": "sep",
           "near": "M2709",
           "far": "M2801",
           "failed": [
-            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2801(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M2801(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
@@ -844,98 +981,107 @@
           "near": "M1805",
           "far": "M1809",
           "failed": [
-            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M1809(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1805(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "M1809(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "may",
           "near": "M1905",
           "far": "M1909",
-          "failed": [
-            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M1909(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 157,
+          "daysInWindow": 78,
+          "first": "2018-12-03",
+          "last": "2019-03-29"
         },
         {
           "type": "may",
           "near": "M2005",
           "far": "M2009",
-          "failed": [
-            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2009(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 80,
+          "first": "2019-12-02",
+          "last": "2020-03-31"
         },
         {
           "type": "may",
           "near": "M2105",
           "far": "M2109",
-          "failed": [
-            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2109(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 81,
+          "first": "2020-12-01",
+          "last": "2021-03-31"
         },
         {
           "type": "may",
           "near": "M2205",
           "far": "M2209",
-          "failed": [
-            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2209(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 155,
+          "daysInWindow": 81,
+          "first": "2021-12-01",
+          "last": "2022-03-31"
         },
         {
           "type": "may",
           "near": "M2305",
           "far": "M2309",
-          "failed": [
-            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2309(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 159,
+          "daysInWindow": 81,
+          "first": "2022-12-01",
+          "last": "2023-03-31"
         },
         {
           "type": "may",
           "near": "M2405",
           "far": "M2409",
-          "failed": [
-            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2409(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 158,
+          "daysInWindow": 79,
+          "first": "2023-12-01",
+          "last": "2024-03-29"
         },
         {
           "type": "may",
           "near": "M2505",
           "far": "M2509",
-          "failed": [
-            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2509(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 158,
+          "daysInWindow": 79,
+          "first": "2024-12-02",
+          "last": "2025-03-31"
         },
         {
           "type": "may",
           "near": "M2605",
           "far": "M2609",
-          "failed": [
-            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2609(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 157,
+          "daysInWindow": 79,
+          "first": "2025-12-01",
+          "last": "2026-03-31"
         },
         {
           "type": "may",
           "near": "M2705",
           "far": "M2709",
-          "failed": [
-            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2709(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 11,
+          "daysInWindow": 0,
+          "first": null,
+          "last": null
         },
         {
           "type": "jan",
           "near": "M1801",
           "far": "M1805",
           "failed": [
-            "M1801(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M1805(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1801(akshare日K线接口调用失败: Length mismatch: Expec)",
+            "M1805(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
@@ -943,85 +1089,98 @@
           "near": "M1901",
           "far": "M1905",
           "failed": [
-            "M1901(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M1905(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
+            "M1901(akshare日K线接口调用失败: Length mismatch: Expec)"
           ]
         },
         {
           "type": "jan",
           "near": "M2001",
           "far": "M2005",
-          "failed": [
-            "M2001(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2005(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 164,
+          "daysInWindow": 81,
+          "first": "2019-08-01",
+          "last": "2019-11-29"
         },
         {
           "type": "jan",
           "near": "M2101",
           "far": "M2105",
-          "failed": [
-            "M2101(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2105(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 163,
+          "daysInWindow": 80,
+          "first": "2020-08-03",
+          "last": "2020-11-30"
         },
         {
           "type": "jan",
           "near": "M2201",
           "far": "M2205",
-          "failed": [
-            "M2201(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2205(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 80,
+          "first": "2021-08-02",
+          "last": "2021-11-30"
         },
         {
           "type": "jan",
           "near": "M2301",
           "far": "M2305",
-          "failed": [
-            "M2301(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2305(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 165,
+          "daysInWindow": 82,
+          "first": "2022-08-01",
+          "last": "2022-11-30"
         },
         {
           "type": "jan",
           "near": "M2401",
           "far": "M2405",
-          "failed": [
-            "M2401(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2405(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 160,
+          "daysInWindow": 82,
+          "first": "2023-08-01",
+          "last": "2023-11-30"
         },
         {
           "type": "jan",
           "near": "M2501",
           "far": "M2505",
-          "failed": [
-            "M2501(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2505(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 163,
+          "daysInWindow": 80,
+          "first": "2024-08-01",
+          "last": "2024-11-29"
         },
         {
           "type": "jan",
           "near": "M2601",
           "far": "M2605",
-          "failed": [
-            "M2601(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2605(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 163,
+          "daysInWindow": 80,
+          "first": "2025-08-01",
+          "last": "2025-11-28"
         },
         {
           "type": "jan",
           "near": "M2701",
           "far": "M2705",
-          "failed": [
-            "M2701(未安装akshare库，请检查GitHub Actions是否执行了pip in)",
-            "M2705(未安装akshare库，请检查GitHub Actions是否执行了pip in)"
-          ]
+          "failed": [],
+          "daysBoth": 94,
+          "daysInWindow": 42,
+          "first": "2026-08-03",
+          "last": "2026-09-30"
         }
       ],
+      "prunedOutOfWindow": {
+        "sep": 1,
+        "may": 1,
+        "jan": 0
+      },
       "notes": [
-        "共30对合约，30对有合约取不到(已到期/未上市/接口问题)，见pairs里的failed"
+        "共30对合约，5对有合约取不到(已到期/未上市/接口问题)，见pairs里的failed",
+        "清理了窗口外的旧点：{'sep': 1, 'may': 1, 'jan': 0}"
       ]
     },
     {
@@ -1029,13 +1188,13 @@
       "name": "饲料企业豆粕库存天数(周度)",
       "unit": "天",
       "freq": "weekly",
-      "added": 265,
-      "total": 265,
+      "added": 270,
+      "total": 270,
       "first": "2021-05-21",
       "last": "2026-09-24",
       "min": 4.35,
       "max": 12.64,
-      "median": 8.1,
+      "median": 8.15,
       "lowest3": [
         {
           "d": "2025-04-25",
@@ -1068,7 +1227,6 @@
       "gapsOver10Days": [
         "2021-07-23→2021-08-06",
         "2021-10-29→2021-11-12",
-        "2021-12-10→2022-01-21",
         "2022-01-28→2022-02-11",
         "2023-01-20→2023-02-03",
         "2023-09-28→2023-10-13",
@@ -1079,54 +1237,39 @@
         "2026-02-13→2026-02-27"
       ],
       "notes": [
-        "搜到《饲料企业豆粕库存天数调查》270篇(搜索总数291)，抓了5篇正文"
+        "搜到《饲料企业豆粕库存天数调查》270篇(搜索总数291)，抓了0篇正文"
       ],
       "extractStats": {
-        "提取成功(来自摘要)": 265,
-        "摘要和正文都没提取出库存天数": 5
+        "提取成功(来自摘要)": 270
       },
-      "failedSamples(前8篇)": [
-        {
-          "pub": "2022-01-14",
-          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220114）",
-          "reason": "提取不出库存天数(措辞可能不同)",
-          "summary": "Mysteel农产品对全国主要地区调查显示，截止到2022年1月14日当周（第2周），国内饲料企业豆粕库存天数（物理库存天数）为10.85，较前一周增加1.33天，增幅13.97%库存天数整体大幅增加本周豆粕市场价格震荡回落，现货价格相对坚挺，基差持续走强在春节备货的推动下，大部分地区饲料企业库存天数明显增加，局部地区",
-          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220114） 2022-01-14 21:41 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> Mysteel 农产品 对全国主要地区调查显示，截止到2022年1月14日当周（第2周），国内饲料企业豆粕库存天数（物理库存天数）为10.85，较前一周增加1.33天，增幅13.97%。库存天数整体大幅增加。本周豆粕"
-        },
-        {
-          "pub": "2022-01-07",
-          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220107）",
-          "reason": "提取不出库存天数(措辞可能不同)",
-          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2022年1月7日当周（第1周），国内饲料企业豆粕库存天数（物理库存天数）为9.52，较前一周减少0.4天，减幅4.04%。",
-          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20220107） 2022-01-07 19:02 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到202 2 年 1 月 7 日当周（第 1 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.52 ，较前一周 减少0.4 天， 减 幅 4.04 %。库"
-        },
-        {
-          "pub": "2021-12-31",
-          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211231）",
-          "reason": "提取不出库存天数(措辞可能不同)",
-          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月31日当周（第52周），国内饲料企业豆粕库存天数（物理库存天数）为9.92，较前一周增加0.26天，增幅2.67%。",
-          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211231） 2021-12-31 17:39 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2021年1 2 月 31 日当周（第 52 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.92 ，较前一周 增加0.26 天， 增 幅 2.67 %"
-        },
-        {
-          "pub": "2021-12-24",
-          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211224）",
-          "reason": "提取不出库存天数(措辞可能不同)",
-          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月24日当周（第51周），国内饲料企业豆粕库存天数（物理库存天数）为9.66，较前一周减少0.49天，减幅4.83%。",
-          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211224） 2021-12-24 19:02 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2 021 年 1 2 月 24 日当周（第 51 周），国内饲料企业豆粕库存天数（物理库存天数）为 9.66 ，较前一周 减少 0.49 天， 减 幅 4."
-        },
-        {
-          "pub": "2021-12-17",
-          "title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211217）",
-          "reason": "提取不出库存天数(措辞可能不同)",
-          "summary": "据Mysteel农产品对全国主要地区调查显示，截止到2021年12月17日当周（第50周），国内饲料企业豆粕库存天数（物理库存天数）为10.15，较前一周减少0.19天，减幅1.81%。",
-          "regionHead": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20211217） 2021-12-17 18:49 来源：我的农产品网 分享到： 手机看文章 资讯监督 打印 评论 --> 据 Mysteel 农产品 对全国主要地区调查显示，截止到2 021 年 1 2 月 17 日当周（第 50 周），国内饲料企业豆粕库存天数（物理库存天数）为 10.15 ，较前一周 减少 0. 19 天， 减 幅 "
-        }
-      ],
+      "failedSamples(前8篇)": [],
       "momIndependentCheck(连续两周库存之差 vs 文章写的环比)": {
-        "comparable": 39,
-        "matched": 39,
-        "mismatched": 0,
-        "examples": []
+        "comparable": 115,
+        "matched": 112,
+        "mismatched": 3,
+        "examples": [
+          {
+            "d": "2021-06-18",
+            "value": 9.35,
+            "prevValue": 8.94,
+            "computedChange": 0.41,
+            "statedMom": 0.45
+          },
+          {
+            "d": "2022-06-10",
+            "value": 9.33,
+            "prevValue": 9.46,
+            "computedChange": -0.13,
+            "statedMom": -0.55
+          },
+          {
+            "d": "2022-12-16",
+            "value": 8.55,
+            "prevValue": 8.57,
+            "computedChange": -0.02,
+            "statedMom": -0.22
+          }
+        ]
       },
       "knownSampleCheck": [
         {
@@ -1162,7 +1305,13 @@
       },
       "latest": {
         "d": "2026",
-        "v": 6.8
+        "v": 6.77,
+        "x": {
+          "endingStocks": 8432.0,
+          "domestic": 78657.0,
+          "exports": 45858.0,
+          "vintage": "2026-09"
+        }
       },
       "latestPercentile": 60.0,
       "currentThresholds": {
@@ -1208,27 +1357,27 @@
         "2023": 8.34,
         "2024": 7.35,
         "2025": 7.58,
-        "2026": 6.8
+        "2026": 6.77
       }
     },
     "esr_net_sales": {
-      "weeksEvaluated": 625,
+      "weeksEvaluated": 626,
       "weeksWithBaseBelow100k(判中性)": 5,
       "signalShare%(当前±40%)": {
-        "bullish": 25.2,
-        "bearish": 25.2,
-        "neutral": 49.7
+        "bullish": 25.1,
+        "bearish": 25.1,
+        "neutral": 49.8
       },
       "pctVs4wAvgQuantiles": {
-        "p5": -78.91,
-        "p10": -65.55,
+        "p5": -78.9,
+        "p10": -65.5,
         "p20": -47.3,
-        "p25": -41.08,
-        "p50": -9.55,
-        "p75": 40.35,
-        "p80": 59.02,
-        "p90": 96.14,
-        "p95": 135.45
+        "p25": -41.0,
+        "p50": -9.6,
+        "p75": 40.3,
+        "p80": 59.0,
+        "p90": 96.0,
+        "p95": 135.3
       },
       "septFirst2WeeksSignalShare%": {
         "n": 24,
@@ -1244,7 +1393,7 @@
         "06": 38.5,
         "07": 39.2,
         "08": 47.2,
-        "09": 16.0,
+        "09": 15.7,
         "10": 16.7,
         "11": 11.8,
         "12": 18.9
@@ -1320,83 +1469,114 @@
       }
     },
     "crush_margin_sep": {
-      "n": 2,
+      "n": 654,
       "quantiles": {
-        "p5": 165.03,
-        "p10": 177.26,
-        "p20": 201.72,
-        "p25": 213.95,
-        "p50": 275.1,
-        "p75": 336.25,
-        "p80": 348.48,
-        "p90": 372.94,
-        "p95": 385.17
+        "p5": 53.53,
+        "p10": 66.61,
+        "p20": 91.86,
+        "p25": 103.25,
+        "p50": 138.45,
+        "p75": 180.3,
+        "p80": 184.54,
+        "p90": 193.88,
+        "p95": 199.34
       },
       "pointsPerYear": {
-        "2026": 2
+        "2019": 82,
+        "2020": 82,
+        "2021": 82,
+        "2022": 80,
+        "2023": 80,
+        "2024": 82,
+        "2025": 83,
+        "2026": 83
       },
       "medianByMonth": {
-        "09": 275.1
+        "04": 129.1,
+        "05": 137.6,
+        "06": 144.2,
+        "07": 155.2
       },
       "share<0": 0.0,
-      "share>300": 50.0
+      "share>300": 0.0
     },
     "crush_margin_may": {
-      "n": 1,
+      "n": 638,
       "quantiles": {
-        "p5": 166.7,
-        "p10": 166.7,
-        "p20": 166.7,
-        "p25": 166.7,
-        "p50": 166.7,
-        "p75": 166.7,
-        "p80": 166.7,
-        "p90": 166.7,
-        "p95": 166.7
+        "p5": 54.94,
+        "p10": 70.31,
+        "p20": 101.08,
+        "p25": 109.03,
+        "p50": 140.85,
+        "p75": 163.97,
+        "p80": 170.68,
+        "p90": 205.4,
+        "p95": 216.8
       },
       "pointsPerYear": {
-        "2026": 1
+        "2018": 20,
+        "2019": 80,
+        "2020": 81,
+        "2021": 81,
+        "2022": 80,
+        "2023": 80,
+        "2024": 80,
+        "2025": 80,
+        "2026": 56
       },
       "medianByMonth": {
-        "09": 166.7
+        "01": 145.9,
+        "02": 136.1,
+        "03": 152.2,
+        "12": 119.9
       },
       "share<0": 0.0,
       "share>300": 0.0
     },
     "crush_margin_jan": {
-      "n": 1,
+      "n": 607,
       "quantiles": {
-        "p5": 177.8,
-        "p10": 177.8,
-        "p20": 177.8,
-        "p25": 177.8,
-        "p50": 177.8,
-        "p75": 177.8,
-        "p80": 177.8,
-        "p90": 177.8,
-        "p95": 177.8
+        "p5": 55.33,
+        "p10": 62.92,
+        "p20": 74.06,
+        "p25": 80.1,
+        "p50": 138.6,
+        "p75": 173.5,
+        "p80": 179.94,
+        "p90": 195.1,
+        "p95": 203.28
       },
       "pointsPerYear": {
-        "2026": 1
+        "2019": 81,
+        "2020": 80,
+        "2021": 80,
+        "2022": 82,
+        "2023": 82,
+        "2024": 80,
+        "2025": 80,
+        "2026": 42
       },
       "medianByMonth": {
-        "09": 177.8
+        "08": 127.2,
+        "09": 116.6,
+        "10": 147.7,
+        "11": 147.1
       },
-      "share<0": 0.0,
+      "share<0": 0.2,
       "share>300": 0.0
     },
     "feed_days": {
-      "n": 265,
+      "n": 270,
       "quantiles": {
-        "p5": 6.21,
-        "p10": 6.78,
-        "p20": 7.22,
-        "p25": 7.43,
-        "p50": 8.1,
-        "p75": 9.2,
-        "p80": 9.4,
-        "p90": 9.89,
-        "p95": 10.59
+        "p5": 6.23,
+        "p10": 6.8,
+        "p20": 7.23,
+        "p25": 7.44,
+        "p50": 8.15,
+        "p75": 9.24,
+        "p80": 9.45,
+        "p90": 9.94,
+        "p95": 10.67
       },
       "coverage": "样本连续，可用",
       "medianByMonth": {
@@ -1411,77 +1591,130 @@
         "09": 9.3,
         "10": 8.05,
         "11": 7.87,
-        "12": 8.46
+        "12": 8.55
       },
       "momIndependentCheck": {
-        "comparable": 39,
-        "matched": 39,
-        "mismatched": 0,
-        "examples": []
+        "comparable": 115,
+        "matched": 112,
+        "mismatched": 3,
+        "examples": [
+          {
+            "d": "2021-06-18",
+            "value": 9.35,
+            "prevValue": 8.94,
+            "computedChange": 0.41,
+            "statedMom": 0.45
+          },
+          {
+            "d": "2022-06-10",
+            "value": 9.33,
+            "prevValue": 9.46,
+            "computedChange": -0.13,
+            "statedMom": -0.55
+          },
+          {
+            "d": "2022-12-16",
+            "value": 8.55,
+            "prevValue": 8.57,
+            "computedChange": -0.02,
+            "statedMom": -0.22
+          }
+        ]
       }
     },
     "term_spread_sep": {
-      "n": 1,
+      "n": 654,
       "quantiles": {
-        "p5": -1.6,
-        "p10": -1.6,
-        "p20": -1.6,
-        "p25": -1.6,
-        "p50": -1.6,
-        "p75": -1.6,
-        "p80": -1.6,
-        "p90": -1.6,
-        "p95": -1.6
+        "p5": -2.54,
+        "p10": -2.28,
+        "p20": -1.87,
+        "p25": -1.72,
+        "p50": -0.52,
+        "p75": 1.87,
+        "p80": 2.64,
+        "p90": 6.18,
+        "p95": 6.76
       },
       "pointsPerYear": {
-        "2026": 1
+        "2019": 82,
+        "2020": 82,
+        "2021": 82,
+        "2022": 80,
+        "2023": 80,
+        "2024": 82,
+        "2025": 83,
+        "2026": 83
       },
       "medianByMonth(%)": {
-        "09": -1.6
+        "04": 0.49,
+        "05": 0.34,
+        "06": -0.74,
+        "07": -1.08
       },
-      "share<0(远月升水)": 100.0
+      "share<0(远月升水)": 54.4
     },
     "term_spread_may": {
-      "n": 1,
+      "n": 638,
       "quantiles": {
-        "p5": -3.08,
-        "p10": -3.08,
-        "p20": -3.08,
-        "p25": -3.08,
-        "p50": -3.08,
-        "p75": -3.08,
-        "p80": -3.08,
-        "p90": -3.08,
-        "p95": -3.08
+        "p5": -4.71,
+        "p10": -4.14,
+        "p20": -3.37,
+        "p25": -3.17,
+        "p50": -1.87,
+        "p75": -0.73,
+        "p80": -0.41,
+        "p90": 0.63,
+        "p95": 1.55
       },
       "pointsPerYear": {
-        "2026": 1
+        "2018": 20,
+        "2019": 80,
+        "2020": 81,
+        "2021": 81,
+        "2022": 80,
+        "2023": 80,
+        "2024": 80,
+        "2025": 80,
+        "2026": 56
       },
       "medianByMonth(%)": {
-        "09": -3.08
+        "01": -1.89,
+        "02": -2.61,
+        "03": -1.92,
+        "12": -1.67
       },
-      "share<0(远月升水)": 100.0
+      "share<0(远月升水)": 82.6
     },
     "term_spread_jan": {
-      "n": 1,
+      "n": 607,
       "quantiles": {
-        "p5": 11.45,
-        "p10": 11.45,
-        "p20": 11.45,
-        "p25": 11.45,
-        "p50": 11.45,
-        "p75": 11.45,
-        "p80": 11.45,
-        "p90": 11.45,
-        "p95": 11.45
+        "p5": 3.2,
+        "p10": 3.72,
+        "p20": 4.9,
+        "p25": 5.2,
+        "p50": 6.68,
+        "p75": 10.02,
+        "p80": 11.09,
+        "p90": 12.78,
+        "p95": 13.76
       },
       "pointsPerYear": {
-        "2026": 1
+        "2019": 81,
+        "2020": 80,
+        "2021": 80,
+        "2022": 82,
+        "2023": 82,
+        "2024": 80,
+        "2025": 80,
+        "2026": 42
       },
       "medianByMonth(%)": {
-        "09": 11.45
+        "08": 6.75,
+        "09": 7.56,
+        "10": 6.31,
+        "11": 5.3
       },
-      "share<0(远月升水)": 0.0
+      "share<0(远月升水)": 1.8
     },
     "meal_stock": {
       "n": 70,
