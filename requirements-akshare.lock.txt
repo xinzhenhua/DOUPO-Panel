@@ -1,0 +1,32 @@
+# akshare(抓DCE豆粕K线、猪粮比)及其全部依赖
+# 来源：2026-10-01 GitHub Actions 实际成功安装的结果("安装依赖(akshare…"步骤日志里 'Successfully installed' 那一行)，Python 3.11。
+# 作用：把这一步安装的所有包(含间接依赖)锁成精确版本，避免每次运行装"最新版"(供应链风险、版本突变导致数据同步悄悄坏掉)。
+# 升级方法：改动前先在一次手动运行里验证；不要只改最上面那个包的版本，间接依赖也要一起看。
+akracer==0.0.14
+akshare==1.19.1
+beautifulsoup4==4.15.0
+certifi==2026.7.22
+cffi==2.1.1
+charset_normalizer==3.5.2
+curl_cffi==0.16.3
+decorator==5.3.1
+et-xmlfile==2.0.0
+html5lib==1.1
+idna==3.20
+jsonpath==0.82.2
+lxml==6.1.3
+numpy==2.4.6
+openpyxl==3.1.5
+pandas==3.0.6
+py-mini-racer==0.6.0
+pycparser==3.0
+python-dateutil==2.9.0.post0
+requests==2.34.2
+six==1.17.0
+soupsieve==2.10
+tabulate==0.10.0
+tqdm==4.70.1
+typing-extensions==4.16.0
+urllib3==2.8.0
+webencodings==0.6.1
+xlrd==2.0.2

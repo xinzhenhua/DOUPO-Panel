@@ -88,3 +88,5 @@ node test_planting_brl.js
 - 真实数据夹具：`tests/data/m2609_daily_with_expected.json`(用户仓库里M2609的242根日K线 + 独立Python参考实现算出的逐日期望值)
 - `python3 test_record_systems.py`：v95新增，每天记录两个系统的方向(合并策略/分析/工作流配置)
 - `python3 test_url_safety.py`：v95.1新增，来自外部响应的URL必须过Mysteel域名白名单(含库消比/饲料库存天数/回填三条路径的端到端)
+- `python3 test_window_and_deps.py`：v95.2新增，榨利/月差每日累积只记窗口内、一次性清理、依赖锁定文件与工作流(回填必须先装akshare)
+- `python3 test_feed_days_old_wording.py`：v95.2新增，饲料库存天数2021-22年旧措辞(4篇真实原文)与变动量防护

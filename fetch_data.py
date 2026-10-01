@@ -2015,12 +2015,17 @@ FEED_DAYS_QUERY = "全国主要地区饲料企业豆粕库存天数调查"
 FEED_DAYS_TITLE_KEY = "饲料企业豆粕库存天数"
 FEED_DAYS_MAX_AGE_DAYS = 30                 # 每周一期，超过30天没有新的说明可能停更
 _FEED_VALUE_RE = re.compile(r"库存(?:天数)?(?P<gap>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天")
+# ★旧措辞(2021年底~2022年初，用户2026-10-01回填报告里5篇提取失败的真实原文)："国内饲料企业豆粕库存天数（物理库存天数）为10.85，较前一周增加1.33天"——
+#   数值后面没有"天"字，且"（物理库存天数）为"超过6个字符。放宽成没有"天"字时有误取风险(增幅13.97%、第2周、年份、115万吨)，
+#   所以只在一个很具体的结构下才允许：库存天数 + 可选括号说明 + 为 + 数字，数字后面不能紧跟 % / 万 / 吨 / 数字。
+_FEED_VALUE_OLD_RE = re.compile(r"库存天数(?:[（(][^）)]{0,12}[）)])?为(?P<v>\d+\.\d+|\d+)(?![\d.]*[%％万吨])(?!\d)")
 # ★措辞不止一种(用户2026-09-30贴的20期真实摘要)：多数写"环比…/同比…"，但9月24日和5~6月初那几期写"较上期增0.32天""较上一期减0.08天""较去年同期增0.63天"，
 #   只认"环比/同比"会漏掉这5期。
 _FEED_CHANGE_RE = {
-    "mom": re.compile(r"(?:环比|较上一?期)(?P<w>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天"),
+    "mom": re.compile(r"(?:环比|较上一?期|较前一周|较上一?周)(?P<w>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天"),
     "yoy": re.compile(r"(?:同比|较去年同期)(?P<w>[^0-9。；;，,]{0,6}?)(?P<v>\d+\.?\d*)\s*天"),
 }
+_FEED_CHANGE_MARKERS = ("比", "较", "增", "减", "升", "降", "涨", "跌", "下", "上", "持平")
 _FEED_UP = ("增", "升", "涨", "上")
 _FEED_DOWN = ("降", "减", "跌", "下", "缩", "回落")
 _FEED_TITLE_DATE_RE = re.compile(r"[（(](\d{8})[)）]")
@@ -2033,8 +2038,10 @@ def _extract_feed_days(text):
     rejected = []
     value = None
     for m in _FEED_VALUE_RE.finditer(text):
-        if "比" in m.group("gap"):
-            rejected.append(f"{m.group('v')}天: 紧跟在'环比/同比'后面，是变动量不是库存天数")
+        # ★变动量的标志词：比(环比/同比)、较(较上期/较前一周/较去年同期)、增/减/升/降/涨/跌/下/上/持平——gap里出现任何一个，后面的数字就是变动量不是库存天数。
+        #   (原来只认"比"，写'库存天数较前一周增加1.33天'时会把1.33当成库存天数——加"较前一周"措辞时变动量防护没有同步扩展，变异检查发现)
+        if any(w in m.group("gap") for w in _FEED_CHANGE_MARKERS):
+            rejected.append(f"{m.group('v')}天: 紧跟在比较/变动方向词后面，是变动量不是库存天数")
             continue
         v = float(m.group("v"))
         problem = _plausibility_problem("feedDays", v)
@@ -2044,12 +2051,22 @@ def _extract_feed_days(text):
         value = v
         break
     if value is None:
+        # 新写法(数值后面有"天")没匹配上：再试旧写法(2021年底~2022年初，数值后面没有"天")
+        for m in _FEED_VALUE_OLD_RE.finditer(text):
+            v = float(m.group("v"))
+            problem = _plausibility_problem("feedDays", v)
+            if problem:
+                rejected.append(f"{v:g}: {problem}")
+                continue
+            value = v
+            break
+    if value is None:
         return None, rejected
     out = {"value": value, "mom": None, "yoy": None}
     for key, rx in _FEED_CHANGE_RE.items():
         m = rx.search(text)
         if not m:
-            if key == "mom" and ("环比持平" in text or "较上期持平" in text or "较上一期持平" in text):
+            if key == "mom" and ("环比持平" in text or "较上期持平" in text or "较上一期持平" in text or "较前一周持平" in text or "较上周持平" in text or "较上一周持平" in text):
                 out["mom"] = 0.0
             if key == "yoy" and ("同比持平" in text or "较去年同期持平" in text):
                 out["yoy"] = 0.0

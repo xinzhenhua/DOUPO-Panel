@@ -63,6 +63,49 @@ SERIES_META = {
     "term_spread_may": {"name": "月差5-9(占近月价格%，12-3月窗口)", "unit": "%", "freq": "seasonal-daily"},
     "term_spread_jan": {"name": "月差1-5(占近月价格%，8-11月窗口)", "unit": "%", "freq": "seasonal-daily"},
 }
+import re as _re
+
+
+def window_ok(d, ctype, expiry_year):
+    """日期d(YYYY-MM-DD)是否落在这个合约类型(到期年expiry_year)的建议交易窗口内。回填和每日累积共用同一个判断。
+    9月合约：到期年的4-7月；5月合约：到期年前一年的12月 + 到期年的1-3月；1月合约：到期年前一年的8-11月。"""
+    w = CRUSH_MARGIN_WINDOWS[ctype]
+    y, m = int(d[:4]), int(d[5:7])
+    if m not in w["months"]:
+        return False
+    return y == expiry_year - 1 if m in w["prevYearMonths"] else y == expiry_year
+
+
+def expiry_year_of(symbol_or_code):
+    """'M2609'/'2609'/'M2701' → 到期年份2026/2026/2027；解析不了返回None。"""
+    m = _re.search(r"(\d{2})(\d{2})$", str(symbol_or_code or ""))
+    return 2000 + int(m.group(1)) if m else None
+
+
+def in_trading_window(d, ctype, symbol):
+    """每日累积用：这一天、这个合约(代码如M2609)是否在建议交易窗口内。合约代码解析不了时返回False(宁可不记，也不把来源不明的点混进去)。"""
+    ey = expiry_year_of(symbol)
+    return ey is not None and window_ok(d, ctype, ey)
+
+
+def prune_out_of_window(key, ctype, base_dir=None, symbol_field="contract"):
+    """一次性清理：删掉序列里窗口外的旧点(之前每日累积没有按窗口过滤，把窗口外/临近到期的数据也记进来了)。
+    x里取不到合约代码的点保留(不确定的不删)。返回删掉的点数。"""
+    series = load_series(key, base_dir)
+    keep, removed = [], []
+    for p in series["points"]:
+        sym = (p.get("x") or {}).get(symbol_field)
+        ey = expiry_year_of(sym)
+        if ey is not None and not window_ok(p["d"], ctype, ey):
+            removed.append(p)
+        else:
+            keep.append(p)
+    if removed:
+        series["points"] = keep
+        save_series(series, base_dir)
+    return len(removed)
+
+
 # 每个合约类型的建议交易窗口(与前端合约选择里的窗口一致)：(合约月份, 窗口内的日历月, 窗口月份落在合约到期年的前一年的哪些月)
 CRUSH_MARGIN_WINDOWS = {
     "sep": {"contractMonth": 9, "months": [4, 5, 6, 7], "prevYearMonths": []},
@@ -415,9 +458,14 @@ def update_and_attach(result, base_dir=None):
             if not (isinstance(res, dict) and res.get("available") and res.get("date") and _is_num(res.get("grossMargin"))):
                 continue
             key = "crush_margin_" + k
-            series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["grossMargin"], "x": {"contract": res.get("mealSymbol")}}], base_dir)
-            if changed:
-                touched.append(key)
+            # ★只记"这个合约的建议交易窗口内"的点(与回填口径一致)：窗口外(比如9月合约在10月、已到期或刚滚动到下一年合约)的毛利
+            #   含到期/移仓扰动，记进来会污染以后"往年同月"的比较。窗口外只展示(用已有历史算分位)，不记录。
+            if in_trading_window(_day(res["date"]), k, res.get("mealSymbol")):
+                series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["grossMargin"], "x": {"contract": res.get("mealSymbol")}}], base_dir)
+                if changed:
+                    touched.append(key)
+            else:
+                series = load_series(key, base_dir)
             res["history"] = summarize(series["points"], res["grossMargin"], _day(res["date"]), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("crushMargins", e)
@@ -429,9 +477,12 @@ def update_and_attach(result, base_dir=None):
             if not (isinstance(res, dict) and res.get("available") and res.get("date") and _is_num(res.get("spreadPct"))):
                 continue
             key = "term_spread_" + k
-            series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["spreadPct"], "x": {"near": res.get("nearSymbol"), "far": res.get("farSymbol"), "spread": res.get("spread")}}], base_dir)
-            if changed:
-                touched.append(key)
+            if in_trading_window(_day(res["date"]), k, res.get("nearSymbol")):       # 只记窗口内(同榨利)
+                series, changed = record_points(key, [{"d": _day(res["date"]), "v": res["spreadPct"], "x": {"near": res.get("nearSymbol"), "far": res.get("farSymbol"), "spread": res.get("spread")}}], base_dir)
+                if changed:
+                    touched.append(key)
+            else:
+                series = load_series(key, base_dir)
             res["history"] = summarize(series["points"], res["spreadPct"], _day(res["date"]), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("termSpreads", e)

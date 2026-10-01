@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,calibrate；默认all=前四项；margin=盘面压榨毛利；spread=月差/期限结构；calibrate=不联网，只重新生成校准摘要)"
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,feed_days,calibrate；默认all=us_stu,esr,meal_stu,margin,spread,feed_days这6项，meal_stock补不全不在默认里；margin=盘面压榨毛利；spread=月差/期限结构；feed_days=饲料企业豆粕库存天数；calibrate=不联网，只重新生成校准摘要。★只点一次(一次填多项)：同一并发组最多1个在跑+1个排队，连点多次会取消中间的)"
         default: "all"
       start:
         description: "Mysteel两项的起始日期"
@@ -38,7 +38,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: 运行回填脚本(只用标准库，不需要安装依赖)
+      # ★榨利/月差回填要用 akshare 拉新浪日K线(fetch_dce_daily_kline)——之前这个工作流没装它，那两项的回填全部失败
+      #   ("未安装akshare库")。版本用锁定文件(2026-10-01 在 Actions 里实际装成功的精确版本，含全部间接依赖)，不装"最新版"。
+      - name: 安装依赖(akshare，榨利/月差回填用；精确版本见 requirements-akshare.lock.txt)
+        run: pip install -r requirements-akshare.lock.txt
+
+      - name: 运行回填脚本(其余几项只用标准库；榨利/月差需要上一步装的akshare)
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
           ONLY: ${{ github.event.inputs.only }}

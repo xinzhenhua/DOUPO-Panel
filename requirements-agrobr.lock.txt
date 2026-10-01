@@ -1,0 +1,27 @@
+# agrobr(抓CONAB巴西大豆播种进度)及其全部依赖(pandas已在akshare那一份里)
+# 来源：2026-10-01 GitHub Actions 实际成功安装的结果("安装依赖(agrobr…"步骤日志里 'Successfully installed' 那一行)，Python 3.11。
+# 作用：把这一步安装的所有包(含间接依赖)锁成精确版本，避免每次运行装"最新版"(供应链风险、版本突变导致数据同步悄悄坏掉)。
+# 升级方法：改动前先在一次手动运行里验证；不要只改最上面那个包的版本，间接依赖也要一起看。
+agrobr==1.1.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+chardet==7.6.0
+duckdb==1.5.6
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pydantic==2.13.5
+pydantic-core==2.46.5
+pydantic-settings==2.15.0
+pygments==2.21.0
+python-calamine==0.8.2
+python-dotenv==1.2.4
+rich==15.0.0
+shellingham==1.5.4
+sidrapy==0.1.4
+structlog==26.1.0
+typer==0.27.2
+typing-inspection==0.4.4

@@ -475,12 +475,8 @@ def backfill_meal_stock(base_dir=None, start=None, today=None, max_pages=40, fet
 # 5. 盘面压榨毛利(新浪日K线：豆粕M/豆油Y/豆二B同月份合约)
 # ---------------------------------------------------------------------------
 def _window_ok(d, ctype, expiry_year):
-    """日期d(YYYY-MM-DD)是否落在这个合约类型(到期年expiry_year)的建议交易窗口内。"""
-    w = hs.CRUSH_MARGIN_WINDOWS[ctype]
-    y, m = int(d[:4]), int(d[5:7])
-    if m not in w["months"]:
-        return False
-    return y == expiry_year - 1 if m in w["prevYearMonths"] else y == expiry_year
+    """日期d(YYYY-MM-DD)是否落在这个合约类型(到期年expiry_year)的建议交易窗口内。(逻辑在history_store.window_ok，回填和每日累积共用)"""
+    return hs.window_ok(d, ctype, expiry_year)
 
 
 def backfill_crush_margin(base_dir=None, from_year=None, to_year=None, sleep_s=0.6):
@@ -492,6 +488,8 @@ def backfill_crush_margin(base_dir=None, from_year=None, to_year=None, sleep_s=0
     to_year = to_year or now.year + 1
     from_year = from_year or now.year - 8
     per_type, contracts = {t: [] for t in hs.CRUSH_MARGIN_WINDOWS}, []
+    # 一次性清理：之前每日累积没有按窗口过滤，已经混进去的窗口外点(临近到期/刚滚动合约)要删掉，否则会污染"往年同月"的比较
+    pruned = {t: hs.prune_out_of_window("crush_margin_" + t, t, base_dir, "contract") for t in hs.CRUSH_MARGIN_WINDOWS}
     for ctype, w in hs.CRUSH_MARGIN_WINDOWS.items():
         for year in range(from_year, to_year + 1):
             yy, mm = f"{year % 100:02d}", f"{w['contractMonth']:02d}"
@@ -520,8 +518,9 @@ def backfill_crush_margin(base_dir=None, from_year=None, to_year=None, sleep_s=0
         hs.record_points(key, pts, base_dir)
         reports.append(_report_entry(key, base_dir, len(pts)))
     failed_all = [c for c in contracts if c.get("failed")]
-    return {"key": "crush_margin", "series": reports, "contracts": contracts,
-            "notes": [f"共{len(contracts)}个合约，{len(failed_all)}个有合约取不到(已到期/未上市/接口问题)，见contracts里的failed"]}
+    return {"key": "crush_margin", "series": reports, "contracts": contracts, "prunedOutOfWindow": pruned,
+            "notes": [f"共{len(contracts)}个合约，{len(failed_all)}个有合约取不到(已到期/未上市/接口问题)，见contracts里的failed",
+                      f"清理了窗口外的旧点：{pruned}"]}
 
 
 # ---------------------------------------------------------------------------
@@ -629,6 +628,7 @@ def backfill_term_spread(base_dir=None, from_year=None, to_year=None, sleep_s=0.
     to_year = to_year or now.year + 1
     from_year = from_year or now.year - 8
     per_type, pairs = {t: [] for t in hs.CRUSH_MARGIN_WINDOWS}, []
+    pruned = {t: hs.prune_out_of_window("term_spread_" + t, t, base_dir, "near") for t in hs.CRUSH_MARGIN_WINDOWS}      # 同榨利：先清理窗口外的旧点
     for ctype, w in hs.CRUSH_MARGIN_WINDOWS.items():
         cm = w["contractMonth"]
         far_month, year_add = fd.TERM_SPREAD_FAR[cm]
@@ -658,8 +658,9 @@ def backfill_term_spread(base_dir=None, from_year=None, to_year=None, sleep_s=0.
         hs.record_points(key, pts, base_dir)
         reports.append(_report_entry(key, base_dir, len(pts)))
     failed_all = [p for p in pairs if p.get("failed")]
-    return {"key": "term_spread", "series": reports, "pairs": pairs,
-            "notes": [f"共{len(pairs)}对合约，{len(failed_all)}对有合约取不到(已到期/未上市/接口问题)，见pairs里的failed"]}
+    return {"key": "term_spread", "series": reports, "pairs": pairs, "prunedOutOfWindow": pruned,
+            "notes": [f"共{len(pairs)}对合约，{len(failed_all)}对有合约取不到(已到期/未上市/接口问题)，见pairs里的failed",
+                      f"清理了窗口外的旧点：{pruned}"]}
 
 
 # ---------------------------------------------------------------------------
