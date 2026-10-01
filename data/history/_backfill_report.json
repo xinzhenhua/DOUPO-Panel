@@ -1,50 +1,14 @@
 {
-  "generatedAt": "2026-09-30T13:02:52.186335+00:00",
+  "generatedAt": "2026-10-01T11:04:33.405718+00:00",
   "series": [
     {
       "key": "us_stocks_to_use",
-      "name": "美豆库存消费比(按市场年度)",
-      "unit": "%",
-      "freq": "yearly",
-      "added": 21,
-      "total": 21,
-      "first": "2006",
-      "last": "2026",
-      "min": 2.65,
-      "max": 23.39,
-      "median": 6.55,
-      "lowest3": [
-        {
-          "d": "2013",
-          "v": 2.65
-        },
-        {
-          "d": "2009",
-          "v": 4.49
-        },
-        {
-          "d": "2012",
-          "v": 4.52
-        }
-      ],
-      "highest3": [
-        {
-          "d": "2018",
-          "v": 23.39
-        },
-        {
-          "d": "2006",
-          "v": 18.62
-        },
-        {
-          "d": "2019",
-          "v": 13.62
-        }
-      ],
-      "notes": [
-        "接口无返回的年份: [2027]",
-        "所有年份字段齐全"
-      ]
+      "error": "找不到大豆的PSD商品编码",
+      "debug": {
+        "url": "https://api.fas.usda.gov/api/psd/commodities",
+        "error": "<urlopen error [Errno -3] Temporary failure in name resolution>",
+        "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+      }
     },
     {
       "key": "esr_net_sales",
@@ -247,7 +211,7 @@
       ],
       "notes": [
         "平衡表文章28篇(搜索总数34)；正文可用18篇",
-        "有月份标记但给不出库消比的月份共9个(原文片段见unusableMonths)"
+        "有月份标记但给不出库消比的月份共10个(原文片段见unusableMonths)"
       ],
       "unusableMonths(前12个，附该月片段原文)": [
         {
@@ -285,6 +249,10 @@
         {
           "month": "2026-06",
           "segment": "）2026-06-3017:28来源：我的钢铁网(Mysteel)资讯监督智能摘要内容由AI生成"
+        },
+        {
+          "month": "2026-10",
+          "segment": "产量收缩低于消费，出现供需逆差，过剩拐点显现。"
         }
       ],
       "bodyProblems": [
@@ -347,9 +315,32 @@
           "unit": "元/吨",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 2,
+          "first": "2026-09-14",
+          "last": "2026-09-30",
+          "min": 152.8,
+          "max": 397.4,
+          "median": 397.4,
+          "lowest3": [
+            {
+              "d": "2026-09-30",
+              "v": 152.8
+            },
+            {
+              "d": "2026-09-14",
+              "v": 397.4
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-14",
+              "v": 397.4
+            },
+            {
+              "d": "2026-09-30",
+              "v": 152.8
+            }
+          ]
         },
         {
           "key": "crush_margin_may",
@@ -357,9 +348,24 @@
           "unit": "元/吨",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 1,
+          "first": "2026-09-30",
+          "last": "2026-09-30",
+          "min": 166.7,
+          "max": 166.7,
+          "median": 166.7,
+          "lowest3": [
+            {
+              "d": "2026-09-30",
+              "v": 166.7
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-30",
+              "v": 166.7
+            }
+          ]
         },
         {
           "key": "crush_margin_jan",
@@ -367,9 +373,24 @@
           "unit": "元/吨",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 1,
+          "first": "2026-09-30",
+          "last": "2026-09-30",
+          "min": 177.8,
+          "max": 177.8,
+          "median": 177.8,
+          "lowest3": [
+            {
+              "d": "2026-09-30",
+              "v": 177.8
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-30",
+              "v": 177.8
+            }
+          ]
         }
       ],
       "contracts": [
@@ -657,9 +678,24 @@
           "unit": "%",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 1,
+          "first": "2026-09-14",
+          "last": "2026-09-14",
+          "min": -1.6,
+          "max": -1.6,
+          "median": -1.6,
+          "lowest3": [
+            {
+              "d": "2026-09-14",
+              "v": -1.6
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-14",
+              "v": -1.6
+            }
+          ]
         },
         {
           "key": "term_spread_may",
@@ -667,9 +703,24 @@
           "unit": "%",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 1,
+          "first": "2026-09-30",
+          "last": "2026-09-30",
+          "min": -3.08,
+          "max": -3.08,
+          "median": -3.08,
+          "lowest3": [
+            {
+              "d": "2026-09-30",
+              "v": -3.08
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-30",
+              "v": -3.08
+            }
+          ]
         },
         {
           "key": "term_spread_jan",
@@ -677,9 +728,24 @@
           "unit": "%",
           "freq": "seasonal-daily",
           "added": 0,
-          "total": 0,
-          "first": null,
-          "last": null
+          "total": 1,
+          "first": "2026-09-30",
+          "last": "2026-09-30",
+          "min": 11.45,
+          "max": 11.45,
+          "median": 11.45,
+          "lowest3": [
+            {
+              "d": "2026-09-30",
+              "v": 11.45
+            }
+          ],
+          "highest3": [
+            {
+              "d": "2026-09-30",
+              "v": 11.45
+            }
+          ]
         }
       ],
       "pairs": [
@@ -1096,13 +1162,7 @@
       },
       "latest": {
         "d": "2026",
-        "v": 6.77,
-        "x": {
-          "endingStocks": 8432.0,
-          "domestic": 78657.0,
-          "exports": 45858.0,
-          "vintage": "2026-09"
-        }
+        "v": 6.8
       },
       "latestPercentile": 60.0,
       "currentThresholds": {
@@ -1148,7 +1208,7 @@
         "2023": 8.34,
         "2024": 7.35,
         "2025": 7.58,
-        "2026": 6.77
+        "2026": 6.8
       }
     },
     "esr_net_sales": {
@@ -1259,6 +1319,72 @@
         "2026-09": 16.04
       }
     },
+    "crush_margin_sep": {
+      "n": 2,
+      "quantiles": {
+        "p5": 165.03,
+        "p10": 177.26,
+        "p20": 201.72,
+        "p25": 213.95,
+        "p50": 275.1,
+        "p75": 336.25,
+        "p80": 348.48,
+        "p90": 372.94,
+        "p95": 385.17
+      },
+      "pointsPerYear": {
+        "2026": 2
+      },
+      "medianByMonth": {
+        "09": 275.1
+      },
+      "share<0": 0.0,
+      "share>300": 50.0
+    },
+    "crush_margin_may": {
+      "n": 1,
+      "quantiles": {
+        "p5": 166.7,
+        "p10": 166.7,
+        "p20": 166.7,
+        "p25": 166.7,
+        "p50": 166.7,
+        "p75": 166.7,
+        "p80": 166.7,
+        "p90": 166.7,
+        "p95": 166.7
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth": {
+        "09": 166.7
+      },
+      "share<0": 0.0,
+      "share>300": 0.0
+    },
+    "crush_margin_jan": {
+      "n": 1,
+      "quantiles": {
+        "p5": 177.8,
+        "p10": 177.8,
+        "p20": 177.8,
+        "p25": 177.8,
+        "p50": 177.8,
+        "p75": 177.8,
+        "p80": 177.8,
+        "p90": 177.8,
+        "p95": 177.8
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth": {
+        "09": 177.8
+      },
+      "share<0": 0.0,
+      "share>300": 0.0
+    },
     "feed_days": {
       "n": 265,
       "quantiles": {
@@ -1293,6 +1419,69 @@
         "mismatched": 0,
         "examples": []
       }
+    },
+    "term_spread_sep": {
+      "n": 1,
+      "quantiles": {
+        "p5": -1.6,
+        "p10": -1.6,
+        "p20": -1.6,
+        "p25": -1.6,
+        "p50": -1.6,
+        "p75": -1.6,
+        "p80": -1.6,
+        "p90": -1.6,
+        "p95": -1.6
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth(%)": {
+        "09": -1.6
+      },
+      "share<0(远月升水)": 100.0
+    },
+    "term_spread_may": {
+      "n": 1,
+      "quantiles": {
+        "p5": -3.08,
+        "p10": -3.08,
+        "p20": -3.08,
+        "p25": -3.08,
+        "p50": -3.08,
+        "p75": -3.08,
+        "p80": -3.08,
+        "p90": -3.08,
+        "p95": -3.08
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth(%)": {
+        "09": -3.08
+      },
+      "share<0(远月升水)": 100.0
+    },
+    "term_spread_jan": {
+      "n": 1,
+      "quantiles": {
+        "p5": 11.45,
+        "p10": 11.45,
+        "p20": 11.45,
+        "p25": 11.45,
+        "p50": 11.45,
+        "p75": 11.45,
+        "p80": 11.45,
+        "p90": 11.45,
+        "p95": 11.45
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth(%)": {
+        "09": 11.45
+      },
+      "share<0(远月升水)": 0.0
     },
     "meal_stock": {
       "n": 70,
@@ -1368,9 +1557,7 @@
         {
           "week": "2026-W35",
           "expected": 116.73,
-          "got": 116.73,
-          "gotDate": "2026-08-31",
-          "result": "通过"
+          "result": "缺失(没有这一周的点)"
         }
       ]
     }
