@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-01T14:40:20.608526+00:00",
+  "generatedAt": "2026-10-01T18:48:35.123994+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 353.7,
-    "change": -3.4,
-    "changePct": -0.95,
+    "price": 352.6,
+    "change": -4.5,
+    "changePct": -1.26,
     "asOf": "2026-10-01T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -210,7 +210,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 31,
+    "articleAgeDays": 32,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -621,7 +621,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 3,
+    "ageDays": 4,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -683,28 +683,12 @@
     }
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.32,
-    "date": "2026-10-01",
-    "pigPrice": 10.15,
-    "cornPricePerTon": 2351.0,
-    "pigLatestDate": "2026-10-01",
-    "cornLatestDate": "2026-10-01",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn",
-    "history": {
-      "n": 1,
-      "minPoints": 12,
-      "asOf": "2026-10-01",
-      "since": "2026-09-30",
-      "percentile": null,
-      "min": 4.32,
-      "max": 4.32,
-      "median": 4.32,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): Expecting value: line 1 column 1 (char 0)",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "JSONDecodeError",
+      "retriesAttempted": 2
     }
   },
   "sowInventory": {
