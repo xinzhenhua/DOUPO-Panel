@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-02T09:38:22.890069+00:00",
+  "generatedAt": "2026-10-02T11:19:04.145008+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 349.1,
-    "change": -3.0,
-    "changePct": -0.85,
+    "price": 348.2,
+    "change": -3.9,
+    "changePct": -1.11,
     "asOf": "2026-10-02T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -165,17 +165,17 @@
     "source": "Mysteel文章(全国主要区域大豆及豆粕库存统计)",
     "sourceUrl": "https://ncp.mysteel.com/a/26092817/F4FE459E50746287.html",
     "history": {
-      "n": 69,
+      "n": 37,
       "minPoints": 12,
       "asOf": "2026-09-28",
-      "since": "2022-06-20",
+      "since": "2024-01-08",
       "percentile": null,
-      "min": 14.92,
+      "min": 30.0,
       "max": 118.0,
-      "median": 72.1,
+      "median": 83.45,
       "seasonal": null,
       "cohort": null,
-      "sparse": "样本不连续：跨1554天应有约223期，实际只有69期(30%)",
+      "sparse": "样本不连续：跨987天应有约142期，实际只有37期(26%)",
       "window": null
     }
   },
@@ -216,14 +216,14 @@
     "source": "Mysteel文章(全国豆粕供需平衡表)",
     "sourceUrl": "https://ncp.mysteel.com/a/26083118/BC0AFB400C5ACDC2.html",
     "history": {
-      "n": 19,
+      "n": 18,
       "minPoints": 12,
       "asOf": "2026-09",
       "since": "2024-05",
-      "percentile": 68.4,
-      "min": 1.56,
+      "percentile": 66.7,
+      "min": 5.94,
       "max": 20.95,
-      "median": 13.77,
+      "median": 14.45,
       "seasonal": {
         "month": 9,
         "n": 1,
@@ -232,9 +232,9 @@
       },
       "cohort": {
         "label": "平常月",
-        "n": 15,
-        "percentile": 66.7,
-        "median": 13.77
+        "n": 14,
+        "percentile": 64.3,
+        "median": 14.45
       },
       "sparse": null,
       "window": null
@@ -853,7 +853,7 @@
   "termSpreads": {
     "sep": {
       "available": false,
-      "reason": "以下合约价格缺失，无法计算月差: 远月M2801(akshare日K线接口调用失败: Length mismatch: Expected axis has 0 elements, new values have 8 elements)"
+      "reason": "以下合约价格缺失，无法计算月差: 远月M2801(新浪没有合约M2801的数据(远月尚未上市，或太久以前已下市))"
     },
     "may": {
       "available": true,
