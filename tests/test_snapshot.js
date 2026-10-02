@@ -71,7 +71,7 @@ const byC = (s, c)=>s.contracts.find(x=>x.contract===c);
   check('★没有网络+旧版latest.json：不崩溃，3个合约都有结果', s.contracts.length === 3 && s.contracts.every(c=>!c.error));
   check('★联网失败如实记录(天气×12+南美天气+汇率)，带URL和原因', s.fetchFailures.length >= 10 && s.fetchFailures.some(f=>f.includes('open-meteo') && f.includes('沙盒无网络')) && s.fetchFailures.some(f=>f.includes('frankfurter')));
   check('★数据太少时基本面方向为null(数据不足)，不硬给一个方向；缺席的投票都列出来', byC(s,'sep').fund === null && byC(s,'sep').missing.length >= 8);
-  check('快照带评分规则版本号=页面里的SCORING_VERSION(v95)', s.scoringVersion === 'v95' && /const SCORING_VERSION = 'v95'/.test(fs.readFileSync(HTML,'utf8')));
+  check('快照带评分规则版本号=页面里的SCORING_VERSION(v96)', s.scoringVersion === 'v96' && /const SCORING_VERSION = 'v96'/.test(fs.readFileSync(HTML,'utf8')));
   check('日期=北京日期；2026-09-30周三是交易日', s.date === '2026-09-30' && s.tradingDay === true);
   check('sep的价格字段来自真实日K线', byC(s,'sep').symbol === 'M2609' && byC(s,'sep').close === 3319 && byC(s,'sep').priceDate === '2026-09-14');
   // ===================== 2b. ★inWindow：是否在该合约的推荐交易窗口内(9月合约4-7月、5月合约12-3月、1月合约8-11月) =====================
@@ -142,7 +142,7 @@ const byC = (s, c)=>s.contracts.find(x=>x.contract===c);
   const r = cp.spawnSync('node', [path.join(ROOT,'scripts','snapshot_systems.js'), '--html', HTML, '--latest', LATEST_FULL, '--out', out, '--wait', '2500'], {encoding:'utf8', env: process.env});
   check('★命令行：退出码0，自动创建输出目录，写出JSON', r.status === 0 && fs.existsSync(out));
   const cli = JSON.parse(fs.readFileSync(out, 'utf8'));
-  check('命令行输出包含评分规则版本、3个合约、日期；stdout有一行摘要', cli.scoringVersion === 'v95' && cli.contracts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(cli.date) && r.stdout.includes('[快照]'));
+  check('命令行输出包含评分规则版本、3个合约、日期；stdout有一行摘要', cli.scoringVersion === 'v96' && cli.contracts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(cli.date) && r.stdout.includes('[快照]'));
   const r2 = cp.spawnSync('node', [path.join(ROOT,'scripts','snapshot_systems.js')], {encoding:'utf8'});
   check('缺参数：退出码2并打印用法', r2.status === 2 && r2.stderr.includes('用法'));
   const r3 = cp.spawnSync('node', [path.join(ROOT,'scripts','snapshot_systems.js'), '--html', path.join(tmp,'无.html'), '--latest', LATEST_FULL, '--out', path.join(tmp,'x.json')], {encoding:'utf8'});

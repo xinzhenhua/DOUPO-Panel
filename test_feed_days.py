@@ -143,10 +143,14 @@ def test_full_fetch_flow_with_real_20_weeks():
 
 
 def test_full_fetch_flow_holiday_none_for_mid_september():
-    items = [i for i in _items() if "20260918" in i["title"] or "20260911" in i["title"]]
-    r, _ = _fetch_with(items, today=date(2026, 9, 21))
-    assert r["date"] == "2026-09-18" and r["value"] == 8.23 and r["holiday"] is None, "9-18距国庆13天，不在备货窗口"
-    ok("完整流程：9-18(距国庆13天)不在备货窗口")
+    # 窗口已按真实数据校准为节前21天：9-04距国庆27天(不在窗口)、9-11距国庆20天(在窗口)
+    items = [i for i in _items() if "20260904" in i["title"]]
+    r, _ = _fetch_with(items, today=date(2026, 9, 8))
+    assert r["date"] == "2026-09-04" and r["value"] == 8.37 and r["holiday"] is None, "9-04距国庆27天，不在备货窗口"
+    items = [i for i in _items() if "20260911" in i["title"]]
+    r2, _ = _fetch_with(items, today=date(2026, 9, 14))
+    assert r2["date"] == "2026-09-11" and r2["holiday"] == {"name": "国庆", "daysTo": -20, "phase": "节前备货", "holidayDate": "2026-10-01"}, r2["holiday"]
+    ok("完整流程：9-04(距国庆27天)不在备货窗口；9-11(距国庆20天)在窗口内(窗口已按数据校准为节前21天)")
 
 
 def test_fetch_stale_and_not_feed_articles_and_failures():
@@ -171,9 +175,10 @@ def test_last_year_value_only_when_yoy_is_a_number():
 def test_holiday_window_dates():
     w = cc.holiday_window
     assert w("2026-09-24") == {"name": "国庆", "daysTo": -7, "phase": "节前备货", "holidayDate": "2026-10-01"}
-    assert w("2026-09-21")["daysTo"] == -10 and w("2026-09-20") is None, "窗口=节前10天"
+    assert w("2026-09-10")["daysTo"] == -21 and w("2026-09-09") is None, "窗口=节前21天(用270周真实数据校准：节前21~14天平均超额+1.8天，更早几乎没有)"
+    assert w("2026-09-18")["daysTo"] == -13, "9-18距国庆13天：在窗口内(原先暂定10天时不在)"
     assert w("2026-10-08")["daysTo"] == 7 and w("2026-10-08")["phase"] == "假期" and w("2026-10-09") is None, "窗口=节后7天"
-    assert w("2026-09-18") is None and w("2026-07-10") is None
+    assert w("2026-09-04") is None and w("2026-07-10") is None, "距国庆27天/远离假期：不在窗口"
     assert w("2027-01-30") == {"name": "春节", "daysTo": -7, "phase": "节前备货", "holidayDate": "2027-02-06"}
     assert w("2027-02-13")["phase"] == "假期" and w("2027-02-14") is None
     assert w(date(2026, 9, 24))["name"] == "国庆" and w("坏") is None and w("") is None

@@ -806,10 +806,23 @@ const AUTO_INDICATORS = [
      }
      lines.push(`数据日期${d.date}(调查周五截止，当天傍晚发布)；样本：50家饲料企业`);
      let holidayDiscount = '';
+     const hs = d.history, sOK = !!(hs && hs.seasonal && hs.seasonal.percentile != null && hs.seasonal.n >= FEED_SIGNAL.minSeasonalN);
+     if(hs){
+       lines.push(`历史分位：往年同月 ${sOK ? `<b>${hs.seasonal.percentile}%</b>(第${hs.seasonal.month}月，${hs.seasonal.n}个样本，中位${hs.seasonal.median}天)——<b>用于计分</b>` : '样本不足'}；全部历史 ${hs.percentile==null?'--':hs.percentile+'%'}——只展示、不计分(季节性很强：1月中位10.1天、5月6.7天，全部历史的分位几乎总在两端，没有信息量)`);
+     }
      if(d.holiday){
-       const h = d.holiday;
-       holidayDiscount = `${h.name}${h.phase==='节前备货'?`前${-h.daysTo}天`:`后${h.daysTo}天`}(${h.phase}窗口)`;
-       lines.push(`🎆 <b>${h.name}${h.phase}窗口</b>(${h.holidayDate}${h.daysTo<0?`前${-h.daysTo}天`:`后${h.daysTo}天`})：饲料厂会在长假前提前提货备库，库存天数被抬高，<b>不代表真实的需求强弱</b>，所以这个读数<b>票权×${QUALITY_DISCOUNT}</b>。依据是Mysteel自己周报里的措辞(9月11日"华南部分市场因节前备货略有增加"、9月18日"受双节临近影响，企业刚需补货")；窗口天数(节前10天~节后7天)没有数据标定，是暂定值。`);
+       const h = d.holiday, when = h.daysTo<0 ? `前${-h.daysTo}天` : `后${h.daysTo}天`;
+       if(h.name === '春节' || !sOK){
+         // 春节日期在1月22日~2月17日之间浮动，"往年同月"比较会错位(这个月的备货峰在别的年份可能落在上个月/下个月)，所以降权；
+         // 往年同月样本不足时无法剔除节前备货，也降权。
+         holidayDiscount = `${h.name}${when}(${h.phase}窗口)`;
+         lines.push(`🎆 <b>${h.name}${h.phase}窗口</b>(${h.holidayDate}${when})：饲料厂会在长假前提前提货备库，库存天数被抬高，<b>不代表真实的需求强弱</b>，所以这个读数<b>票权×${QUALITY_DISCOUNT}</b>。`
+           + (h.name === '春节' ? `依据(用你的270周数据校准)：5个春节合并，相对春节后基线的平均超额——节前21~14天+1.8天、14~7天+2.9天、7~0天+2.9天，节后7~14天回到基线(-0.1天)；春节日期在1月22日~2月17日之间浮动，同月比较会错位，所以降权。窗口=节前21天~节后7天。`
+                                    : `往年同月样本不足，无法剔除节前备货的影响，所以降权。`));
+       } else {
+         // 国庆日期固定(10月1日)：每年9月都包含节前备货，计分用的是"往年同月"分位——同类对同类，节前备货已经在参照里了，再降权就重复扣了
+         lines.push(`🎆 <b>${h.name}${h.phase}窗口</b>(${h.holidayDate}${when})：每年9月都含节前备货(节前35~28天已+0.9天，逐步升到节前7~0天的+2.3天)，计分用的是<b>往年同月分位</b>——同类对同类，节前备货已经在参照里了，所以<b>不降权</b>。`);
+       }
      }
      return {value:d.value, valueText:`${d.value}天`, date:d.date, detail:lines.join('<br>'), holidayDiscount};
    }},
@@ -3373,7 +3386,7 @@ function renderDataHealth(){
 // ★评分规则版本号：每天记录两个系统的方向时会一并记下它(scripts/snapshot_systems.js→data/history/systems_*.json)。
 //   以后只要改了阈值/权重/投票清单/门槛这类会改变方向的规则，就必须递增——否则几个月后检验"背离有没有信息"时，
 //   会把不同规则算出来的方向混在一起，结论没有意义。
-const SCORING_VERSION = 'v95';
+const SCORING_VERSION = 'v96';
 window._scoringVersion = SCORING_VERSION;
 
 // ===================== 季节性档位 + 天气开关 =====================
@@ -3418,8 +3431,11 @@ window._TIER = TIER; window._WEATHER_SWITCH = WEATHER_SWITCH;   // 暴露给测�
 // 松阈值14→16：20个月度值里≥14%占50%(就是中位数)，等于一半的月份都判"宽松"，没有区分度；平常月里≥16%约占三分之一。
 // 春节扰动月(cn_calendar)不套用固定阈值，见下面的suppress。两个阈值都依据2024-05~2026-09的20个月度值，处在偏宽松的一段行情里，样本少，是暂定值。
 const STU_THRESH = {tight:10, loose:16};
-// 饲料企业豆粕库存天数的分位阈值(暂定，跟出口销售/榨利一致)：≥80%偏空、≤20%偏多。历史序列每次同步累积，样本够了才判。
-const FEED_SIGNAL = {hi:80, lo:20};
+// 饲料企业豆粕库存天数的分位阈值(暂定，跟出口销售/榨利一致)：≥80%偏空、≤20%偏多。
+// ★v96：信号改用"往年同月"分位，不再用"全部历史"分位。用户贴出的270周数据显示季节性极强(各月中位数：1月10.1天、5月6.7天、9月9.3天)，
+//   全部历史的分位会被1-2月春节峰和4-5月低谷主导、几乎总在两端，没有信息量(当前8.55天：全部历史59.7%=中性，往年同月13.0%=偏低)。
+//   交叉检验：水平调整后(÷过去52周中位数)同月分位5.6%、近3年同月23.1%、同比差分位25.7%——方向一致(偏低)，幅度取决于口径。同月样本至少12个(约3年)才判。
+const FEED_SIGNAL = {hi:80, lo:20, minSeasonalN:12};
 // 组内权重：库消比=库存÷消费，跟商业库存是同一数据的两种口径(库存是分子)，所以库存只给20，主要作兜底和一致性参考；
 // 库消比不可用时回到第1步的60/40(库存/开机率)。整组是主导档，投2票。
 const TIGHTNESS_WEIGHTS = {withStu:{stu:50, crush:30, stock:20}, withoutStu:{stock:60, crush:40}};
@@ -3435,12 +3451,13 @@ const MANUAL_RULES = {
           : [0, `国内豆粕库消比${v}%（中性区间）`],
   // 饲料企业豆粕库存天数：只看历史分位。历史不够(还没累积够/样本不连续)时返回[null,说明]——显示但不计分。
   feed: v => {
-    const st = window._indState.feed || {}, h = st.history;
-    if(!h || h.percentile == null){
-      const why = !h ? '还没有历史序列' : h.sparse ? h.sparse : `历史积累中(已有${h.n}期，至少${h.minPoints||12}期且跨度够长才有分位)`;
-      return [null, `饲料企业豆粕库存${v}天：${why}，暂不计分`];
+    const st = window._indState.feed || {}, h = st.history, sea = h && h.seasonal;
+    if(!sea || sea.percentile == null || sea.n < FEED_SIGNAL.minSeasonalN){
+      const why = !h ? '还没有历史序列' : h.sparse ? h.sparse
+        : !sea ? `还没有往年同月的样本(需要≥${FEED_SIGNAL.minSeasonalN}个)` : `往年同月样本只有${sea.n}个(需要≥${FEED_SIGNAL.minSeasonalN}个)`;
+      return [null, `饲料企业豆粕库存${v}天：${why}，暂不计分(不退回用全部历史分位：季节性太强，没有信息量)`];
     }
-    const p = h.percentile, span = `自${h.since}起${h.n}期`;
+    const p = sea.percentile, span = `往年${sea.month}月${sea.n}个样本`;
     return p >= FEED_SIGNAL.hi ? [-1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏高) → 饲料厂手里有货，近期补库需求弱，偏空`]
          : p <= FEED_SIGNAL.lo ? [1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏低) → 饲料厂需要补库，采购需求偏强，偏多`]
          : [0, `饲料企业豆粕库存${v}天(${span}的${p}%分位，常态区间)`];

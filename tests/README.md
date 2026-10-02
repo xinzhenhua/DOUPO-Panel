@@ -15,7 +15,7 @@ cd tests
 bash run_all_tests.sh
 ```
 
-会自动跑完全部测试文件(v95时为64个)，汇总显示总共通过了多少项测试。
+会自动跑完全部测试文件(v96时为64个)，汇总显示总共通过了多少项测试。
 
 如果只想跑某一个文件（比如只关心5月合约相关的逻辑）：
 
@@ -90,3 +90,7 @@ node test_planting_brl.js
 - `python3 test_url_safety.py`：v95.1新增，来自外部响应的URL必须过Mysteel域名白名单(含库消比/饲料库存天数/回填三条路径的端到端)
 - `python3 test_window_and_deps.py`：v95.2新增，榨利/月差每日累积只记窗口内、一次性清理、依赖锁定文件与工作流(回填必须先装akshare)
 - `python3 test_feed_days_old_wording.py`：v95.2新增，饲料库存天数2021-22年旧措辞(4篇真实原文)与变动量防护
+
+- v96：`run_all_tests.sh`会在汇总里**点名被跳过的测试文件**(没装jsdom时`test_snapshot.js`会被跳过)，跳过的测试里可能有评分规则版本号这类关键检查；本地运行需要`NODE_PATH=<含jsdom的node_modules> ./run_all_tests.sh`
+- `python3 test_series_quality.py`：v96.1新增，序列质量声明(周度库存口径断点2024-01-05、meal_stu 2025-04可疑点)
+- `python3 test_sample_job.py`：v96.2新增，采样诊断(措辞聚类/口径字样/报告大小预算/容错)

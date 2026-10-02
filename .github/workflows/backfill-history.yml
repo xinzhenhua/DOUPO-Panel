@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,feed_days,calibrate；默认all=us_stu,esr,meal_stu,margin,spread,feed_days这6项，meal_stock补不全不在默认里；margin=盘面压榨毛利；spread=月差/期限结构；feed_days=饲料企业豆粕库存天数；calibrate=不联网，只重新生成校准摘要。★只点一次(一次填多项)：同一并发组最多1个在跑+1个排队，连点多次会取消中间的)"
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,feed_days,calibrate；默认all=us_stu,esr,meal_stu,margin,spread,feed_days这6项，meal_stock补不全不在默认里；margin=盘面压榨毛利；spread=月差/期限结构；feed_days=饲料企业豆粕库存天数；sample=采样诊断(★一次性：把8个Mysteel指标的真实措辞收集回来，不写历史序列，不在默认all里，单独跑：only=sample，跑完发回data/history/_samples.json)；calibrate=不联网，只重新生成校准摘要。★只点一次(一次填多项)：同一并发组最多1个在跑+1个排队，连点多次会取消中间的)"
         default: "all"
       start:
         description: "Mysteel两项的起始日期"

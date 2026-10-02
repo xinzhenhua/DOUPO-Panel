@@ -3372,6 +3372,10 @@ def fetch_dce_daily_kline(symbol, max_rows=260):
     try:
         df = ak.futures_zh_daily_sina(symbol=symbol)
     except Exception as e:
+        # 新浪对"不存在的合约"(远月尚未上市、或太久以前的已下市合约)不返回空表，而是让akshare内部抛pandas异常(Length mismatch: Expected axis has 0 elements...)，
+        # 用户看到的是一串看不懂的原始报错(2026-10-01回填报告里M2801、M1809等)。这种情况和下面"返回空数据"本质是同一件事，统一成人话。
+        if "Length mismatch" in str(e) and "0 elements" in str(e):
+            return {"available": False, "reason": f"新浪没有合约{symbol}的数据(远月尚未上市，或太久以前已下市)", "debug": {"symbol": symbol, "errorType": type(e).__name__, "rawError": str(e)[:120]}}
         return {"available": False, "reason": f"akshare日K线接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
 
     if df is None or len(df) == 0:

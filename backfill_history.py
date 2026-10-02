@@ -177,11 +177,20 @@ def calibration_summary(base_dir=None):
             by_month = {f"{m:02d}": round(statistics.median([p["v"] for p in ts if int(p["d"][5:7]) == m]), 2) for m in range(1, 13) if any(int(p["d"][5:7]) == m for p in ts)}
             out["term_spread_" + ctype] = {"n": len(vals), "quantiles": quantiles(vals), "pointsPerYear": dict(Counter(p["d"][:4] for p in ts)),
                                            "medianByMonth(%)": by_month, "share<0(远月升水)": share(vals, lambda v: v < 0)}
-    k = hs.load_series("meal_stock", base_dir)["points"]
-    if k:
+    k_all = hs.load_series("meal_stock", base_dir)["points"]
+    k = hs.usable_points("meal_stock", k_all)        # ★只用口径断点(2024-01-05)之后的点；之前的旧口径点不可比，不参与分位/阈值校准
+    if k_all:
+        brk = hs.SERIES_BREAKS["meal_stock"]
         vals = [p["v"] for p in k]
-        out["meal_stock"] = {"n": len(vals), "quantiles": quantiles(vals), "currentThresholds": {"tight<50": share(vals, lambda v: v < 50), "loose>100": share(vals, lambda v: v > 100)},
-                             "pointsPerYear": dict(Counter(p["d"][:4] for p in k)), "coverage": hs.coverage_problem(k, "weekly") or "样本连续，可用", "spotChecks(独立来源Mysteel英文站周报)": meal_stock_spot_checks(k)}
+        out["meal_stock"] = {"n": len(vals), "nTotalInFile": len(k_all), "nExcluded": len(k_all) - len(k),
+                             "excludedReason": f"{len(k_all) - len(k)}个点在{brk[0]}之前：{brk[1]}",
+                             "quantiles": quantiles(vals) if vals else None,
+                             "currentThresholds": {"tight<50": share(vals, lambda v: v < 50), "loose>100": share(vals, lambda v: v > 100)} if vals else None,
+                             "pointsPerYear": dict(Counter(p["d"][:4] for p in k)), "coverage": (hs.coverage_problem(k, "weekly") or "样本连续，可用") if k else "没有断点之后的点",
+                             "spotChecks(独立来源Mysteel英文站周报)": meal_stock_spot_checks(k)}
+    sus = hs.excluded_points("meal_stu", hs.load_series("meal_stu", base_dir)["points"])
+    if sus:
+        out["meal_stu_excluded"] = [{"d": d, "reason": r} for d, r in sus]
     return out
 
 
@@ -306,13 +315,14 @@ _MY_HEADERS = {"token": "-1", "Origin": "https://search.mysteel.com", "Referer":
                "X-Requested-With": "XMLHttpRequest"}
 
 
-def _search_articles(query, start, end, max_pages=40):
-    """翻页收齐搜索结果。返回(items, total, 说明)。"""
+def _search_articles(query, start, end, max_pages=40, url=None, sleep_s=0.5):
+    """翻页收齐搜索结果。返回(items, total, 说明)。url默认是文章搜索接口；快讯(开机率)用 fd.MYSTEEL_SEARCH_URL。"""
+    url = url or fd.MYSTEEL_ARTICLE_SEARCH_URL
     items, total, note = [], 0, None
     for page in range(1, max_pages + 1):
         payload = {"query": query, "startTime": start.strftime("%Y-%m-%d 00:00:00"), "endTime": end.strftime("%Y-%m-%d 23:59:59"),
                    "sortType": "complex", "platform": "pc", "pageNo": page, "pageSize": 20}
-        data, dbg = fd.fetch_json_debug(fd.MYSTEEL_ARTICLE_SEARCH_URL, headers=_MY_HEADERS, post_data=payload)
+        data, dbg = fd.fetch_json_debug(url, headers=_MY_HEADERS, post_data=payload)
         if not isinstance(data, dict) or data.get("resultCode") != 0:
             note = f"第{page}页请求失败或返回异常，已用前{page - 1}页" if page > 1 else "搜索接口无返回/返回异常"
             break
@@ -321,7 +331,7 @@ def _search_articles(query, start, end, max_pages=40):
         items.extend(i for i in lst if isinstance(i, dict))
         if len(lst) < 20 or page * 20 >= total:
             break
-        time.sleep(0.5)
+        time.sleep(sleep_s)
     else:
         note = f"翻到{max_pages}页上限，可能还有更早的文章没翻到"
     return items, total, note
@@ -664,7 +674,135 @@ def backfill_term_spread(base_dir=None, from_year=None, to_year=None, sleep_s=0.
 
 
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "meal_stock": backfill_meal_stock, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days}
+# 7. 采样诊断(sample)：不解析、不写历史序列——把8个Mysteel指标的真实措辞一次性收集回来
+# ---------------------------------------------------------------------------
+# 背景：开机率/到港预报/进口量/肉鸡利润/基差/豆菜粕价差/能繁母猪这几个指标的抓取函数，当初都只用**一条**最新样本写的；
+#   要像饲料库存天数那样回填5年(才能用"往年同月"分位)，需要先看到各个年份的真实措辞。饲料库存天数之所以顺利，是因为用户先给了20期真实原文。
+#   所以这里不盲写解析器，而是先把真实措辞收集回来：每个指标搜过去几年，按"含关键词的那一句(数字换成#)"聚类，
+#   一眼看出措辞在什么时候变过；同时扫描"口径变化"类字样(原口径/动态全样本/样本调整/特别声明…)，回答"开机率有没有口径断点"。
+# 只调用搜索接口，不跟随任何文章链接(不抓正文)，没有额外的联网面。
+SAMPLE_INDICATORS = {
+    # key: (中文名, 接口('flash'快讯/'article'文章), 查询词, 焦点关键词(取含它的那一句做措辞聚类), 频率说明)
+    "crush_rate":   ("油厂开机率",       "flash",   "全国动态全样本油厂开机率",   "开机率",   "日"),
+    "meal_stock":   ("豆粕周度库存",     "article", "全国主要区域大豆",           "豆粕库存", "周"),
+    "basis":        ("豆粕现货基差",     "article", "全国主要市场豆粕基差价格汇总", "基差",     "日"),
+    "arrival":      ("大豆到港预报",     "article", "大豆到港预报",               "到港",     "月"),
+    "soy_import":   ("海关大豆进口量",   "article", "海关总署中国大豆进口量",     "进口",     "月"),
+    "poultry":      ("白羽肉鸡养殖利润", "article", "白羽肉鸡养殖利润",           "利润",     "周"),
+    "rm_spread":    ("豆菜粕价差",       "article", "豆菜粕价差",                 "价差",     "日/周"),
+    "sow":          ("能繁母猪存栏",     "article", "季度末能繁母猪存栏",         "能繁",     "季"),
+}
+# 口径变化类字样：出现就记下次数、最早/最晚日期和上下文(周度库存那条"特别声明"就是靠这类字样发现口径断点的)
+SAMPLE_CALIBER_WORDS = ("原口径", "动态全样本", "样本点", "样本调整", "样本优化", "特别声明", "口径调整", "统计范围", "停止发布", "不再发布", "改版", "新口径", "旧口径")
+
+
+def _focus_sentence(text, kw):
+    """文本里含关键词的第一句(按。；;换行切)；没有就返回空串。"""
+    for seg in re.split(r"[。；;\n\r]+", text or ""):
+        if kw in seg:
+            return seg.strip()
+    return ""
+
+
+def _wording_pattern(sentence, n=48):
+    """措辞指纹：数字(含小数/百分号)→#，日期→D，去空白，取前n个字符。同一种写法在不同日期会得到同一个指纹。"""
+    s = re.sub(r"\d{4}年\d{1,2}月(\d{1,2}日)?|\d{1,2}月\d{1,2}日|第\d+周", "D", sentence)
+    s = re.sub(r"[+-]?\d+(?:\.\d+)?%?", "#", s)
+    return re.sub(r"\s+", "", s)[:n]
+
+
+def sample_indicator(key, start, end, max_items=250, max_pages=60, sleep_s=0.6, search=None):
+    """采样一个指标。search可注入(测试用)，签名同_search_articles。返回(摘要dict, 抽样items列表)。"""
+    name, channel, query, kw, freq = SAMPLE_INDICATORS[key]
+    search = search or _search_articles
+    url = fd.MYSTEEL_SEARCH_URL if channel == "flash" else fd.MYSTEEL_ARTICLE_SEARCH_URL
+    items, total, note = search(query, start, end, max_pages=max_pages, url=url, sleep_s=sleep_s)
+    rows = []
+    for it in items:
+        d = _pub(it)
+        if d is None:
+            continue
+        text = str(it.get("content") or "")
+        rows.append({"d": d.isoformat(), "title": str(it.get("title") or "")[:80], "text": text, "url": it.get("url")})
+    rows.sort(key=lambda r: r["d"])
+    summary = {"key": key, "name": name, "channel": channel, "query": query, "frequency": freq, "searchTotal": total, "fetched": len(rows), "note": note}
+    if not rows:
+        summary["error"] = "没有搜到任何结果(接口无返回、或查询词/时间窗口没有命中)"
+        return summary, []
+    summary["firstDate"], summary["lastDate"] = rows[0]["d"], rows[-1]["d"]
+    by_month = Counter(r["d"][:7] for r in rows)
+    summary["byMonth"] = dict(sorted(by_month.items()))
+    # 断档：相邻两条相隔很久(频率为日/周的指标，>20天算断档；月/季的>100天)
+    gap_days = 100 if freq in ("月", "季") else 20
+    summary["gapsOverDays(%d)" % gap_days] = [f"{a['d']}→{b['d']}" for a, b in zip(rows, rows[1:]) if (date.fromisoformat(b["d"]) - date.fromisoformat(a["d"])).days > gap_days][:25]
+    # 措辞聚类：含关键词的那一句，数字/日期换成占位符；同一种写法聚在一起，记次数和最早/最晚日期，各留一个原文例子
+    clusters = {}
+    nofocus = 0
+    for r in rows:
+        sent = _focus_sentence(r["text"], kw)
+        if not sent:
+            nofocus += 1
+            continue
+        pat = _wording_pattern(sent)
+        c = clusters.setdefault(pat, {"pattern": pat, "count": 0, "first": r["d"], "last": r["d"], "example": sent[:50], "exampleDate": r["d"]})
+        c["count"] += 1
+        c["last"] = r["d"]
+    summary["rowsWithoutFocusKeyword"] = nofocus
+    ordered = sorted(clusters.values(), key=lambda c: -c["count"])
+    # ★摘要要小：Actions日志会截断(用户上次的报告在约43KB处被截断)。完整内容在_samples.json里(文件不会被截断)，这里只放聚类的骨架。
+    #   最坏情况(8指标×10聚类×(指纹48字+例子50字+日期次数)，中文在JSON里每字约3字节)实测约37KB；真实数据聚类远少于10个，通常<20KB
+    summary["wordingClusters(按次数，前10；措辞在哪个日期段出现，一眼看出什么时候改过)"] = ordered[:10]
+    summary["wordingClusterCount"] = len(clusters)
+    # 口径变化类字样
+    caliber = []
+    for w in SAMPLE_CALIBER_WORDS:
+        hits = [r for r in rows if w in r["text"] or w in r["title"]]
+        if hits:
+            txt = hits[0]["text"] if w in hits[0]["text"] else hits[0]["title"]
+            i = txt.find(w)
+            caliber.append({"word": w, "count": len(hits), "first": hits[0]["d"], "last": hits[-1]["d"], "context": txt[max(0, i - 30):i + 70]})
+    summary["caliberWords(口径变化类字样)"] = caliber
+    # 抽样原文：按时间均匀抽 max_items 条(始终含最早和最晚)，正文截到240字
+    if len(rows) <= max_items:
+        picked = rows
+    else:
+        step = (len(rows) - 1) / (max_items - 1)
+        picked = [rows[round(i * step)] for i in range(max_items)]
+    out = [{"d": r["d"], "title": r["title"], "text": r["text"][:240], "url": r["url"] if fd.is_trusted_article_url(str(r.get("url") or "")) else None} for r in picked]
+    return summary, out
+
+
+def backfill_sample(base_dir=None, start=None, today=None, only=None, max_items=250, sleep_s=0.6, search=None):
+    """采样诊断：对SAMPLE_INDICATORS里的每个指标搜过去几年，把真实措辞收集回来。
+    输出：①返回值(进_backfill_report.json)是每个指标的摘要(条数/日期范围/断档/措辞聚类/口径字样)；
+         ②详细抽样原文写到 data/history/_samples.json(不是历史序列，不参与任何计算)。
+    起点默认2022-01-01：覆盖周度库存那条'特别声明'说的2024-01-05口径断点前后。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or date(2022, 1, 1)
+    end = datetime(today.year, today.month, today.day, 12, 0, 0)
+    start_dt = datetime(start.year, start.month, start.day)
+    summaries, samples = [], {}
+    for key in SAMPLE_INDICATORS:
+        if only and key not in only:
+            continue
+        try:
+            summary, picked = sample_indicator(key, start_dt, end, max_items=max_items, sleep_s=sleep_s, search=search)
+        except Exception as e:  # noqa: BLE001  一个指标出错不影响其他
+            summary, picked = {"key": key, "error": f"采样出错: {type(e).__name__}: {str(e)[:120]}"}, []
+        summaries.append(summary)
+        samples[key] = picked
+    out_dir = base_dir or hs.HISTORY_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "_samples.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"), "from": start.isoformat(), "samples": samples}, f, ensure_ascii=False, indent=0)
+    return {"key": "sample", "samplesFile": "data/history/_samples.json", "from": start.isoformat(), "indicators": summaries,
+            "notes": ["采样诊断：不解析、不写历史序列。把本报告和 data/history/_samples.json 一起发回，用于写各指标的回填解析器，并判断口径断点。"]}
+
+
+# ---------------------------------------------------------------------------
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "meal_stock": backfill_meal_stock, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "sample": backfill_sample}
 DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 

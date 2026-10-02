@@ -17,7 +17,17 @@ const REAL = [['2026-09-24',8.55,0.32,-1.05],['2026-09-18',8.23,0.08,-1.19],['20
   ['2026-07-10',7.58,0.17,-0.34],['2026-07-03',7.41,0.17,-0.50],['2026-06-26',7.24,null,null],['2026-06-18',7.15,0.09,-0.59],['2026-06-12',7.06,0.12,0.23],
   ['2026-06-05',6.94,-0.08,0.63],['2026-05-29',7.02,0.41,1.03],['2026-05-22',6.61,-0.14,0.88],['2026-05-15',6.75,-0.58,1.61]];
 const recentWeeks = REAL.map(([date,value,mom,yoy])=>({date, value, mom, yoy}));
-const hist = (o)=>Object.assign({n:52, minPoints:12, asOf:'2026-09-24', since:'2025-09-26', percentile:96, min:6.1, max:9.4, median:7.6, seasonal:null, cohort:null, sparse:null, window:null}, o||{});
+// ★v96起信号用"往年同月"分位(history.seasonal.percentile)，全部历史分位(history.percentile)只展示、不计分。
+//   hist({percentile:X}) 表示"往年同月分位=X"(计分用)；overall=全部历史分位(只展示，默认55)；seasonalN=同月样本数(默认23，即2021-2025年的9月)；
+//   percentile:null 表示历史不够(没有分位/跨度不足/样本不足)——此时seasonal也为null。
+const hist = (o)=>{
+  o = o || {};
+  const p = o.percentile === undefined ? 96 : o.percentile;
+  const base = {n:269, minPoints:12, asOf:'2026-09-24', since:'2021-05-21', percentile: p === null ? null : (o.overall === undefined ? 55 : o.overall), min:4.35, max:12.64, median:8.15, cohort:null, sparse:null, window:null,
+    seasonal: p === null ? null : {month:9, n: o.seasonalN === undefined ? 23 : o.seasonalN, percentile: p, median:9.45}};
+  const rest = Object.assign({}, o); delete rest.percentile; delete rest.overall; delete rest.seasonalN;
+  return Object.assign(base, p === null && o.n === undefined ? {n:8} : {}, rest);
+};
 const feedData = (o)=>Object.assign({available:true, value:8.55, date:'2026-09-24', momDays:0.32, yoyDays:-1.05, lastYearValue:9.6, holiday:null,
   articleTitle:'Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260924）', publishDate:'2026-09-24', extractedFrom:'summary', recentWeeks, history:hist(),
   source:'Mysteel文章', sourceUrl:'x'}, o||{});
@@ -59,30 +69,64 @@ check('没有同比数字时不显示同比行、不出现undefined/NaN', !html(
 // ===================== 3. 分位规则 =====================
 const R = window._manualRules.feed;
 function ruleWith(hh, v){ window._indState.feed = {history: hh}; return R(v === undefined ? 8.55 : v); }
-check('★分位96%(≥80)：偏空，写明"饲料厂手里有货，近期补库需求弱"', ruleWith(hist({percentile:96}))[0] === -1 && ruleWith(hist({percentile:96}))[1].includes('补库需求弱'));
+check('★往年同月分位96%(≥80)：偏空，写明"饲料厂手里有货，近期补库需求弱"和"往年9月23个样本"', ruleWith(hist({percentile:96}))[0] === -1 && ruleWith(hist({percentile:96}))[1].includes('补库需求弱') && ruleWith(hist({percentile:96}))[1].includes('往年9月23个样本'));
 check('★分位10%(≤20)：偏多，写明"饲料厂需要补库"', ruleWith(hist({percentile:10}))[0] === 1 && ruleWith(hist({percentile:10}))[1].includes('需要补库'));
 check('分位50%：中性(常态区间)', ruleWith(hist({percentile:50}))[0] === 0 && ruleWith(hist({percentile:50}))[1].includes('常态区间'));
 check('边界：80%偏空、20%偏多、79.9%/20.1%中性', ruleWith(hist({percentile:80}))[0] === -1 && ruleWith(hist({percentile:20}))[0] === 1 && ruleWith(hist({percentile:79.9}))[0] === 0 && ruleWith(hist({percentile:20.1}))[0] === 0);
 let r = ruleWith(hist({percentile:null, n:8}));
-check('★历史不够(percentile=null)：返回[null,说明]——不是中性，是"暂不计分"，并写明已有期数', r[0] === null && r[1].includes('历史积累中') && r[1].includes('已有8期') && r[1].includes('暂不计分'));
+check('★没有往年同月样本(seasonal=null)：返回[null,说明]——不是中性，是"暂不计分"，并写明"还没有往年同月的样本"', r[0] === null && r[1].includes('还没有往年同月的样本') && r[1].includes('暂不计分'));
 r = ruleWith(hist({percentile:null, sparse:'样本只跨134天，不足180天'}));
 check('★样本跨度不足：把原因写出来(真实场景：这20期只跨了134天)', r[0] === null && r[1].includes('样本只跨134天，不足180天'));
 r = ruleWith(null);
 check('没有history字段：[null,"还没有历史序列"]，不报错', r[0] === null && r[1].includes('还没有历史序列'));
 
-// ===================== 4. 长假备货窗口：真实的9-24就在窗口里 =====================
+// ===================== 3b. ★v96核心：信号用"往年同月"分位，不用"全部历史"分位(用真实数字：2026-09-24 全部历史59.7%、往年同月13.0%) =====================
+const REAL_HIST = {n:269, minPoints:12, asOf:'2026-09-24', since:'2021-05-21', percentile:59.7, min:4.35, max:12.64, median:8.15, seasonal:{month:9, n:23, percentile:13.0, median:9.45}, cohort:null, sparse:null, window:null};
+r = ruleWith(REAL_HIST);
+check('★真实数字：全部历史59.7%(中性)、往年同月13.0%(偏低) → 以往年同月为准：偏多(+1)', r[0] === 1 && r[1].includes('13%分位') && r[1].includes('往年9月23个样本') && r[1].includes('偏多'));
+check('★文案里不出现全部历史的59.7%(它不参与计分)', !r[1].includes('59.7'));
+r = ruleWith(Object.assign({}, REAL_HIST, {percentile:96, seasonal:{month:9, n:23, percentile:50, median:9.45}}));
+check('★反过来：全部历史96%(会被判偏空)、往年同月50% → 以往年同月为准：中性(0)——证明全部历史分位确实不再参与', r[0] === 0 && r[1].includes('常态区间'));
+r = ruleWith(Object.assign({}, REAL_HIST, {seasonal:{month:9, n:11, percentile:5, median:9.45}}));
+check('★往年同月样本不足12个(11)：不判，写明"往年同月样本只有11个(需要≥12个)"——即使分位是5%', r[0] === null && r[1].includes('往年同月样本只有11个') && r[1].includes('需要≥12个'));
+r = ruleWith(Object.assign({}, REAL_HIST, {seasonal:{month:9, n:12, percentile:5, median:9.45}}));
+check('边界：同月样本恰好12个：可以判(偏多)', r[0] === 1);
+r = ruleWith(Object.assign({}, REAL_HIST, {seasonal:null}));
+check('★没有往年同月(seasonal=null)：不退回用全部历史分位(59.7%)，而是暂不计分并说明原因', r[0] === null && r[1].includes('还没有往年同月的样本') && r[1].includes('不退回用全部历史分位'));
+// 卡片整体：用真实数字渲染，应当判偏多
 reset();
-window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({holiday:{name:'国庆', daysTo:-7, phase:'节前备货', holidayDate:'2026-10-01'}})};
+window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({history: REAL_HIST, holiday:null})};
+refreshMysteelFeedDays(); updateOverallAlert();
+check('★整张卡片用真实数字渲染：结论偏多(往年同月13%)，详情里同时列出"往年同月13%(用于计分)"和"全部历史59.7%(只展示)"', makeEl('alert_feed').innerHTML.includes('alert-box bull') && html('feed').includes('<b>13%</b>') && html('feed').includes('59.7%') && html('feed').includes('只展示、不计分'));
+
+// ===================== 4. 长假备货窗口(v96：用270周真实数据校准；春节降权、国庆不降权) =====================
+const GUOQING = {name:'国庆', daysTo:-7, phase:'节前备货', holidayDate:'2026-10-01'};
+const CHUNJIE = {name:'春节', daysTo:-14, phase:'节前备货', holidayDate:'2027-02-06'};
+reset();
+window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({holiday:GUOQING})};
 refreshMysteelFeedDays();
 d = html('feed');
-check('★9-24落在国庆前7天窗口：详情写明"节前备货窗口"、票权×0.5、依据是Mysteel自己周报的措辞', d.includes('国庆节前备货窗口') && d.includes('票权×0.5') && d.includes('华南部分市场因节前备货略有增加') && d.includes('受双节临近影响'));
-check('★写明窗口天数没有数据标定(节前10天~节后7天)，是暂定值', d.includes('没有数据标定') && d.includes('暂定值'));
-check('质量乘数×0.5，理由里点名国庆前7天', qualityOf('feed').m === 0.5 && qualityOf('feed').why.includes('国庆前7天'));
-check('★徽标如实反映降权："长假备货窗口·降权"，不是"自动"', makeEl('badge_feed').textContent.includes('长假备货窗口') && makeEl('badge_feed').textContent.includes('降权') && !makeEl('badge_feed').textContent.includes('🟢') && makeEl('badge_feed').className.includes('badge-manual'));
+check('★国庆前7天：计分用的是往年同月分位(同类对同类，每年9月都含节前备货)——所以不降权，质量乘数=1', qualityOf('feed').m === 1 && !makeEl('ai_feed').innerHTML.includes('票权×0.5'));
+check('★国庆：详情里说明"不降权"和原因(往年同月分位已含节前备货，再降权就重复扣了)，并给出校准数据(节前35~28天+0.9天→节前7~0天+2.3天)', d.includes('不降权') && d.includes('同类对同类') && d.includes('+0.9天') && d.includes('+2.3天'));
+check('★国庆：徽标仍是"自动"(没有被降权)', makeEl('badge_feed').textContent.includes('自动') && !makeEl('badge_feed').textContent.includes('长假备货窗口'));
+check('详情里同时展示两个分位：往年同月(用于计分)和全部历史(只展示、不计分，并说明季节性很强)', d.includes('往年同月') && d.includes('用于计分') && d.includes('全部历史') && d.includes('只展示、不计分') && d.includes('1月中位10.1天'));
+reset();
+window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({holiday:CHUNJIE})};
+refreshMysteelFeedDays();
+d = html('feed');
+check('★春节前14天：降权(春节日期在1月22日~2月17日之间浮动，同月比较会错位)，票权×0.5', qualityOf('feed').m === 0.5 && d.includes('票权×0.5') && d.includes('春节节前备货窗口') && d.includes('浮动'));
+check('★春节：写明依据是用270周数据校准的(节前21~14天+1.8天、14~7天+2.9天、7~0天+2.9天、节后7~14天-0.1天)，窗口=节前21天~节后7天', d.includes('用你的270周数据校准') && d.includes('+1.8天') && d.includes('+2.9天') && d.includes('-0.1天') && d.includes('节前21天~节后7天'));
+check('质量乘数×0.5，理由里点名春节前14天', qualityOf('feed').why.includes('春节前14天'));
+check('★春节：徽标如实反映降权："长假备货窗口·降权"，不是"自动"', makeEl('badge_feed').textContent.includes('长假备货窗口') && makeEl('badge_feed').textContent.includes('降权') && !makeEl('badge_feed').textContent.includes('🟢') && makeEl('badge_feed').className.includes('badge-manual'));
+// 往年同月样本不足时，国庆也降权(无法剔除节前备货)
+reset();
+window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({holiday:GUOQING, history:hist({percentile:50, seasonalN:8})})};
+refreshMysteelFeedDays();
+check('★往年同月样本不足(8<12)时，国庆也降权：无法剔除节前备货的影响', qualityOf('feed').m === 0.5 && html('feed').includes('往年同月样本不足，无法剔除节前备货'));
 reset();
 window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({holiday:null})};
 refreshMysteelFeedDays();
-check('对照：不在长假窗口(9-18等)：乘数1，没有备货窗口的说明，徽标是"自动"', qualityOf('feed').m === 1 && !html('feed').includes('备货窗口') && makeEl('badge_feed').textContent.includes('自动'));
+check('对照：不在长假窗口：乘数1，没有备货窗口的说明，徽标是"自动"', qualityOf('feed').m === 1 && !html('feed').includes('备货窗口') && makeEl('badge_feed').textContent.includes('自动'));
 window._indState.feed.holidayDiscount = '春节前3天(节前备货窗口)'; onManualEdit('feed');
 check('★用户手动修正后不再打折(视为自己负责)', qualityOf('feed').m === 1);
 
@@ -113,9 +157,13 @@ a = scoreScenario(feedData({history:hist({percentile:96})}));
 check('★饲料天数偏空 → 需求端净倾向比中性时更低', window._dimensions.demand.ratio < dNeutral);
 // 备货窗口降权：同样偏空，票权减半 → 净倾向的变化更小
 a = scoreScenario(feedData({history:hist({percentile:96}), holiday:null})); const rFull = window._dimensions.demand.ratio;
-a = scoreScenario(feedData({history:hist({percentile:96}), holiday:{name:'国庆', daysTo:-7, phase:'节前备货', holidayDate:'2026-10-01'}})); const rHalf = window._dimensions.demand.ratio;
-check('★同样偏空：国庆前7天窗口内票权×0.5 → 需求端偏空程度比窗口外更小', rHalf > rFull && rHalf < dNeutral);
-check('质量分点名被降权的是饲料企业豆粕库存天数', window._quality.lowItems.some(x=>x.label.includes('饲料企业豆粕库存天数') && x.q === 0.5));
+a = scoreScenario(feedData({history:hist({percentile:96}), holiday:CHUNJIE})); const rHalf = window._dimensions.demand.ratio;
+check('★同样偏空：春节前14天窗口内票权×0.5 → 需求端偏空程度比窗口外更小', rHalf > rFull && rHalf < dNeutral);
+a = scoreScenario(feedData({history:hist({percentile:96}), holiday:GUOQING})); const rNat = window._dimensions.demand.ratio;
+check('★同样偏空：国庆前7天不降权 → 需求端偏空程度与窗口外完全相同(往年同月分位已含节前备货)', rNat === rFull);
+a = scoreScenario(feedData({history:hist({percentile:96}), holiday:CHUNJIE}));       // 自己造春节降权场景，不依赖前面场景留下的状态
+check('★春节降权时，质量分点名被降权的是饲料企业豆粕库存天数(×0.5)；国庆不降权时质量分里没有它', window._quality.lowItems.some(x=>x.label.includes('饲料企业豆粕库存天数') && x.q === 0.5)
+  && (scoreScenario(feedData({history:hist({percentile:96}), holiday:GUOQING})), !window._quality.lowItems.some(x=>x.label.includes('饲料企业豆粕库存天数'))));
 
 // 还没评估过(mode未定义)：不进投票清单，不改变旧场景的票数
 reset(); H.setMockedMonth(5);
@@ -149,10 +197,10 @@ refreshMysteelFeedDays(); updateOverallAlert();
 let hh = computeDataHealth(NOW); let row = hh.rows.find(x=>x.key==='feed');
 check('★历史样本积累中：健康度显示⏳(不是⚪无数据)，不算投票指标，写明原因', row.state==='pending' && row.icon==='⏳' && row.votes===false && row.detail.includes('样本只跨134天'));
 reset();
-window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({history:hist({percentile:96}), holiday:{name:'国庆', daysTo:-7, phase:'节前备货', holidayDate:'2026-10-01'}})};
+window._syncedData = {generatedAt:new Date(NOW).toISOString(), mysteelFeedDays: feedData({history:hist({percentile:96}), holiday:CHUNJIE})};
 refreshMysteelFeedDays(); updateOverallAlert();
 row = computeDataHealth(NOW).rows.find(x=>x.key==='feed');
-check('★国庆备货窗口降权：健康度显示🟡降权×0.5，写明原因', row.state==='degraded' && row.label.includes('×0.5') && row.detail.includes('国庆前7天'));
+check('★春节备货窗口降权：健康度显示🟡降权×0.5，写明原因', row.state==='degraded' && row.label.includes('×0.5') && row.detail.includes('春节前14天'));
 
 // ===================== 8. 同一份真实数据的自洽检查 =====================
 let bad = 0;

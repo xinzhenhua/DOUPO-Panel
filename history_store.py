@@ -65,6 +65,53 @@ SERIES_META = {
 }
 import re as _re
 
+# ===================== 序列质量声明：口径断点 + 已知可疑点 =====================
+# 原始点永远保留在文件里(可追溯、可撤销)；只是计算分位/校准时不用它们。
+#
+# ★口径断点：该日期之前的点和之后的点"口径不同，不可比"，计算分位时只用断点之后的。
+#   meal_stock(豆粕周度库存)：Mysteel在每期周报的"特别声明"里写——"为了数据更能贴合市场变化趋势，Mysteel农产品对样本点进行了优化，
+#   自2024年1月5日(第一周)开始，网页端只发一版动态全样本数据，原口径历史数据在钢联数据终端可查看"。(用户2026-10-01核对原文)
+#   也就是2024-01-05之前(我们回填到的2022-06起的约31个点：2022年28个+2023年3个)是旧口径，之后是"动态全样本"口径，混在一起算分位/阈值校准没有意义。
+#   ⚠️"动态全样本"意味着样本点本身会随时间调整，2024年之后的数据也不能保证完全同口径——这是个残留的不确定性，只能如实标注。
+SERIES_BREAKS = {
+    "meal_stock": ("2024-01-05", "Mysteel 2024年1月5日起网页端只发一版动态全样本数据，之前的旧口径不可比"),
+}
+# ★已知可疑点：{序列key: {日期: 原因}}。离群、且缺少佐证、又无法在现有数据里核实的点，计算分位时不用(文件里仍保留)。
+#   meal_stu 2025-04 = 1.56%：是整条序列(其余5.9%~21%)里的离群最小值；该点只存了"how":"stated"，没有存期末库存/消费量，无法反算；
+#   周度库存在2024-12-25~2025-09-30之间只有1个点，无法交叉验证；但同期饲料库存天数创5年最低(2025-04-25 4.35天)，说明当时确实极度紧缺——
+#   所以既不能证实也不能证伪(用户2026-10-01决定不再追查)。不让它继续悬着：不参与分位，文件里保留。以后核实了真实值，删掉这一行即可恢复。
+KNOWN_SUSPECT_POINTS = {
+    "meal_stu": {"2025-04": "离群最小值(1.56%，其余5.9%~21%)，缺期末库存/消费量佐证，无法在现有数据里核实"},
+}
+
+
+def usable_points(key, points):
+    """计算分位/校准时真正用的点：去掉口径断点之前的、去掉已知可疑点。原始点不动。"""
+    brk = SERIES_BREAKS.get(key)
+    bad = KNOWN_SUSPECT_POINTS.get(key) or {}
+    out = []
+    for p in points:
+        if brk and str(p["d"])[:10] < brk[0]:
+            continue
+        if str(p["d"]) in bad or str(p["d"])[:7] in bad:
+            continue
+        out.append(p)
+    return out
+
+
+def excluded_points(key, points):
+    """被排除的点及原因(给报告/校准用)：[(日期, 原因)]。"""
+    brk = SERIES_BREAKS.get(key)
+    bad = KNOWN_SUSPECT_POINTS.get(key) or {}
+    out = []
+    for p in points:
+        d = str(p["d"])
+        if brk and d[:10] < brk[0]:
+            out.append((d, "口径断点之前：" + brk[1]))
+        elif d in bad or d[:7] in bad:
+            out.append((d, "已知可疑点：" + bad.get(d, bad.get(d[:7]))))
+    return out
+
 
 def window_ok(d, ctype, expiry_year):
     """日期d(YYYY-MM-DD)是否落在这个合约类型(到期年expiry_year)的建议交易窗口内。回填和每日累积共用同一个判断。
@@ -405,7 +452,7 @@ def update_and_attach(result, base_dir=None):
             series, changed = record_points(key, [pt], base_dir)
             if changed:
                 touched.append(key)
-            res["history"] = summarize(series["points"], v, d, series["freq"])
+            res["history"] = summarize(usable_points(series["key"], series["points"]), v, d, series["freq"])
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花，不能拖垮主流程
             note(rk, e)
 
@@ -425,7 +472,7 @@ def update_and_attach(result, base_dir=None):
             series, changed = record_points("meal_stock", pts, base_dir)
             if changed:
                 touched.append("meal_stock")
-            res["history"] = summarize(series["points"], res["value"], _day(res.get("date")), series["freq"])
+            res["history"] = summarize(usable_points("meal_stock", series["points"]), res["value"], _day(res.get("date")), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("mysteelMealStock", e)
 
@@ -446,7 +493,7 @@ def update_and_attach(result, base_dir=None):
             series, changed = record_points("feed_days", pts, base_dir)
             if changed:
                 touched.append("feed_days")
-            res["history"] = summarize(series["points"], res["value"], _day(res.get("date")), series["freq"])
+            res["history"] = summarize(usable_points("feed_days", series["points"]), res["value"], _day(res.get("date")), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("mysteelFeedDays", e)
 
@@ -466,7 +513,7 @@ def update_and_attach(result, base_dir=None):
                     touched.append(key)
             else:
                 series = load_series(key, base_dir)
-            res["history"] = summarize(series["points"], res["grossMargin"], _day(res["date"]), series["freq"])
+            res["history"] = summarize(usable_points(series["key"], series["points"]), res["grossMargin"], _day(res["date"]), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("crushMargins", e)
 
@@ -483,7 +530,7 @@ def update_and_attach(result, base_dir=None):
                     touched.append(key)
             else:
                 series = load_series(key, base_dir)
-            res["history"] = summarize(series["points"], res["spreadPct"], _day(res["date"]), series["freq"])
+            res["history"] = summarize(usable_points(series["key"], series["points"]), res["spreadPct"], _day(res["date"]), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("termSpreads", e)
 
@@ -504,7 +551,7 @@ def update_and_attach(result, base_dir=None):
                     touched.append("meal_stu")
             else:
                 series = load_series("meal_stu", base_dir)
-            res["history"] = summarize(series["points"], res["value"], res["month"], "monthly",
+            res["history"] = summarize(usable_points("meal_stu", series["points"]), res["value"], res["month"], "monthly",
                                        cohort_fn=lambda p: cn_calendar.festival_cohort(p["d"]))
     except Exception as e:  # noqa: BLE001
         note("mysteelMealStu", e)

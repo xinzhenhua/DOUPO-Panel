@@ -168,6 +168,41 @@ def test_calibration_summary_includes_term_spread():
     ok("校准摘要：月差的分位数、按月中位、远月升水占比")
 
 
+def test_missing_contract_error_is_translated_to_plain_language():
+    """★2026-10-01回填报告里M2801(远月尚未上市)、M1809(太久以前已下市)等，新浪对不存在的合约不返回空表，而是让akshare内部抛
+    pandas异常'Length mismatch: Expected axis has 0 elements, new values have 8 elements'——用户看到一串看不懂的原始报错。统一成人话。"""
+    import sys, types
+    real = sys.modules.get("akshare")
+    fake = types.ModuleType("akshare")
+    def boom(symbol):
+        raise ValueError("Length mismatch: Expected axis has 0 elements, new values have 8 elements")
+    fake.futures_zh_daily_sina = boom
+    sys.modules["akshare"] = fake
+    try:
+        r = fd.fetch_dce_daily_kline("M2801", max_rows=1)
+        assert r["available"] is False and "M2801" in r["reason"] and "尚未上市" in r["reason"] and "已下市" in r["reason"], r
+        assert "Length mismatch" not in r["reason"], "原始pandas报错不该出现在给用户看的reason里"
+        assert "Length mismatch" in r["debug"]["rawError"], "原始报错保留在debug里，排查时还能看到"
+        # 其他类型的异常不被误翻译
+        def other(symbol):
+            raise ConnectionError("连接被重置")
+        fake.futures_zh_daily_sina = other
+        r2 = fd.fetch_dce_daily_kline("M2801", max_rows=1)
+        assert "连接被重置" in r2["reason"] and "尚未上市" not in r2["reason"], r2
+        # 同样含'Length mismatch'但不是'0 elements'(比如列数不对)：不翻译
+        def other2(symbol):
+            raise ValueError("Length mismatch: Expected axis has 5 elements, new values have 8 elements")
+        fake.futures_zh_daily_sina = other2
+        r3 = fd.fetch_dce_daily_kline("M2801", max_rows=1)
+        assert "尚未上市" not in r3["reason"] and "Length mismatch" in r3["reason"], r3
+    finally:
+        if real is not None:
+            sys.modules["akshare"] = real
+        else:
+            sys.modules.pop("akshare", None)
+    ok("★不存在的合约(远月未上市/已下市)：pandas原始报错翻译成人话，原始报错留在debug；其他异常/列数不对的Length mismatch不被误翻译")
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
 
 if __name__ == "__main__":
