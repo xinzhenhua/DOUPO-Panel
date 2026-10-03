@@ -325,65 +325,6 @@ def test_backfill_meal_stu_no_bodies_uses_summaries_only():
     ok("回填国内库消比(--no-bodies)：不请求正文，只用摘要")
 
 
-def test_backfill_meal_stock_weekly():
-    def art(pub, text, title="Mysteel：2026年第38周全国主要区域大豆及豆粕库存统计"):
-        return {"title": title, "publishTime": pub + " 09:00", "content": text}
-    items = [art("2026-09-21", "2026年第38周全国主要油厂大豆库存上升，豆粕库存上升，其中大豆库存856.85万吨，豆粕库存117.32万吨，较上周增加6.33万吨"),
-             art("2026-09-14", "全国主要油厂豆粕库存111万吨，较上周增加", title="Mysteel：2026年第37周全国主要区域大豆及豆粕库存统计"),
-             art("2026-09-07", "华东豆粕库存45万吨", title="Mysteel：华东豆粕库存"),         # 区域数据，拒绝
-             art("2026-08-31", "本周豆粕库存上升0.7万吨")]                                       # 变动量，拒绝
-    with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 4, "dataList": items}, {})):
-        rep = bf.backfill_meal_stock(base_dir=d, today=date(2026, 9, 29))
-        pts = {p["d"]: p["v"] for p in hs.load_series("meal_stock", d)["points"]}
-        assert pts == {"2026-09-21": 117.32, "2026-09-14": 111.0}, pts
-        assert rep["total"] == 2 and rep["extractStats"]["提取成功(来自摘要)"] == 2, rep["extractStats"]
-    ok("回填豆粕周度库存：按现有规则拒绝区域数据/变动量，全国库存逐周落盘")
-
-
-def test_backfill_meal_stock_fetches_bodies_when_summary_has_no_numbers():
-    """★上一版的问题：搜索到750篇只提取出12个点。摘要多半没有数字，数字在正文里。
-    (下面是合成样本，格式参照9月21日那篇真实摘要；正文里写的是Mysteel周报的常见句式。)"""
-    def art(pub, week, summary, url):
-        return {"title": f"Mysteel：{week}全国主要区域大豆及豆粕库存统计", "publishTime": pub + " 09:00", "content": summary, "url": url}
-    items = [art("2026-08-31", "2026年第35周", "全国主要油厂大豆库存下降，豆粕库存上升，未执行合同减少。", "https://ncp.mysteel.com/a/35.html"),
-             art("2026-05-29", "2026年第22周", "全国主要油厂大豆库存上升，豆粕库存上升。", "https://ncp.mysteel.com/a/22.html"),
-             art("2026-05-30", "2026年第22周", "更正版：全国主要油厂大豆库存上升。", "https://ncp.mysteel.com/a/22b.html"),     # 同一周的更晚一篇，应取代
-             art("2026-06-08", "2026年第23周", "本周库存数据发布。", "https://ncp.mysteel.com/a/23.html"),                       # 正文请求会失败
-             {"title": "Mysteel：豆粕现货价格日评", "publishTime": "2026-06-09 09:00", "content": "价格上涨", "url": "https://ncp.mysteel.com/a/other.html"},   # 不像周度库存文章
-             {"title": "Mysteel：华东豆粕库存", "publishTime": "2026-06-10 09:00", "content": "华东豆粕库存45万吨", "url": "https://ncp.mysteel.com/a/east.html"}]
-    bodies = {"https://ncp.mysteel.com/a/35.html": "<h1>Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计</h1><p>2026年第35周，全国主要油厂大豆库存827.97万吨，较上周减少11.13万吨，豆粕库存116.73万吨，较上周增加5.75万吨。</p>免责声明：xx",
-              "https://ncp.mysteel.com/a/22.html": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>全国主要油厂大豆库存662.88万吨，豆粕库存34.74万吨，较上周增加3.56万吨。</p>免责声明：xx",
-              "https://ncp.mysteel.com/a/22b.html": "<h1>Mysteel：2026年第22周全国主要区域大豆及豆粕库存统计</h1><p>更正：全国主要油厂豆粕库存34.80万吨，较上周增加3.62万吨。</p>免责声明：xx"}
-    fetched = []
-    def fake_text(url, headers=None, retries=2, timeout=20):
-        fetched.append(url)
-        return (bodies[url], {}) if url in bodies else (None, {"error": "HTTP 403"})
-    with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": len(items), "dataList": items}, {}), fetch_text_debug=fake_text):
-        rep = bf.backfill_meal_stock(base_dir=d, today=date(2026, 9, 29))
-        pts = {p["d"]: p for p in hs.load_series("meal_stock", d)["points"]}
-        assert pts["2026-08-31"]["v"] == 116.73 and pts["2026-08-31"]["x"] == {"week": "2026-W35"}, pts
-        assert "2026-05-29" not in pts and pts["2026-05-30"]["v"] == 34.8, "同一周有两篇时取发布更晚的"
-        assert "2026-06-08" not in pts and "2026-06-09" not in pts and "2026-06-10" not in pts
-        assert "https://ncp.mysteel.com/a/other.html" not in fetched, "不像周度库存文章(标题没有第N周/库存)不抓正文，省请求"
-        assert "https://ncp.mysteel.com/a/east.html" in fetched, "标题含'库存'+'豆粕'的按周度候选处理(会抓正文，抓不到/提取不出就如实归类，不会采用区域数据)"
-        st = rep["extractStats"]
-        assert st["提取成功(来自正文)"] == 3 and st["正文请求失败"] == 2 and any("不像周度库存文章" in k for k in st), st
-        assert all(x["text"] == "HTTP 403" for x in rep["rejectedSamples(每类前5篇)"]["正文请求失败"])
-        checks = {c["week"]: c for c in rep["spotChecks(独立来源Mysteel英文站周报)"]}
-        assert checks["2026-W35"]["result"] == "通过"
-        assert checks["2026-W22"]["got"] == 34.8 and checks["2026-W22"]["result"] == "通过", "更正版34.80 vs 校验点34.74：差0.06，在0.1容差内"
-    ok("回填周度库存：摘要没数字→抓正文；同一周取更晚；不像周报的不抓；失败/拒绝如实分类，带校验点核对")
-
-
-def test_backfill_meal_stock_no_bodies_flag():
-    items = [{"title": "Mysteel：2026年第35周全国主要区域大豆及豆粕库存统计", "publishTime": "2026-08-31 09:00", "content": "全国主要油厂豆粕库存上升。", "url": "https://ncp.mysteel.com/a/35.html"}]
-    calls = []
-    with Tmp() as d, Patch(fetch_json_debug=lambda *a, **k: ({"resultCode": 0, "total": 1, "dataList": items}, {}), fetch_text_debug=lambda *a, **k: calls.append(1) or (None, {})):
-        rep = bf.backfill_meal_stock(base_dir=d, today=date(2026, 9, 29), fetch_bodies=False)
-        assert not calls, "fetch_bodies=False时一次正文都不能请求"
-    ok("回填周度库存：fetch_bodies=False时不请求正文")
-
-
 def test_meal_balance_ratio_name_variants_and_keep_text():
     r = fd._parse_meal_balance_text("2025年7月产量700万吨，消费690万吨，期末库存105万吨，库存消费比15.20%；8月库销比14.8%。", date(2025, 7, 31), keep_text=True)
     assert r[(2025, 7)]["stu"] == 15.2 and r[(2025, 8)]["stu"] == 14.8, r
@@ -654,8 +595,8 @@ def test_backfill_meal_stu_stores_stock_consumption_and_defaults_skip_meal_stock
         pts = {p["d"]: p for p in hs.load_series("meal_stu", d)["points"]}
         assert pts["2026-08"]["x"] == {"how": "stated", "stock": 117.0, "consumption": 772.0, "production": 800.0}, pts["2026-08"]
         assert pts["2026-05"]["x"]["consumption"] == 673.0 and "stock" not in pts["2026-05"]["x"], "5月：库存30万吨与库消比不自洽被丢弃，不存"
-    assert bf.DEFAULT_JOBS == ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival"] and "meal_stock" in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS      # v96.3起默认清单加了soy_import、arrival；meal_stock(补不全)和sample(一次性诊断)仍不在默认里
-    assert "meal_stock" not in bf.DEFAULT_JOBS and "sample" not in bf.DEFAULT_JOBS
+    assert bf.DEFAULT_JOBS == ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate"] and "meal_stock" not in bf.JOBS and "sample" not in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS      # v96.3起默认清单加了soy_import、arrival，v98加了crush_rate；meal_stock(补不全)和sample(一次性诊断)仍不在默认里
+    assert "meal_stock" not in bf.DEFAULT_JOBS and "sample" not in bf.DEFAULT_JOBS and set(bf.DEFAULT_JOBS) <= set(bf.JOBS)      # ★v99起meal_stock(一直补不全)和sample(一次性诊断)都已移除，见REMOVED_backfill_sample_and_meal_stock.md；这条守卫防止它们被悄悄加回来；默认清单里的每一项都必须是已注册的任务
     ok("回填国内库消比：存库存/消费/产量；默认回填项不含补不全的周度库存")
 
 

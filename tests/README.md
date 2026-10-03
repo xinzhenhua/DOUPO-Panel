@@ -97,3 +97,8 @@ node test_planting_brl.js
 - `python3 test_mysteel_parsers.py` / `python3 test_backfill_mysteel.py`：v96.3新增，Mysteel解析器与进口量/到港预报回填(用真实采样夹具 tests/data/mysteel_samples_20261002.json)
 - `python3 test_crush_festival.py` / `tests/test_crush_festival.js`：v97新增，开机率春节扰动期
 - v97：移除`test_export_inspections_display.js`及`test_fetch_data.py`里8个出口检验测试；顶部拆开后`test_systems.js`的命名守卫改写为v97(基本面预警+市场结构卡)
+- `tests/test_crush_rule.js` / `test_crush_rate_rule.py`：v98新增，开机率滚动分位规则与回填
+- `python3 test_sync_watchdog.py`：v98新增，数据同步看门狗(与页面口径对拍；用`NODE_PATH=<含jsdom的node_modules>`跑才包含对拍)
+- `python3 test_calibrate_margin_spread.py`：v98新增，榨利/月差校准诊断
+- `tests/test_decision_card.js`、`tests/test_rmspread_caliber.js`：v99新增(决策卡、豆菜粕价差新口径)；`tests/test_crush_rule.js`、`test_crush_rate_rule.py`扩展了往年同月三档
+- v99移除：`test_sample_job.py`；`test_history.py`里3个meal_stock回填测试；`test_url_safety.py`改为逐个调用点检查白名单

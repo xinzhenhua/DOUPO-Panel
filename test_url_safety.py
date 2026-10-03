@@ -109,8 +109,25 @@ def test_backfill_module_never_requests_a_malicious_url_either():
     import inspect
     import backfill_history as bf
     src = inspect.getsource(bf)
-    assert src.count('fd.is_trusted_article_url(it["url"])') == 3, "3处fetch_text_debug(it[\"url\"])都应有白名单校验"
-    assert src.count('fd.fetch_text_debug(it["url"]') == 3, "没有新增未受保护的调用点"
+    # ★v99：原来数"恰好3处"。移除backfill_meal_stock(它那一处调用点随之消失，攻击面变小，剩余每处的保护没有变)后剩2处。
+    #   与其维护一个会随功能增删而变的数字，不如**逐个调用点检查它前面紧邻白名单校验**——以后新增一个"请求搜索结果URL"的调用点却忘了加白名单，
+    #   这里会失败(只数总数的话，删一个、加一个未保护的，总数不变就漏过去了)。
+    import re
+    lines = src.split("\n")
+    call_idx = [i for i, l in enumerate(lines) if 'fd.fetch_text_debug(it["url"]' in l]
+    assert len(call_idx) >= 1, "没找到任何'请求搜索结果URL'的调用点——测试自己失效了"
+    for i in call_idx:
+        window = "\n".join(lines[max(0, i - 3): i + 1])
+        assert 'fd.is_trusted_article_url(it["url"])' in window, f"第{i + 1}行的fetch_text_debug(it[\"url\"])前没有紧邻的白名单校验:\n{window}"
+    owners = []
+    for i in call_idx:
+        for k in range(i, -1, -1):
+            m = re.match(r"def (\w+)\(", lines[k])
+            if m:
+                owners.append(m.group(1))
+                break
+    assert sorted(owners) == ["backfill_feed_days", "backfill_meal_stu"], f"调用点所在函数变了(新增/移除了需要白名单的位置，请确认保护): {owners}"
+    assert src.count('fd.is_trusted_article_url(it["url"])') == len(call_idx), "白名单校验数与调用点数一致"
     # 端到端：回填饲料库存天数时，搜索结果夹带恶意url，不能被请求
     items = [{"title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260924）", "publishTime": "2026-09-24 17:23", "content": "市场震荡运行。", "url": "https://evil.example.com/steal"},
              {"title": "Mysteel数据：全国主要地区饲料企业豆粕库存天数调查（20260918）", "publishTime": "2026-09-18 17:08", "content": "截至9月18日，全国饲料企业豆粕物理库存8.23天，环比微增0.08天，同比下降1.19天。", "url": "https://ncp.mysteel.com/a/ok.html"}]

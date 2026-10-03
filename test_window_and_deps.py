@@ -170,6 +170,24 @@ def test_workflows_use_lock_files_and_backfill_installs_akshare():
     ok("★回填工作流先装akshare(锁定版本)再回填；更新工作流两个安装步骤都用锁定文件；不再有不锁版本的pip install")
 
 
+def test_backfill_workflow_only_description_matches_the_registered_jobs():
+    """★v99发现：移除sample/meal_stock后，工作流`only`输入的说明里还列着它们(会误导用户去填一个已经不存在的任务)。
+    说明里列出的可选项必须与backfill_history.JOBS(+calibrate)逐项一致——以后再增删任务忘了改说明，这里会立刻失败。"""
+    import re, yaml
+    w = yaml.safe_load(open(os.path.join(ROOT, ".github", "workflows", "backfill-history.yml"), encoding="utf-8"))
+    desc = (w.get(True) or w.get("on"))["workflow_dispatch"]["inputs"]["only"]["description"]
+    listed = re.search(r"逗号分隔：([a-z_,]+)", desc).group(1).split(",")
+    import backfill_history as bf
+    real = set(bf.JOBS) | {"calibrate"}
+    assert set(listed) == real, f"说明里多了{sorted(set(listed) - real)}，少了{sorted(real - set(listed))}"
+    default_part = re.search(r"默认all=[^；]*：([a-z_,]+)", desc)
+    assert default_part and default_part.group(1).split(",") == bf.DEFAULT_JOBS, "说明里的默认清单必须与DEFAULT_JOBS一致(含顺序)"
+    for removed in ("sample", "meal_stock"):
+        assert desc.count(removed) <= 1, f"已移除的{removed}只应出现在'已移除'那一句里"
+        assert removed not in listed
+    ok("工作流only说明与注册的任务逐项一致(含默认清单顺序)；已移除的sample/meal_stock不在可选项里")
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
 
 if __name__ == "__main__":

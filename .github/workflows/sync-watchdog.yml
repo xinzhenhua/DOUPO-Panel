@@ -1,0 +1,96 @@
+name: 同步看门狗(数据同步停了就主动通知)
+
+# ★为什么需要：页面的"数据健康度"面板已经会检测"每小时同步是否还活着"，但那是被动的——得你打开页面才看到。
+#   同步停了时所有卡片看起来都正常、只是数据越来越旧，这种故障最隐蔽。这个工作流每天检查一次 data/latest.json 的 generatedAt，
+#   错过≥2个大商所交易日就主动通知：①开一个GitHub Issue(标签 sync-stalled，已有未关闭的就不重复开，恢复后自动关闭)；
+#   ②让这次运行变红(GitHub默认会给你发"工作流失败"邮件，之后每天一封，直到恢复)。
+#   判断口径和页面的syncHealth逐点一致(sync_watchdog.py，test_sync_watchdog.py里用Node调用页面真实的JS函数对拍)：
+#   错过≤1个交易日=正常、2~3个=晚了、≥4个=可能已停止；周末/休市期间不误报；数据日期按北京时间，18:00前算到昨天。
+#
+# ★刻意独立：不和"更新豆粕基本面数据/回填历史数据"共用并发组(那个组只放写数据的任务)——数据同步卡住时正是看门狗最需要运行的时候，
+#   不能被排队、更不能被取消。只用标准库，不装依赖(依赖装不上本身就不该让看门狗失效)。最小权限：只读代码 + 写issue，不碰密钥。
+# ★注意：GitHub Actions的失败邮件要在 Settings → Notifications → Actions 里是开着的(默认开)；Issue通知取决于你对这个仓库的Watch设置。
+#   如果你的仓库连续60天没有任何活动，GitHub会自动停用定时工作流——数据同步每小时提交一次，正常时有活动；万一同步停了，看门狗会先报警。
+# ★年底更新日历时，cn_calendar.py里的DCE_CLOSURES和index.html里的必须一起改(test_sync_watchdog.py有防漂移测试，只改一边会失败)。
+
+on:
+  schedule:
+    - cron: "30 2 * * *"      # 每天北京时间10:30(含周末；是否交易日由脚本判断，周末/休市不会误报)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 评估数据同步状态
+        id: assess
+        run: |
+          python3 sync_watchdog.py --latest data/latest.json --no-fail | tee /tmp/watchdog.json
+          python3 - <<'PY'
+          import json, os
+          r = json.loads(open('/tmp/watchdog.json', encoding='utf-8').read().strip().split('\n')[-1])
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              f.write(f"alert={'true' if r['alert'] else 'false'}\n")
+              f.write(f"state={r['state']}\n")
+              f.write(f"label={r['label']}\n")
+              f.write(f"detail={r['detail']}\n")
+          PY
+
+      - name: 查有没有未关闭的同步告警issue
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --label sync-stalled --state open --json number --jq 'length')
+          if [ "$n" -gt 0 ]; then echo "open_issue=true" >> "$GITHUB_OUTPUT"; else echo "open_issue=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: 开告警issue(报警且还没有未关闭的)
+        id: open_issue
+        if: steps.assess.outputs.alert == 'true' && steps.existing.outputs.open_issue != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # 值通过环境变量传给shell，不用${{ }}直接内插进命令：引号/换行不会破坏命令，也避开GitHub官方警告的"表达式内插进shell"的注入写法
+          W_STATE: ${{ steps.assess.outputs.state }}
+          W_LABEL: ${{ steps.assess.outputs.label }}
+          W_DETAIL: ${{ steps.assess.outputs.detail }}
+        run: |
+          gh label create sync-stalled --description "数据同步停了(看门狗自动开)" --color D93F0B 2>/dev/null || true
+          BODY="看门狗检测到 data/latest.json 的同步时间落后了。
+
+          - 状态：${W_STATE}
+          - ${W_LABEL}
+          - ${W_DETAIL}
+
+          **要检查什么**：Actions → 「更新豆粕基本面数据」最近的运行：是否被禁用、是否报错(红叉)、是否一直排队；
+          以及 Settings → Actions 里工作流是否被停用、访问令牌/权限是否失效。
+
+          页面上所有卡片的数据现在都在变旧，但看起来是正常的，所以请尽快处理。恢复后看门狗会自动关闭这个issue。"
+          gh issue create --label sync-stalled --title "⚠️ 豆粕数据同步可能停了：${W_LABEL}" --body "$BODY"
+
+      - name: 关告警issue(已恢复且有未关闭的)
+        id: close_issue
+        if: steps.assess.outputs.alert != 'true' && steps.existing.outputs.open_issue == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          W_LABEL: ${{ steps.assess.outputs.label }}
+        run: |
+          for n in $(gh issue list --label sync-stalled --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "同步已恢复：${W_LABEL}。看门狗自动关闭。"
+          done
+
+      - name: 报警时让这次运行变红(GitHub会发失败邮件)
+        if: always() && steps.assess.outputs.alert == 'true'
+        env:
+          W_LABEL: ${{ steps.assess.outputs.label }}
+          W_DETAIL: ${{ steps.assess.outputs.detail }}
+        run: |
+          echo "::error::${W_LABEL}。${W_DETAIL}"
+          exit 1

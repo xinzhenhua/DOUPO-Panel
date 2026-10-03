@@ -50,6 +50,22 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .alert-box.bull{background:var(--rd);border:1px solid var(--rb);color:#d47a5a}
 .alert-box.bear{background:var(--gd);border:1px solid var(--gb);color:#5ab87a}
 .alert-box.neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t3)}
+/* 决策卡(v99)：摘要一屏读完 + 五个折叠区块。颜色沿用页面约定(中国市场习惯)：红=偏多、绿=偏空 */
+.dc-row{display:flex;gap:8px;align-items:baseline;font-size:11.5px;line-height:1.75;margin-top:4px}
+.dc-k{flex:0 0 58px;color:var(--t3);font-size:10.5px}
+.dc-v{flex:1;color:var(--t1)}
+.dc-head{border-radius:8px;padding:9px 12px;margin-top:8px;font-size:13px;font-weight:700;line-height:1.6}
+.dc-head.dc-bull{background:var(--rd);border:1px solid var(--rb);color:#e8896b}
+.dc-head.dc-bear{background:var(--gd);border:1px solid var(--gb);color:#5ec98a}
+.dc-head.dc-neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t2)}
+.dc-bullt{color:var(--r2);font-weight:700}.dc-beart{color:var(--g2);font-weight:700}
+.dc-warn{color:#d4a017}.dc-bad{color:var(--r2)}.dc-good{color:var(--g2)}
+.dc-sec{margin-top:8px;border-top:1px solid var(--bdr);padding-top:6px}
+.dc-sec>summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--t2);padding:3px 0;list-style:none}
+.dc-sec>summary::-webkit-details-marker{display:none}
+.dc-sec>summary::before{content:'▸ ';color:var(--t3)}
+.dc-sec[open]>summary::before{content:'▾ '}
+.dc-sub{font-size:9px;color:var(--t3);font-weight:400;margin-left:6px}
 .alert-box.warn{background:var(--goldd);border:1px solid #3d2d00;color:var(--gold)}
 .alert-box .at{font-weight:700;margin-bottom:3px;display:block}
 .alert-box.bull .at{color:var(--r)}.alert-box.bear .at{color:var(--g)}.alert-box.neutral .at{color:var(--t3)}.alert-box.warn .at{color:var(--gold)}
@@ -136,47 +152,37 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 <div id="tradingWindowInfo"></div>
 <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
 
-<!-- ============ 事件日历：休市 + 美国关键报告(日期已核实来源)，放在最顶端——休市/报告时间直接影响能不能交易、会不会跳空 ============ -->
-<div class="card" id="eventCalendarCard">
+<!-- ============ 决策卡(v99)：原来分散的 事件日历 / 三方共振 / 基本面预警 / 市场结构 / 数据健康度 合成一张 ============
+     顶部"摘要"一屏读完(基本面方向+置信度 / 三方关系 / 主导驱动 / 需留意 / 未来事件 / 数据健康)，只读已有的计算结果，不做新的评分；
+     下面五个折叠区块是依据——内容容器沿用原来的id(alertContent/structureContent/resonanceContent/eventCalendarContent/healthContent)，
+     所以各渲染函数不用改。休市/报告时间直接影响能不能交易、会不会跳空，所以"未来事件"在摘要里也有一行。 -->
+<div class="card" id="decisionCard" style="border-color:var(--gold)">
   <div class="card-head">
-    <div class="card-title">📅 近期事件与休市<span style="font-size:9px;color:var(--t3);font-weight:400">· 未来14天 · 北京时间</span></div>
-  </div>
-  <div id="eventCalendarContent" class="loading">正在生成...</div>
-</div>
-
-<!-- ============ 三方共振：技术面+基本面+外资活跃度，放在最顶端，三个系统各自的详情在下方 ============ -->
-<div class="card" id="resonanceCard" style="border-color:var(--gold)">
-  <div class="card-head">
-    <div class="card-title">技术面 × 基本面 × 外资动向</div>
-  </div>
-  <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
-</div>
-
-<!-- ============ 基本面预警(仅供需)：紧跟在合约选择下方，一打开就看到结论 ============
-     v97：顶部拆开。v94曾把它改叫"综合预警"(因为总分里混着基差/月差/量价这些来自价格本身的市场结构票)；
-     现在彻底拆开：顶部只含供需票(供给+需求)，市场结构(基差/月差/量价)独立成下面一张卡，两者各自算、各自显示、各自说明。 -->
-<div class="card" id="alertCard" style="border-color:var(--gold)">
-  <div class="card-head">
-    <div class="card-title">📊 基本面预警<span style="font-size:9px;color:var(--t3);font-weight:400">· 仅供需(供给端+需求端)，不含基差/月差/量价</span></div>
-  </div>
-  <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
-</div>
-
-<!-- ============ 市场结构：独立于基本面的系统(v97)。基差/月差/量价=盘面当下用什么方式定价，来自价格本身 ============ -->
-<div class="card" id="structureCard">
-  <div class="card-head">
-    <div class="card-title">🧭 市场结构<span style="font-size:9px;color:var(--t3);font-weight:400">· 基差/月差/量价：来自价格本身，跟技术面同源，不是独立于价格的证据</span></div>
-  </div>
-  <div id="structureContent" class="loading">等待数据...</div>
-</div>
-
-<!-- ============ 数据健康度：哪些指标不可用/降权、评分里哪些投票缺席、每小时同步是否还活着 ============ -->
-<div class="card" id="healthCard">
-  <div class="card-head">
-    <div class="card-title">🩺 数据健康度</div>
+    <div class="card-title">🎯 决策卡<span style="font-size:9px;color:var(--t3);font-weight:400">· 只描述状态，不是买卖信号</span></div>
     <span class="badge" id="healthBadge">检查中...</span>
   </div>
-  <div id="healthContent" class="loading">正在检查...</div>
+  <div id="decisionSummary" class="loading">等待数据...</div>
+
+  <details class="dc-sec" open>
+    <summary>📊 基本面预警<span class="dc-sub">仅供需(供给端+需求端)，不含基差/月差/量价</span></summary>
+    <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🧭 市场结构<span class="dc-sub">基差/月差/量价：来自价格本身，跟技术面同源，不是独立于价格的证据</span></summary>
+    <div id="structureContent" class="loading">等待数据...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🔀 技术面 × 基本面 × 外资动向<span class="dc-sub">三方关系</span></summary>
+    <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>📅 近期事件与休市<span class="dc-sub">未来14天 · 北京时间</span></summary>
+    <div id="eventCalendarContent" class="loading">正在生成...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🩺 数据健康度<span class="dc-sub">哪些指标不可用/降权、哪些投票缺席、每小时同步是否还活着</span></summary>
+    <div id="healthContent" class="loading">正在检查...</div>
+  </details>
 </div>
 
 <!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
@@ -483,16 +489,16 @@ function renderGaugeSVG(score, minScore, maxScore, unit){
   </svg>`;
 }
 
-function renderSupplyDemandTable(supplyItems, demandItems, structureItems){
-  structureItems = structureItems || [];
+// ★v99：只有供应/需求两列。原来还支持第三列"市场结构"(v93~v96顶部含结构票时用)，v97市场结构独立成卡后调用方永远传空，已删。
+function renderSupplyDemandTable(supplyItems, demandItems){
   const cellHtml = (item)=>{
     const sig = item.signal;
     const cls = sig===1?'sd-pos':sig===-1?'sd-neg':sig===0?'sd-neutral':'sd-empty';
     const arrow = sig===1?'▲':sig===-1?'▼':sig===0?'—':'';
     return `<td class="sd-cell ${cls}">${item.label}${arrow?` ${arrow}`:''}</td>`;
   };
-  const cols = [supplyItems, demandItems].concat(structureItems.length ? [structureItems] : []);
-  const heads = ['供应','需求'].concat(structureItems.length ? ['市场结构'] : []);
+  const cols = [supplyItems, demandItems];
+  const heads = ['供应','需求'];
   const maxRows = Math.max.apply(null, cols.map(c=>c.length));
   let rows = '';
   for(let i=0;i<maxRows;i++){
@@ -709,8 +715,16 @@ const AUTO_INDICATORS = [
    extract:d=>{
      const fe = d.festival;
      const when = !fe ? '' : fe.daysTo < 0 ? `前${-fe.daysTo}天` : fe.daysTo === 0 ? '当天' : `后${fe.daysTo}天`;
+     const tr = d.history && d.history.trailing, sm = d.history && d.history.sameMonth;
+     const okT = t => t && t.enough && Array.isArray(t.quantiles) && t.quantiles.length === 21 && t.quantiles[16] > t.quantiles[4];
+     const smNote = sm && !okT(sm) ? `${sm.month}月往年同月只有${sm.n}个读数(需要≥${sm.minN}个)，` : '';
+     const basisLine = okT(sm)
+       ? `<br>📏 <b>评分口径(v99)：往年同月分位</b>(${sm.month}月，${(sm.years||[]).join('/')}年共${sm.n}个读数，中位${sm.median}%)；常态区间${sm.quantiles[4]}~${sm.quantiles[16]}%(20%~80%分位)，≥${sm.quantiles[16]}%偏空、≤${sm.quantiles[4]}%偏多。<span style="color:var(--t3)">参照里去掉了春节窗口和2025年3~4月关税战(油厂真实停机，不代表往年同月的常态)；某个月同月参照不够${sm.minN}个时会自动退到近365天滚动分位。</span>`
+       : okT(tr)
+       ? `<br>📏 <b>评分口径(v99)：${smNote}暂用近${tr.windowDays}天滚动分位</b>(去掉春节窗口)，参照${tr.n}个读数、自${tr.since}起，中位${tr.median}%；常态区间${tr.quantiles[4]}~${tr.quantiles[16]}%(20%~80%分位)，≥${tr.quantiles[16]}%偏空、≤${tr.quantiles[4]}%偏多。`
+       : `<br>📏 <b>历史不足(${tr ? tr.n : 0}个读数，需要≥${tr ? tr.minN : 120}个)，暂用固定阈值(&lt;40偏多、&gt;60偏空)</b>：这个阈值在近一年的水平下偏空触发过多——用真实读数算，去掉春节窗口后约56%的日子都判偏空(常态中位数就是61.6%)。运行一次回填(only=crush_rate)后会改用滚动分位。`;
      return {value:d.value, valueText:`${d.value}%`, date:d.date,
-       detail:`数据日期：${d.date}` + (fe ? `<br>🧧 <b>春节${when}</b>：油厂放假停机，开机率被机械压低，<b>不代表供应松紧</b>，所以不计分。(春节窗口=节前7天~节后14天，依据你的真实数据：2026-02-24的15.46%、2025-01-26的9.80%都是放假；国庆油厂不停机，不受影响)` : ''),
+       detail:`数据日期：${d.date}` + basisLine + (fe ? `<br>🧧 <b>春节${when}</b>：油厂放假停机，开机率被机械压低，<b>不代表供应松紧</b>，所以不计分。(春节窗口=节前7天~节后14天，依据你的真实数据：2026-02-24的15.46%、2025-01-26的9.80%都是放假；国庆油厂不停机，不受影响)` : ''),
        suppress: fe ? `春节${when}，油厂放假停机，不按固定阈值判方向` : ''};
    }},
   {key:'stock', group:'supply', inputId:'m_stock', title:'豆粕商业库存', unit:'万吨', ph:'如65', freq:'周度', sourceName:'Mysteel',
@@ -839,7 +853,8 @@ const AUTO_INDICATORS = [
      const how = d.formatUsed === '区间中点'
        ? `区间${d.rangeLow}-${d.rangeHigh}元/吨的中点`
        : `${(d.citySamples||[]).length}个城市(${(d.citySamples||[]).join('/')}元/吨)的平均值`;
-     return {value:d.value, valueText:`${d.value}元/吨(${how})`, date:d.date, detail:`数据日期：${d.date}`};
+     // ★v99：口径标记。新口径(多城市单值平均，2026-06起约800~900)的读数不能拿去比旧阈值(400/700)，见MANUAL_RULES.rmspread
+     return {value:d.value, valueText:`${d.value}元/吨(${how})`, date:d.date, detail:`数据日期：${d.date}`, caliber: d.formatUsed === '多城市单值平均' ? 'cities' : 'range'};
    }},
 ];
 const AUTO_BY_KEY = {};
@@ -954,6 +969,7 @@ function refreshAutoIndicator(key){
   st.holidayDiscount = ex.holidayDiscount || '';  // 长假备货窗口：读数被提前备货抬高，票权×0.5
   st.estimated = sourceEstimateReason(key, src, st);
   st.suppressed = ex.suppress || '';
+  st.caliber = ex.caliber || '';                  // 豆菜粕价差的口径('cities'=新口径三城市单值平均，'range'=旧口径区间中点)
   st.mild = ex.mild || '';
   const shortDate = String(ex.date||'').slice(0,10);
   if(st.stale) setBadge(key, `⚠️ 数据过期 · 不计分`, 'badge-offline');
@@ -996,7 +1012,7 @@ function onManualEdit(key){
   if(!input) return;
   const v = input.value;
   const st = window._indState[key] = window._indState[key] || {};
-  st.suppressed = ''; st.mild = ''; st.late = false; st.estimated = ''; st.holidayDiscount = '';      // 用户手动填了值：视为用户自己负责，恢复计分且不打折
+  st.suppressed = ''; st.mild = ''; st.late = false; st.estimated = ''; st.holidayDiscount = ''; st.caliber = '';      // 用户手动填了值：视为用户自己负责，恢复计分且不打折
   const store = readManualStore();
   if(v === ''){ delete store[cfg.inputId]; } else { store[cfg.inputId] = v; }
   writeManualStore(store);
@@ -3361,7 +3377,7 @@ function renderDataHealth(){
 // ★评分规则版本号：每天记录两个系统的方向时会一并记下它(scripts/snapshot_systems.js→data/history/systems_*.json)。
 //   以后只要改了阈值/权重/投票清单/门槛这类会改变方向的规则，就必须递增——否则几个月后检验"背离有没有信息"时，
 //   会把不同规则算出来的方向混在一起，结论没有意义。
-const SCORING_VERSION = 'v97';    // v97：开机率春节停机扰动期(节前7天~节后14天)不计分
+const SCORING_VERSION = 'v99';    // v99：开机率改往年同月分位(三档：往年同月→近365天滚动→固定阈值)；豆菜粕价差不再计分(2026-06换口径后阈值失效)；v98：开机率滚动分位    // v98：开机率改用近365天滚动分位(去掉春节窗口)，历史不足时回退固定阈值；v97：开机率春节停机扰动期(节前7天~节后14天)不计分
 window._scoringVersion = SCORING_VERSION;
 
 // ===================== 季节性档位 + 天气开关 =====================
@@ -3415,9 +3431,43 @@ const FEED_SIGNAL = {hi:80, lo:20, minSeasonalN:12};
 // 库消比不可用时回到第1步的60/40(库存/开机率)。整组是主导档，投2票。
 const TIGHTNESS_WEIGHTS = {withStu:{stu:50, crush:30, stock:20}, withoutStu:{stock:60, crush:40}};
 const TIGHTNESS_VOTE_WEIGHT = 2;
+/** 值v在21个分位点表(0%,5%,...,100%)里的百分位：两个分位点之间线性插值；低于p0→0，高于p100→100；分位点有并列(平段)时不除零。 */
+function pctFromQuantiles(v, q){
+  if(v <= q[0]) return 0;
+  if(v >= q[20]) return 100;
+  for(let i = 0; i < 20; i++){
+    if(v >= q[i] && v < q[i+1]){
+      const span = q[i+1] - q[i];
+      return Math.round((i + (span > 0 ? (v - q[i]) / span : 0)) * 5 * 10) / 10;
+    }
+  }
+  return 100;
+}
+window._pctFromQuantiles = pctFromQuantiles;   // 暴露给测试用
 // 10个原手动指标的判定规则：返回[信号, 说明文字]。说明文字同时用于卡片结论框和"查看每项详细理由"。
 const MANUAL_RULES = {
-  crush: v => v<40 ? [1, `开机率${v}%（&lt;40%）→ 偏多`] : v>60 ? [-1, `开机率${v}%（&gt;60%）→ 偏空`] : [0, `开机率${v}%（中性区间）`],
+  // ★v98重做：开机率改用"近365天滚动分位"(去掉春节窗口)——旧的固定阈值(<40偏多、>60偏空)在当前水平下有结构性偏差：
+  //   用你2024-12~2026-09的真实读数(去掉春节窗口后120个)：>60 占56%(中位数就是61.6，"中性带"40~60整个在常态水平之下)、<40 只占7%(全是2025年3~4月关税战的真实低谷)。
+  //   今天的60.95%旧规则判偏空，其实只是中位数附近(约48%分位)。v98先用滚动窗口(自适应水平)；v99按用户决定改成"往年同月"为第一档——
+  //   保护：同月参照≥20个才用，否则自动退滚动分位；2025年3~4月关税战的真实低谷(油厂停机25~40%)不进往年同月参照，否则明年3~4月的正常读数会显得"偏高"。
+  //   对传入的任意值v(含用户手填的)靠后端给的"分位点表"算位置，不是沿用自动值的分位。历史不足(<120个读数/没有分位点表)时回退旧的固定阈值，保持原行为。
+  crush: v => {
+    // ★v99三档：①往年同月分位(同日历月、不同年，去掉春节窗口和2025年关税战；参照≥20个才用) → ②近365天滚动分位(≥120个) → ③固定阈值(<40/>60)
+    //   每一档"不够/没有分位点表/退化(q80<=q20)"就自动退到下一档。对传入的任意值(含手填的)靠分位点表算位置，不沿用自动值的分位。
+    const st = window._indState.crush || {}, h = st.history || {}, sm = h.sameMonth, tr = h.trailing;
+    const usable = t => t && t.enough && Array.isArray(t.quantiles) && t.quantiles.length === 21 && t.quantiles[16] > t.quantiles[4];
+    const tier = usable(sm) ? {q: sm.quantiles, basis: `往年同月(${sm.month}月，${(sm.years||[]).join('/')}年共${sm.n}个读数，去掉春节窗口和关税战)`}
+               : usable(tr) ? {q: tr.quantiles, basis: `近${tr.windowDays}天(去掉春节窗口)${tr.n}个读数，自${tr.since}起`} : null;
+    const q = tier ? tier.q : null;
+    if(q){
+      const q20 = q[4], q80 = q[16], pct = pctFromQuantiles(v, q);
+      const basis = tier.basis;
+      return v >= q80 ? [-1, `开机率${v}%（${basis}的${pct}%分位，≥${q80}%）→ 油厂开工强、豆粕供应充足，偏空`]
+           : v <= q20 ? [1, `开机率${v}%（${basis}的${pct}%分位，≤${q20}%）→ 油厂开工弱、豆粕供应偏紧，偏多`]
+           : [0, `开机率${v}%（${basis}的${pct}%分位，常态区间${q20}~${q80}%）`];
+    }
+    return v<40 ? [1, `开机率${v}%（&lt;40%）→ 偏多`] : v>60 ? [-1, `开机率${v}%（&gt;60%）→ 偏空`] : [0, `开机率${v}%（中性区间）`];
+  },
   stock: v => v<50 ? [1, `库存${v}万吨（&lt;50）→ 偏多`] : v>100 ? [-1, `库存${v}万吨（&gt;100）→ 偏空`] : [0, `库存${v}万吨（中性区间）`],
   // 国内豆粕库消比(月末库存÷当月消费)：阈值依据Mysteel自己对近12个月的定性措辞——5.94%被称"供应紧张"，
   // 10.3-10.5%被称"中低水平、供应偏紧"，12.45-13.7%被称"趋于宽松"，15%以上被称"显著宽松、供强需弱"。暂定值，后续换成历史百分位。
@@ -3449,7 +3499,12 @@ const MANUAL_RULES = {
   // 能繁母猪：低于3750万头调控目标=未来供给偏紧=偏多；远超目标=产能过剩=偏空
   sows: v => v<3700 ? [1, `能繁母猪${v}万头（&lt;3700，低于调控目标）→ 偏多`] : v>3800 ? [-1, `能繁母猪${v}万头（&gt;3800，超调控目标）→ 偏空`] : [0, `能繁母猪${v}万头（中性区间）`],
   poultry: v => v>1.5 ? [1, `肉鸡养殖利润${v}元/只（&gt;1.5，盈利较好）→ 扩产意愿强，偏多`] : v<0 ? [-1, `肉鸡养殖利润${v}元/只（&lt;0，亏损）→ 减产退出，偏空`] : [0, `肉鸡养殖利润${v}元/只（中性区间）`],
-  rmspread: v => v<400 ? [1, `豆菜粕价差${v}元/吨（&lt;400，菜粕不够便宜）→ 豆粕需求锁定，偏多`] : v>700 ? [-1, `豆菜粕价差${v}元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空`] : [0, `豆菜粕价差${v}元/吨（中性区间）`],
+  // ★v99：新口径(多城市单值平均，2026-06起)的读数暂不计分。旧阈值(<400偏多、>700偏空)是按"沿海地区价差区间中点"(300~760，均值<700)标定的；
+  //   新口径真实读数约800~900(如823.3)，永远>700，会天天判偏空——需求侧被一个结构性偏差的票压低。新口径只有约3.5个月历史，没法重新标定，
+  //   所以暂不计分(显示事实、继续累积历史)，累积够了再改成分位。旧口径/用户手填的值照常按旧阈值(用户手填视为自己负责)。
+  rmspread: v => (window._indState.rmspread || {}).caliber === 'cities'
+    ? [null, `豆菜粕价差${v}元/吨（三城市单值平均）：2026-06起口径变了——旧阈值400/700是按沿海区间中点标定的，新口径读数约800~900永远>700，会天天误判偏空，所以暂不计分(累积够历史后改用分位)`]
+    : v<400 ? [1, `豆菜粕价差${v}元/吨（&lt;400，菜粕不够便宜）→ 豆粕需求锁定，偏多`] : v>700 ? [-1, `豆菜粕价差${v}元/吨（&gt;700，菜粕明显划算）→ 替代风险上升，偏空`] : [0, `豆菜粕价差${v}元/吨（中性区间）`],
 };
 window._manualRules = MANUAL_RULES;   // 暴露给测试用
 
@@ -3624,6 +3679,58 @@ function renderStructureCard(votes){
   el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>有效${sys.n}项</div>${dvHtml}${table}${note}`;
 }
 
+/** 决策卡摘要(v99)：一屏读完。只读已有的计算结果(window._fundamentalPure/_fundamentalConfidence/_fundamentalMeta/_structureSystem/_technicalDirection/_foreignActivity/_topDrivers，
+ *  以及computeDataHealth、buildEventList)，不做任何新的评分。基本面数据不足时第一行写"数据不足"，不列驱动(顶部预警明确说不下结论，这里不能自相矛盾)。
+ *  颜色沿用页面约定：红=偏多、绿=偏空。 */
+function renderDecisionSummary(){
+  const el = document.getElementById('decisionSummary');
+  if(!el) return;
+  const pure = window._fundamentalPure, sys = window._structureSystem;
+  const dirCls = d => d==='偏多' ? 'dc-bull' : d==='偏空' ? 'dc-bear' : 'dc-neutral';
+  const row = (k, v) => `<div class="dc-row"><span class="dc-k">${k}</span><span class="dc-v">${v}</span></div>`;
+  const ok = pure && pure.direction !== null && pure.direction !== undefined;
+  // ① 基本面方向 + 净倾向 + 置信度
+  const meta = window._fundamentalMeta || {};
+  const head = ok
+    ? `<div class="dc-head ${dirCls(pure.direction)}">基本面${pure.direction === '中性' ? '信号混合' : pure.direction}　净倾向${pure.ratio>0?'+':''}${Math.round(pure.ratio*100)}%${window._fundamentalConfidence ? `　置信度：${window._fundamentalConfidence}` : ''}</div>`      // 置信度只在有方向(偏多/偏空)时才有；信号混合时是null(没结论就谈不上置信度)，不写"置信度：—"(像是没算出来)
+    : `<div class="dc-head dc-neutral">基本面数据不足，暂不下结论</div>`;
+  let rows = '';
+  // ② 三方关系：技术面/基本面/市场结构/外资
+  const tech = window._technicalDirection, fa = window._foreignActivity;
+  const structTxt = !sys ? '加载中' : !sys.direction ? '暂无信号' : `${sys.direction}${sys.thin ? '(仅1项)' : ''}`;
+  // 外资只写短状态(整句描述仍在"三方关系"区块里)：高盛活跃 / 外资活跃 / 平静 / 数据不可用
+  const faTxt = !fa ? '—' : fa.status === 'active' ? (fa.isGoldman ? '高盛活跃' : '外资活跃') : fa.status === 'quiet' ? '平静' : fa.status === 'unavailable' ? '数据不可用' : '—';
+  rows += row('三方', `技术面 ${tech || '加载中'} · 基本面 ${ok ? pure.direction : '数据不足'} · 市场结构 ${structTxt} · 外资 ${faTxt}`);
+  // ③ 主导驱动(基本面数据不足时不列)
+  const dr = ok && Array.isArray(window._topDrivers) ? window._topDrivers : [];
+  if(dr.length) rows += row('主导驱动', dr.map(d=>`<span class="${d.signal===1?'dc-bullt':'dc-beart'}">${d.label}${d.signal===1?' ▲':' ▼'}</span>`).join('　'));
+  // ④ 需留意(≤3条)：供需分歧/天气主导/权重敏感/置信度低的原因
+  const warns = [];
+  if(ok && meta.divergence) warns.push(`基本面内部${meta.divergence}`);
+  if(ok && meta.weatherDominant) warns.push(`天气主导行情(${meta.weatherDominant})，其它指标只作参考`);
+  if(ok && meta.robust) warns.push(meta.robust);
+  rows += row('需留意', warns.length ? warns.slice(0,3).map(w=>`<span class="dc-warn">⚠ ${w}</span>`).join('<br>') : '<span style="color:var(--t3)">无</span>');
+  // ⑤ 未来事件：14天内最近3个(休市/恢复交易之外的美国报告优先；全部按时间)
+  let evTxt = '<span style="color:var(--t3)">无</span>';
+  try{
+    const now = (typeof clockNow === 'function') ? clockNow() : Date.now();
+    const evs = buildEventList(now, now + 14*DAY_MS).slice(0,3);      // buildEventList(from,to)本身只返回[from,to]内的事件，不需要再过滤一遍已过去的
+    if(evs.length) evTxt = evs.map(e=>`${e.label} ${e.title.replace(/\(.*\)/,'')}`).join('<br>');      // label本身是'10-01 20:30'(月-日 时:分，北京时间，没有年份)，不要再截——上一版slice(5)把日期也截没了，只剩'20:30'
+  }catch(e){ evTxt = '<span style="color:var(--t3)">暂不可用</span>'; }
+  rows += row('未来事件', evTxt);
+  // ⑥ 数据健康：与"数据健康度"区块同一份计算(computeDataHealth)
+  try{
+    const h = computeDataHealth();
+    // ★同步状态和指标状态分开写，各用自己的图标：上一版把整体level的颜色套在"同步正常"上，会写出"🔴 同步正常"(红点其实来自1项指标不可用)
+    const syncCls = h.sync.state==='ok' ? 'dc-good' : h.sync.state==='degraded' ? 'dc-warn' : 'dc-bad';
+    const indIcon = h.bad ? '🔴' : h.warn ? '🟡' : '🟢';
+    const indCls = h.bad ? 'dc-bad' : h.warn ? 'dc-warn' : 'dc-good';
+    const indParts = [h.bad ? `${h.bad}项不可用` : '', h.warn ? `${h.warn}项降权/手动` : '', h.missing.length ? `缺席投票${h.missing.length}项` : ''].filter(Boolean);
+    rows += row('数据', `<span class="${syncCls}">${h.sync.icon} ${h.sync.label}</span>　<span class="${indCls}">${indIcon} 指标${indParts.length ? '：' + indParts.join('、') : '正常'}</span>`);
+  }catch(e){ rows += row('数据', '<span style="color:var(--t3)">暂不可用</span>'); }
+  el.innerHTML = head + rows;
+}
+
 function updateOverallAlert(){
   const notes = [];
   const sig = {};   // key → 1/-1/0/null(无数据或数据过期，不投票)
@@ -3661,7 +3768,7 @@ function updateOverallAlert(){
       // 分位类指标历史不够：显示事实、不计分(不是抓取失败)
       sig[cfg.key] = null; st.pendingReason = note;
       setInd('ind_'+cfg.key, 0, '→ 暂不计分');
-      setCardAlert(cfg.key, 0, note.split('：')[0], '　⏳ 历史样本积累中，暂不计入综合评分');
+      setCardAlert(cfg.key, 0, note.split('：')[0], cfg.key === 'rmspread' ? '　⏳ 口径变了，暂不计入综合评分' : '　⏳ 历史样本积累中，暂不计入综合评分');
       notes.push(note);
       return;
     }
@@ -3823,9 +3930,12 @@ function updateOverallAlert(){
   // ---- 汇总：净倾向 = 票权加权分数 ÷ 有效票权合计 ----
   const overall = tallyVotes(votes);          // 全部投票(含市场结构)：只用于composite(每天记录的"综合"，保持连续)，不再是顶部的headline
   // ★v97 顶部拆开：顶部卡片只看"供需"(供给+需求)，所有headline计算(总分/仪表/置信度/维度/稳健性/质量)都在fundVotes上跑；
-  //   市场结构(基差/月差/量价，来自价格本身)独立成下面一张卡——它是独立的系统，基本面数据不足时它照常显示。
+  //   市场结构(基差/月差/量价，来自价格本身)独立成决策卡里的另一个区块(v99前是单独一张卡)——它是独立的系统，基本面数据不足时它照常显示。
   const fundVotes = votes.filter(v=>v.side !== 'structure');
   const fo = tallyVotes(fundVotes);
+  // ★v99决策卡：主导驱动=供需票里有方向的(±1)，按生效权重(含天气开关/质量折扣之后的weight)降序取前3；同权重保持投票顺序(JS的sort是稳定的)。
+  //   只导出，不参与任何计分；与driversHtml(偏多/偏空依据)同一口径(都按weight降序)。
+  window._topDrivers = fundVotes.filter(v=>v.signal===1 || v.signal===-1).slice().sort((a,b)=>b.weight-a.weight).slice(0,3).map(v=>({label:v.label, signal:v.signal, weight:v.weight}));
   // ★两个独立系统(v93)：基本面="供需应该让价格往哪走"(只含供给/需求票)；市场结构="市场当下用什么方式定价"(基差/月差/量价)。
   //   顶部总分仍是全部投票合起来(含市场结构票)，这里另外算"不含市场结构"的基本面，专门用来跟市场结构比较——
   //   两者背离本身就是信息(基本面偏多而盘面不认可，或反过来)，混在一个总分里就看不见了。
@@ -3851,7 +3961,7 @@ function updateOverallAlert(){
   const el = document.getElementById('alertContent');
   const supplyItems = votes.filter(v=>v.side==='supply').map(v=>({label:v.label, signal:v.signal}));
   const demandItems = votes.filter(v=>v.side==='demand').map(v=>({label:v.label, signal:v.signal}));
-  const sdTable = renderSupplyDemandTable(supplyItems, demandItems, []);        // 顶部只放供需两列；市场结构在下面独立的卡片里
+  const sdTable = renderSupplyDemandTable(supplyItems, demandItems);        // 顶部只放供需两列；市场结构在下面独立的卡片里
   const footerNote = contract === 'sep'
     ? '💡 "作物生长状况综合"是美国天气/干旱监测/NOAA展望/美豆优良率4项子信号的综合结果；"国内豆粕供应松紧""大豆到港/进口"也是合并信号，避免同一件事被重复计票'
     : contract === 'may'
@@ -3874,6 +3984,7 @@ function updateOverallAlert(){
     renderStructureCard(votes);
     renderResonancePanel();
     renderDataHealth();
+    renderDecisionSummary();
     return;
   }
 
@@ -3915,11 +4026,12 @@ function updateOverallAlert(){
   // 仪表：量程±66%，这样1/3分界线正好落在±22%(=方向判定门槛)，指针落在哪一段跟文字结论一致
   const gauge = renderGaugeSVG(pct, -66, 66, '%');
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${weatherHtml}${dimHtml}${divergenceHtml}${confHtml}${robustHtml}${qualityHtml}${driversHtml(fundVotes)}${sdTable}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是基本面倾向(仅供需)，不含基差/月差/量价(它们来自价格本身，见下一张「市场结构」卡)，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是基本面倾向(仅供需)，不含基差/月差/量价(它们来自价格本身，见本卡下面的「市场结构」区块)，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
   renderStructureCard(votes);
   renderResonancePanel();
   renderDataHealth();
+  renderDecisionSummary();
 }
 
 // ===================== 事件日历：休市 + 美国关键报告(日期全部核实过来源) =====================

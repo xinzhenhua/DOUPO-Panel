@@ -98,17 +98,20 @@ check('★同一场景下市场结构(基差-100、月差-1、量价-1共3项)�
 //   市场结构(基差/月差/量价)独立成下面一张卡。这一节守卫的就是这个命名约定，防止以后又把两者混回去。
 const fs = require('fs'), path = require('path');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const cardHtml = SRC.slice(SRC.indexOf('id="alertCard"'), SRC.indexOf('id="alertCard"') + 700);
-check('★顶部卡片有可见标题"基本面预警"', /card-title">📊 基本面预警/.test(cardHtml));
+// ★v99：原来独立的"基本面预警"卡和"市场结构"卡合并进了决策卡，各自是里面的一个折叠区块(<details class="dc-sec">)。
+//   这几条守卫的意图不变——基本面预警不能叫"综合"、市场结构必须是**独立的区块**、两者的性质说明要写清楚——只是指向新结构。
+const secOf = (marker)=>{ const i = SRC.indexOf(marker); const a = SRC.lastIndexOf('<details class="dc-sec"', i); return SRC.slice(a, SRC.indexOf('</details>', i) + 10); };
+const cardHtml = secOf('id="alertContent"');
+check('★决策卡里有可见标题"基本面预警"的区块', /<summary>📊 基本面预警/.test(cardHtml));
 check('★标题旁写明它是什么：仅供需(供给端+需求端)，不含基差/月差/量价', cardHtml.includes('仅供需') && cardHtml.includes('供给端+需求端') && cardHtml.includes('不含基差/月差/量价'));
-check('★顶部标题不再叫"综合预警"/"综合基本面预警"(它已经不是综合的)', !/card-title">[^<]*综合/.test(cardHtml) && !cardHtml.includes('综合预警') && !cardHtml.includes('综合基本面预警'));
-// ★v97新增：市场结构独立成卡
-const structHtml = SRC.slice(SRC.indexOf('id="structureCard"'), SRC.indexOf('id="structureCard"') + 700);
-check('★市场结构有独立卡片，紧跟在顶部基本面预警之后(DOM顺序)', SRC.indexOf('id="structureCard"') > SRC.indexOf('id="alertCard"') && SRC.indexOf('id="structureCard"') < SRC.indexOf('id="healthCard"'));
-check('★市场结构卡标题"市场结构"，写明"来自价格本身，跟技术面同源，不是独立于价格的证据"', /card-title">🧭 市场结构/.test(structHtml) && structHtml.includes('基差/月差/量价') && structHtml.includes('来自价格本身') && structHtml.includes('同源') && structHtml.includes('不是独立于价格的证据'));
+check('★该区块不再叫"综合预警"/"综合基本面预警"(它已经不是综合的)', !/<summary>[^<]*综合/.test(cardHtml) && !cardHtml.includes('综合预警') && !cardHtml.includes('综合基本面预警'));
+// ★v97新增、v99改为区块：市场结构是独立的系统
+const structHtml = secOf('id="structureContent"');
+check('★市场结构是决策卡里**独立的区块**(自己的<details>，不和基本面预警混在一个区块里)，紧跟在基本面预警区块之后(DOM顺序)，在三方关系/事件/健康度区块之前', structHtml !== cardHtml && SRC.indexOf('id="structureContent"') > SRC.indexOf('id="alertContent"') && SRC.indexOf('id="structureContent"') < SRC.indexOf('id="resonanceContent"') && !structHtml.includes('id="alertContent"') && !cardHtml.includes('id="structureContent"'));
+check('★市场结构区块标题"市场结构"，写明"来自价格本身，跟技术面同源，不是独立于价格的证据"', /<summary>🧭 市场结构/.test(structHtml) && structHtml.includes('基差/月差/量价') && structHtml.includes('来自价格本身') && structHtml.includes('同源') && structHtml.includes('不是独立于价格的证据'));
 reset(); fundBull(); stBear(); updateOverallAlert();
 const top = makeEl('alertContent').innerHTML;
-check('★底部免责写"这是基本面倾向(仅供需)"，指向市场结构卡，不再写"这是综合倾向"', top.includes('这是基本面倾向(仅供需)') && top.includes('不含基差/月差/量价') && top.includes('市场结构」卡') && !top.includes('这是综合倾向'));
+check('★底部免责写"这是基本面倾向(仅供需)"，指向市场结构卡，不再写"这是综合倾向"', top.includes('这是基本面倾向(仅供需)') && top.includes('不含基差/月差/量价') && top.includes('市场结构」区块') && !top.includes('下一张') && !top.includes('这是综合倾向'));
 check('★顶部不含任何市场结构票：供需表格没有"市场结构"列，也没有"现货基差/月差/量价"格', !top.includes('<th>市场结构</th>') && !/sd-cell[^>]*>(现货基差|月差|量价)/.test(top));
 const stHtml = makeEl('structureContent').innerHTML;
 check('★市场结构卡里有这三项，且各自的方向(这里三个都偏空)', /sd-cell sd-neg">现货基差/.test(stHtml) && /sd-cell sd-neg">月差\/期限结构/.test(stHtml) && /sd-cell sd-neg">量价关系/.test(stHtml) && stHtml.includes('市场结构偏空（净倾向-100%）'));

@@ -149,6 +149,24 @@ def holiday_window(d, before=HOLIDAY_WINDOW_BEFORE, after=HOLIDAY_WINDOW_AFTER):
     return None
 
 
+# ===================== 大商所休市日历(与index.html里的DCE_CLOSURES是同一份数据，必须一致) =====================
+# 页面的"数据健康度"和sync_watchdog.py(数据同步停止的主动警告)都要判断"今天是不是交易日"：两边用的休市表不一致，
+# 就会出现"页面说同步正常、看门狗却报警"(或反过来)。test_sync_watchdog.py里有一条防漂移测试，从index.html里解析出来逐项对比——
+# 年底更新日历时，index.html和这里必须一起改(见TODO.md)。
+EVENT_CALENDAR_END = "2026-12-31"
+DCE_CLOSURES = [
+    ("2026-10-01", "2026-10-07"),     # 国庆节(沪深北交易所、郑商所2026-09-17公告；大商所通常同步，以大商所公告为准)
+]
+
+
+def dce_is_trading_day(d):
+    """d是datetime.date。周末和DCE_CLOSURES里的休市区间不是交易日。逻辑与页面的dceIsTradingDay一致。"""
+    if d.weekday() >= 5:
+        return False
+    k = d.isoformat()
+    return not any(a <= k <= b for a, b in DCE_CLOSURES)
+
+
 # ★油厂开机率的春节停机扰动窗口：节前7天 ~ 节后14天，只对春节生效(国庆油厂不停机)。
 #   依据(用户2026-10-02采样的真实开机率，2024-12~2026-09)：
 #     春节2025-01-29：节前20天57、节前15天69、节前7天55、节前3天10、节后9天37、节后20天61 → 节前约7天开始掉，节后约14天回到常态

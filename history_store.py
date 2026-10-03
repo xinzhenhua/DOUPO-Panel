@@ -95,6 +95,8 @@ def usable_points(key, points):
             continue
         if str(p["d"]) in bad or str(p["d"])[:7] in bad:
             continue
+        if key == "crush_rate" and cn_calendar.crush_festival_window(str(p["d"])[:10]):
+            continue                      # ★春节停机窗口(节前7天~节后14天)的读数是放假，不是供应松紧：不进参照分布(否则p0/p20会被拉到10~15%)
         out.append(p)
     return out
 
@@ -110,6 +112,8 @@ def excluded_points(key, points):
             out.append((d, "口径断点之前：" + brk[1]))
         elif d in bad or d[:7] in bad:
             out.append((d, "已知可疑点：" + bad.get(d, bad.get(d[:7]))))
+        elif key == "crush_rate" and cn_calendar.crush_festival_window(d[:10]):
+            out.append((d, "春节停机窗口(节前7天~节后14天)：放假，不代表供应松紧"))
     return out
 
 
@@ -302,6 +306,95 @@ def coverage_problem(points, freq):
     return None
 
 
+# ★滚动窗口分位(v98，油厂开机率用)：当前值在"最近window_days天"参照样本里的位置。
+#   为什么不用"往年同月"：开机率快讯只保留到2024-12，只有1个往年可比，而且2025年3~4月关税战的真实低谷会直接污染同月参照；
+#   为什么不用"全部历史"：同一个理由——水平会随行情漂移(2025年中位61.8、2026年62.2，比绝对阈值"60"高)，滚动窗口自适应水平。
+#   等攒够2个往年再切到往年同月(见TODO.md)。
+TRAILING_SERIES = {"crush_rate": {"window_days": 365, "min_n": 120}}
+
+
+def _quantile_table(vals_sorted):
+    """21个分位点(0%,5%,...,100%)，线性插值。页面靠它对任意值(含用户手填的)算位置，不用把全部历史传过去。"""
+    n = len(vals_sorted)
+    out = []
+    for k in range(21):
+        pos = (n - 1) * k / 20
+        lo = int(pos)
+        hi = min(lo + 1, n - 1)
+        out.append(round(vals_sorted[lo] + (vals_sorted[hi] - vals_sorted[lo]) * (pos - lo), 2))
+    return out
+
+
+def summarize_trailing(points, value, as_of, window_days=365, min_n=120):
+    """当前值value(日期as_of)在最近window_days天里的位置。参照样本=[as_of-window_days, as_of)内的点——不含as_of当天
+    (当天的点就是当前值自己，不能拿自己跟自己比)。enough=样本≥min_n才能用于计分(不足时仍给统计，让页面能说明"历史积累中")。"""
+    end = _to_date(as_of)
+    out = {"n": 0, "windowDays": window_days, "minN": min_n, "asOf": as_of, "since": None, "median": None, "percentile": None, "quantiles": None, "enough": False}
+    if end is None:
+        return out
+    start = end - _timedelta(days=window_days)
+    refs = []
+    for p in points:
+        d = _to_date(p.get("d"))
+        if d is not None and start <= d < end and _is_num(p.get("v")):
+            refs.append((d, p["v"]))
+    refs.sort()
+    vals = [v for _, v in refs]
+    out["n"] = len(vals)
+    if not vals:
+        return out
+    sv = sorted(vals)
+    out["since"] = refs[0][0].isoformat()
+    out["median"] = round(statistics.median(sv), 2)
+    out["quantiles"] = _quantile_table(sv)
+    out["percentile"] = percentile_rank(value, vals) if _is_num(value) else None
+    out["enough"] = len(vals) >= min_n
+    return out
+
+
+# ★往年同月分位(v99，油厂开机率的第一档)：当前值在"同一个日历月、不同日历年"的读数里的位置。
+#   v98先用了滚动365天(因为当时只有1个往年)；v99按你的决定改成往年同月，并保留保护：同月参照≥min_n才计分，否则自动退到滚动分位，再退到固定阈值。
+#   季节性是真的(5~9月两年同月中位数几乎一样：60/59、66/65、66/65、64/66、67/62)。
+#   ★关税战(2025-03-01~04-30)：大豆到港受阻，油厂真实停机到25~40%(同月中位数2025年40/35，2026年53/47)——是真实数据，但不代表往年同月的常态；
+#   不排除的话，明年3~4月的正常读数(50~55%)会被拿去跟这些低谷比，显得"偏高"。所以只在往年同月参照里排除(不删数据，滚动分位的参照里仍有它)。
+#   区间是判断，不是精确值：采样里3月前几天和4月底已经回升；核实/改区间只需改这个常量。
+KNOWN_ABNORMAL_PERIODS = {
+    "crush_rate": [("2025-03-01", "2025-04-30", "2025年3~4月中美关税战：大豆到港受阻，油厂真实停机(25~40%)，不代表往年同月的常态")],
+}
+SAME_MONTH_SERIES = {"crush_rate": {"min_n": 20}}      # 与榨利/月差的"同月样本≥20"一致
+
+
+def summarize_same_month(points, value, as_of, min_n=20, exclude_key=None):
+    """当前值value(日期as_of)在往年同月(同日历月、不同日历年)的读数里的位置。参照里排除KNOWN_ABNORMAL_PERIODS[exclude_key]里的区间。
+    返回month、n、years(参照来自哪几年)、since、median、percentile、21个分位点表、enough(n≥min_n才能计分)、minN。"""
+    out = {"month": None, "n": 0, "years": [], "since": None, "median": None, "percentile": None, "quantiles": None, "enough": False, "minN": min_n}
+    cur = _to_date(as_of)
+    if cur is None:
+        return out
+    out["month"] = cur.month
+    skip = KNOWN_ABNORMAL_PERIODS.get(exclude_key) or []
+    refs = []
+    for p in points:
+        d = _to_date(p.get("d"))
+        if d is None or not _is_num(p.get("v")) or d.month != cur.month or d.year == cur.year:
+            continue
+        if any(a <= str(p["d"])[:10] <= b for a, b, _ in skip):
+            continue
+        refs.append((d, p["v"]))
+    if not refs:
+        return out
+    refs.sort()
+    vals = sorted(v for _, v in refs)
+    out["n"] = len(vals)
+    out["years"] = sorted({d.year for d, _ in refs})
+    out["since"] = refs[0][0].isoformat()
+    out["median"] = round(statistics.median(vals), 2)
+    out["quantiles"] = _quantile_table(vals)
+    out["percentile"] = percentile_rank(value, vals) if _is_num(value) else None
+    out["enough"] = len(vals) >= min_n
+    return out
+
+
 def summarize(points, value, cur_d, freq=None, cohort_fn=None):
     """当前值value(日期cur_d)在历史里的位置。参考样本里剔除cur_d自己(不能拿自己跟自己比)。
     percentile：全部历史样本里的分位。样本<MIN_POINTS期，或样本不连续/跨度太短(coverage_problem)时为None——宁可说"积累中"也不给失真的分位。
@@ -453,6 +546,10 @@ def update_and_attach(result, base_dir=None):
             if changed:
                 touched.append(key)
             res["history"] = summarize(usable_points(series["key"], series["points"]), v, d, series["freq"])
+            if key in TRAILING_SERIES:       # ★开机率：再挂一份滚动窗口分位(含分位点表)，页面的评分规则读它(第二档)
+                res["history"]["trailing"] = summarize_trailing(usable_points(series["key"], series["points"]), v, d, **TRAILING_SERIES[key])
+            if key in SAME_MONTH_SERIES:     # ★开机率：往年同月分位(含分位点表)，页面的评分规则优先读它(第一档)；参照里排除关税战区间
+                res["history"]["sameMonth"] = summarize_same_month(usable_points(series["key"], series["points"]), v, d, exclude_key=key, **SAME_MONTH_SERIES[key])
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花，不能拖垮主流程
             note(rk, e)
 

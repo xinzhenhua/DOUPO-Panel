@@ -156,11 +156,13 @@ def test_failure_modes_empty_and_garbage():
     ok("空结果/日期乱码/title和content为None：不报错、不写入")
 
 
-def test_registered_and_in_default_jobs_but_not_the_rm_spread_or_crush_rate():
+def test_registered_and_in_default_jobs_but_not_the_rm_spread():
     assert "soy_import" in bf.JOBS and "arrival" in bf.JOBS and "soy_import" in bf.DEFAULT_JOBS and "arrival" in bf.DEFAULT_JOBS
-    assert "rm_spread" not in bf.JOBS and "crush_rate" not in bf.JOBS, "豆菜粕价差(口径2026-06换了)/开机率(只回溯到2024-12，且评分规则要先改)的回填有意不做"
+    assert "rm_spread" not in bf.JOBS and "rm_spread" not in bf.DEFAULT_JOBS, "豆菜粕价差(口径2026-06换了)的回填有意不做——这条守卫一直有效"
+    # v96.3时开机率的回填也是有意不做(评分规则要先改)；v98重做了开机率规则(滚动365天分位)需要历史，所以现在做了(见test_crush_rate_rule.py)
+    assert "crush_rate" in bf.JOBS and "crush_rate" in bf.DEFAULT_JOBS
     assert bf.JOBS["soy_import"] is bf.backfill_soy_import and bf.JOBS["arrival"] is bf.backfill_arrival_forecast
-    ok("两个任务已注册并进默认清单；豆菜粕价差、开机率的回填有意没做(依据见README)")
+    ok("两个任务已注册并进默认清单；豆菜粕价差的回填有意没做(口径换了，一直有效)；开机率回填v98起有了(规则重做要用历史)")
 
 
 def test_no_body_fetch_no_link_following():

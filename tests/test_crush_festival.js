@@ -67,6 +67,6 @@ const hr = indicatorHealth(cfg);
 check('★健康度：开机率那一行是suppressed状态，图标🧧，标签"春节扰动期·不计分"', hr.state === 'suppressed' && hr.icon === '🧧' && hr.label === '春节扰动期·不计分');
 
 // ---------- 6. 评分规则版本 ----------
-check('★评分规则版本已升到v97(春节期间的投票变了，方向的含义变了)', window._scoringVersion === 'v97');
+check('★评分规则版本不低于v97(春节期间的投票变了，方向的含义变了；精确版本号只在test_crush_rule.js里守，免得每次升版都要改这里)', parseInt(String(window._scoringVersion).replace(/\D/g,''), 10) >= 97);
 
 H.printSummary();
