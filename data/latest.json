@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-02T13:45:09.891482+00:00",
+  "generatedAt": "2026-10-03T03:15:04.135308+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 349.6,
-    "change": -2.5,
-    "changePct": -0.71,
+    "price": 347.0,
+    "change": -5.1,
+    "changePct": -1.45,
     "asOf": "2026-10-02T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -12,6 +12,7 @@
     "available": true,
     "value": 60.95,
     "date": "2026-09-29",
+    "festival": null,
     "rawContent": "9月29日成交方面，全国主要油厂豆粕成交12.89万吨，较前一交易日减0.05万吨，其中现货成交10.99万吨，较前一交易日增1.05万吨，远月基差成交1.90万吨，较前一交易日减1.10万吨。\r\n\r\n开机方面，今日全国动态全样本油厂开机率为60.95%，较前一日下降1.20%。",
     "source": "Mysteel快讯(全国动态全样本油厂开机率)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
@@ -210,7 +211,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 32,
+    "articleAgeDays": 33,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -621,7 +622,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 4,
+    "ageDays": 5,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -684,22 +685,22 @@
   },
   "hogRatio": {
     "available": true,
-    "value": 4.43,
-    "date": "2026-10-02",
-    "pigPrice": 10.33,
-    "cornPricePerTon": 2332.0,
-    "pigLatestDate": "2026-10-02",
-    "cornLatestDate": "2026-10-02",
+    "value": 4.42,
+    "date": "2026-10-03",
+    "pigPrice": 10.34,
+    "cornPricePerTon": 2340.0,
+    "pigLatestDate": "2026-10-03",
+    "cornLatestDate": "2026-10-03",
     "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
     "sourceUrl": "https://zhujia.zhuwang.com.cn",
     "history": {
-      "n": 2,
+      "n": 3,
       "minPoints": 12,
-      "asOf": "2026-10-02",
+      "asOf": "2026-10-03",
       "since": "2026-09-30",
       "percentile": null,
       "min": 4.32,
-      "max": 4.32,
+      "max": 4.43,
       "median": 4.32,
       "seasonal": null,
       "cohort": null,
@@ -739,14 +740,14 @@
   "cftcManagedMoney": {
     "available": true,
     "marketName": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
-    "reportDate": "2026-09-22",
-    "longPositions": 202722.0,
-    "shortPositions": 11635.0,
-    "netPosition": 191087.0,
-    "longChange": 7495.0,
-    "shortChange": -481.0,
-    "netChange": 7976.0,
-    "streakWeeks": 6,
+    "reportDate": "2026-09-29",
+    "longPositions": 215318.0,
+    "shortPositions": 7740.0,
+    "netPosition": 207578.0,
+    "longChange": 12596.0,
+    "shortChange": -3895.0,
+    "netChange": 16491.0,
+    "streakWeeks": 7,
     "streakDirection": "up",
     "historyPercentile": 100.0,
     "historyWeeksUsed": 156,
@@ -919,14 +920,6 @@
     "available": false,
     "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
   },
-  "exportInspections": {
-    "available": true,
-    "weekEndingDate": "2026-09-24",
-    "quantityMetricTons": 1152913.0,
-    "recordCountThisWeek": 144,
-    "source": "USDA AMS Federal Grain Inspection Service，经agtransport.usda.gov(Socrata开放数据平台)获取",
-    "sourceUrl": "https://agtransport.usda.gov/Exports/Grain-Inspections/sruw-w49i"
-  },
   "droughtMonitor": {
     "available": true,
     "anomalous": false,
@@ -1070,7 +1063,7 @@
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":51520.52,\"d0\":4790.98,\"d1\":21.07,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":49327.95,\"d0\":6983.55,\"d1\":1181.17,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IA\",\"",
         "sampleRawRow": {
@@ -1089,7 +1082,7 @@
         "totalRowsReturned": 3
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":36536.61,\"d0\":19845.94,\"d1\":5407.29,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":33010.15,\"d0\":23372.39,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IL\",",
         "sampleRawRow": {
@@ -1108,7 +1101,7 @@
         "totalRowsReturned": 3
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":16550.06,\"d0\":67831.13,\"d1\":53657.68,\"d2\":22817.53,\"d3\":2146.74,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":10553.27,\"d0\":73827.92,\"d1\":56902.26,\"d2\":25210.28,\"d3\":2846.35,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1127,7 +1120,7 @@
         "totalRowsReturned": 3
       },
       "IN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32594.63,\"d0\":3604.48,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":35022.08,\"d0\":1177.03,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"IN\",\"none",
         "sampleRawRow": {
@@ -1146,7 +1139,7 @@
         "totalRowsReturned": 3
       },
       "NE": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":22158.61,\"d0\":55141.39,\"d1\":38471.78,\"d2\":17798.04,\"d3\":4971.55,\"d4\":719.43,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":18758.44,\"d0\":58541.56,\"d1\":43764.51,\"d2\":22296.09,\"d3\":5077.92,\"d4\":719.43,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"s",
         "sampleRawRow": {
@@ -1165,7 +1158,7 @@
         "totalRowsReturned": 3
       },
       "OH": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41100.05,\"d0\":209.50,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41309.55,\"d0\":0.00,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41",
         "sampleRawRow": {
@@ -1184,7 +1177,7 @@
         "totalRowsReturned": 3
       },
       "MO": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":26350.52,\"d0\":43367.54,\"d1\":31614.26,\"d2\":16399.50,\"d3\":9073.62,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":26404.16,\"d0\":43313.90,\"d1\":23799.74,\"d2\":15285.03,\"d3\":7438.88,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1203,7 +1196,7 @@
         "totalRowsReturned": 3
       },
       "SD": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":11772.75,\"d0\":65354.32,\"d1\":48408.48,\"d2\":8150.94,\"d3\":251.34,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":8432.79,\"d0\":68694.28,\"d1\":49758.11,\"d2\":18716.73,\"d3\":1277.71,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbb",
         "sampleRawRow": {
@@ -1222,7 +1215,7 @@
         "totalRowsReturned": 3
       },
       "ND": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":20355.48,\"d0\":50350.81,\"d1\":41326.52,\"d2\":23686.96,\"d3\":5327.83,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":8855.18,\"d0\":61851.11,\"d1\":45023.64,\"d2\":31921.36,\"d3\":9675.79,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateA",
         "sampleRawRow": {
@@ -1241,7 +1234,7 @@
         "totalRowsReturned": 3
       },
       "KS": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":24392.35,\"d0\":57895.05,\"d1\":38191.65,\"d2\":18678.47,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":18550.71,\"d0\":63736.70,\"d1\":41850.35,\"d2\":23781.64,\"d3\":175.32,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbr",
         "sampleRawRow": {
@@ -1260,7 +1253,7 @@
         "totalRowsReturned": 3
       },
       "MI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":21846.30,\"d0\":36311.23,\"d1\":12120.89,\"d2\":2252.56,\"d3\":687.20,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":25569.35,\"d0\":32588.18,\"d1\":8646.81,\"d2\":2252.56,\"d3\":259.95,\"d4\":0.00,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00\",\"stateAbbre",
         "sampleRawRow": {
@@ -1279,7 +1272,7 @@
         "totalRowsReturned": 3
       },
       "WI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/18/2026&enddate=10/2/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/19/2026&enddate=10/3/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":25650.72,\"d0\":30397.73,\"d1\":29690.12,\"d2\":22817.44,\"d3\":11357.95,\"d4\":1712.63,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":18461.67,\"d0\":37586.78,\"d1\":28825.69,\"d2\":24708.12,\"d3\":10144.65,\"d4\":1569.91,\"validStart\":\"2026-09-22T00:00:00\",\"validEnd\":\"2026-09-28T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-15T00:00:00",
         "sampleRawRow": {
@@ -11036,7 +11029,7 @@
     "commodity": "Soybeans(大豆)",
     "weekEnding": "2026-09-24T00:00:00",
     "marketYearUsed": 2027,
-    "dataAgeDays": 8,
+    "dataAgeDays": 9,
     "isStale": false,
     "netSalesMT": 1033545,
     "prevNetSalesMT": 582432,
