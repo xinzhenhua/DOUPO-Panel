@@ -58,6 +58,10 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .dc-head.dc-bull{background:var(--rd);border:1px solid var(--rb);color:#e8896b}
 .dc-head.dc-bear{background:var(--gd);border:1px solid var(--gb);color:#5ec98a}
 .dc-head.dc-neutral{background:var(--bg2);border:1px solid var(--bdr);color:var(--t2)}
+.dc-state{border-radius:8px;padding:9px 12px;margin-top:8px;background:var(--bg2);border:1px solid var(--bdr);font-size:12.5px;line-height:1.7}
+.dc-state .dc-st-title{font-size:10.5px;color:var(--t3);margin-bottom:2px}
+.dc-state .dc-st-line{font-weight:700;color:var(--t1)}
+.dc-state .dc-st-sub{font-size:10px;color:var(--t3);font-weight:400;margin-top:3px;line-height:1.6}
 .dc-bullt{color:var(--r2);font-weight:700}.dc-beart{color:var(--g2);font-weight:700}
 .dc-warn{color:#d4a017}.dc-bad{color:var(--r2)}.dc-good{color:var(--g2)}
 .dc-sec{margin-top:8px;border-top:1px solid var(--bdr);padding-top:6px}
@@ -3649,6 +3653,66 @@ function dimensionSummary(dims, onlyKeys){
 /** 市场结构卡(v97)：基差/月差/量价——"盘面当下用什么方式定价"。它是独立于基本面(供需)的另一个系统，基本面数据不足时它照常显示。
  *  三种状态都如实说：①没有任何有效信号；②只有1项(样本少，不下结论)；③≥2项给出方向。
  *  ★它来自价格本身，跟技术面同源——跟基本面一致不算"独立证据"，这一点每次都写明。只描述状态，不给操作建议。 */
+/** 资金持仓小节(v100)：龙虎榜(外资+产业席位，固定看主力合约)+CFTC。放在"市场结构"区块里，**只展示，不进市场结构的净倾向投票**——
+ *  理由：①文档里的阈值是博主经验，没有标定；②龙虎榜T+1滞后；③市场结构的定位是"来自价格本身"，持仓数据不是价格衍生，混进去会改变它的含义。
+ *  数据缺失时写"暂无数据"，不崩、不显示空表、不假装。三个提前return的分支里都要拼上它(价格类结构票没数据时，资金持仓不能跟着消失)。 */
+function capitalHtml(){
+  const mc = window._syncedData && window._syncedData.marketCapital;
+  const head = `<div style="font-size:11px;font-weight:700;color:var(--t2);margin-top:10px;border-top:1px solid var(--bdr);padding-top:6px">资金持仓(龙虎榜+CFTC)</div>`;
+  const fmt = n => (n==null || isNaN(n)) ? '—' : Math.abs(Math.round(n)).toLocaleString('en-US');
+  const sgn = n => (n==null || isNaN(n)) ? '—' : `${n>0?'+':n<0?'-':''}${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
+  if(!mc || !mc.available){
+    return head + `<div class="alert-box neutral"><span class="at">资金持仓暂无数据</span>龙虎榜或CFTC这次没抓到(或这份latest.json是旧版本，不含资金面)，不影响上面的结论。</div>`;
+  }
+  const mem = mc.members || {};
+  // 历史趋势(v101起累积)：诚实——刚开始累积时写"历史累积中(已N个交易日)"，不编趋势；有了才写连续N日和近N个交易日变化。
+  //   净持仓的方向含义按席位的净多/净空翻译：净多头席位up=净多增加；净空头席位(净持仓为负)up=净持仓上升=净空减少。**只描述，不下"趋势确认/资金市结束"这类结论。**
+  const histCell = (m)=>{
+    const h = m.history;
+    if(!h) return '<span style="color:var(--t3)">—</span>';
+    const parts = [];
+    const r = h.run;
+    if(r && r.days > 0 && r.direction){
+      const isShort = m.net < 0;
+      const word = isShort ? (r.direction === 'up' ? '净空减少' : '净空增加') : (r.direction === 'up' ? '净多增加' : '净多减少');
+      parts.push(`连续${r.days}日${word}，累计${sgn(r.total)}手`);
+    }
+    if(h.change5) parts.push(`近5个交易日${sgn(h.change5.change)}手`);
+    if(h.change20) parts.push(`近20个交易日${sgn(h.change20.change)}手`);
+    if(parts.length) return parts.join('；');
+    return `<span style="color:var(--t3)">历史累积中(已${h.n||0}个交易日${h.since?`，自${h.since}`:''})</span>`;
+  };
+  const line = (name)=>{
+    const m = mem[name];
+    if(!m || m.net == null) return `<tr><td>${name}</td><td colspan="3" style="color:var(--t3)">未进榜(不等于0)</td></tr>`;
+    const dirTxt = m.net > 0 ? '净多' : '净空';
+    const chgTxt = m.change == null ? '—' : sgn(m.change);
+    // 日变化的含义写成人话：净空头席位(中粮/国投/摩根大通)的"净持仓变化"为正=净空减少，为负=净空增加(符号已统一成"净持仓变化")
+    const meaning = m.change == null || m.change === 0 ? '' : m.net < 0 ? (m.change > 0 ? '(净空减少)' : '(净空增加)') : (m.change > 0 ? '(净多增加)' : '(净多减少)');
+    return `<tr><td>${name}</td><td>${dirTxt} ${fmt(m.net)}手</td><td>日变化 ${chgTxt}${meaning}</td><td class="dc-hist">${histCell(m)}</td></tr>`;
+  };
+  const ind = mc.industry;
+  const indTxt = !ind ? '<span style="color:var(--t3)">暂无</span>'
+    : `合计净空 ${fmt(ind.net)}手，日变化 ${ind.change==null?'—':sgn(ind.change)}${ind.change!=null && ind.change!==0 ? `(${ind.change>0?'净空减少':'净空增加'}${fmt(ind.change)}手${ind.changePct!=null?`，${Math.abs(ind.changePct)}%`:''})` : ''}`;
+  const c = mc.cftc;
+  const cftcTxt = !c ? '<span style="color:var(--t3)">CFTC暂无数据</span>'
+    : `管理基金净多 ${fmt(c.net)}手，周变化 ${sgn(c.netChange)}${c.streakWeeks!=null?`，连续${c.streakWeeks}周${c.streakDirection==='up'?'增加':'减少'}`:''}${c.percentile!=null?`，近${c.weeksUsed||'—'}周的${Math.round(c.percentile)}%分位`:''}<span style="color:var(--t3)">(报告日期${c.reportDate||'—'})</span>`;
+  // ★CFTC回填的周数用**实际拿到的周数**(weeksUsed，来自来源的historyWeeksUsed)，不写死156——真实接口如果只返回了104周，写"156周"就是夸大；
+  //   CFTC这次没拿到时，如实写没拿到，不声称已回填。
+  const cftcHistNote = !c ? 'CFTC这次没拿到，历史也没有新增。'
+    : c.weeksUsed ? `CFTC历史已回填近${c.weeksUsed}周(来源一次返回的周数)。` : 'CFTC历史已累积(周数未知)。';
+  const main = mc.mainContract ? `${mc.mainContract.symbol}(主力合约，净空头榜持仓合计最大)` : '—';
+  return head
+    + `<div style="font-size:10px;color:var(--t3);margin-top:4px">${main} · 数据日期${mc.date||'—'}</div>`
+    + `<table class="sd-table"><thead><tr><th>外资席位</th><th>净持仓</th><th>当日变化</th><th>历史趋势</th></tr></thead><tbody>${['高盛期货','摩根大通','瑞银期货'].map(line).join('')}</tbody></table>`
+    + `<table class="sd-table"><thead><tr><th>产业席位</th><th>净持仓</th><th>当日变化</th><th>历史趋势</th></tr></thead><tbody>${['中粮期货','国投期货'].map(line).join('')}</tbody></table>`
+    + `<div class="dc-row"><span class="dc-k">产业合计</span><span class="dc-v">${indTxt}<span style="color:var(--t3)">(两家变化方向可能相反，合计会抵消，所以上面分开列)</span></span></div>`
+    + `<div class="dc-row"><span class="dc-k">CFTC</span><span class="dc-v">${cftcTxt}</span></div>`
+    + `<div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.65">⚠️ 这一小节<b>只展示，不参与上面的市场结构净倾向</b>：它不是价格衍生的数据(上面三项是)，龙虎榜是T+1滞后，文档里的阈值是博主经验、没有回测。`
+    + `高盛席位是"代客"集合持仓，不是高盛自营，要结合净持仓看方向。CFTC是<b>CBOT豆粕(美国市场)</b>的管理基金，不是大商所，与国内高盛是否共振没有验证过。`
+    + `<br>📚 <b>历史</b>：龙虎榜历史从v101起每天累积(接口没法可靠回填，所以只能往后攒，上面"历史趋势"一列会随天数增加而有内容；主力合约换月时按合约分段，不跨合约比较)；${cftcHistNote}</div>`;
+}
+
 function renderStructureCard(votes){
   const el = document.getElementById('structureContent');
   if(!el) return;
@@ -3663,12 +3727,12 @@ function renderStructureCard(votes){
   const table = sv.length ? `<table class="sd-table"><thead><tr><th>市场结构</th></tr></thead><tbody>${sv.map(cell).join('')}</tbody></table>` : '';
   const note = `<div style="font-size:10px;color:var(--t3);margin-top:6px">基差=现货相对盘面；月差=近远月价差在往年同期的位置；量价=价格与持仓量的配合(只在合约可用性门槛通过时才判)。三者都来自价格本身，跟技术面同源，所以它跟基本面方向一致时<b>不算独立证据</b>；背离才是需要关注的信息。只描述状态，不给买卖建议。</div>`;
   if(!sys || sys.n === 0){
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构暂无信号</span>基差/月差/量价都没有可用信号(历史样本还在积累，或量价可用性门槛没过)</div>${table}${note}`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构暂无信号</span>基差/月差/量价都没有可用信号(历史样本还在积累，或量价可用性门槛没过)</div>${table}${note}${capitalHtml()}`;
     return;
   }
   if(sys.thin){
     const only = (sys.items && sys.items[0]) ? sys.items[0].label : '1项';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构样本少：只有1项有信号(${only})，不下结论</span>只有1个市场结构指标有信号，不足以代表整体；等其余指标的历史积累够了再看</div>${table}${note}`;
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构样本少：只有1项有信号(${only})，不下结论</span>只有1个市场结构指标有信号，不足以代表整体；等其余指标的历史积累够了再看</div>${table}${note}${capitalHtml()}`;
     return;
   }
   const pct = Math.round(sys.ratio*100);
@@ -3676,12 +3740,33 @@ function renderStructureCard(votes){
   const title = sys.direction==='中性' ? `市场结构中性（净倾向${pct>0?'+':''}${pct}%）` : `市场结构${sys.direction}（净倾向${pct>0?'+':''}${pct}%）`;
   const dv = computeSystemsDivergence(window._fundamentalPure, sys);
   const dvHtml = `<div class="alert-box ${dv.cls}"><span class="at">与基本面的关系：${dv.title}</span>${dv.detail||''}</div>`;
-  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>有效${sys.n}项</div>${dvHtml}${table}${note}`;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>有效${sys.n}项</div>${dvHtml}${table}${note}${capitalHtml()}`;
 }
 
 /** 决策卡摘要(v99)：一屏读完。只读已有的计算结果(window._fundamentalPure/_fundamentalConfidence/_fundamentalMeta/_structureSystem/_technicalDirection/_foreignActivity/_topDrivers，
  *  以及computeDataHealth、buildEventList)，不做任何新的评分。基本面数据不足时第一行写"数据不足"，不列驱动(顶部预警明确说不下结论，这里不能自相矛盾)。
  *  颜色沿用页面约定：红=偏多、绿=偏空。 */
+/** 当前市场状态(v100)：决策卡最上边。两个**独立系统**的结论并排写，不混成一个数：资金面(外资多头拥挤度，龙虎榜+CFTC，来自后端marketCapital.state)
+ *  + 基本面(已有的供需净倾向)。资金面不可用时写"资金面数据不足"(灯⚪)，绝不假装中性；基本面数据不足时资金面状态仍然显示(它们是独立的)。
+ *  状态灯用🔴🟡🟢⚪(不用"红=偏多/绿=偏空"的涨跌色——这里红是"拥挤/风险"，含义不同，不能套用涨跌色)。**只描述状态，不写"参与/观望/休息"。** */
+function marketStateHtml(ok, pure){
+  const mc = window._syncedData && window._syncedData.marketCapital;
+  const lampOf = lv => lv==='red' ? '🔴' : lv==='yellow' ? '🟡' : lv==='green' ? '🟢' : '⚪';
+  const fmt = n => (n==null || isNaN(n)) ? '—' : Math.abs(Math.round(n)).toLocaleString('en-US');
+  let capLine, capSub = '';
+  if(mc && mc.available && mc.state){
+    const gs = mc.members && mc.members['高盛期货'], c = mc.cftc;
+    const evid = [gs && gs.net != null ? `高盛${gs.net>0?'净多':'净空'}${fmt(gs.net)}手` : '高盛未进榜', c && c.percentile != null ? `CFTC净多近${c.weeksUsed||'—'}周${Math.round(c.percentile)}%分位` : 'CFTC暂无'].join('、');
+    capLine = `${lampOf(mc.state.level)} 资金面：${mc.state.label}`;
+    capSub = `依据：${evid}(主力合约${mc.mainContract ? mc.mainContract.symbol : '—'}，${mc.date||'—'})。${mc.state.note || ''} 阈值：${mc.state.thresholdSource || '—'}。`;
+  } else {
+    capLine = `⚪ 资金面：数据不足`;
+    capSub = '龙虎榜或CFTC这次没抓到(或latest.json是旧版本)，不下结论。';
+  }
+  const fundLine = ok ? `基本面：${pure.direction === '中性' ? '信号混合' : pure.direction}(净倾向${pure.ratio>0?'+':''}${Math.round(pure.ratio*100)}%)` : '基本面：数据不足';
+  return `<div class="dc-state"><div class="dc-st-title">当前市场状态</div><div class="dc-st-line">${capLine}　|　${fundLine}</div><div class="dc-st-sub">${capSub}</div></div>`;
+}
+
 function renderDecisionSummary(){
   const el = document.getElementById('decisionSummary');
   if(!el) return;
@@ -3728,7 +3813,7 @@ function renderDecisionSummary(){
     const indParts = [h.bad ? `${h.bad}项不可用` : '', h.warn ? `${h.warn}项降权/手动` : '', h.missing.length ? `缺席投票${h.missing.length}项` : ''].filter(Boolean);
     rows += row('数据', `<span class="${syncCls}">${h.sync.icon} ${h.sync.label}</span>　<span class="${indCls}">${indIcon} 指标${indParts.length ? '：' + indParts.join('、') : '正常'}</span>`);
   }catch(e){ rows += row('数据', '<span style="color:var(--t3)">暂不可用</span>'); }
-  el.innerHTML = head + rows;
+  el.innerHTML = marketStateHtml(ok, pure) + head + rows;
 }
 
 function updateOverallAlert(){

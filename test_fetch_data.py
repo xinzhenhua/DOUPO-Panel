@@ -1496,6 +1496,18 @@ def test_foreign_futures_firm_detection(monkeypatch_fetch):
     assert fd_module._is_foreign_futures_firm("摩根大通期货") is True
     assert fd_module._is_foreign_futures_firm("摩根士丹利期货") is True
     assert fd_module._is_foreign_futures_firm("瑞银期货") is True
+    # ★v100：数据源(东方财富)返回的是"摩根大通"(没有"期货"后缀)，而名单里只有"摩根大通期货"——包含匹配方向是"名单项 in 名字"，
+    #   "摩根大通期货" in "摩根大通" 为假，所以摩根大通一直没被识别成外资(数据里isForeign:false)。上面那条"摩根大通期货"的测试输入是我以为的写法，不是真实写法。
+    #   以下全部用真实数据里出现过的会员名(2026-09-30 三个合约四张表里的54个名字)
+    assert fd_module._is_foreign_futures_firm("摩根大通") is True, "★真实数据里的写法：'摩根大通'(无'期货'后缀)"
+    assert fd_module._is_foreign_futures_firm("摩根大通（代客）") is True and fd_module._is_foreign_futures_firm("摩根士丹利") is True
+    REAL = ["一德期货","东吴期货","东证期货","中信建投","中信期货","中州期货","中泰期货","中电投先融","中粮期货","中金财富","五矿期货","佛山金控","兴业期货","兴证期货","冠通期货","创元期货","北京首创","华泰期货","华闻期货","南华期货","国信期货","国元期货","国富期货","国投期货","国泰君安","国联期货","国贸期货","国金期货","大地期货","大越期货","宏源期货","宝城期货","广发期货","广州期货","建信期货","徽商期货","招商期货","新湖期货","格林大华","正信期货","永安期货","浙商期货","海证期货","海通期货","混沌天成","瑞达期货","申银万国","紫金天风","苏豪弘业","西部期货","银河期货"]
+    wrong = [n for n in REAL if fd_module._is_foreign_futures_firm(n)]
+    assert wrong == [], f"★真实数据里的51个境内会员不能被误判成外资: {wrong}"
+    assert [n for n in ["高盛期货","瑞银期货","摩根大通"] if not fd_module._is_foreign_futures_firm(n)] == [], "真实数据里的3家外资全部要识别出来"
+    # ★变异检查发现：把核心名换成更短的"摩根"/"大通"在54个真实会员名上无害(真实名单里没有会被误伤的名字)，所以上面的真实名单测试防不住"核心名太短"。
+    #   这里用几个**假想的**境内会员名做边界(只用来证明核心名不能取太短；它们不是真实会员)：名字里含"摩根"或"大通"但不是外资
+    assert [n for n in ["大通期货","摩根投资","北京大通","上海摩根资产","中大通"] if fd_module._is_foreign_futures_firm(n)] == [], "★核心名不能取'摩根'/'大通'这种太短的片段——会误伤名字里碰巧含这两个字的境内公司"
     assert fd_module._is_foreign_futures_firm("中信期货") is False, "★国内期货公司不应该被误判成外资"
     assert fd_module._is_foreign_futures_firm("国泰君安") is False
 

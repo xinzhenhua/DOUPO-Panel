@@ -53,6 +53,14 @@ SERIES_META = {
     "sow_inventory": {"name": "能繁母猪存栏(季度末)", "unit": "万头", "freq": "quarterly"},
     "poultry_profit": {"name": "白羽肉鸡养殖利润", "unit": "元/只", "freq": "weekly"},
     "rm_spread": {"name": "豆菜粕价差", "unit": "元/吨", "freq": "weekly"},
+    # ---- 资金面(v101)：龙虎榜主力合约的席位净持仓(日频，每个点带x.contract——主力合约会换月，不同合约的净持仓规模完全不同，不可比；
+    #      "连续N日/近N日变化"只能在同一个合约内算，见consecutive_run/change_over) + CFTC管理基金净多(周频，可立即回填156周) ----
+    "capital_gs_net": {"name": "高盛期货净持仓(龙虎榜主力合约，正=净多；换月不可比，点带合约代码)", "unit": "手", "freq": "daily"},
+    "capital_jpm_net": {"name": "摩根大通净持仓(龙虎榜主力合约，正=净多；换月不可比，点带合约代码)", "unit": "手", "freq": "daily"},
+    "capital_ubs_net": {"name": "瑞银期货净持仓(龙虎榜主力合约，正=净多；换月不可比，点带合约代码)", "unit": "手", "freq": "daily"},
+    "capital_zl_net": {"name": "中粮期货净持仓(龙虎榜主力合约，负=净空；换月不可比，点带合约代码)", "unit": "手", "freq": "daily"},
+    "capital_gt_net": {"name": "国投期货净持仓(龙虎榜主力合约，负=净空；换月不可比，点带合约代码)", "unit": "手", "freq": "daily"},
+    "cftc_mm_net": {"name": "CFTC管理基金净多(CBOT豆粕，周频，d=报告日期周二)", "unit": "手", "freq": "weekly"},
     # ---- 盘面压榨毛利(可回填：新浪日K线；只存各合约的"建议交易窗口"内的点，所以不同年份的同一窗口可比) ----
     # freq='seasonal-daily'：日频但只有窗口内的点，样本密度检查不适用；分位只看"往年同月"(seasonal)
     "crush_margin_sep": {"name": "盘面压榨毛利(9月合约，4-7月窗口)", "unit": "元/吨", "freq": "seasonal-daily"},
@@ -304,6 +312,106 @@ def coverage_problem(points, freq):
     if density < MIN_DENSITY:
         return f"样本不连续：跨{span}天应有约{int(expected)}期，实际只有{len(points)}期({int(density * 100)}%)"
     return None
+
+
+# ===================== 资金面：同一合约内的"连续N日"和"近N日变化"(v101) =====================
+# 为什么必须"同一合约内"：龙虎榜的主力合约会换月(M2701→M2705)，换月前后同一个席位的净持仓规模完全不同(M2701高盛15万手 vs M2705可能几千手)。
+#   跨合约相减会得到一个假的巨大变化。所以：每个点带x.contract；从最新点往回算，遇到合约变了就停；
+#   也不能跨过缺的交易日(采集失败)——相邻两点之间如果隔着一个没有点的交易日，就不是"连续"，同样停。
+def _trading_day_between(a, b):
+    """a<b(date)之间是否还隔着至少一个大商所交易日(不含a、b)。"""
+    d = a + _timedelta(days=1)
+    while d < b:
+        if cn_calendar.dce_is_trading_day(d):
+            return True
+        d += _timedelta(days=1)
+    return False
+
+
+def _clean_contract_points(points):
+    """过滤坏点(日期乱码/v不是数字)，按日期升序，返回[(date, v, contract)]。"""
+    out = []
+    for p in points or []:
+        d = _to_date(p.get("d")) if isinstance(p, dict) else None
+        if d is None or not _is_num(p.get("v")):
+            continue
+        out.append((d, p["v"], (p.get("x") or {}).get("contract")))
+    out.sort(key=lambda t: t[0])
+    return out
+
+
+def consecutive_run(points):
+    """从最新点往回数：同一方向(升/降)连续了几个交易日、累计变化多少。只在最新点所属的合约内算；遇到打平、方向反转、合约变了、缺了交易日就停。
+    返回{direction:'up'|'down'|None, days, total, since(连续区间的起点日期), contract(最新点的合约)}；最新一天打平/只有1个点=direction None、days 0。"""
+    pts = _clean_contract_points(points)
+    empty = {"direction": None, "days": 0, "total": 0, "since": None, "contract": None}
+    if not pts:
+        return empty
+    out = dict(empty, contract=pts[-1][2])
+    if len(pts) < 2:
+        return out
+    direction, days, i = None, 0, len(pts) - 1
+    while i > 0:
+        d1, v1, c1 = pts[i]
+        d0, v0, c0 = pts[i - 1]
+        if c0 != c1 or _trading_day_between(d0, d1):
+            break
+        diff = v1 - v0
+        step = "up" if diff > 0 else "down" if diff < 0 else None
+        if step is None or (direction is not None and step != direction):
+            break
+        direction = step
+        days += 1
+        i -= 1
+    if days == 0:
+        return out
+    start_idx = len(pts) - 1 - days
+    return {"direction": direction, "days": days, "total": pts[-1][1] - pts[start_idx][1], "since": pts[start_idx + 1][0].isoformat(), "contract": pts[-1][2]}
+
+
+def change_over(points, n):
+    """较n个交易日前(往前数第n个点)的变化。要求这n+1个点都在同一个合约内、相邻点之间没有缺交易日；否则返回None(不给跨合约/跨缺口的假变化)。"""
+    pts = _clean_contract_points(points)
+    if len(pts) < n + 1:
+        return None
+    win = pts[-(n + 1):]
+    if len({c for _, _, c in win}) != 1:
+        return None
+    for (d0, _, _), (d1, _, _) in zip(win, win[1:]):
+        if _trading_day_between(d0, d1):
+            return None
+    return {"change": win[-1][1] - win[0][1], "from": win[0][0].isoformat(), "to": win[-1][0].isoformat(), "contract": win[-1][2], "n": n}
+
+
+# 龙虎榜席位 → 序列key(只在marketCapital里有净持仓时才记；未进榜=None=不记点，记0会让"连续N日"误以为降到了0)
+CAPITAL_MEMBER_SERIES = {"高盛期货": "capital_gs_net", "摩根大通": "capital_jpm_net", "瑞银期货": "capital_ubs_net", "中粮期货": "capital_zl_net", "国投期货": "capital_gt_net"}
+
+
+def _record_capital(result, base_dir, touched, note):
+    """把marketCapital里各席位的净持仓记成日频序列(带合约代码)，再把连续N日/近N日变化挂回members[席位].history，页面直接展示。"""
+    mc = result.get("marketCapital")
+    if not (isinstance(mc, dict) and mc.get("available") and mc.get("date") and isinstance(mc.get("mainContract"), dict) and mc["mainContract"].get("symbol")):
+        return
+    members = mc.get("members")
+    if not isinstance(members, dict):
+        return
+    contract, day = mc["mainContract"]["symbol"], str(mc["date"])[:10]
+    for name, key in CAPITAL_MEMBER_SERIES.items():
+        m = members.get(name)
+        if not isinstance(m, dict) or not _is_num(m.get("net")):
+            continue
+        try:
+            x = {"contract": contract}
+            if _is_num(m.get("change")):
+                x["change"] = m["change"]
+            series, changed = record_points(key, [{"d": day, "v": m["net"], "x": x}], base_dir)
+            if changed:
+                touched.append(key)
+            pts_all = series["points"]
+            m["history"] = {"n": len(pts_all), "since": pts_all[0]["d"] if pts_all else None, "run": consecutive_run(pts_all),
+                            "change5": change_over(pts_all, 5), "change20": change_over(pts_all, 20)}
+        except Exception as e:  # noqa: BLE001 - 历史是锦上添花
+            note(key, e)
 
 
 # ★滚动窗口分位(v98，油厂开机率用)：当前值在"最近window_days天"参照样本里的位置。
@@ -593,6 +701,28 @@ def update_and_attach(result, base_dir=None):
             res["history"] = summarize(usable_points("feed_days", series["points"]), res["value"], _day(res.get("date")), series["freq"])
     except Exception as e:  # noqa: BLE001
         note("mysteelFeedDays", e)
+
+    # ★资金面(v101)：龙虎榜主力合约的席位净持仓(日频，带合约代码)。放在CFTC之前不重要，两者互相独立。
+    try:
+        _record_capital(result, base_dir, touched, note)
+    except Exception as e:  # noqa: BLE001
+        note("marketCapital", e)
+
+    # ★CFTC管理基金净多(周频)：抓取一次就拉了156周明细(res["history"])，第一次运行就记下整段，不用等；之后每周补新的一周。
+    #   没有history明细(旧版结果)时至少记最新一周。
+    try:
+        res = result.get("cftcManagedMoney")
+        if isinstance(res, dict) and res.get("available"):
+            pts = [p for p in (res.get("history") or []) if isinstance(p, dict) and p.get("d") and _is_num(p.get("v"))]
+            if not pts and res.get("reportDate") and _is_num(res.get("netPosition")):
+                pts = [{"d": _day(res["reportDate"]), "v": res["netPosition"]}]
+            if pts:
+                series, changed = record_points("cftc_mm_net", pts, base_dir)
+                if changed:
+                    touched.append("cftc_mm_net")
+                res.pop("history", None)      # 156周明细(约12KB)已存进序列文件，不需要留在latest.json里每小时重复写一遍；摘要字段(netPosition/streakWeeks/historyPercentile…)保留
+    except Exception as e:  # noqa: BLE001
+        note("cftcManagedMoney", e)
 
     # 盘面压榨毛利：三个合约各存一条序列(逐日追加)；分位只看"往年同月"——毛利的绝对数没有意义(没扣加工费，几乎永远为正)，
     #   只有跟历史同期比才知道"油厂现在的压榨动力强还是弱"。需要往年数据(回填)，没有回填时seasonal为空，前端不据此计分。

@@ -102,3 +102,6 @@ node test_planting_brl.js
 - `python3 test_calibrate_margin_spread.py`：v98新增，榨利/月差校准诊断
 - `tests/test_decision_card.js`、`tests/test_rmspread_caliber.js`：v99新增(决策卡、豆菜粕价差新口径)；`tests/test_crush_rule.js`、`test_crush_rate_rule.py`扩展了往年同月三档
 - v99移除：`test_sample_job.py`；`test_history.py`里3个meal_stock回填测试；`test_url_safety.py`改为逐个调用点检查白名单
+- `python3 test_market_capital.py`、`tests/test_market_capital_card.js`：v100新增，资金面(龙虎榜+CFTC)主力合约/席位净持仓/状态/市场结构里的资金持仓小节/决策卡最上边的当前市场状态
+- v100：`test_fetch_data.py`的外资识别测试增加54个真实会员名；**变异检查跑`test_fetch_data`时成功标志是`🎉 全部`而不是`结果：`，并且必须带一个'不改动'的对照组**
+- `python3 test_capital_history.py`：v101新增，龙虎榜/CFTC历史累积(序列、同合约连续N日、缺交易日、CFTC 156周回填与自检)；`tests/test_market_capital_card.js`扩展了历史趋势列

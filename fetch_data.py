@@ -3118,6 +3118,23 @@ def fetch_mysteel_sow_inventory(today=None):
 CFTC_DISAGGREGATED_BASE = "https://publicreporting.cftc.gov/resource/72hh-3qpy.json"
 
 
+def cftc_history_points(rows):
+    """CFTC明细行(按report_date DESC)→历史点[{d,v,x}]，按日期升序。d=报告日期(周二)，v=管理基金净多(多−空)，x={long,short}。
+    个别行解析失败/没有日期就跳过，不让整体失效。"""
+    out = []
+    for row in rows or []:
+        try:
+            d = str(row.get("report_date_as_yyyy_mm_dd") or "")[:10]
+            lo, sh = float(row["m_money_positions_long_all"]), float(row["m_money_positions_short_all"])
+        except (KeyError, ValueError, TypeError, AttributeError):
+            continue
+        if not d:
+            continue
+        out.append({"d": d, "v": lo - sh, "x": {"long": lo, "short": sh}})
+    out.sort(key=lambda p: p["d"])
+    return out
+
+
 def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE", history_limit=156):
     """查询CFTC Disaggregated COT报告里，指定市场的Managed Money(基金/投机资金)
     净多空持仓+CFTC官方已经算好的周变化(change_in_m_money_long_all等字段)。
@@ -3206,9 +3223,100 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
         "streakDirection": streak_direction,  # 'up' | 'down' | None
         "historyPercentile": history_percentile,  # 0-100，None表示历史数据不够(<52周)
         "historyWeeksUsed": len(net_series),
+        "history": cftc_history_points(data),   # ★v101：把156周明细带出来，由history_store记成cftc_mm_net序列(第一次运行就有整段历史)
         "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
         "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm",
     }
+
+# ============================================================================
+# 资金面(龙虎榜+CFTC)：外资多头拥挤度——从已经抓到的龙虎榜和CFTC派生，不增加任何网络请求
+# ============================================================================
+# 为什么要固定看"主力合约"：用真实数据(2026-09-30)——M2701的净空头榜持仓合计约79.6万手(中粮48.2万、国投22.6万)，
+#   而9月合约M2709只有几千手(前几名只有几百到几千手)。页面选中9月合约时，外资看起来"很平静"，其实是那个合约几乎没人持仓。
+#   所以外资/产业的分析必须看主力合约，不跟着页面选中的合约走。
+# 为什么只叫"拥挤度"、不直接宣布"资金市"：文档对"资金市"的定义还要求价格突破、无视基本面利空、美豆不涨豆粕涨、高盛连续单边增仓——
+#   这些现有数据判断不了(没有龙虎榜历史，只有当天快照；联动需要美豆数据)。能判断的只有：高盛净多头水平 + CFTC管理基金净多的历史分位。
+# 阈值全部来自文档(博主经验)：暂定，未回测。等累积够龙虎榜历史再校准(见TODO.md)。
+CAPITAL_GS_HIGH = 120000            # 高盛净多头≥12万手 = 高位(文档：从16万手级别降到12万手以下→资金市可能接近尾声，所以12万以上算高位区)
+CAPITAL_GS_RETREAT_CHG = -20000     # 高盛单日净多变化≤-2万手 = 撤退预警(文档：单日减仓超2万手→预警)
+CAPITAL_CFTC_CROWDED_PCT = 90       # CFTC管理基金净多的历史分位≥90 = 拥挤(文档：创历史新高后回落→拥挤反转风险；分位用近156周)
+CAPITAL_FOREIGN = ["高盛期货", "摩根大通", "瑞银期货"]            # 展示的外资席位(与FOREIGN_FIRM_CORE_NAMES一致；摩根士丹利在数据里没出现过)
+CAPITAL_INDUSTRY = ["中粮期货", "国投期货"]                       # 产业席位(文档：产业双空头格局)
+
+
+def _member_net(tables, name):
+    """会员在净多头榜/净空头榜里的净持仓：在netLong表=+value，在netShort表=-value，都没有=None(未进榜，不是0)。
+    netShort里的change是净空的变化，所以净持仓变化=-change。返回{net, change, side, rank, foreign}或None。"""
+    for side, tbl in (("long", tables.get("netLong") or []), ("short", tables.get("netShort") or [])):
+        for r in tbl:
+            if name in str(r.get("name") or "") and r.get("value") is not None:
+                sign = 1 if side == "long" else -1
+                chg = r.get("change")
+                return {"net": sign * r["value"], "change": (sign * chg) if chg is not None else None, "side": side, "rank": r.get("rank"),
+                        "foreign": bool(r.get("isForeign")) or _is_foreign_futures_firm(r.get("name"))}
+    return None
+
+
+def _capital_state(gs, cftc):
+    """外资多头拥挤度状态。gs=高盛的_member_net结果(可None)，cftc=build_market_capital里的cftc字典(可None)。
+    优先级：撤退预警(当天大幅减仓，更新的信息) > 拥挤(高盛高位且CFTC拥挤) > 高位(满足其一) > 中性 > 数据不足。数据缺失绝不写中性。"""
+    gs_net = gs["net"] if gs else None
+    gs_chg = gs["change"] if gs else None
+    pct = cftc.get("percentile") if cftc else None
+    gs_high = gs_net is not None and gs_net >= CAPITAL_GS_HIGH
+    crowded = pct is not None and pct >= CAPITAL_CFTC_CROWDED_PCT
+    note = ("只能判断持仓拥挤度(高盛净多头水平+CFTC管理基金净多的历史分位)。文档里'资金市'还要求的价格突破、无视基本面利空、美豆不涨豆粕涨、"
+            "高盛连续N日单边增仓，目前都未判断：价格/联动需要美豆数据，'连续N日'需要龙虎榜历史(v101起每天累积，但刚开始，要攒够才能判断，见TODO.md)。")
+    base = {"note": note, "thresholdSource": "文档经验值，暂定，未回测"}
+    if gs_chg is not None and gs_chg <= CAPITAL_GS_RETREAT_CHG:
+        return dict(base, code="retreat", level="yellow", label=f"外资撤退预警：高盛当日减仓{abs(gs_chg):,}手")
+    if gs_high and crowded:
+        return dict(base, code="crowded", level="red", label="外资多头拥挤")
+    if gs_high:
+        return dict(base, code="elevated", level="yellow", label="外资多头高位(高盛净多头在高位，CFTC未到拥挤)")
+    if crowded:
+        return dict(base, code="elevated", level="yellow", label="外资多头高位(依据：CFTC管理基金净多到顶；高盛未进榜或不在高位)")
+    if gs_net is None and pct is None:
+        return dict(base, code="unknown", level="gray", label="外资状态：数据不足")
+    if gs_net is None or pct is None:
+        return dict(base, code="unknown", level="gray", label="外资状态：数据不足(高盛或CFTC缺一项，不下'中性'结论)")
+    return dict(base, code="neutral", level="green", label="外资中性(高盛净多头不在高位，CFTC不拥挤)")
+
+
+def build_market_capital(rank_by_key, cftc):
+    """rank_by_key={'sep':龙虎榜结果,'may':…,'jan':…}(每个是单合约的龙虎榜结果或None)；cftc=fetch_cftc_managed_money()的结果或None。
+    返回{available, mainContract:{key,symbol,gross}, date, members:{名字:{net,change,side,rank,foreign}}, industry:{net,change,changePct}, cftc:{…}, state:{…}}。"""
+    best = None
+    for key, rk in (rank_by_key or {}).items():
+        if not isinstance(rk, dict) or not rk.get("available"):
+            continue
+        tbl = rk.get("tables") or {}
+        gross = sum(r.get("value") or 0 for r in (tbl.get("netShort") or []))
+        if best is None or gross > best[2]:
+            best = (key, rk, gross)
+    cf = None
+    if isinstance(cftc, dict) and cftc.get("available", True) and cftc.get("netPosition") is not None:
+        cf = {"net": cftc.get("netPosition"), "netChange": cftc.get("netChange"), "streakWeeks": cftc.get("streakWeeks"), "streakDirection": cftc.get("streakDirection"),
+              "percentile": cftc.get("historyPercentile"), "weeksUsed": cftc.get("historyWeeksUsed"), "reportDate": cftc.get("reportDate")}
+    if best is None:
+        return {"available": False, "mainContract": None, "members": {}, "industry": None, "cftc": cf, "state": _capital_state(None, cf)}
+    key, rk, gross = best
+    tables = rk.get("tables") or {}
+    members = {}
+    for name in CAPITAL_FOREIGN + CAPITAL_INDUSTRY:
+        members[name] = _member_net(tables, name) or {"net": None, "change": None, "side": None, "rank": None, "foreign": name in CAPITAL_FOREIGN}
+    ind_nets = [members[n] for n in CAPITAL_INDUSTRY if members[n]["net"] is not None]
+    industry = None
+    if ind_nets:
+        net = sum(m["net"] for m in ind_nets)
+        chgs = [m["change"] for m in ind_nets if m["change"] is not None]
+        chg = sum(chgs) if len(chgs) == len(ind_nets) else None
+        industry = {"net": net, "change": chg, "changePct": round(chg / abs(net) * 100, 2) if (chg is not None and net) else None,
+                    "members": [n for n in CAPITAL_INDUSTRY if members[n]["net"] is not None]}
+    return {"available": True, "mainContract": {"key": key, "symbol": rk.get("symbol"), "gross": gross}, "date": rk.get("date"), "members": members, "industry": industry,
+            "cftc": cf, "state": _capital_state(members.get("高盛期货"), cf),
+            "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约"}
+
 
 
 
@@ -3557,11 +3665,16 @@ def crush_margin_series(meal_bars, oil_bars, bean_bars):
 #   用"in"做包含匹配(不是精确匹配)，因为会员名称在不同数据源/时间点可能带"(代客)"
 #   这类后缀，或者叫"高盛期货(深圳)"这种更完整的写法。
 FOREIGN_FUTURES_FIRMS = ["高盛期货", "摩根大通期货", "摩根士丹利期货", "瑞银期货"]
+# ★v100：识别用的核心名。数据源(东方财富)返回的会员名可能没有"期货"后缀——2026-09-30的真实数据里写的是"摩根大通"，而名单里是"摩根大通期货"，
+#   "名单项 in 名字"的包含匹配方向让它一直没被识别成外资(isForeign:false)。核心名要足够长以免误伤境内会员(不用"摩根"/"大通"这种太短的)；
+#   高盛/瑞银在真实数据里带"期货"后缀，本来就能匹配，这里一并列出。用2026-09-30三个合约四张表里的54个真实会员名验证过：51个境内会员零误判。
+FOREIGN_FIRM_CORE_NAMES = ["高盛期货", "摩根大通", "摩根士丹利", "瑞银期货"]
 
 
 def _is_foreign_futures_firm(name):
-    """判断一个会员名称是不是已确认的外资独资期货公司。"""
-    return any(firm in name for firm in FOREIGN_FUTURES_FIRMS)
+    """判断一个会员名称是不是已确认的外资独资期货公司(包含匹配：完整名单项或核心名出现在会员名里)。"""
+    name = str(name or "")
+    return any(firm in name for firm in FOREIGN_FUTURES_FIRMS) or any(core in name for core in FOREIGN_FIRM_CORE_NAMES)
 
 
 # 六个龙虎榜类别的配置：sortField是请求时sortColumns参数要用的值(不带下划线)，
@@ -4360,6 +4473,13 @@ def main():
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
+
+    # ★资金面(龙虎榜+CFTC)：从上面已经抓到的数据派生，不增加网络请求；任何错都不能影响latest.json
+    try:
+        result["marketCapital"] = build_market_capital({"sep": position_ranks.get(sep_code), "may": position_ranks.get(may_code), "jan": position_ranks.get(jan_code)}, result.get("cftcManagedMoney"))
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️ marketCapital生成失败(不影响其他数据): {type(e).__name__}: {e}")
+        result["marketCapital"] = {"available": False, "error": f"{type(e).__name__}: {str(e)[:120]}"}
 
     # ★历史序列：把各指标最新值追加进data/history/*.json，并给对应结果挂上history(历史分位摘要)。
     #   出任何错都只打印警告——历史是锦上添花，绝不能让latest.json写不出来。
