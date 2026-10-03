@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T13:21:42.426642+00:00",
+  "generatedAt": "2026-10-03T23:10:41.666455+00:00",
   "cbotPrice": {
     "available": true,
     "price": 344.7,
@@ -233,7 +233,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 33,
+    "articleAgeDays": 34,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -644,7 +644,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 5,
+    "ageDays": 6,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -706,28 +706,12 @@
     }
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.42,
-    "date": "2026-10-03",
-    "pigPrice": 10.34,
-    "cornPricePerTon": 2340.0,
-    "pigLatestDate": "2026-10-03",
-    "cornLatestDate": "2026-10-03",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn",
-    "history": {
-      "n": 3,
-      "minPoints": 12,
-      "asOf": "2026-10-03",
-      "since": "2026-09-30",
-      "percentile": null,
-      "min": 4.32,
-      "max": 4.43,
-      "median": 4.32,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f1d81188b90>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
     }
   },
   "sowInventory": {
@@ -10270,7 +10254,7 @@
           "name": "摩根大通",
           "value": null,
           "change": null,
-          "isForeign": false
+          "isForeign": true
         },
         {
           "rank": 13,
@@ -10471,7 +10455,7 @@
           "name": "摩根大通",
           "value": 9739,
           "change": 7014,
-          "isForeign": false
+          "isForeign": true
         },
         {
           "rank": 8,
@@ -10650,7 +10634,7 @@
           "name": "摩根大通",
           "value": 49928,
           "change": -6909,
-          "isForeign": false
+          "isForeign": true
         },
         {
           "rank": 3,
@@ -11178,5 +11162,142 @@
       "sparse": null,
       "window": null
     }
+  },
+  "marketCapital": {
+    "available": true,
+    "mainContract": {
+      "key": "jan",
+      "symbol": "M2701",
+      "gross": 867214
+    },
+    "date": "2026-09-30",
+    "members": {
+      "高盛期货": {
+        "net": 152092,
+        "change": 2181,
+        "side": "long",
+        "rank": 1,
+        "foreign": true,
+        "history": {
+          "n": 1,
+          "since": "2026-09-30",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": null,
+          "change20": null
+        }
+      },
+      "摩根大通": {
+        "net": -9739,
+        "change": -7014,
+        "side": "short",
+        "rank": 7,
+        "foreign": true,
+        "history": {
+          "n": 1,
+          "since": "2026-09-30",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": null,
+          "change20": null
+        }
+      },
+      "瑞银期货": {
+        "net": 11489,
+        "change": 829,
+        "side": "long",
+        "rank": 12,
+        "foreign": true,
+        "history": {
+          "n": 1,
+          "since": "2026-09-30",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": null,
+          "change20": null
+        }
+      },
+      "中粮期货": {
+        "net": -482209,
+        "change": 5234,
+        "side": "short",
+        "rank": 1,
+        "foreign": false,
+        "history": {
+          "n": 1,
+          "since": "2026-09-30",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": null,
+          "change20": null
+        }
+      },
+      "国投期货": {
+        "net": -226091,
+        "change": -2906,
+        "side": "short",
+        "rank": 2,
+        "foreign": false,
+        "history": {
+          "n": 1,
+          "since": "2026-09-30",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": null,
+          "change20": null
+        }
+      }
+    },
+    "industry": {
+      "net": -708300,
+      "change": 2328,
+      "changePct": 0.33,
+      "members": [
+        "中粮期货",
+        "国投期货"
+      ]
+    },
+    "cftc": {
+      "net": 207578.0,
+      "netChange": 16491.0,
+      "streakWeeks": 7,
+      "streakDirection": "up",
+      "percentile": 100.0,
+      "weeksUsed": 156,
+      "reportDate": "2026-09-29"
+    },
+    "state": {
+      "note": "只能判断持仓拥挤度(高盛净多头水平+CFTC管理基金净多的历史分位)。文档里'资金市'还要求的价格突破、无视基本面利空、美豆不涨豆粕涨、高盛连续N日单边增仓，目前都未判断：价格/联动需要美豆数据，'连续N日'需要龙虎榜历史(v101起每天累积，但刚开始，要攒够才能判断，见TODO.md)。",
+      "thresholdSource": "文档经验值，暂定，未回测",
+      "code": "crowded",
+      "level": "red",
+      "label": "外资多头拥挤"
+    },
+    "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约"
   }
 }
