@@ -41,6 +41,9 @@ elements['ind_hogratio']=makeEl('ind_hogratio');elements['ind_sows']=makeEl('ind
 elements['ind_import']=makeEl('ind_import');
 elements['alertContent'] = makeEl('alertContent');
 window._weatherRisk = 'high'; // 触发至少一个信号，避免"数据不足"分支
+// ★v97：基差是市场结构票，不再计入顶部有效票数——原先靠它凑够5项。补一个独立的供需票(美豆库消比信号)：
+//   开机率/库存(合并1票)+到港/进口(1票)+猪粮比(1票)+作物(天气)+美豆库消比 = 5个供需票，才能画仪表盘
+window._psdSignal = 1;
 updateOverallAlert();
 check('综合预警应该包含仪表盘(gauge的特征：包含"偏空"和"偏多"标签)', elements['alertContent'].innerHTML.includes('偏空') && elements['alertContent'].innerHTML.includes('偏多'));
 check('综合预警应该包含供需二栏表格(取代已移除的状态点图)', elements['alertContent'].innerHTML.includes('<table') && elements['alertContent'].innerHTML.includes('供应') && elements['alertContent'].innerHTML.includes('需求'));

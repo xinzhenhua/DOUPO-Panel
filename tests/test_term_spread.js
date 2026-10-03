@@ -114,15 +114,15 @@ function resetScore(){
   Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]);
   window._crushSignal = undefined;
 }
-const cell = ()=> (makeEl('alertContent').innerHTML.match(/sd-cell (sd-\w+)">月差\/期限结构[^<]*/)||[]);
+const cell = ()=> (makeEl('structureContent').innerHTML.match(/sd-cell (sd-\w+)">月差\/期限结构[^<]*/)||[]);      // v97：月差在"市场结构"卡里，不在顶部
 resetScore(); window._spreadSignal = undefined; updateOverallAlert();
-check('★还没渲染过月差卡片(undefined)：这一票不在投票清单里(供需表格里没有)', !/sd-cell[^>]*>月差\/期限结构/.test(makeEl('alertContent').innerHTML));
-check('★此时市场结构维度只有基差1项：标"样本少·1项"(维度里样本<2项不参与分歧判断)', window._dimensions.structure.n === 1 && window._dimensions.structure.thin === true);
+check('★还没渲染过月差卡片(undefined)：这一票不在投票清单里(市场结构卡里没有)', !/sd-cell[^>]*>月差\/期限结构/.test(makeEl('structureContent').innerHTML));
+check('★此时市场结构维度只有基差1项：标"样本少·1项"(维度里样本<2项不参与分歧判断)', window._structureSystem.n === 1 && window._structureSystem.thin === true);
 resetScore(); window._spreadSignal = null; window._spreadQuality = null; updateOverallAlert();
-check('★渲染过但没有信号(null，历史积累中)：这一票在清单里但没数据——作为"缺席的投票"如实列出', /sd-cell sd-empty">月差\/期限结构/.test(makeEl('alertContent').innerHTML) && window._quality.missing.some(x=>x.includes('月差/期限结构')));
+check('★渲染过但没有信号(null，历史积累中)：这一票在清单里但没数据——作为"缺席的投票"如实列出', /sd-cell sd-empty">月差\/期限结构/.test(makeEl('structureContent').innerHTML) && window._quality.missing.some(x=>x.includes('月差/期限结构')));
 resetScore(); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; updateOverallAlert();
-check('★月差偏多：供需表格里"月差/期限结构"是偏多格(▲)，放在"市场结构"列', cell()[1] === 'sd-pos' && /<th>市场结构<\/th>/.test(makeEl('alertContent').innerHTML));
-check('★★有月差信号后，市场结构维度有2项(基差+月差)——不再是"样本少·1项"，可以参与"供需分歧"判断', window._dimensions.structure.n === 2 && window._dimensions.structure.thin === false);
+check('★月差偏多：市场结构卡里"月差/期限结构"是偏多格(▲)', cell()[1] === 'sd-pos' && /<th>市场结构<\/th>/.test(makeEl('structureContent').innerHTML));
+check('★★有月差信号后，市场结构维度有2项(基差+月差)——不再是"样本少·1项"，可以参与"供需分歧"判断', window._structureSystem.n === 2 && window._structureSystem.thin === false);
 check('★属于"市场反馈"分组(跟基差同组：都是盘面对近端供需的表态，相关性高)', voteGroup('月差/期限结构(近月-远月)') === 'feedback' && voteGroup('现货基差') === 'feedback');
 check('详细理由里写明偏多原因', makeEl('alertContent').innerHTML.includes('近月对远月的升水比往年更大'));
 resetScore(); window._spreadSignal = -1; window._spreadQuality = {m:1, why:''}; updateOverallAlert();
@@ -131,12 +131,16 @@ resetScore(); window._spreadSignal = 1; window._spreadQuality = {m:0.5, why:'盘
 check('★月差晚了一期：票权×0.5，质量分里点名', window._quality.lowItems.some(x=>x.label.includes('月差/期限结构') && x.q === 0.5));
 // 对市场结构维度的净倾向：基差中性 + 月差偏多 → 市场结构偏多
 resetScore(); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; updateOverallAlert();
-check('★基差中性(0) + 月差偏多(+1)：市场结构维度净倾向=+1÷2=+50%', Math.abs(window._dimensions.structure.ratio - 0.5) < 1e-9);
+check('★基差中性(0) + 月差偏多(+1)：市场结构维度净倾向=+1÷2=+50%', Math.abs(window._structureSystem.ratio - 0.5) < 1e-9);
 // 基差和月差同向偏空 → 市场结构偏空；与供给端偏多形成分歧
 resetScore(); makeEl('m_basis').value = '-100'; window._spreadSignal = -1; window._spreadQuality = {m:1, why:''};
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;   // 供给端偏多
 window._psdSignal=1; window._fxSignal=1; makeEl('m_stu').value='9'; makeEl('m_arrival').value='700'; makeEl('m_import').value='700';
 updateOverallAlert();
-check('★基差偏空 + 月差偏空：市场结构维度-100%(2项，不再是单项)；供给端偏多 → 出现"方向分歧"提示(此前市场结构样本少，不参与分歧判断)', window._dimensions.structure.ratio === -1 && window._dimensions.structure.n === 2 && window._dimensions.supply.dir === 1 && makeEl('alertContent').innerHTML.includes('方向分歧'));
+check('★基差偏空 + 月差偏空：市场结构系统-100%(2项，不再是单项)', window._structureSystem.ratio === -1 && window._structureSystem.n === 2 && window._structureSystem.thin === false && window._structureSystem.direction === '偏空');
+// ★v97设计变化：以前"供给端偏多 vs 市场结构偏空"会触发顶部的"方向分歧"并拉低置信度；现在顶部只含供需，分歧只在供给vs需求之间判断。
+//   基本面与市场结构的背离，由市场结构卡里"与基本面的关系"专门呈现(不再扣顶部置信度)——信息没丢，只是换了位置
+check('★顶部不再出现"方向分歧"(分歧只在供给vs需求之间；这里需求侧没有信号，供给端偏多)', window._dimensions.supply.dir === 1 && !makeEl('alertContent').innerHTML.includes('方向分歧'));
+check('★市场结构卡里出现"背离：基本面偏多、市场结构偏空"', makeEl('structureContent').innerHTML.includes('背离：基本面偏多、市场结构偏空') && makeEl('structureContent').innerHTML.includes('市场结构偏空（净倾向-100%）'));
 H.clearMockedMonth(); window._spreadSignal = undefined; window._crushSignal = undefined; window._selectedContract = 'sep';
 H.printSummary();

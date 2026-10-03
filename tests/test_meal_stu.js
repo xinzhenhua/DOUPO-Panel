@@ -95,13 +95,13 @@ check('供需表格里该格标注×2', /sd-cell sd-\w+">国内豆粕供应松�
 
 // ===================== 5. 评分：双倍票权 =====================
 baseNeutral(); makeEl('m_stu').value='16'; updateOverallAlert();   // 国内组偏空(票权2)，其余全中性：-2÷13=-15% → 不下结论
-check('★国内供应松紧单独偏空：-2÷11=-18%，不够22% → 信号混合(不会单凭这一组下方向结论)', html().includes('信号混合 -2（净倾向-18%）') && window._fundamentalDirection==='中性');
+check('★国内供应松紧单独偏空：-2÷10=-20%(总票权11→10：基差是结构票，v97起不在顶部)，不够22% → 信号混合(不会单凭这一组下方向结论)', html().includes('信号混合 -2（净倾向-20%）') && window._fundamentalDirection==='中性');
 baseNeutral(); makeEl('m_stu').value='16'; window._psdSignal=-1; updateOverallAlert();
-check('★再加一个同向指标(美豆库消比偏空)：-3÷11=-27% → 综合偏空(它算2票，但需要有另一个证据)', html().includes('综合偏空 -3（净倾向-27%）') && window._fundamentalDirection==='偏空');
+check('★再加一个同向指标(美豆库消比偏空)：-3÷10=-30% → 基本面偏空(它算2票，但需要有另一个证据)', html().includes('基本面偏空 -3（净倾向-30%）') && window._fundamentalDirection==='偏空');
 baseNeutral(); window._psdSignal=-1; window._fxSignal=-1; updateOverallAlert();
-check('对照：不是国内组的两个指标偏空只算2票：-2÷11=-18% → 信号混合', html().includes('信号混合 -2（净倾向-18%）'));
+check('对照：不是国内组的两个指标偏空只算2票：-2÷10=-20% → 信号混合', html().includes('信号混合 -2（净倾向-20%）'));
 baseNeutral(); makeEl('m_stu').value=''; makeEl('m_stock').value=''; makeEl('m_crush').value=''; updateOverallAlert();
-check('★国内组没有任何数据时不投票，也不占票权(其余9个投票全中性→有效9/10)', html().includes('有效9/10') && tightCell()==='sd-empty');
+check('★国内组没有任何数据时不投票，也不占票权(9个供需投票里国内组缺席，其余8个全中性→有效8/9)', html().includes('有效8/9') && tightCell()==='sd-empty');
 
 // ===================== 6. ESR中国/未知/其他展示 =====================
 elements['esrBadge']=makeEl('esrBadge'); elements['esrContent']=makeEl('esrContent');

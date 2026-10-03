@@ -48,7 +48,7 @@ elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_i
 elements['m_poultry'].value='2'; elements['m_rmspread'].value='350';
 selectContract('jan'); // 11月：没有天气类。有效投票：库存/开机率合并、到港/进口合并、库存消费比、汇率 = 4票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求
 // 手算：库存/开机率合并1票+到港/进口1票+美豆库消比+汇率=4票供应；出口销售+基差+猪粮比+肉鸡+豆菜粕价差=5票需求(能繁母猪已移出评分)；没有库消比数据→国内松紧只算1票 → 9票×1=+9
-check('★1月合约(11月)：9个有效投票全偏多，总分应精确为+9', elements['alertContent'].innerHTML.includes('综合偏多 +9（'));
+check('★1月合约(11月)：顶部只含供需票——原来9个有效投票里基差是市场结构票，现在8个供需票全偏多，总分应精确为+8(v97起基差在"市场结构"卡里)', elements['alertContent'].innerHTML.includes('基本面偏多 +8（'));
 H.clearMockedMonth();
 
 // ===================== 测试5：南美PSD已验证生效，用这次实测确认过的真实数值测试 =====================

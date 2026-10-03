@@ -75,17 +75,17 @@ const html = ()=>makeEl('alertContent').innerHTML;
 
 // 全中性：混合，没有置信度评级，只说明多空接近
 neutral(); updateOverallAlert();
-check('★全中性：3条维度条形都显示', (html().match(/class="dim-row"/g)||[]).length===3);
+check('★全中性：顶部只显示供给/需求2条维度条形(v97起市场结构独立成卡，不在顶部)', (html().match(/class="dim-row"/g)||[]).length===2 && !html().includes('>市场结构<'));
 check('★全中性(信号混合)：不评置信度，说明"多空力量接近"', html().includes('多空力量接近') && !html().includes('结论置信度') && window._fundamentalConfidence===null);
-check('市场结构维度只有基差1项，界面标"样本少"', html().includes('样本少·1项'));
-check('★市场结构列出现在表格里(3列)，基差在这一列', html().includes('<th>市场结构</th>') && /sd-cell sd-\w+">现货基差/.test(html()));
-check('★window._dimensions已暴露(供后续三方共振等使用)，且是拆分后的结果(供给5票：作物/美豆库消比/国内松紧/到港进口/汇率；需求4票：出口/猪粮比/肉鸡/豆菜粕；国储拍卖、能繁母猪已移出评分)', window._dimensions && window._dimensions.supply.n===5 && window._dimensions.demand.n===4 && window._dimensions.structure.n===1);
+check('市场结构只有基差1项：市场结构卡里写"样本少：只有1项有信号"，不下结论', makeEl('structureContent').innerHTML.includes('市场结构样本少：只有1项有信号') && makeEl('structureContent').innerHTML.includes('不下结论'));
+check('★顶部供需表格只有供应/需求2列(不含市场结构)；基差在市场结构卡里', !html().includes('<th>市场结构</th>') && !/sd-cell sd-\w+">现货基差/.test(html()) && makeEl('structureContent').innerHTML.includes('<th>市场结构</th>') && /sd-cell sd-\w+">现货基差/.test(makeEl('structureContent').innerHTML));
+check('★window._dimensions已暴露(供后续三方共振等使用)，且是拆分后的结果(供给5票：作物/美豆库消比/国内松紧/到港进口/汇率；需求4票：出口/猪粮比/肉鸡/豆菜粕；国储拍卖、能繁母猪已移出评分)', window._dimensions && window._dimensions.supply.n===5 && window._dimensions.demand.n===4 && window._dimensions.structure.n===0 && window._structureSystem.n===1);   // v97：顶部维度只含供需(structure维度n=0)；市场结构单独在_structureSystem里
 check('页面上有"不是买卖信号"的提示', html().includes('不是买卖信号'));
 
 // 供给偏空(-100%)、需求偏多(+40%)：方向分歧
 neutral(); supplyBear(); makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2'; updateOverallAlert();
 check('★分歧场景：供给端-100%、需求端+50%(猪粮比、肉鸡利润偏多，出口/豆菜粕中性：2÷4)', window._dimensions.supply.ratio===-1 && Math.abs(window._dimensions.demand.ratio-0.5)<1e-9);
-check('★分歧场景：综合仍偏空(供给6票权全空+需求2偏多=-4，÷有效票权11=-36%)', html().includes('综合偏空 -4（净倾向-36%）') && window._fundamentalDirection==='偏空');
+check('★分歧场景：基本面仍偏空(供给6票权全空+需求2偏多=-4，÷有效票权10=-40%；原11里1票是中性基差=结构票，v97起不在顶部)', html().includes('基本面偏空 -4（净倾向-40%）') && window._fundamentalDirection==='偏空');
 check('★分歧场景：弹出"方向分歧"提示，点名两个维度和各自数值', html().includes('方向分歧') && html().includes('供给端偏空(-100%)') && html().includes('需求端偏多(+50%)') && html().includes('不要只看总分'));
 check('★分歧场景：置信度降为中，理由含"方向分歧"', html().includes('结论置信度：中') && window._fundamentalConfidence==='中');
 check('★偏空依据里带出主导因素(含双倍票权的国内供应松紧)', html().includes('偏空依据：') && html().includes('国内豆粕供应松紧 ×2'));

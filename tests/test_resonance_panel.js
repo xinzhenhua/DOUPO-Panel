@@ -74,6 +74,9 @@ makeEl('resonanceContent');
 window._technicalDirection = '偏多';
 window._fundamentalDirection = '偏多';
 window._foreignActivity = quiet;
+// ★显式设定"旧调用方式"的前置状态：只有总方向，没有两个系统的数据。之前这个测试碰巧依赖"前序测试已把它们清空"——
+//   v97起数据不足分支不再把_fundamentalPure置null(保持{direction:null}对象)，前序状态就不一样了，所以不能依赖前序。
+window._fundamentalPure = undefined; window._structureSystem = undefined;
 renderResonancePanel();
 check('★renderResonancePanel应该把三方状态都写进HTML里', 
   makeEl('resonanceContent').innerHTML.includes('技术面：偏多') &&

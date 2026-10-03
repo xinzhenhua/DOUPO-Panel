@@ -43,10 +43,10 @@ window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 updateOverallAlert();
 // 供应5票(作物、库存消费比、供应松紧、到港/进口、汇率)+需求5票(出口销售、基差、猪粮比、能繁、肉鸡)
 // 手算：9个有效投票(能繁已移出评分)，天气开关打开：作物×2，其余8票×0.5 → 2+4=+6
-check('★票数审计：全部信号偏多时，总分应精确为+6(9个投票；作物4个子信号全偏多→天气开关：作物×2，其余8票×0.5)',
-  elements['alertContent'].innerHTML.includes('综合偏多 +6（'));
+check('★票数审计：顶部8个供需票全偏多(原9个含基差)；作物4个子信号全偏多→天气开关：作物×2，其余7票×0.5 = 总分+5.5',
+  elements['alertContent'].innerHTML.includes('基本面偏多 +5.5（'));
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★供需表格应精确显示9个偏多格子', posCount === 9);
+check('★供需表格应精确显示8个偏多格子(原9个，基差移到"市场结构"卡)', posCount === 8);
 check('供需表格需求侧应显示"肉鸡养殖利润"这个新标签', elements['alertContent'].innerHTML.includes('肉鸡养殖利润'));
 
 H.printSummary();

@@ -43,10 +43,10 @@ window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
 updateOverallAlert();
 // 供应5票+需求6票(出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差)
 // 手算：10个有效投票，天气开关打开：作物×2，其余9票×0.5 → 2+4.5=+6.5
-check('★票数审计：全部信号偏多时，总分应精确为+6.5(10个投票；作物4个子信号全偏多→天气开关：作物×2，其余9票×0.5)',
-  elements['alertContent'].innerHTML.includes('综合偏多 +6.5（'));
+check('★票数审计：顶部9个供需票全偏多(原10个含基差)；作物4个子信号全偏多→天气开关：作物×2，其余8票×0.5 = 总分+6',
+  elements['alertContent'].innerHTML.includes('基本面偏多 +6（'));
 const posCount = (elements['alertContent'].innerHTML.match(/sd-pos/g)||[]).length;
-check('★供需表格应精确显示10个偏多格子', posCount === 10);
+check('★供需表格应精确显示9个偏多格子(原10个，基差移到"市场结构"卡)', posCount === 9);
 check('供需表格需求侧应显示"豆菜粕价差"这个新标签', elements['alertContent'].innerHTML.includes('豆菜粕价差'));
 
 

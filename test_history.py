@@ -654,7 +654,8 @@ def test_backfill_meal_stu_stores_stock_consumption_and_defaults_skip_meal_stock
         pts = {p["d"]: p for p in hs.load_series("meal_stu", d)["points"]}
         assert pts["2026-08"]["x"] == {"how": "stated", "stock": 117.0, "consumption": 772.0, "production": 800.0}, pts["2026-08"]
         assert pts["2026-05"]["x"]["consumption"] == 673.0 and "stock" not in pts["2026-05"]["x"], "5月：库存30万吨与库消比不自洽被丢弃，不存"
-    assert bf.DEFAULT_JOBS == ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days"] and "meal_stock" in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS
+    assert bf.DEFAULT_JOBS == ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival"] and "meal_stock" in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS      # v96.3起默认清单加了soy_import、arrival；meal_stock(补不全)和sample(一次性诊断)仍不在默认里
+    assert "meal_stock" not in bf.DEFAULT_JOBS and "sample" not in bf.DEFAULT_JOBS
     ok("回填国内库消比：存库存/消费/产量；默认回填项不含补不全的周度库存")
 
 

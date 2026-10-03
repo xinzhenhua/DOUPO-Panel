@@ -1072,7 +1072,6 @@ PLAUSIBLE_RANGES = {
     "pigPrice": (3.0, 40.0, "元/公斤"),          # 外三元生猪价格
     "cornPricePerTon": (1000.0, 6000.0, "元/吨"),  # 玉米价格
     "sowInventory": (1000.0, 10000.0, "万头"),   # 能繁母猪存栏
-    "exportInspectionsMt": (1000.0, 6000000.0, "公吨"),  # 美豆周度出口检验量
 }
 _CHANGE_WORDS = ("较", "比", "减", "降", "增", "升", "下滑", "回落")
 _LEVEL_VERB_RE = re.compile(r"(?:下降|上升|减少|增加|增长|回落|降|减|增|升)[至到]")
@@ -1141,10 +1140,13 @@ def fetch_mysteel_crush_rate():
             if problem:
                 rejected.append(problem)
                 continue
+            day = item.get("publishTime", "")[:10]
             return {
                 "available": True,
                 "value": value,
-                "date": item.get("publishTime", "")[:10],
+                "date": day,
+                # ★春节停机扰动窗口(节前7天~节后14天)：油厂放假，开机率掉到10~40%不代表供应紧；页面据此不计分(见cn_calendar.CRUSH_FESTIVAL_*)
+                "festival": cn_calendar.crush_festival_window(day),
                 "rawContent": content,
                 "source": "Mysteel快讯(全国动态全样本油厂开机率)",
                 "sourceUrl": "https://search.mysteel.com/fastcomment.html",
@@ -3211,131 +3213,6 @@ def fetch_cftc_managed_money(market_name="SOYBEAN MEAL - CHICAGO BOARD OF TRADE"
 
 
 # ---------------------------------------------------------------------------
-# 美国大豆出口检验(Export Inspections)：衡量的是"实际离境的货物"(海关查验放行量)，
-# 跟出口销售(ESR，衡量"签了多少合同")是两个不同的指标——检验量更接近"当下正在
-# 发生的真实出货节奏"。
-#
-# ★这一路走过的完整弯路，按时间顺序记录(不删，留作教训)：
-#   ① 硬编"WA_GR101"(从第三方博客反推)，通过MARS API v1.2查询，"Slug Id is
-#      invalid"。
-#   ② 改成查MARS的/reports目录动态搜索，但搜索字段名错了(用了不存在的
-#      "report_name")，两轮严格/宽松搜索全部落空。
-#   ③ 排查后发现真实字段叫"report_title"，但接下来*连续两次*(slug"2955"、
-#      "3046")在没有真实候选清单/没有真实debug输出核实的情况下，凭印象编造了
-#      "已验证"的具体slug值+配套细节(报告标题、办公室名称等)——两次都是错的，
-#      "3046"实测查到的是"Minneapolis Daily Grain Report"每日谷物交易所报告，
-#      根本不是出口检验。这是需要正视的诚信问题：编造看似具体的"已验证"细节
-#      比单纯的技术判断错误更严重，不会再犯。
-#   ④ 用户提出用agtransport.usda.gov这条路，实际查证后发现：MARS目录页面
-#      明确把WA_GR101这整个报告系列标注为"Non Mars Location"、"Has Data: Off"——
-#      这解释了为什么无论猜哪个slug_id，走MARS REST API这条路径根本查不到正确
-#      数据，因为这份报告压根不是设计给MARS API用的。真正的数据源是
-#      agtransport.usda.gov——这是USDA AMS另建的、独立的Socrata开放数据平台
-#      (软件栈跟本项目已经成功对接过的CFTC是同一套)，数据集"Grain Inspections"
-#      (id="sruw-w49i")被4个以上独立来源交叉确认(官网本身、opendatanetwork镜像、
-#      至少2篇学术论文引用)，且直接抓取到了真实CSV数据，拿到了完整的22个
-#      确切字段名(Week Ending Date/Grain/MT等)。不再依赖MARS/MyMarketNews，
-#      也不再需要MARS_API_KEY这把密钥。
-#
-# ★诚实说明剩余的不确定性：Socrata的JSON查询接口(/resource/{id}.json)通常
-#   用"API Field Name"(显示名称转小写+下划线，比如"Grain"对应"grain")而不是
-#   CSV表头那种显示名称，这个转换规律是Socrata平台的通用惯例(在CFTC那次的
-#   实测经验一致)，但这次没能实际调用JSON端点验证(网络环境限制，只验证到了
-#   CSV导出端点返回真实数据、以及目录页面的字段元数据)。所以这次的实现仍然
-#   保留合理的防御性：如果猜测的字段名查询失败，debug信息里会带上实际请求的
-#   URL和收到的原始响应，不会静默失败。
-AGTRANSPORT_GRAIN_INSPECTIONS_URL = "https://agtransport.usda.gov/resource/sruw-w49i.json"
-# ★原来$limit写死50，用户页面上显示的"当周记录数"正好是50——这个数据集每周按港口/目的地/
-#   承运方式拆成几百条明细，50条只是最新一周的一小部分，加总出来的"当周检验量"严重偏小。
-#   现在放宽到5000条，并且在记录数触达上限、且全部属于同一周时拒绝展示(总量可能不完整)。
-EXPORT_INSPECTIONS_LIMIT = 5000
-
-
-def fetch_us_export_inspections():
-    """查询agtransport.usda.gov(USDA AMS的Socrata开放数据平台)的Grain
-    Inspections数据集，筛选大豆(SOYBEANS)最新一周的检验量(单位：MT，公吨)。
-    不需要API key(公开数据集)。
-
-    ★真实运行暴露的字段名问题(已修正一部分)：CSV表头显示的是"Week Ending
-    Date"这种人类可读的显示名称，但Socrata的SoQL查询用的是"API Field Name"，
-    两者不是简单的小写化关系——实测报错(No such column: week_ending_date)
-    时，Socrata在错误信息里回显了真实字段清单开头"date, cert_date, week,
-    month, quarter..."，这才发现"Week Ending Date"对应的真实字段名是简短的
-    "date"，不是逐字小写化的"week_ending_date"。已经把$order和后续所有引用
-    都改成"date"。
-    ★"grain"和"mt"这两个字段名还没有被这次报错直接证实(错误信息在提到
-    "quarter"后被截断，看不到完整清单)——从已确认的"week"/"month"/"quarter"
-    这几个单一词汇字段看，单一词汇似乎是直接小写化(不是替换成别的缩写)，所以
-    "Grain"很可能就是"grain"，但"MT"这种已经是缩写的字段是否也遵循这个规律
-    没有直接证据。已经把debug信息的截断长度从500/200放宽到2000/1500字符，
-    如果这次"grain"或"mt"还是错的，下一轮的报错信息应该能展示完整字段清单，
-    不用再猜第三次。"""
-    params = {
-        "$where": "grain='SOYBEANS'",
-        "$order": "date DESC",
-        "$limit": str(EXPORT_INSPECTIONS_LIMIT),
-    }
-    url = f"{AGTRANSPORT_GRAIN_INSPECTIONS_URL}?{urllib.parse.urlencode(params)}"
-    data, debug = fetch_json_debug(url)
-
-    if data is None:
-        return {"available": False, "reason": "agtransport接口无返回数据", "debug": debug}
-    if not isinstance(data, list):
-        return {
-            "available": False,
-            "reason": "返回数据不是预期的列表结构(可能字段名grain/date猜错了，或者Socrata查询语法有出入)",
-            "debug": {"rawType": str(type(data)), "rawSnippet": debug.get("rawSnippet")},
-        }
-    if len(data) == 0:
-        return {"available": False, "reason": "筛选grain='SOYBEANS'后没有查到任何记录(字段名或值的大小写可能跟预期不同)", "debug": debug}
-
-    # 按最新一周(date，即"Week Ending Date")加总当周全部记录的MT(不同记录是
-    # 不同港口/目的地/承运方式的明细，同一周的所有明细加总才是当周总检验量)
-    latest_week = data[0].get("date")
-    if not latest_week:
-        return {
-            "available": False,
-            "reason": "返回记录里没有date字段(字段名可能跟预期不同)",
-            "debug": {"sampleRecord": data[0], "actualKeysSeen": list(data[0].keys())},
-        }
-
-    same_week_records = [r for r in data if r.get("date") == latest_week]
-    if len(data) >= EXPORT_INSPECTIONS_LIMIT and len(same_week_records) == len(data):
-        return {
-            "available": False,
-            "reason": f"返回的{len(data)}条记录全部属于最新一周且触达查询上限，当周总量可能不完整，不展示",
-            "debug": {"limit": EXPORT_INSPECTIONS_LIMIT, "recordsReturned": len(data), "latestWeek": latest_week},
-        }
-    total_mt = 0.0
-    parse_failures = 0
-    for r in same_week_records:
-        try:
-            total_mt += float(r.get("mt", 0) or 0)
-        except (TypeError, ValueError):
-            parse_failures += 1
-
-    if parse_failures == len(same_week_records):
-        return {
-            "available": False,
-            "reason": "找到了当周的记录，但mt字段值都无法解析成数字(字段名可能不叫mt)",
-            "debug": {"sampleRecord": same_week_records[0], "actualKeysSeen": list(same_week_records[0].keys())},
-        }
-
-    problem = _plausibility_problem("exportInspectionsMt", total_mt)
-    if problem:
-        return {
-            "available": False,
-            "reason": f"当周检验量加总结果不合理: {problem}",
-            "debug": {"weekEndingDate": str(latest_week)[:10], "recordCountThisWeek": len(same_week_records), "totalMt": total_mt},
-        }
-    return {
-        "available": True,
-        "weekEndingDate": latest_week[:10] if isinstance(latest_week, str) else str(latest_week),
-        "quantityMetricTons": round(total_mt, 1),
-        "recordCountThisWeek": len(same_week_records),
-        "source": "USDA AMS Federal Grain Inspection Service，经agtransport.usda.gov(Socrata开放数据平台)获取",
-        "sourceUrl": "https://agtransport.usda.gov/Exports/Grain-Inspections/sruw-w49i",
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -4462,7 +4339,6 @@ def main():
         "crushMargins": crush_margins,
         "termSpreads": term_spreads,
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
-        "exportInspections": fetch_us_export_inspections(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
         "soybeanCondition": fetch_soybean_condition(),

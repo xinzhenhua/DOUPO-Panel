@@ -28,34 +28,35 @@ const html = ()=>makeEl('alertContent').innerHTML;
 
 // ===================== 1. 净倾向 = 分数÷有效指标数；门槛0.22 =====================
 neutralBaseline(); updateOverallAlert();
-check('★10个投票全中性：应显示"信号混合"，有效10/10(国储拍卖、能繁母猪已移出评分)', html().includes('信号混合') && html().includes('有效10/10'));
+check('★9个供需投票全中性：应显示"信号混合"，有效9/9(国储拍卖、能繁母猪已移出评分；基差是市场结构票，v97起不在顶部)', html().includes('信号混合') && html().includes('有效9/9'));
 check('全中性时基本面方向为中性(供三方共振读取)', window._fundamentalDirection === '中性');
 
 neutralBaseline(); window._psdSignal=1; window._fxSignal=1; updateOverallAlert();
-check('★10个投票(有效票权11，国内供应松紧占2)中2票偏多(2÷11=18%<22%)：仍是信号混合，不下方向结论', html().includes('信号混合 +2（净倾向+18%）') && window._fundamentalDirection === '中性');
+check('★9个供需投票(有效票权10，国内供应松紧占2)中2票偏多(2÷10=20%<22%)：仍是信号混合，不下方向结论', html().includes('信号混合 +2（净倾向+20%）') && window._fundamentalDirection === '中性');
 
 neutralBaseline(); window._psdSignal=1; window._fxSignal=1; window._esrSignal=1; updateOverallAlert();
-check('★10个投票(有效票权11)中3票偏多(3÷11=27%≥22%)：综合偏多', html().includes('综合偏多 +3（净倾向+27%）') && window._fundamentalDirection === '偏多');
+check('★9个供需投票(有效票权10)中3票偏多(3÷10=30%≥22%)：基本面偏多', html().includes('基本面偏多 +3（净倾向+30%）') && window._fundamentalDirection === '偏多');
 
 neutralBaseline(); window._psdSignal=-1; window._fxSignal=-1; window._esrSignal=-1; updateOverallAlert();
-check('★3票偏空 → 综合偏空，方向"偏空"(-3÷11=-27%)', html().includes('综合偏空 -3（净倾向-27%）') && window._fundamentalDirection === '偏空');
-check('结论框写明多/中/空分布', html().includes('0多 7中 3空'));
+check('★3票偏空 → 基本面偏空，方向"偏空"(-3÷10=-30%)', html().includes('基本面偏空 -3（净倾向-30%）') && window._fundamentalDirection === '偏空');
+check('结论框写明多/中/空分布(9个供需票：3空+6中)', html().includes('0多 6中 3空'));
 
 // 有效指标变少时门槛按比例降低：8票中2票偏多=25%
 neutralBaseline(); ['poultry','rmspread'].forEach(k=>makeEl('m_'+k).value=''); window._psdSignal=1; window._fxSignal=1; updateOverallAlert();
-check('★有效指标少(8个投票，有效票权9)时门槛按比例降低：2票偏多(2÷9=22%)即综合偏多', html().includes('综合偏多 +2（净倾向+22%）') && html().includes('有效8/10'));
+check('★有效指标少(7个供需投票，有效票权8)：2票偏多(2÷8=25%≥22%)即基本面偏多(门槛是固定的22%，不是按比例降低；原2÷9=22%刚好压线，v97起基差不计入后是25%)', html().includes('基本面偏多 +2（净倾向+25%）') && html().includes('有效7/9'));
 
 // ===================== 2. 数据不足：有效指标<5不下结论 =====================
 reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8';
 window._weatherRisk = null; updateOverallAlert();
-check('★有效指标<5(这里只有3票：供应松紧/基差/猪粮比)：不下结论，显示"数据不足"', html().includes('数据不足，暂不下结论') && html().includes('只有3项'));
+check('★有效指标<5(这里只有2个供需票：供应松紧/猪粮比；基差是市场结构票，不计入顶部)：不下结论，显示"数据不足"', html().includes('数据不足，暂不下结论') && html().includes('只有2项'));
 check('★数据不足时基本面方向置空(不让三方共振沿用旧值)', window._fundamentalDirection === null);
 check('数据不足时仍显示供需表格，方便看缺哪些', html().includes('sd-table'));
 
 // 覆盖率低(有效5/12=42%<60%)：能下结论，但提示可信度较低
 reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
-window._psdSignal = 1; updateOverallAlert();
-check('★有效5项(<60%覆盖)：给出结论但提示"有效指标偏少，结论可信度较低"', html().includes('综合偏多') && html().includes('有效指标偏少'));
+window._psdSignal = 1; window._fxSignal = 1;   // v97：基差不再计入顶部，原靠它凑的5票变4票；补人民币汇率(成本类供需票)凑够5项
+updateOverallAlert();
+check('★有效5项(<60%覆盖)：给出结论但提示"有效指标偏少，结论可信度较低"', html().includes('基本面偏多') && html().includes('有效指标偏少'));
 
 // ===================== 3. 合并投票：库存+开机率=1票，到港+进口=1票 =====================
 function votesOf(){ return (html().match(/sd-cell/g)||[]).length; }

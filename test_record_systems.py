@@ -165,6 +165,22 @@ def test_cli_paths():
     ok("命令行：缺参数2、文件不存在1、正常0并写入")
 
 
+def test_fundamental_with_null_direction_but_a_ratio_is_skipped():
+    """★v97起数据不足时页面导出的fund是{direction:null, ratio:1, n:1}(对象，不是null——为让共振面板写"数据不足"而不是"加载中")。
+    ratio=1只是"只有1票"的比值，没有意义。记录模块必须靠direction为空来跳过，不能只看ratio是否存在——
+    否则会把一条"1票偏多100%"的假记录写进历史，污染以后检验背离的数据。(用快照脚本在真实旧latest.json上跑出来的真实形状)"""
+    with Tmp() as d:
+        c = contract_snap("sep", fund=None)
+        c["fund"] = {"direction": None, "ratio": 1, "n": 1}
+        rep = rs.ingest_snapshot(snapshot(contracts=[c]), d)
+        assert rep["recorded"] == [] and "数据不足" in rep["skipped"]["sep"] and pts(d, "systems_sep") == []
+        pt, why = rs.build_point(snapshot(), {"contract": "sep", "fund": {"direction": None, "ratio": 0.8, "n": 3}})
+        assert pt is None and why, "direction为null即使ratio=0.8也不记录"
+        pt, why = rs.build_point(snapshot(), {"contract": "sep", "fund": {"direction": "偏多", "ratio": 0.8, "n": 9}})
+        assert pt is not None and pt["v"] == 0.8, "对照：direction有值才记录"
+    ok("★fund={direction:null, ratio:1, n:1}(数据不足的真实形状)：必须跳过，不能只看ratio存在就记录；对照direction有值才记录")
+
+
 # ===================== 分析 =====================
 def test_classify_nine_states():
     c = an.classify

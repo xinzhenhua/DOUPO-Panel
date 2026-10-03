@@ -1861,111 +1861,6 @@ def test_brazil_planting_progress_empty_dataframe(monkeypatch_fetch):
             agrobr.conab = old_conab
 
 
-def _make_grain_inspections_mock(records, capture_url=None):
-    """构造agtransport.usda.gov(Socrata)的mock：返回一个记录列表(不是{results:[...]}
-    这种包装，Socrata的/resource/{id}.json直接返回顶层数组)。"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        if capture_url is not None:
-            capture_url.append(url)
-        return records, {"httpStatus": 200}
-    return fake_fetch
-
-
-def test_export_inspections_url_uses_correct_dataset_and_filter(monkeypatch_fetch):
-    """★验证请求的是正确的数据集id(sruw-w49i，多个独立来源交叉确认过)，
-    并且用grain='SOYBEANS'筛选、按date(即Week Ending Date)降序排列。"""
-    urls_called = []
-    fd.fetch_json_debug = _make_grain_inspections_mock([
-        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000"},
-    ], capture_url=urls_called)
-    result = fd.fetch_us_export_inspections()
-    assert len(urls_called) == 1
-    assert "sruw-w49i" in urls_called[0], f"★应该请求Grain Inspections数据集(sruw-w49i)，实际URL: {urls_called[0]}"
-    assert "SOYBEANS" in urls_called[0] and "grain" in urls_called[0].lower()
-    assert "date" in urls_called[0] and "%24order" in urls_called[0]
-    print("✅ 请求了正确的数据集(sruw-w49i)，用grain='SOYBEANS'筛选并按周次降序排列")
-
-
-def test_export_inspections_aggregates_same_week_multiple_ports(monkeypatch_fetch):
-    """★核心逻辑验证(手算验证过)：同一周的记录按港口/目的地拆分成多条，
-    必须把同一周的所有记录加总才是当周总检验量，不能只取第一条。"""
-    records = [
-        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "450000", "port": "MISSISSIPPI R."},
-        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "223000", "port": "COLUMBIA R."},
-        {"date": "2026-09-14T00:00:00.000", "grain": "SOYBEANS", "mt": "380000", "port": "MISSISSIPPI R."},
-    ]
-    fd.fetch_json_debug = _make_grain_inspections_mock(records)
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is True
-    assert result["quantityMetricTons"] == 673000.0, f"★应该是最新周(09-21)两条记录加总450000+223000=673000，不是只取第一条，实际{result['quantityMetricTons']}"
-    assert result["recordCountThisWeek"] == 2
-    assert result["weekEndingDate"] == "2026-09-21"
-    print(f"✅ 同一周多港口记录正确加总：{result['quantityMetricTons']}公吨(2条记录)，没有漏算旧周次的记录")
-
-
-def test_export_inspections_empty_list_gives_diagnostic(monkeypatch_fetch):
-    """筛选grain='SOYBEANS'后一条记录都没有时(比如字段名/值大小写跟预期不同)，
-    应该诚实报告，不崩溃"""
-    fd.fetch_json_debug = _make_grain_inspections_mock([])
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is False
-    assert "没有查到任何记录" in result["reason"]
-    print("✅ 筛选后没有记录时诚实报告，不崩溃")
-
-
-def test_export_inspections_non_list_response_gives_diagnostic(monkeypatch_fetch):
-    """★如果返回的不是列表(比如字段名grain猜错了，Socrata可能返回错误对象而不是
-    数组)，应该给出诊断信息，不是假设它一定是列表然后崩溃"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return {"error": "invalid column grain"}, {"httpStatus": 400, "rawSnippet": '{"error": "invalid column grain"}'}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is False
-    assert "rawType" in result["debug"] or "rawSnippet" in result.get("debug", {})
-    print("✅ 返回非列表结构时给出诊断信息，不假设结构直接崩溃")
-
-
-def test_export_inspections_missing_date_field(monkeypatch_fetch):
-    """如果记录里没有date这个字段(字段名猜错了)，应该给出诊断信息
-    (实际有哪些字段)，不是KeyError崩溃"""
-    fd.fetch_json_debug = _make_grain_inspections_mock([{"grain": "SOYBEANS", "some_other_field": "123"}])
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is False
-    assert "actualKeysSeen" in result["debug"]
-    assert "some_other_field" in result["debug"]["actualKeysSeen"]
-    print("✅ 缺少date字段时给出诊断信息(实际有哪些字段)，不崩溃")
-
-
-def test_export_inspections_mt_field_unparseable(monkeypatch_fetch):
-    """如果mt字段值没法解析成数字(字段名可能不叫mt，或者值本身格式有问题)，
-    应该诚实报告，不是把0当成真实检验量展示出来"""
-    fd.fetch_json_debug = _make_grain_inspections_mock([
-        {"date": "2026-09-21T00:00:00.000", "grain": "SOYBEANS", "mt": "not-a-number"},
-    ])
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is False
-    assert "mt字段值都无法解析" in result["reason"]
-    print("✅ mt字段值无法解析成数字时诚实报告，不会假装解析成功展示一个错误的0")
-
-
-def test_export_inspections_no_network_response(monkeypatch_fetch):
-    """接口完全无响应时应该诚实报告，不崩溃"""
-    def fake_fetch(url, headers=None, retries=3, timeout=20):
-        return None, {"httpStatus": None, "error": "连接超时"}
-    fd.fetch_json_debug = fake_fetch
-    result = fd.fetch_us_export_inspections()
-    assert result["available"] is False
-    assert "agtransport接口无返回数据" in result["reason"]
-    print("✅ 接口无响应时诚实报告，不崩溃")
-
-
-
-
-
-
-
-
-
 def test_mysteel_crush_rate_parsing_real_content(monkeypatch_fetch):
     """★用户实测抓包确认过的真实content格式(2026-09-22那条)，验证正则提取正确。"""
     mock_response = {
@@ -2987,39 +2882,6 @@ def test_arrival_forecast_change_and_out_of_range_rejected(monkeypatch_fetch):
                                                             {"content": "Mysteel预估2026年10月国内全样本油厂大豆到港约854.10万吨", "publishTime": "2026-09-24"}])
     assert ok["available"] is True and ok["value"] == 854.10
     print("✅ 到港的变动量/超范围数值被丢弃，后面真正的到港预报仍能取到")
-
-
-def test_export_inspections_limit_raised_and_truncation_detected(monkeypatch_fetch):
-    """★审计发现：$limit=50，用户页面上"当周记录数"正好是50，当周总量被截断。现在上限放到5000；
-    记录数触达上限且全部属于同一周时拒绝展示；加总结果也要过合理范围。"""
-    import fetch_data as fd_module
-    urls = []
-    real = fd_module.fetch_json_debug
-    def fake(url, headers=None, retries=3, timeout=20, post_data=None):
-        urls.append(url)
-        return [{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "1000"}] * fd_module.EXPORT_INSPECTIONS_LIMIT, {"httpStatus": 200}
-    fd_module.fetch_json_debug = fake
-    try:
-        r = fd_module.fetch_us_export_inspections()
-    finally:
-        fd_module.fetch_json_debug = real
-    assert "limit=5000" in urls[0].replace("%24", "$").replace("$limit", "limit"), urls[0]
-    assert r["available"] is False and "触达查询上限" in r["reason"], r
-    tiny = _run_export([{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "10"}])
-    assert tiny["available"] is False and "不合理" in tiny["reason"], tiny
-    ok = _run_export([{"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "450000"}, {"date": "2026-09-17T00:00:00.000", "grain": "SOYBEANS", "mt": "223000"}])
-    assert ok["available"] is True and ok["quantityMetricTons"] == 673000.0
-    print("✅ 出口检验查询上限放宽到5000，触达上限时拒绝展示；加总结果异常小时拒绝；正常情况不受影响")
-
-
-def _run_export(rows):
-    import fetch_data as fd_module
-    real = fd_module.fetch_json_debug
-    fd_module.fetch_json_debug = lambda *a, **k: (rows, {"httpStatus": 200})
-    try:
-        return fd_module.fetch_us_export_inspections()
-    finally:
-        fd_module.fetch_json_debug = real
 
 
 def test_hog_ratio_each_price_must_be_plausible(monkeypatch_fetch):
@@ -4159,16 +4021,11 @@ if __name__ == "__main__":
               test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
               test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
               test_brazil_planting_progress_empty_dataframe,
-              test_export_inspections_url_uses_correct_dataset_and_filter,
-              test_export_inspections_aggregates_same_week_multiple_ports,
-              test_export_inspections_empty_list_gives_diagnostic, test_export_inspections_non_list_response_gives_diagnostic,
-              test_export_inspections_missing_date_field, test_export_inspections_mt_field_unparseable,
-              test_export_inspections_no_network_response,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,
               test_noaa_outlook_percentage_aggregation_across_8_points,
               test_noaa_outlook_dominant_category_and_overall_signal,
               test_noaa_outlook_point_outside_any_outlook_zone,
-              test_esr_code_lookup, test_meal_stock_recent_weeks_collects_every_extractable_week, test_meal_balance_result_carries_festival_context, test_esr_rollover_week_is_replaced_by_neighbor_average, test_esr_latest_week_is_rollover_blocks_comparisons, test_meal_balance_parses_real_body_and_ignores_page_noise, test_meal_balance_all_real_summaries, test_meal_balance_full_flow_uses_body, test_meal_balance_current_and_next_month_with_trend, test_meal_balance_body_blocked_falls_back_to_summary, test_meal_balance_third_level_weekly_stock_fallback, test_meal_balance_weekly_cross_check_shown, test_meal_balance_month_rollover_uses_previous_month_record, test_meal_balance_failure_modes, test_meal_balance_implausible_values_rejected, test_meal_balance_request_shape, test_esr_china_unknown_other_split, test_esr_uses_soybeans_not_meal, test_esr_export_parsing, test_esr_no_silent_fallback_to_shipments, test_esr_market_year_boundary_merges_weeks_without_double_count, test_psd_soybean_stocks_to_use_uses_total_use, test_psd_stocks_to_use_none_when_exports_missing, test_psd_target_market_year_rule, test_psd_picks_target_year_even_when_older_year_has_same_vintage, test_esr_picks_freshest_among_multiple_candidate_years,
+              test_esr_code_lookup, test_meal_stock_recent_weeks_collects_every_extractable_week, test_meal_balance_result_carries_festival_context, test_esr_rollover_week_is_replaced_by_neighbor_average, test_esr_latest_week_is_rollover_blocks_comparisons, test_meal_balance_parses_real_body_and_ignores_page_noise, test_meal_balance_all_real_summaries, test_meal_balance_full_flow_uses_body, test_meal_balance_current_and_next_month_with_trend, test_meal_balance_body_blocked_falls_back_to_summary, test_meal_balance_third_level_weekly_stock_fallback, test_meal_balance_weekly_cross_check_shown, test_meal_balance_month_rollover_uses_previous_month_record, test_meal_balance_failure_modes, test_meal_balance_implausible_values_rejected, test_meal_balance_request_shape, test_esr_china_unknown_other_split, test_esr_uses_soybeans_not_meal, test_esr_export_parsing, test_esr_no_silent_fallback_to_shipments, test_esr_market_year_boundary_merges_weeks_without_double_count,test_esr_picks_freshest_among_multiple_candidate_years,
               test_esr_code_lookup_distinguishes_failure_types,
               test_psd_code_lookup, test_psd_parsing,
               test_psd_fuzzy_matching, test_psd_debug_on_field_mismatch, test_drought_monitor_parsing,
@@ -4201,7 +4058,7 @@ if __name__ == "__main__":
               test_sow_inventory_eight_real_articles_all_recognized, test_sow_inventory_other_indicators_not_mistaken_for_sow, test_sow_inventory_level_verbs_allowed_but_change_amounts_rejected, test_sow_inventory_full_flow_with_eight_real_articles, test_sow_inventory_next_quarter_takes_over_once_published,
               test_sow_inventory_stale_old_data_is_rejected_not_shown, test_sow_inventory_falls_back_to_previous_quarter_only,
               test_sow_inventory_acceptance_window_rolls_with_calendar, test_latest_completed_quarter_helper,
-              test_plausibility_helpers, test_crush_rate_out_of_range_rejected, test_poultry_profit_out_of_range_rejected, test_rmspread_change_range_not_mistaken_for_spread, test_arrival_forecast_change_and_out_of_range_rejected, test_export_inspections_limit_raised_and_truncation_detected, test_hog_ratio_each_price_must_be_plausible,
+              test_plausibility_helpers, test_crush_rate_out_of_range_rejected, test_poultry_profit_out_of_range_rejected, test_rmspread_change_range_not_mistaken_for_spread, test_arrival_forecast_change_and_out_of_range_rejected,test_hog_ratio_each_price_must_be_plausible,
               test_frontend_and_backend_plausible_ranges_are_identical,
               test_meal_stock_real_weekly_article, test_meal_stock_takes_latest_article_across_pages_not_first_match, test_meal_stock_stale_data_rejected, test_meal_stock_requires_national_scope, test_meal_stock_region_other_subject_and_change_rejected, test_meal_stock_request_matches_user_capture, test_meal_stock_failure_modes_give_diagnostics,
               test_soy_import_real_articles_all_recognized, test_soy_import_full_flow_picks_august_2026, test_soy_import_falls_back_to_previous_month_when_latest_not_published, test_soy_import_acceptance_window_rolls_with_calendar, test_soy_import_year_inference_and_future_months, test_soy_import_synthetic_traps_rejected, test_soy_import_paginates_and_request_matches_user_capture, test_soy_import_failure_modes_give_diagnostics,

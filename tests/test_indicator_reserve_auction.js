@@ -43,7 +43,7 @@ function scoreHtml(reserve){
   window._selectedContract = 'sep';
   H.setMockedMonth(5);
   updateOverallAlert();
-  return elements['alertContent'].innerHTML.match(/(综合偏多|综合偏空|信号混合)[^<]*/)[0] + '|' + (elements['alertContent'].innerHTML.match(/有效\d+\/\d+项/)||[''])[0];
+  return elements['alertContent'].innerHTML.match(/(基本面偏多|基本面偏空|信号混合)[^<]*/)[0] + '|' + (elements['alertContent'].innerHTML.match(/有效\d+\/\d+项/)||[''])[0];
 }
 const base = scoreHtml(null), withBig = scoreHtml(80), withZero = scoreHtml(0);
 check('★对总分没有任何影响：没填/填80万吨大拍卖/填0，综合结论和有效指标数完全相同', base === withBig && base === withZero);

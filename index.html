@@ -152,14 +152,22 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
   <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
 </div>
 
-<!-- ============ 综合预警：紧跟在合约选择下方，一打开就看到结论 ============
-     v94：原来叫"综合基本面预警"，但它其实把基差/月差/量价(来自价格本身的市场结构票)也算了进去，叫"基本面"名不副实——
-     改叫"综合预警"。纯基本面(仅供需票)和市场结构各自的方向，见下方三方共振面板。 -->
+<!-- ============ 基本面预警(仅供需)：紧跟在合约选择下方，一打开就看到结论 ============
+     v97：顶部拆开。v94曾把它改叫"综合预警"(因为总分里混着基差/月差/量价这些来自价格本身的市场结构票)；
+     现在彻底拆开：顶部只含供需票(供给+需求)，市场结构(基差/月差/量价)独立成下面一张卡，两者各自算、各自显示、各自说明。 -->
 <div class="card" id="alertCard" style="border-color:var(--gold)">
   <div class="card-head">
-    <div class="card-title">📊 综合预警<span style="font-size:9px;color:var(--t3);font-weight:400">· 供需 + 市场结构(基差/月差/量价)合起来的倾向，不是纯基本面</span></div>
+    <div class="card-title">📊 基本面预警<span style="font-size:9px;color:var(--t3);font-weight:400">· 仅供需(供给端+需求端)，不含基差/月差/量价</span></div>
   </div>
   <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+</div>
+
+<!-- ============ 市场结构：独立于基本面的系统(v97)。基差/月差/量价=盘面当下用什么方式定价，来自价格本身 ============ -->
+<div class="card" id="structureCard">
+  <div class="card-head">
+    <div class="card-title">🧭 市场结构<span style="font-size:9px;color:var(--t3);font-weight:400">· 基差/月差/量价：来自价格本身，跟技术面同源，不是独立于价格的证据</span></div>
+  </div>
+  <div id="structureContent" class="loading">等待数据...</div>
 </div>
 
 <!-- ============ 数据健康度：哪些指标不可用/降权、评分里哪些投票缺席、每小时同步是否还活着 ============ -->
@@ -341,15 +349,6 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
     <span class="badge" id="cftcBadge">检查中...</span>
   </div>
   <div id="cftcContent" class="loading">正在读取同步数据...</div>
-</div>
-
-<div class="stitle">🚢 美国大豆出口检验(实际离境量，非签约量)</div>
-<div class="card">
-  <div class="card-head">
-    <div class="card-title">USDA AMS Federal Grain Inspection Service周度数据</div>
-    <span class="badge" id="exportInspBadge">检查中...</span>
-  </div>
-  <div id="exportInspContent" class="loading">正在读取同步数据...</div>
 </div>
 
 <div class="stitle">⚙️ 压榨利润(盘面毛利，跟随合约切换)</div>
@@ -567,8 +566,8 @@ async function loadWeather(){
     el.innerHTML = html;
     badge.textContent = '🟢 '+now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 已更新';
     window._weatherRisk = riskLevel;
-    // ★ 已修复：之前设置了信号但从没触发综合预警重新计算，导致天气板块加载完成后
-    //   （init时loadWeather和loadManual是并行跑的，天气数据到达时综合预警早就已经渲染过了）
+    // ★ 已修复：之前设置了信号但从没触发顶部预警重新计算，导致天气板块加载完成后
+    //   （init时loadWeather和loadManual是并行跑的，天气数据到达时顶部预警早就已经渲染过了）
     //   天气信号一直没被真正纳入综合评分显示，除非用户之后手动改了某个输入框才会连带触发。
     updateOverallAlert();
   }catch(e){
@@ -588,7 +587,6 @@ async function loadSyncedData(){
     renderPsd(data.supplyDemand, data.generatedAt);
     renderCbot(data.cbotPrice, data.generatedAt);
     renderCftc(data.cftcManagedMoney, data.generatedAt);
-    renderExportInspections(data.exportInspections, data.generatedAt);
     renderDrought(data.droughtMonitor, data.generatedAt);
     renderNoaaOutlook(data.noaaOutlook, data.generatedAt);
     renderSoyCond(data.soybeanCondition, data.generatedAt);
@@ -635,7 +633,7 @@ async function loadSyncedData(){
 //   ④ 数据过期(按各指标更新频率判断)时照样显示，但标注⚠️并且不参与综合评分。
 // 输入框(m_xxx)保留：综合评分从它们读值，手动修正也走它们。
 
-const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"feedDays":[1,30,"天"],"mealStu":[1,40,"%"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"],"exportInspectionsMt":[1000,6000000,"公吨"]};
+const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"feedDays":[1,30,"天"],"mealStu":[1,40,"%"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"]};
 function sanityProblem(key, value){
   const r = SANITY_RANGES[key];
   if(!r) return null;
@@ -705,7 +703,16 @@ function blockIfImplausible(aiEl, key, value, label){
 const AUTO_INDICATORS = [
   {key:'crush', group:'supply', inputId:'m_crush', title:'油厂开机率', unit:'%', ph:'如45', freq:'周度', sourceName:'Mysteel',
    dataKey:'mysteelCrushRate', sanityKey:'crushRate', cadence:'weekly', maxAgeDays:30,
-   extract:d=>({value:d.value, valueText:`${d.value}%`, date:d.date, detail:`数据日期：${d.date}`})},
+   // ★春节停机扰动期(后端只在节前7天~节后14天给出festival)：油厂放假，开机率掉到10~40%不代表供应紧，"<40偏多"会把放假误判成偏多——不计分。
+   //   依据(用你2024-12~2026-09的真实开机率)：2025/2026两个春节都是节前约7天开始掉(55→43)、节日期间触底(9.80%/15.46%)、节后9~10天才回到37~40%、节后14天回到54%；
+   //   国庆不停机(节前6天60%→节后12天60%，基线63%)，所以只对春节生效。⚠️低于10%的读数会被合理范围(10~100)当作异常丢弃，同样不投票。
+   extract:d=>{
+     const fe = d.festival;
+     const when = !fe ? '' : fe.daysTo < 0 ? `前${-fe.daysTo}天` : fe.daysTo === 0 ? '当天' : `后${fe.daysTo}天`;
+     return {value:d.value, valueText:`${d.value}%`, date:d.date,
+       detail:`数据日期：${d.date}` + (fe ? `<br>🧧 <b>春节${when}</b>：油厂放假停机，开机率被机械压低，<b>不代表供应松紧</b>，所以不计分。(春节窗口=节前7天~节后14天，依据你的真实数据：2026-02-24的15.46%、2025-01-26的9.80%都是放假；国庆油厂不停机，不受影响)` : ''),
+       suppress: fe ? `春节${when}，油厂放假停机，不按固定阈值判方向` : ''};
+   }},
   {key:'stock', group:'supply', inputId:'m_stock', title:'豆粕商业库存', unit:'万吨', ph:'如65', freq:'周度', sourceName:'Mysteel',
    dataKey:'mysteelMealStock', sanityKey:'mealStock', cadence:'weekly', maxAgeDays:30,
    extract:d=>({value:d.value, valueText:`${d.value}万吨${d.weekLabel?`(${d.weekLabel})`:''}`, date:d.date, detail:`文章发布日期：${d.date}`})},
@@ -2128,15 +2135,15 @@ function computeForeignCapitalActivity(positionRankData){
  *  的原则一致：透明列出，不下结论。外资活跃时的"参考价值降低"提示，是转述自
  *  博主经验("外资开始搞事情时，其他信号先放一边")的一种谨慎提醒，不是本项目
  *  自己发明的判断依据。*/
-/** 综合预警结论的可靠性说明(置信度/供需分歧/天气主导/权重敏感)，来自updateOverallAlert写入的window._fundamentalMeta(变量名是历史遗留，
- *  它描述的是顶部"综合预警"——全部投票合起来的结论，不是"仅供需"的纯基本面)。没有就返回空串。 */
+/** 基本面预警结论的可靠性说明(置信度/供需分歧/天气主导/权重敏感)，来自updateOverallAlert写入的window._fundamentalMeta。
+ *  v97起它描述的是顶部"基本面预警"——只含供需票(v94~v96时它是"综合预警"，含市场结构票)。没有就返回空串。 */
 function fundamentalMetaNote(meta){
   if(!meta) return '';
   const parts = [];
-  if(meta.confidence) parts.push(`综合预警置信度：${meta.confidence}${meta.confidence==='低' && meta.reasons && meta.reasons.length ? `(${meta.reasons.join('；')})` : ''}`);
-  if(meta.divergence) parts.push(`综合预警内部${meta.divergence}`);
-  if(meta.weatherDominant) parts.push(`综合预警正处于天气主导行情(${meta.weatherDominant})，其它指标只作参考`);
-  if(meta.robust) parts.push(`综合预警${meta.robust}`);
+  if(meta.confidence) parts.push(`基本面预警置信度：${meta.confidence}${meta.confidence==='低' && meta.reasons && meta.reasons.length ? `(${meta.reasons.join('；')})` : ''}`);
+  if(meta.divergence) parts.push(`基本面预警内部${meta.divergence}`);
+  if(meta.weatherDominant) parts.push(`基本面预警正处于天气主导行情(${meta.weatherDominant})，其它指标只作参考`);
+  if(meta.robust) parts.push(`基本面预警${meta.robust}`);
   return parts.length ? `；${parts.join('；')}` : '';
 }
 function computeResonanceStatus(techDirection, fundDirection, foreignActivity, fundMeta){
@@ -2149,7 +2156,7 @@ function computeResonanceStatus(techDirection, fundDirection, foreignActivity, f
   const foreignNote = foreignActivity.status==='unavailable' ? '(外资数据暂不可用)' : '(外资平静)';
   if(techDirection && fundDirection && techDirection===fundDirection && techDirection!=='中性'){
     const lowConf = !!(fundMeta && fundMeta.confidence==='低');
-    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}${lowConf?'(综合预警置信度低，共振的可靠性打折)':''}`,
+    return {cls: techDirection==='偏多'?'bull':'bear', title:`技术面与基本面同向：${techDirection}${lowConf?'(基本面预警置信度低，共振的可靠性打折)':''}`,
             detail:`两者方向一致${foreignNote}${fundamentalMetaNote(fundMeta)}，仅供参考，不构成操作建议`};
   }
   if(!techDirection || !fundDirection){
@@ -2195,7 +2202,7 @@ function renderResonancePanel(){
   ].join(' · ');
   el.innerHTML = `<div class="alert-box ${status.cls}"><span class="at">${status.title}</span>${status.detail}</div>`
     + (sysDiv ? `<div class="alert-box ${sysDiv.cls}"><span class="at">${sysDiv.title}</span>${sysDiv.detail}</div>` : '')
-    + `<div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}<br>顶部"综合预警"的总分把基差/月差/量价也算了进去(所以它不是纯基本面)；这里的"基本面"只含供给/需求票，才能跟"市场结构"分开比较。</div>`;
+    + `<div style="font-size:10px;color:var(--t3);margin-top:6px">${rows}<br>顶部"基本面预警"与这里的"基本面"是同一个东西——都只含供给/需求票，不含基差/月差/量价；市场结构(基差/月差/量价)是独立的另一个系统，在顶部下方单独一张卡里，两者分开算、分开看，背离才是需要关注的信息。</div>`;
 }
 
 /** 指数移动平均(EMA)，MACD计算的基础。跟简单移动平均(MA)不同：EMA给近期数据更高权重。
@@ -2744,38 +2751,6 @@ function renderCftc(cftc, genAt){
   `;
 }
 
-/** 美国大豆出口检验(Export Inspections)：衡量"实际离境的货物"，跟出口销售
- *  (ESR，衡量"签了多少合同")是两个不同的指标。数据源是agtransport.usda.gov
- *  (USDA AMS的Socrata开放数据平台，Grain Inspections数据集)——单位已确认是
- *  公吨(MT)，不再是之前MARS那版"字段名未100%确认单位"的不确定状态。
- *  目前只有当周绝对数值，没有去年同期/环比这类比较基准，所以只做纯展示，
- *  不判断偏多偏空——没有基准硬判断方向是不诚实的，仅供参考，不计入综合
- *  评分，跟CBOT价格、压榨利润的处理方式一致。*/
-function renderExportInspections(ei, genAt){
-  const badge = document.getElementById('exportInspBadge');
-  const el = document.getElementById('exportInspContent');
-  if(!ei || !ei.available){
-    badge.textContent = '⚪ 暂无数据';
-    badge.className = 'badge badge-offline';
-    el.innerHTML = `<div class="alert-box neutral"><span class="at">${ei?ei.reason:'未知原因'}</span>USDA AMS每周发布，本网站数据经agtransport.usda.gov开放数据平台获取</div>` + renderDebugInfo(ei?ei.debug:null);
-    return;
-  }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
-  el.innerHTML = `
-    <div class="alert-box neutral"><span class="at">大豆出口检验量</span>${ei.quantityMetricTons.toLocaleString()}公吨　仅供参考不计入综合评分</div>
-    <details class="tier-details"><summary>查看详情 ▸</summary><div class="tier-body">
-    <div class="grid2">
-      <div class="stat"><span class="sv neutral">${ei.quantityMetricTons.toLocaleString()}</span><div class="sl">检验量(公吨)</div></div>
-      <div class="stat"><span class="sv neutral">${ei.recordCountThisWeek}</span><div class="sl">当周记录数(按港口/目的地拆分)</div></div>
-    </div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">
-      数据周次：${ei.weekEndingDate}<br>来源：${ei.source}
-    </div>
-    </div></details>
-  `;
-}
-
 /** 压榨利润(榨利)：豆粕+豆油产出价值 - 豆二(进口大豆)成本，标准行业公式，
  *  系数(出粕率78.5%/出油率18.5%)是大商所豆二期货厂库交割置换的官方标准。
  *  ⚠️这里算的是"毛利"，没有减加工费——加工费没有公开权威的数据源，硬编一个猜测值
@@ -3094,7 +3069,7 @@ function refreshBrazilPlantingDisplay(){
   renderBrazilPlanting(data.brazilPlantingProgress, data.generatedAt);
 }
 
-// ===================== 手动数据 + 综合预警 =====================
+// ===================== 手动数据 + 基本面预警(仅供需) + 市场结构 =====================
 function loadManual(){
   // 旧版本('soymeal_manual')存的是全部输入框(含自动填进去的旧值)，不能当"手动修正"读回来，直接丢弃
   try{ localStorage.removeItem('soymeal_manual'); }catch(e){}
@@ -3386,7 +3361,7 @@ function renderDataHealth(){
 // ★评分规则版本号：每天记录两个系统的方向时会一并记下它(scripts/snapshot_systems.js→data/history/systems_*.json)。
 //   以后只要改了阈值/权重/投票清单/门槛这类会改变方向的规则，就必须递增——否则几个月后检验"背离有没有信息"时，
 //   会把不同规则算出来的方向混在一起，结论没有意义。
-const SCORING_VERSION = 'v96';
+const SCORING_VERSION = 'v97';    // v97：开机率春节停机扰动期(节前7天~节后14天)不计分
 window._scoringVersion = SCORING_VERSION;
 
 // ===================== 季节性档位 + 天气开关 =====================
@@ -3591,8 +3566,8 @@ function driversHtml(votes){
 }
 
 /** 三条维度条形：中线=0，向右(红)偏多、向左(绿)偏空，两根淡刻度线是±22%(方向判定门槛) */
-function dimensionBarsHtml(dims){
-  return DIM_META.map(m=>{
+function dimensionBarsHtml(dims, onlyKeys){
+  return DIM_META.filter(m=>!onlyKeys || onlyKeys.includes(m.key)).map(m=>{
     const d = dims[m.key];
     if(d.n === 0){
       return `<div class="dim-row"><span class="dim-name">${m.name}</span><div class="dim-track"><div class="dim-mid"></div></div><span class="dim-val neutral">--</span><span class="dim-n">无数据</span></div>`;
@@ -3608,12 +3583,45 @@ function dimensionBarsHtml(dims){
 }
 
 /** 一句话总结："供给端偏空(-46%)，需求端偏多(+20%)，市场结构偏空(-100%·仅1项)" */
-function dimensionSummary(dims){
-  return DIM_META.map(m=>{
+function dimensionSummary(dims, onlyKeys){
+  return DIM_META.filter(m=>!onlyKeys || onlyKeys.includes(m.key)).map(m=>{
     const d = dims[m.key];
     if(d.n===0) return `${m.name}无数据`;
     return `${m.name}${d.thin?'仅'+d.n+'项，':''}${dirWord(d.dir)}(${fmtPct(d.ratio)})`;
   }).join('，');
+}
+
+/** 市场结构卡(v97)：基差/月差/量价——"盘面当下用什么方式定价"。它是独立于基本面(供需)的另一个系统，基本面数据不足时它照常显示。
+ *  三种状态都如实说：①没有任何有效信号；②只有1项(样本少，不下结论)；③≥2项给出方向。
+ *  ★它来自价格本身，跟技术面同源——跟基本面一致不算"独立证据"，这一点每次都写明。只描述状态，不给操作建议。 */
+function renderStructureCard(votes){
+  const el = document.getElementById('structureContent');
+  if(!el) return;
+  const sv = votes.filter(v=>v.side==='structure');
+  const sys = window._structureSystem;
+  const cell = v=>{
+    const sig = v.signal;
+    const cls = sig===1?'sd-pos':sig===-1?'sd-neg':sig===0?'sd-neutral':'sd-empty';
+    const arrow = sig===1?'▲偏多':sig===-1?'▼偏空':sig===0?'—中性':'⏳无信号';
+    return `<tr><td class="sd-cell ${cls}">${v.label.split('(')[0]} ${arrow}</td></tr>`;
+  };
+  const table = sv.length ? `<table class="sd-table"><thead><tr><th>市场结构</th></tr></thead><tbody>${sv.map(cell).join('')}</tbody></table>` : '';
+  const note = `<div style="font-size:10px;color:var(--t3);margin-top:6px">基差=现货相对盘面；月差=近远月价差在往年同期的位置；量价=价格与持仓量的配合(只在合约可用性门槛通过时才判)。三者都来自价格本身，跟技术面同源，所以它跟基本面方向一致时<b>不算独立证据</b>；背离才是需要关注的信息。只描述状态，不给买卖建议。</div>`;
+  if(!sys || sys.n === 0){
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构暂无信号</span>基差/月差/量价都没有可用信号(历史样本还在积累，或量价可用性门槛没过)</div>${table}${note}`;
+    return;
+  }
+  if(sys.thin){
+    const only = (sys.items && sys.items[0]) ? sys.items[0].label : '1项';
+    el.innerHTML = `<div class="alert-box neutral"><span class="at">市场结构样本少：只有1项有信号(${only})，不下结论</span>只有1个市场结构指标有信号，不足以代表整体；等其余指标的历史积累够了再看</div>${table}${note}`;
+    return;
+  }
+  const pct = Math.round(sys.ratio*100);
+  const cls = sys.direction==='偏多' ? 'bull' : sys.direction==='偏空' ? 'bear' : 'neutral';
+  const title = sys.direction==='中性' ? `市场结构中性（净倾向${pct>0?'+':''}${pct}%）` : `市场结构${sys.direction}（净倾向${pct>0?'+':''}${pct}%）`;
+  const dv = computeSystemsDivergence(window._fundamentalPure, sys);
+  const dvHtml = `<div class="alert-box ${dv.cls}"><span class="at">与基本面的关系：${dv.title}</span>${dv.detail||''}</div>`;
+  el.innerHTML = `<div class="alert-box ${cls}"><span class="at">${title}</span>有效${sys.n}项</div>${dvHtml}${table}${note}`;
 }
 
 function updateOverallAlert(){
@@ -3813,7 +3821,11 @@ function updateOverallAlert(){
   window._weatherDominant = weatherDominant;
 
   // ---- 汇总：净倾向 = 票权加权分数 ÷ 有效票权合计 ----
-  const overall = tallyVotes(votes);
+  const overall = tallyVotes(votes);          // 全部投票(含市场结构)：只用于composite(每天记录的"综合"，保持连续)，不再是顶部的headline
+  // ★v97 顶部拆开：顶部卡片只看"供需"(供给+需求)，所有headline计算(总分/仪表/置信度/维度/稳健性/质量)都在fundVotes上跑；
+  //   市场结构(基差/月差/量价，来自价格本身)独立成下面一张卡——它是独立的系统，基本面数据不足时它照常显示。
+  const fundVotes = votes.filter(v=>v.side !== 'structure');
+  const fo = tallyVotes(fundVotes);
   // ★两个独立系统(v93)：基本面="供需应该让价格往哪走"(只含供给/需求票)；市场结构="市场当下用什么方式定价"(基差/月差/量价)。
   //   顶部总分仍是全部投票合起来(含市场结构票)，这里另外算"不含市场结构"的基本面，专门用来跟市场结构比较——
   //   两者背离本身就是信息(基本面偏多而盘面不认可，或反过来)，混在一个总分里就看不见了。
@@ -3823,24 +3835,23 @@ function updateOverallAlert(){
     window._structureSystem = {direction: stt.n >= 1 ? dirWord(dirOfRatio(stt.ratio)) : null, ratio: stt.ratio, n: stt.n, thin: stt.n === 1,
       items: votes.filter(v=>v.side === 'structure' && v.signal !== null).map(v=>({label: v.label.split('(')[0], signal: v.signal}))};
   }
-  const quality = qualitySummary(votes);
-  window._quality = quality;
-  const robust = computeSchemes(votes, overall.ratio);
-  const dims = computeDimensions(votes);
-  const valid = votes.filter(v=>v.signal!==null);
-  const n = overall.n;                 // 有效指标数(用于"数据不足/覆盖率"判断，按投票个数算，不按票权)
-  const score = overall.score;
-  const ratio = overall.ratio===null ? 0 : overall.ratio;
+  window._quality = qualitySummary(votes);      // 数据健康度面板用：全部投票(含市场结构票)的数据质量
+  const quality = qualitySummary(fundVotes);    // 顶部基本面卡的数据质量(只含供需票)
+  const robust = computeSchemes(fundVotes, fo.ratio);
+  const dims = computeDimensions(fundVotes);
+  const valid = fundVotes.filter(v=>v.signal!==null);
+  const n = fo.n;                      // 有效指标数(供需票；用于"数据不足/覆盖率"判断，按投票个数算，不按票权)
+  const score = fo.score;
+  const ratio = fo.ratio===null ? 0 : fo.ratio;
   const bullN = valid.filter(v=>v.signal===1).length;
   const bearN = valid.filter(v=>v.signal===-1).length;
   const neutN = n - bullN - bearN;
-  const coverageNote = `有效${n}/${votes.length}项 · ${bullN}多 ${neutN}中 ${bearN}空`;
+  const coverageNote = `有效${n}/${fundVotes.length}项 · ${bullN}多 ${neutN}中 ${bearN}空`;
 
   const el = document.getElementById('alertContent');
   const supplyItems = votes.filter(v=>v.side==='supply').map(v=>({label:v.label, signal:v.signal}));
   const demandItems = votes.filter(v=>v.side==='demand').map(v=>({label:v.label, signal:v.signal}));
-  const structureItems = votes.filter(v=>v.side==='structure').map(v=>({label:v.label, signal:v.signal}));
-  const sdTable = renderSupplyDemandTable(supplyItems, demandItems, structureItems);
+  const sdTable = renderSupplyDemandTable(supplyItems, demandItems, []);        // 顶部只放供需两列；市场结构在下面独立的卡片里
   const footerNote = contract === 'sep'
     ? '💡 "作物生长状况综合"是美国天气/干旱监测/NOAA展望/美豆优良率4项子信号的综合结果；"国内豆粕供应松紧""大豆到港/进口"也是合并信号，避免同一件事被重复计票'
     : contract === 'may'
@@ -3855,7 +3866,12 @@ function updateOverallAlert(){
       <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')||'暂无数据'}</div></details>`;
     window._fundamentalDirection = null; // 三方共振第③块输入：数据不够时明确置空，不留着上一次的旧值
     window._dimensions = null; window._fundamentalConfidence = null; window._fundamentalMeta = null;
-    window._fundamentalPure = null; window._structureSystem = null; window._composite = null;
+    // ★v97：_fundamentalPure不在这里置null——它前面已经赋成{direction:null(供需票<5时), ratio, n}，共振面板靠"对象存在"区分
+    //   "数据不足"和"加载中"：置null会让数据早已加载完、只是供需票不够的情形被误显示成"基本面：加载中..."，用户会一直等。
+    // ★v97：市场结构是独立系统，基本面数据不足时它不跟着置空(_structureSystem在上面已按市场结构票算好)；
+    //   composite(全部投票的综合，每天记录用)仍按它自己的条件：全部投票的有效数不足才置空
+    window._composite = overall.n >= MIN_VALID_VOTES ? {direction: overall.ratio>=DIRECTION_RATIO ? '偏多' : overall.ratio<=-DIRECTION_RATIO ? '偏空' : '中性', ratio: overall.ratio===null ? 0 : overall.ratio, score: overall.score, n: overall.n, total: votes.length} : null;
+    renderStructureCard(votes);
     renderResonancePanel();
     renderDataHealth();
     return;
@@ -3863,17 +3879,19 @@ function updateOverallAlert(){
 
   let cls, title;
   const pct = Math.round(ratio*100);
-  if(ratio >= DIRECTION_RATIO){ cls='bull'; title=`综合偏多 +${fmtScore(score)}（净倾向${pct>0?'+':''}${pct}%）`; }
-  else if(ratio <= -DIRECTION_RATIO){ cls='bear'; title=`综合偏空 ${fmtScore(score)}（净倾向${pct}%）`; }
+  if(ratio >= DIRECTION_RATIO){ cls='bull'; title=`基本面偏多 +${fmtScore(score)}（净倾向${pct>0?'+':''}${pct}%）`; }
+  else if(ratio <= -DIRECTION_RATIO){ cls='bear'; title=`基本面偏空 ${fmtScore(score)}（净倾向${pct}%）`; }
   else{ cls='neutral'; title=`信号混合 ${score>0?'+':''}${fmtScore(score)}（净倾向${pct>0?'+':''}${pct}%）`; }
-  // 三方共振第③块输入：跟上面alert-box样式用同一套判定，"基本面：偏多"跟详细面板里的"综合偏多"不会对不上
+  // 三方共振第③块输入：跟上面alert-box样式用同一套判定，"基本面：偏多"跟顶部"基本面偏多"不会对不上(v97起两者都只含供需票)
   window._fundamentalDirection = ratio>=DIRECTION_RATIO ? '偏多' : ratio<=-DIRECTION_RATIO ? '偏空' : '中性';
-  window._composite = {direction: window._fundamentalDirection, ratio, score, n, total: votes.length};    // 综合预警的数值版本(每天记录用)
+  // ★composite=全部投票(含市场结构)合起来的"综合"——定义保持v93~v96不变，只用于每天记录(历史连续)，页面上不再展示这个数
+  { const cr = overall.ratio===null ? 0 : overall.ratio;
+    window._composite = {direction: cr>=DIRECTION_RATIO ? '偏多' : cr<=-DIRECTION_RATIO ? '偏空' : '中性', ratio: cr, score: overall.score, n: overall.n, total: votes.length}; }
 
   const lowCoverage = n / votes.length < 0.6;
   // 置信度只在综合方向明确时评级；信号混合时说明"多空力量接近"，并单独提示两侧是否在打架
   const directional = cls !== 'neutral';
-  const conf = computeConfidence(votes, overall, dims, robust, !!weatherDominant, quality);
+  const conf = computeConfidence(fundVotes, fo, dims, robust, !!weatherDominant, quality);
   window._dimensions = dims;
   window._fundamentalConfidence = directional ? conf.label : null;
   window._fundamentalMeta = {confidence: directional ? conf.label : null, reasons: conf.reasons,
@@ -3885,7 +3903,7 @@ function updateOverallAlert(){
     ? `<div class="alert-box warn"><span class="at">⚠️ 方向分歧</span>${divergence.bear.name}${dirWord(divergence.bear.dir)}(${fmtPct(divergence.bear.ratio)})，${divergence.bull.name}${dirWord(divergence.bull.dir)}(${fmtPct(divergence.bull.ratio)})——两侧信号方向相反，综合分数会把它们抵消掉，不要只看总分</div>` : '';
   const confHtml = directional
     ? `<div class="alert-box ${conf.level===0?'warn':'neutral'}"><span class="at">🔎 结论置信度：${conf.label}</span>${conf.reasons.join('；')}</div>`
-    : `<div class="alert-box neutral"><span class="at">🔎 多空力量接近，没有明确方向</span>偏多票权${overall.bullW} vs 偏空票权${overall.bearW}，${overall.n-bullN-bearN}项中性</div>`;
+    : `<div class="alert-box neutral"><span class="at">🔎 多空力量接近，没有明确方向</span>偏多票权${fo.bullW} vs 偏空票权${fo.bearW}，${fo.n-bullN-bearN}项中性</div>`;
   const weatherHtml = weatherDominant
     ? `<div class="alert-box warn"><span class="at">⚡ 天气主导行情</span>${weatherDominant.why}。此时天气比其它指标更能决定价格方向：作物/天气这一票按主导档(×2)，其余指标票权减半，仅作参考</div>` : '';
   const robustHtml = `<div style="font-size:10.5px;color:var(--t2);margin-top:6px;line-height:1.7">⚖️ 权重稳健性：${robust.list.map(x=>`${x.name} <b>${dirWord(x.dir)}</b>(${x.ratio===null?'--':fmtPct(x.ratio)})`).join(' · ')} → `
@@ -3893,12 +3911,13 @@ function updateOverallAlert(){
     + `<br><span style="color:var(--t3)">等权=每票各1；分组等权=按相关性分${robust.groupsUsed}组、组内取平均、组间等权；现行=顶部总分(季节档位+票权+天气开关)</span></div>`;
   const qualityHtml = quality.lowItems.length
     ? `<div style="font-size:10.5px;color:var(--t2);margin-top:4px;line-height:1.7">⏱ 数据质量：<b>${Math.round(quality.score*100)}%</b>，被降权的：${quality.lowItems.map(x=>`${x.label.split('(')[0]}(×${x.q}：${x.why})`).join('；')}</div>` : '';
-  const dimHtml = `<div style="margin-top:8px">${dimensionBarsHtml(dims)}<div style="font-size:10px;color:var(--t3);margin-top:2px">${dimensionSummary(dims)} · 淡刻度线=±${Math.round(DIRECTION_RATIO*100)}%方向门槛，三个维度是同一批投票的拆分，不是额外指标</div></div>`;
+  const dimHtml = `<div style="margin-top:8px">${dimensionBarsHtml(dims, ['supply','demand'])}<div style="font-size:10px;color:var(--t3);margin-top:2px">${dimensionSummary(dims, ['supply','demand'])} · 淡刻度线=±${Math.round(DIRECTION_RATIO*100)}%方向门槛，两个维度是同一批投票的拆分，不是额外指标</div></div>`;
   // 仪表：量程±66%，这样1/3分界线正好落在±22%(=方向判定门槛)，指针落在哪一段跟文字结论一致
   const gauge = renderGaugeSVG(pct, -66, 66, '%');
-  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${weatherHtml}${dimHtml}${divergenceHtml}${confHtml}${robustHtml}${qualityHtml}${driversHtml(votes)}${sdTable}
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是综合倾向(供需 + 市场结构)，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
+  el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${weatherHtml}${dimHtml}${divergenceHtml}${confHtml}${robustHtml}${qualityHtml}${driversHtml(fundVotes)}${sdTable}
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">${footerNote}，展开下方详情可看具体理由。<br>⚠️ 这是基本面倾向(仅供需)，不含基差/月差/量价(它们来自价格本身，见下一张「市场结构」卡)，不是买卖信号：还要结合技术面的位置、自己的仓位和止损。</div>
     <details class="tier-details"><summary>查看每项详细理由 ▸</summary><div class="tier-body">${notes.join('<br>')}</div></details>`;
+  renderStructureCard(votes);
   renderResonancePanel();
   renderDataHealth();
 }

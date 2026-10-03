@@ -33,6 +33,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import fetch_data as fd
 import history_store as hs
+import mysteel_parsers as mp
 
 
 
@@ -674,6 +675,81 @@ def backfill_term_spread(base_dir=None, from_year=None, to_year=None, sleep_s=0.
 
 
 # ---------------------------------------------------------------------------
+# 8. 月度进口量 / 到港预报：用采样诊断拿到的真实措辞写的回填(解析器在mysteel_parsers.py，用真实样本测试)
+# ---------------------------------------------------------------------------
+# 只用搜索摘要(采样已验证摘要里就有数值)，不抓正文，不跟随任何链接。
+# 写入的序列key/日期格式和每日累积完全一致(soy_import的d='YYYY-MM'，arrival_forecast的d=预报月份'YYYY-MM')，所以两者能合并。
+def backfill_soy_import(base_dir=None, start=None, today=None, search=None, sleep_s=0.6, include_inferred_single=False):
+    """中国大豆月度进口量(海关总署数据，Mysteel文章转述)。
+    ★同一个月会在多篇文章里重复出现(2023-06有5篇)，所以按月交叉验证：多篇一致才采用(见mysteel_parsers.select_import_months)。
+    只有一篇且年份是靠发布日期推断的月份默认不采用(可能出错)。海关合并公布的1-2月累计没有单月数据，缺失是真实的。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or date(2022, 1, 1)
+    search = search or _search_articles
+    items, total, note = search("海关总署中国大豆进口量", datetime(start.year, start.month, start.day), datetime(today.year, today.month, today.day, 12), max_pages=60, url=fd.MYSTEEL_ARTICLE_SEARCH_URL, sleep_s=sleep_s)
+    obs, rejected = [], []
+    for it in items:
+        d = _pub(it)
+        if d is None:
+            continue
+        got, rej = mp.parse_soy_import(str(it.get("title") or "") + "。" + str(it.get("content") or ""), d.isoformat())
+        obs += [(g["month"], g["value"], d.isoformat(), g["yearExplicit"]) for g in got]
+        rejected += rej
+    acc, doubt, skipped = mp.select_import_months(obs, include_inferred_single=include_inferred_single)
+    pts = []
+    for mo, info in sorted(acc.items()):
+        v = info["value"]
+        problem = fd._plausibility_problem("soyImport", v)
+        if problem:
+            skipped.append((mo, v, info["pubs"][0], f"超出合理范围: {problem}"))
+            continue
+        pts.append({"d": mo, "v": v, "pub": max(info["pubs"]), "x": {"how": info["how"], "n": info["n"]}})
+    hs.record_points("soy_import", pts, base_dir)
+    notes = [note] if note else []
+    notes.append(f"搜到{len(items)}篇(搜索总数{total})，提取{len(obs)}条单月观察，采用{len(pts)}个月；海关合并公布的1-2月累计没有单月数据，缺失是真实的")
+    return _report_entry("soy_import", base_dir, len(pts), notes=notes,
+                         extra={"how": dict(Counter(p["x"]["how"] for p in pts)),
+                                "doubtful(同月数值冲突)": [{"month": d["month"], "adopted": d["adopted"], "overruled": d["overruled"]} for d in doubt][:10],
+                                "notAdopted(只有一篇且年份靠推断/超范围)": [{"month": m, "value": v, "pub": p, "why": w} for m, v, p, w in skipped][:12],
+                                "excludedWordings(累计/去年/对比等，前8条)": rejected[:8]})
+
+
+def backfill_arrival_forecast(base_dir=None, start=None, today=None, search=None, sleep_s=0.6):
+    """大豆到港预报(Mysteel每月月底发下月预估，每月1篇)。只收"2024年9月份国内全样本油厂大豆到港预估133.5船，共计约867.75万吨"这类严格结构的句子。
+    ★刻意不处理2026-06之后的新写法(一篇同时给当月+后两个月的预估，后两个月是'远月数据后期可能修正'的初步预估)：那是每日累积正在抓的，回填只补历史。
+    ★同一篇里同一个月出现两个口径(2023-11~2024-01同时发布111家783.25万吨/123家845万吨，相差8%)时整月不采用，写进excluded。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or date(2022, 1, 1)
+    search = search or _search_articles
+    items, total, note = search("大豆到港预报", datetime(start.year, start.month, start.day), datetime(today.year, today.month, today.day, 12), max_pages=60, url=fd.MYSTEEL_ARTICLE_SEARCH_URL, sleep_s=sleep_s)
+    by_month, rejected = {}, []
+    for it in items:
+        d = _pub(it)
+        if d is None:
+            continue
+        got, rej = mp.parse_arrival_forecast(str(it.get("content") or ""), d.isoformat())
+        rejected += rej
+        for g in got:
+            # 同月多篇(修订/转载)：取发布最晚的一篇(最终预估)
+            if g["month"] not in by_month or d.isoformat() > by_month[g["month"]]["pub"]:
+                by_month[g["month"]] = {"value": g["value"], "ships": g["ships"], "pub": d.isoformat()}
+    pts, skipped = [], []
+    for mo, info in sorted(by_month.items()):
+        problem = fd._plausibility_problem("arrivalForecast", info["value"])
+        if problem:
+            skipped.append({"month": mo, "value": info["value"], "why": f"超出合理范围: {problem}"})
+            continue
+        pts.append({"d": mo, "v": info["value"], "pub": info["pub"], "x": {"ships": info["ships"]}})
+    hs.record_points("arrival_forecast", pts, base_dir)
+    notes = [note] if note else []
+    notes.append(f"搜到{len(items)}篇(搜索总数{total})，采用{len(pts)}个月；2026-06之后的新写法(一篇三个月预估)由每日累积接上，回填不处理")
+    return _report_entry("arrival_forecast", base_dir, len(pts), notes=notes,
+                         extra={"excluded(同一篇多个口径/超范围)": rejected[:10] + skipped[:5]})
+
+
+# ---------------------------------------------------------------------------
 # 7. 采样诊断(sample)：不解析、不写历史序列——把8个Mysteel指标的真实措辞一次性收集回来
 # ---------------------------------------------------------------------------
 # 背景：开机率/到港预报/进口量/肉鸡利润/基差/豆菜粕价差/能繁母猪这几个指标的抓取函数，当初都只用**一条**最新样本写的；
@@ -802,14 +878,14 @@ def backfill_sample(base_dir=None, start=None, today=None, only=None, max_items=
 
 
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "meal_stock": backfill_meal_stock, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "sample": backfill_sample}
-DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "meal_stock": backfill_meal_stock, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "sample": backfill_sample, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast}
+DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 
 
 def main(argv=None, base_dir=None):
     ap = argparse.ArgumentParser(description="豆粕仪表盘历史回填")
-    ap.add_argument("--only", default="all", help="逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,feed_days,calibrate；默认=us_stu,esr,meal_stu,margin,spread,feed_days(meal_stock补不全，不进默认)；calibrate=不联网，只重新生成校准摘要")
+    ap.add_argument("--only", default="all", help="逗号分隔：us_stu,esr,meal_stu,meal_stock,margin,spread,feed_days,soy_import,arrival,sample,calibrate；默认=us_stu,esr,meal_stu,margin,spread,feed_days,soy_import,arrival(meal_stock补不全、sample是一次性诊断，都不进默认)；calibrate=不联网，只重新生成校准摘要")
     ap.add_argument("--start", default="2020-01-01", help="Mysteel两项的起始日期")
     ap.add_argument("--no-bodies", action="store_true", help="国内库消比不抓文章正文，只用摘要")
     args = ap.parse_args(argv)

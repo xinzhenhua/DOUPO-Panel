@@ -35,8 +35,8 @@ check('6项全偏多字段 → 每个指示器都应该是pos(偏多/红色)',
 check('★能繁母猪(<3700)不再显示偏多：标记为"不计分"(neutral)', elements['ind_sows'].className, 'field-ind neutral');
 check('能繁母猪的标记文字是"不计分"', elements['ind_sows'].textContent.includes('不计分'), true);
 
-check('7项全偏多 → alertCard应显示"综合偏多"',
-  elements['alertContent'].innerHTML.includes('综合偏多'), true);
+check('7项全偏多 → alertCard应显示"基本面偏多"',
+  elements['alertContent'].innerHTML.includes('基本面偏多'), true);
 
 // 场景2：中国进口量方向验证（这是本次修复的重点：进口多=偏空，不是之前写反的"进口多=偏多"）
 elements['m_import'].value = '1200'; // >1000 现在应该是偏空

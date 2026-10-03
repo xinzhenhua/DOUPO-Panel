@@ -62,12 +62,12 @@ refreshMysteelBasis();
 check('★过期数据照样显示数值', makeEl('m_basis').value == '-100');
 check('★徽标标出"数据过期"并说明不计分(具体错过几个交易日写在详情里)', makeEl('badge_basis').textContent.includes('数据过期') && makeEl('badge_basis').textContent.includes('不计分') && makeEl('ai_basis').innerHTML.includes('错过') && makeEl('ai_basis').innerHTML.includes('个大商所交易日'));
 check('★结论框说明不参与综合评分', makeEl('alert_basis').innerHTML.includes('不参与综合评分'));
-check('★过期数据的信号被排除(供需表格里现货基差是空格，不是偏空)', /sd-cell sd-empty">现货基差/.test(makeEl('alertContent').innerHTML));
+check('★过期数据的信号被排除(市场结构卡里现货基差是"无信号"格，不是偏空；v97起基差在市场结构卡)', /sd-cell sd-empty">现货基差/.test(makeEl('structureContent').innerHTML));
 
 resetKey('basis');
 window._syncedData = {mysteelBasis:{available:true, value:-100, city:'日照', date:dayStr(3), usedFallback:false}};
 refreshMysteelBasis();
-check('★新鲜数据参与评分(供需表格里现货基差是偏空格)', /sd-cell sd-neg">现货基差/.test(makeEl('alertContent').innerHTML));
+check('★新鲜数据参与评分(市场结构卡里现货基差是偏空格)', /sd-cell sd-neg">现货基差/.test(makeEl('structureContent').innerHTML));
 
 // ===================== 5. 数值荒谬：不填入、不清掉手动值 =====================
 resetKey('crush');

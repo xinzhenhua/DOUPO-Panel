@@ -77,7 +77,7 @@ makeEl('m_arrival').value='700';                                                
 updateOverallAlert();
 let html = makeEl('alertContent').innerHTML;
 check('★界面显示"权重稳健性"一行，列出三套方向和数值', html.includes('权重稳健性') && html.includes('等权') && html.includes('分组等权') && html.includes('现行'));
-check('★界面说明三套各自的含义', html.includes('等权=每票各1') && html.includes('按相关性分5组'));
+check('★界面说明三套各自的含义(v97：分组等权只在供需票上算，"市场反馈"组(基差/月差/量价)全是结构票，顶部不再出现 → 按相关性分4组)', html.includes('等权=每票各1') && html.includes('按相关性分4组'));
 check('★window._fundamentalMeta带robust字段：三套不一致时有文字，一致时为null', typeof window._fundamentalMeta === 'object');
 const dirs = (html.match(/(等权|分组等权|现行) <b>(偏多|偏空|中性)<\/b>/g)||[]).map(x=>x.replace(/<\/?b>/g,''));
 check('三套的方向都能从界面读出来', dirs.length === 3);
@@ -98,7 +98,7 @@ check('★全部偏空：三套一致，界面显示"三套一致，结论对权
 // 共振面板带上权重敏感
 const calm = {status:'calm', label:'外资平静'};
 let r = computeResonanceStatus('偏多','偏多',calm,{confidence:'中', reasons:[], divergence:null, weatherDominant:null, robust:'结论对权重敏感(等权中性、分组等权偏多、现行偏空)'});
-check('★三方共振面板也提示"综合预警结论对权重敏感"', r.detail.includes('综合预警结论对权重敏感'));
+check('★三方共振面板也提示"基本面预警结论对权重敏感"', r.detail.includes('基本面预警结论对权重敏感'));
 
 // 数据不足分支不留旧状态
 reset(); makeEl('m_crush').value='35'; updateOverallAlert();

@@ -65,7 +65,7 @@ H.setMockedMonth(7); // 休耕期，天气产量权重10/90，两者都偏多，
 selectContract('may');
 // 7月：作物(南美)、库存消费比、国内豆粕供应松紧、大豆到港/进口、汇率、播种进度、雷亚尔 = 7票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求
 // 手算：有效12票(供应7+需求5，能繁移出)；7月南美休耕期作物票"背景"档×0.5，不触发天气开关；其余11票×1 → 0.5+11=+11.5
-check('★5月合约：12个有效投票全偏多，总分应精确为+11.5', elements['alertContent'].innerHTML.includes('综合偏多 +11.5（') && elements['alertContent'].innerHTML.includes('有效12/12'));
+check('★5月合约：顶部11个供需票全偏多(原12个含基差)：作物背景档0.5+其余10票×1=+10.5', elements['alertContent'].innerHTML.includes('基本面偏多 +10.5（') && elements['alertContent'].innerHTML.includes('有效11/11'));
 H.clearMockedMonth();
 
 

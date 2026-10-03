@@ -158,13 +158,13 @@ function resetScore(){
   Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]);
   window._crushSignal = undefined; window._spreadSignal = undefined; window._vpSignal = undefined;
 }
-const cell = ()=> (makeEl('alertContent').innerHTML.match(/sd-cell (sd-\w+)">量价关系[^<]*/)||[]);
+const cell = ()=> (makeEl('structureContent').innerHTML.match(/sd-cell (sd-\w+)">量价关系[^<]*/)||[]);      // v97：量价在"市场结构"卡里，不在顶部
 resetScore(); updateOverallAlert();
-check('★还没渲染过量价卡片(undefined)：这一票不在投票清单里', !/sd-cell[^>]*>量价关系/.test(makeEl('alertContent').innerHTML));
+check('★还没渲染过量价卡片(undefined)：这一票不在投票清单里', !/sd-cell[^>]*>量价关系/.test(makeEl('structureContent').innerHTML));
 resetScore(); window._vpSignal = null; window._vpQuality = null; window._vpStatus = 'gated'; updateOverallAlert();
-check('★门槛没过(信号null)：这一票在清单里但没数据——作为"缺席的投票"如实列出', /sd-cell sd-empty">量价关系/.test(makeEl('alertContent').innerHTML) && window._quality.missing.some(x=>x.includes('量价关系')));
+check('★门槛没过(信号null)：这一票在清单里但没数据——作为"缺席的投票"如实列出', /sd-cell sd-empty">量价关系/.test(makeEl('structureContent').innerHTML) && window._quality.missing.some(x=>x.includes('量价关系')));
 resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; updateOverallAlert();
-check('★增仓上涨：偏多格(▲)，放在"市场结构"列', cell()[1] === 'sd-pos' && /<th>市场结构<\/th>/.test(makeEl('alertContent').innerHTML));
+check('★增仓上涨：偏多格(▲)，放在"市场结构"列', cell()[1] === 'sd-pos' && /<th>市场结构<\/th>/.test(makeEl('structureContent').innerHTML));
 check('★属于"市场反馈"分组(跟基差、月差同组)', voteGroup('量价关系(价格×持仓量)') === 'feedback');
 check('详细理由里写明偏多原因', makeEl('alertContent').innerHTML.includes('新多头资金入场'));
 resetScore(); window._vpSignal = -1; window._vpQuality = {m:1, why:''}; updateOverallAlert();
@@ -175,9 +175,9 @@ resetScore(); window._vpSignal = 1; window._vpQuality = {m:0.5, why:'K线数据�
 check('★K线晚了一期：票权×0.5，质量分里点名', window._quality.lowItems.some(x=>x.label.includes('量价关系') && x.q === 0.5));
 // 市场结构维度：基差(0) + 量价(+1)
 resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; updateOverallAlert();
-check('★基差中性(0) + 量价偏多(+1)：市场结构维度2项，净倾向+50%，不再是"样本少"', window._dimensions.structure.n === 2 && Math.abs(window._dimensions.structure.ratio - 0.5) < 1e-9 && window._dimensions.structure.thin === false);
+check('★基差中性(0) + 量价偏多(+1)：市场结构维度2项，净倾向+50%，不再是"样本少"', window._structureSystem.n === 2 && Math.abs(window._structureSystem.ratio - 0.5) < 1e-9 && window._structureSystem.thin === false);
 // 三个市场结构信号一起
 resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; makeEl('m_basis').value = '100'; updateOverallAlert();
-check('★基差偏多+月差偏多+量价偏多：市场结构维度3项全偏多，+100%', window._dimensions.structure.n === 3 && window._dimensions.structure.ratio === 1);
+check('★基差偏多+月差偏多+量价偏多：市场结构维度3项全偏多，+100%', window._structureSystem.n === 3 && window._structureSystem.ratio === 1);
 H.clearMockedMonth(); window._vpSignal = undefined; window._spreadSignal = undefined; window._crushSignal = undefined;
 H.printSummary();

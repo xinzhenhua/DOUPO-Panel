@@ -94,3 +94,6 @@ node test_planting_brl.js
 - v96：`run_all_tests.sh`会在汇总里**点名被跳过的测试文件**(没装jsdom时`test_snapshot.js`会被跳过)，跳过的测试里可能有评分规则版本号这类关键检查；本地运行需要`NODE_PATH=<含jsdom的node_modules> ./run_all_tests.sh`
 - `python3 test_series_quality.py`：v96.1新增，序列质量声明(周度库存口径断点2024-01-05、meal_stu 2025-04可疑点)
 - `python3 test_sample_job.py`：v96.2新增，采样诊断(措辞聚类/口径字样/报告大小预算/容错)
+- `python3 test_mysteel_parsers.py` / `python3 test_backfill_mysteel.py`：v96.3新增，Mysteel解析器与进口量/到港预报回填(用真实采样夹具 tests/data/mysteel_samples_20261002.json)
+- `python3 test_crush_festival.py` / `tests/test_crush_festival.js`：v97新增，开机率春节扰动期
+- v97：移除`test_export_inspections_display.js`及`test_fetch_data.py`里8个出口检验测试；顶部拆开后`test_systems.js`的命名守卫改写为v97(基本面预警+市场结构卡)

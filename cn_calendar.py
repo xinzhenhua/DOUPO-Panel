@@ -149,6 +149,22 @@ def holiday_window(d, before=HOLIDAY_WINDOW_BEFORE, after=HOLIDAY_WINDOW_AFTER):
     return None
 
 
+# ★油厂开机率的春节停机扰动窗口：节前7天 ~ 节后14天，只对春节生效(国庆油厂不停机)。
+#   依据(用户2026-10-02采样的真实开机率，2024-12~2026-09)：
+#     春节2025-01-29：节前20天57、节前15天69、节前7天55、节前3天10、节后9天37、节后20天61 → 节前约7天开始掉，节后约14天回到常态
+#     春节2026-02-17：节前13天67、节前6天43、节后7天15、节后10天40、节后14天54、节后24天55 → 同样
+#     国庆2025-10-01：节前6天60、节后12天60，基线63% → 没有扰动，所以不处理
+#   不处理的后果：节日停机时读数掉到10~40%，规则"<40偏多"会把放假误判成供应紧(2026-02-24 15.46%、2025-01-26 9.80%都是真实数据)。
+CRUSH_FESTIVAL_BEFORE = 7
+CRUSH_FESTIVAL_AFTER = 14
+
+
+def crush_festival_window(d):
+    """日期d是否在油厂开机率的春节停机扰动窗口内(节前7天~节后14天)。只认春节；返回None或同holiday_window的字典。"""
+    w = holiday_window(d, before=CRUSH_FESTIVAL_BEFORE, after=CRUSH_FESTIVAL_AFTER)
+    return w if w and w["name"] == "春节" else None
+
+
 def festival_cohort(d):
     """'YYYY-MM'(或'YYYY-MM-DD')所在月的类别：'春节扰动月'/'国庆扰动月'/'平常月'。用于按同类月份比较历史分位。"""
     try:

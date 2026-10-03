@@ -89,7 +89,7 @@ check('★库消比没有数据：退回库存+开机率(库存偏多60%→偏�
 neutralBase(); makeEl('m_stu').value='9'; window._indState.stu = {stale:true, mode:'auto'}; updateOverallAlert();
 check('★库消比数据过期：同样退回1票', !cell()[2]);
 neutralBase(); makeEl('m_stu').value='9'; makeEl('m_crush').value='70'; window._psdSignal=1; updateOverallAlert();
-check('票权×2时净倾向按有效票权算：库消比9%偏多(组内库消比50+开机率偏空30→(50-30)/100=0.2中性)+美豆库消比偏多 → +1÷10.5(2月作物票在背景档×0.5，总票权=10.5)=+9.5%→四舍五入+10%', html().includes('信号混合 +1（净倾向+10%）'));
+check('票权×2时净倾向按有效票权算：库消比9%偏多(组内库消比50+开机率偏空30→(50-30)/100=0.2中性)+美豆库消比偏多 → +1÷9.5(2月作物票在背景档×0.5；原总票权10.5里1票是中性基差=结构票，v97起不计入顶部，总票权=9.5)=+10.526%→四舍五入+11%', html().includes('信号混合 +1（净倾向+11%）'));
 
 // ===================== 3. historyBlock：样本不连续 + 同类月份分位 =====================
 const hist = (o)=>Object.assign({n:60, minPoints:12, asOf:'2026-09', since:'2021-09', percentile:88.3, min:5.94, max:16.3, median:12.45, seasonal:null, cohort:null, sparse:null}, o||{});
