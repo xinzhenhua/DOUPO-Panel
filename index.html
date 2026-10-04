@@ -135,227 +135,6 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 .loading{text-align:center;padding:20px;color:var(--t3);font-size:11px}
 .divider{height:1px;background:var(--bdr);margin:10px 0}
 .stars{color:var(--gold);font-size:10px}
-
-/* ===================== Bloomberg / Trading Terminal 首屏 ===================== */
-:root{
-  --cockpit-max:1560px;
-  --term-bg:#050505;
-  --term-panel:#090909;
-  --term-panel2:#0d0d0d;
-  --term-line:#242424;
-  --term-line2:#181818;
-  --term-text:#e7e7e7;
-  --term-muted:#6c6c6c;
-  --term-soft:#a0a0a0;
-}
-body{background:var(--term-bg)}
-.topbar{
-  padding:7px 18px;
-  min-height:34px;
-  border-bottom:1px solid var(--term-line);
-  display:flex;align-items:center;justify-content:space-between;gap:14px;
-  background:#030303
-}
-.topbar h1{font-size:13px;letter-spacing:.4px;font-weight:900;text-transform:uppercase}
-.topbar h1 span{margin-left:2px}
-.topbar .sub{font-size:9px;color:#5d5d5d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw}
-.main{max-width:var(--cockpit-max);padding:8px 12px 34px}
-.cockpit{
-  display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:1px;
-  border:1px solid var(--term-line);background:var(--term-line);
-  align-items:stretch;margin-bottom:7px
-}
-.cockpit-main,.cockpit-side{background:var(--term-panel);border:0;border-radius:0}
-.cockpit-main{padding:0}
-.cockpit-side{padding:0}
-.cockpit-head{
-  height:43px;padding:0 13px;display:flex;justify-content:space-between;align-items:center;gap:12px;
-  border-bottom:1px solid var(--term-line);background:#080808
-}
-.cockpit-kicker{font-size:9px;color:#777;letter-spacing:1.1px;text-transform:uppercase}
-.cockpit-title{font-size:13px;font-weight:900;color:#eee;margin-top:1px}
-.cockpit-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-.cockpit-contract{font-size:9px;font-weight:800;color:#cfcfcf;background:#0d0d0d;border:1px solid #303030;border-radius:2px;padding:4px 7px;text-transform:uppercase;letter-spacing:.4px}
-.cockpit-contract.auto{color:#9bd9bd;border-color:#24533f;background:#07110d}
-.cockpit-state{
-  border:0;border-bottom:1px solid var(--term-line);border-radius:0;padding:17px 18px 15px;margin:0;
-  display:grid;grid-template-columns:minmax(260px,.92fr) minmax(360px,1.08fr);gap:28px;min-height:148px
-}
-.cockpit-verdict{display:flex;flex-direction:column;justify-content:center;min-height:112px}
-.cockpit-verdict .label{font-size:9px;color:#5f5f5f;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}
-.cockpit-verdict .big{font-size:34px;font-weight:950;letter-spacing:-1.4px;line-height:1.05}
-.cockpit-verdict .big.bull{color:var(--r)} .cockpit-verdict .big.bear{color:var(--g)} .cockpit-verdict .big.neutral{color:#ddd}
-.cockpit-verdict .subline{font-size:10px;color:#777;margin-top:9px;line-height:1.45}
-.cockpit-bars{display:flex;flex-direction:column;justify-content:center;gap:12px;padding-right:4px}
-.cbar{display:grid;grid-template-columns:66px 1fr 50px;align-items:center;gap:8px;font-size:9px;color:#777}
-.cbar-track{height:8px;background:#171717;border:1px solid #292929;border-radius:0;position:relative;overflow:hidden}
-.cbar-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#505050;z-index:2}
-.cbar-fill{position:absolute;top:0;bottom:0;border-radius:0}
-.cbar-fill.bull{background:var(--r)} .cbar-fill.bear{background:var(--g)} .cbar-fill.neutral{background:#666}
-.cbar-val{text-align:right;font-weight:900;color:#aaa;font-variant-numeric:tabular-nums}
-.cockpit-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--term-line)}
-.ckpi{background:#090909;border:0;border-radius:0;padding:9px 11px;min-width:0;min-height:58px}
-.ckpi .k{font-size:8px;color:#5f5f5f;margin-bottom:5px;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
-.ckpi .v{font-size:14px;font-weight:900;color:#e6e6e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.ckpi .s{font-size:8px;color:#5d5d5d;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ckpi.bull .v{color:var(--r)} .ckpi.bear .v{color:var(--g)} .ckpi.warn .v{color:var(--gold)}
-.cockpit-side-title{height:43px;padding:0 12px;display:flex;align-items:center;font-size:9px;color:#777;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--term-line)}
-.cockpit-focus{display:grid;gap:0}
-.focus-row{display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:start;padding:11px 12px;border-bottom:1px solid var(--term-line2)}
-.focus-row:last-child{border-bottom:0}
-.focus-key{width:auto;flex:none;font-size:8px;color:#555;text-transform:uppercase;letter-spacing:.6px}
-.focus-val{font-size:10px;color:#bdbdbd;line-height:1.45}
-.focus-val b{color:#eee}.focus-val .bull{color:var(--r)}.focus-val .bear{color:var(--g)}.focus-val .warn{color:var(--gold)}
-.cockpit-action{margin:0;border:0;border-top:1px solid var(--term-line);background:#0b0b0b;border-radius:0;padding:11px 12px;font-size:9px;color:#888;line-height:1.5}
-.contract-control{margin:0 0 6px}
-.contract-control>summary{list-style:none;cursor:pointer;text-align:right;color:#4f4f4f;font-size:9px;padding:2px 1px;letter-spacing:.2px}
-.contract-control>summary::-webkit-details-marker{display:none}
-.contract-control>summary:hover{color:#999}
-.contract-control .contract-tabs{margin-top:4px;max-width:500px;margin-left:auto}
-.contract-control .contract-tab{min-height:32px;padding:6px 4px;font-size:10px;opacity:.68;border-radius:0}
-.contract-control .contract-tab.active{opacity:1}
-.secondary-panel{margin-top:8px}
-.secondary-panel>summary{list-style:none;cursor:pointer;background:#080808;border:1px solid var(--term-line);border-radius:0;padding:9px 11px;color:#777;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:space-between;letter-spacing:.2px}
-.secondary-panel>summary::-webkit-details-marker{display:none}
-.secondary-panel>summary::after{content:'展开';color:#4e4e4e;font-weight:500}
-.secondary-panel[open]>summary{border-radius:0}
-.secondary-panel[open]>summary::after{content:'收起'}
-.secondary-content{padding-top:7px}
-.secondary-content>.stitle:first-child{margin-top:0}
-.data-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.data-grid-2>.card,.data-grid-2>.stitle{margin:0}
-.compact-note{display:none!important}
-#decisionCard{border-color:#262626!important;border-radius:0!important}
-#decisionCard .card-title{font-size:11px}
-#decisionCard .card-title span{display:none}
-#decisionSummary{display:none}
-#decisionCard .dc-sec:first-of-type{margin-top:0}
-#decisionCard .dc-sec{background:#080808;border-radius:0;padding:0 8px 5px}
-#decisionCard .dc-sec>summary{padding:7px 0}
-#decisionCard .dc-sec[open]>summary{border-bottom:1px solid #202020;margin-bottom:5px}
-#tradingWindowInfo{display:none}
-#contractContext{display:none}
-.badge{border-radius:2px!important;font-size:8px!important;padding:3px 6px!important;letter-spacing:.2px}
-@media(max-width:1100px){
-  .cockpit{grid-template-columns:minmax(0,1fr) 290px}
-  .cockpit-state{grid-template-columns:minmax(220px,.8fr) minmax(300px,1.2fr);gap:18px}
-}
-@media(max-width:900px){
-  .cockpit{grid-template-columns:1fr}
-  .cockpit-side{min-height:0}
-  .cockpit-state{grid-template-columns:1fr}
-  .cockpit-verdict{min-height:80px}
-  .main{padding:10px 12px 32px}
-}
-@media(max-width:600px){
-  .topbar{padding:7px 10px}
-  .topbar h1{font-size:11px}
-  .topbar .sub{display:none}
-  .cockpit{margin-bottom:6px}
-  .cockpit-head{height:38px;padding:0 9px}
-  .cockpit-title{font-size:11px}
-  .cockpit-kicker{font-size:8px}
-  .cockpit-state{padding:13px 11px;gap:10px;margin:0}
-  .cockpit-verdict .big{font-size:25px}
-  .cockpit-bars{gap:9px}
-  .cockpit-kpis{grid-template-columns:repeat(2,1fr)}
-  .ckpi{padding:8px 9px;min-height:52px}
-  .ckpi .v{font-size:13px}
-  .cockpit-side{display:none}
-  .contract-control>summary{text-align:left;padding:5px 0}
-  .contract-control .contract-tabs{gap:4px}
-  .contract-control .contract-tab{font-size:10px;min-height:34px}
-  .secondary-panel>summary{font-size:9px;padding:9px}
-  .secondary-content .grid2,.data-grid-2{grid-template-columns:1fr}
-  .stitle{padding:10px 0 6px}
-  .card{padding:10px;margin-bottom:6px}
-}
-
-
-/* vNext.2 — signal matrix: reuse existing directions; no new scoring model */
-.signal-matrix{border-top:1px solid var(--term-line);background:#080808}
-.sm-head,.sm-row{display:grid;grid-template-columns:1.15fr .8fr .95fr 1.25fr;align-items:center;column-gap:8px}
-.sm-head{height:20px;padding:0 12px;color:#474747;font-size:7px;letter-spacing:.8px;border-bottom:1px solid var(--term-line2)}
-.sm-row{min-height:26px;padding:0 12px;border-bottom:1px solid var(--term-line2);font-size:8px}
-.sm-row:last-child{border-bottom:0}
-.sm-name{color:#737373;letter-spacing:.45px;font-weight:700}
-.sm-signal{font-size:10px;color:#d0d0d0;font-weight:900}
-.sm-signal.bull{color:var(--r)} .sm-signal.bear{color:var(--g)} .sm-signal.warn{color:var(--gold)} .sm-signal.neutral{color:#777}
-.sm-role,.sm-rel{color:#686868;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sm-rel{color:#aaa}
-.sm-row.conflict{background:#0d0904}.sm-row.conflict .sm-rel{color:var(--gold);font-weight:800}
-@media(max-width:600px){
- .signal-matrix{margin-top:0}
- .sm-head,.sm-row{grid-template-columns:1.2fr .8fr 1fr 1fr;padding-left:10px;padding-right:10px;column-gap:5px}
- .sm-head{font-size:6px}.sm-row{min-height:25px;font-size:7px}.sm-signal{font-size:9px}
-}
-
-.market-tape{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:1px;background:var(--term-line);border:1px solid var(--term-line);border-bottom:0}
-.market-tape span{background:#070707;padding:5px 8px;min-width:0;font-size:8px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.market-tape b{font-size:7px;letter-spacing:.7px;color:#444;margin-right:5px}
-.market-tape i{font-style:normal;color:#bdbdbd;font-weight:800}
-.market-tape span:first-child i{color:#ddd}
-@media(max-width:600px){.market-tape{grid-template-columns:repeat(2,1fr)}.market-tape span{padding:4px 7px}}
-
-/* vNext.1 — terminal density / market tape */
-.cockpit{grid-template-columns:minmax(0,1fr) 300px;gap:0;margin-bottom:5px}
-.cockpit-main{min-width:0}
-.cockpit-head{height:34px;padding:0 10px}
-.cockpit-kicker{font-size:8px;letter-spacing:1.25px}
-.cockpit-title{font-size:11px;letter-spacing:.35px}
-.cockpit-contract{padding:3px 6px;font-size:8px}
-.cockpit-state{grid-template-columns:minmax(270px,.82fr) minmax(420px,1.18fr);gap:20px;padding:11px 12px 10px;min-height:116px}
-.cockpit-verdict{min-height:92px}
-.cockpit-verdict .label{font-size:8px;margin-bottom:5px;letter-spacing:1.15px}
-.cockpit-verdict .big{font-size:29px;letter-spacing:-1px}
-.cockpit-verdict .subline{font-size:9px;margin-top:6px;line-height:1.3}
-.cockpit-bars{gap:7px;padding-right:0}
-.cbar{grid-template-columns:72px 1fr 43px;gap:7px;font-size:8px}
-.cbar-track{height:7px}
-.cockpit-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
-.ckpi{padding:7px 9px;min-height:49px}
-.ckpi .k{font-size:7px;margin-bottom:3px;letter-spacing:.65px}
-.ckpi .v{font-size:12px}
-.ckpi .s{font-size:7px;margin-top:2px}
-.cockpit-side-title{height:34px;padding:0 9px;font-size:8px}
-.focus-row{grid-template-columns:57px 1fr;gap:7px;padding:8px 9px}
-.focus-key{font-size:7px}
-.focus-val{font-size:9px;line-height:1.3}
-.cockpit-action{padding:8px 9px;font-size:8px;line-height:1.35}
-.contract-control{margin-bottom:4px}
-.secondary-panel{margin-top:5px}
-@media(max-width:1100px){
- .cockpit{grid-template-columns:minmax(0,1fr) 270px}
- .cockpit-state{grid-template-columns:minmax(230px,.8fr) minmax(300px,1.2fr);gap:14px}
-}
-@media(max-width:900px){
- .cockpit{grid-template-columns:1fr}
- .cockpit-state{grid-template-columns:1fr;gap:8px;padding:10px}
- .cockpit-verdict{min-height:70px}
- .cockpit-side{display:none}
-}
-@media(max-width:600px){
- .main{padding:5px 7px 28px}
- .cockpit-head{height:33px;padding:0 8px}
- .cockpit-title{font-size:10px}
- .cockpit-state{padding:10px 9px 9px}
- .cockpit-verdict .big{font-size:23px}
- .cockpit-bars{gap:6px}
- .cockpit-kpis{grid-template-columns:repeat(2,1fr)}
- .ckpi{padding:7px 8px;min-height:47px}
-}
-
-/* vNext.3 — 中文紧凑决策区：取消大面积留白 */
-.cockpit-state{min-height:0!important;grid-template-columns:240px minmax(0,1fr)!important;gap:18px!important;padding:9px 12px 8px!important}
-.cockpit-verdict{min-height:72px!important}
-.cockpit-verdict .big{font-size:27px!important}
-.cockpit-verdict .subline{font-size:8px!important;margin-top:4px!important}
-.cockpit-bars{gap:6px!important}
-.signal-matrix{border-top:1px solid var(--term-line);}
-.sm-head,.sm-row{grid-template-columns:1.05fr .72fr .85fr 1.35fr!important}
-.sm-head{height:18px!important}
-.sm-row{min-height:24px!important}
-@media(max-width:800px){.cockpit-state{grid-template-columns:1fr!important;gap:7px!important}.cockpit-verdict{min-height:58px!important}.cockpit-verdict .big{font-size:25px!important}.cockpit-bars{gap:5px!important}}
 </style>
 <!-- TradingView Lightweight Charts：专门为K线图设计的免费开源库(Apache 2.0)，35KB，
      内置缩放/平移/十字光标数据提示，比手写SVG更适合K线这种需要交互的场景 -->
@@ -368,113 +147,48 @@ body{background:var(--term-bg)}
 </div>
 <div class="main" id="mainContent">
 
-
-<!-- ===================== Bloomberg / Trading Terminal 首屏 ===================== -->
-<div class="cockpit" aria-label="豆粕交易驾驶舱">
-<div class="market-tape" aria-label="终端状态带">
-  <span><b>判断</b> <i id="tapeDecision">—</i></span>
-  <span><b>合约</b> <i id="tapeContract">—</i></span>
-  <span><b>方向</b> <i id="tapeBias">—</i></span>
-  <span><b>数据</b> <i id="tapeData">—</i></span>
+<!-- ============ 合约切换：不同月份合约关注重点不同（放最顶端，先选合约再看预警）============ -->
+<div class="contract-tabs">
+  <button class="contract-tab" id="tab-sep" onclick="selectContract('sep')">9月合约<span class="ctab-sub" id="ctab-sub-sep">北美生长关键期</span></button>
+  <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub" id="ctab-sub-may">南美收获期</span></button>
+  <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub" id="ctab-sub-jan">美豆收获期</span></button>
 </div>
-  <section class="cockpit-main">
-    <div class="cockpit-head">
-      <div>
-        <div class="cockpit-kicker">豆粕 · 交易决策终端</div>
-        <div class="cockpit-title">市场状态</div>
-      </div>
-      <div class="cockpit-meta">
-        <span class="cockpit-contract auto" id="cockpitContract">自动合约 · 计算中</span>
-        <span class="badge" id="cockpitHealth">数据检查</span>
-      </div>
-    </div>
-    <div class="cockpit-state">
-      <div class="cockpit-verdict">
-        <div class="label">核心交易判断</div>
-        <div class="big neutral" id="cockpitVerdict">数据加载中</div>
-        <div class="subline" id="cockpitVerdictSub">供需 · 结构 · 技术 · 资金</div>
-      </div>
-      <div class="cockpit-bars" id="cockpitBars">
-        <div class="cbar"><span>基本面</span><div class="cbar-track"><i class="cbar-mid"></i><i class="cbar-fill neutral" style="left:50%;width:0"></i></div><b class="cbar-val">—</b></div>
-        <div class="cbar"><span>市场结构</span><div class="cbar-track"><i class="cbar-mid"></i><i class="cbar-fill neutral" style="left:50%;width:0"></i></div><b class="cbar-val">—</b></div>
-        <div class="cbar"><span>技术面</span><div class="cbar-track"><i class="cbar-mid"></i><i class="cbar-fill neutral" style="left:50%;width:0"></i></div><b class="cbar-val">—</b></div>
-      </div>
-    </div>
-    <div class="signal-matrix" id="signalMatrix" aria-label="系统信号矩阵">
-      <div class="sm-head"><span>系统</span><span>信号</span><span>作用</span><span>关系</span></div>
-      <div class="sm-row" data-system="fund"><span class="sm-name">基本面</span><b class="sm-signal neutral">—</b><span class="sm-role">供需锚</span><span class="sm-rel">—</span></div>
-      <div class="sm-row" data-system="struct"><span class="sm-name">市场结构</span><b class="sm-signal neutral">—</b><span class="sm-role">定价确认</span><span class="sm-rel">—</span></div>
-      <div class="sm-row" data-system="tech"><span class="sm-name">技术面</span><b class="sm-signal neutral">—</b><span class="sm-role">交易节奏</span><span class="sm-rel">—</span></div>
-      <div class="sm-row" data-system="capital"><span class="sm-name">资金 / 外资</span><b class="sm-signal neutral">—</b><span class="sm-role">资金确认</span><span class="sm-rel">—</span></div>
-    </div>
-    <div class="cockpit-kpis">
-      <div class="ckpi" id="ckpiFund"><div class="k">供需状态</div><div class="v" id="ckFund">—</div><div class="s" id="ckFundSub">有效票等待中</div></div>
-      <div class="ckpi" id="ckpiStruct"><div class="k">市场结构</div><div class="v" id="ckStruct">—</div><div class="s">基差 / 月差 / 量价</div></div>
-      <div class="ckpi" id="ckpiTech"><div class="k">技术面</div><div class="v" id="ckTech">—</div><div class="s">K线 / 动量</div></div>
-      <div class="ckpi" id="ckpiCapital"><div class="k">资金 / 外资</div><div class="v" id="ckCapital">—</div><div class="s">持仓 / 外资</div></div>
-    </div>
-  </section>
-  <aside class="cockpit-side">
-    <div class="cockpit-side-title">决策优先级</div>
-    <div class="cockpit-focus">
-      <div class="focus-row"><span class="focus-key">主导驱动</span><span class="focus-val" id="ckDrivers">等待有效数据</span></div>
-      <div class="focus-row"><span class="focus-key">信号冲突</span><span class="focus-val" id="ckDivergence">等待市场结构确认</span></div>
-      <div class="focus-row"><span class="focus-key">下一事件</span><span class="focus-val" id="ckEvent">读取未来事件</span></div>
-      <div class="focus-row"><span class="focus-key">数据健康</span><span class="focus-val" id="ckHealth">检查同步与指标质量</span></div>
-    </div>
-    <div class="cockpit-action" id="ckAction">首屏：方向 · 确认 · 冲突 · 事件</div>
-  </aside>
+<div id="tradingWindowInfo"></div>
+<div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
+
+<!-- ============ 决策卡(v99)：原来分散的 事件日历 / 三方共振 / 基本面预警 / 市场结构 / 数据健康度 合成一张 ============
+     顶部"摘要"一屏读完(基本面方向+置信度 / 三方关系 / 主导驱动 / 需留意 / 未来事件 / 数据健康)，只读已有的计算结果，不做新的评分；
+     下面五个折叠区块是依据——内容容器沿用原来的id(alertContent/structureContent/resonanceContent/eventCalendarContent/healthContent)，
+     所以各渲染函数不用改。休市/报告时间直接影响能不能交易、会不会跳空，所以"未来事件"在摘要里也有一行。 -->
+<div class="card" id="decisionCard" style="border-color:var(--gold)">
+  <div class="card-head">
+    <div class="card-title">🎯 决策卡<span style="font-size:9px;color:var(--t3);font-weight:400">· 只描述状态，不是买卖信号</span></div>
+    <span class="badge" id="healthBadge">检查中...</span>
+  </div>
+  <div id="decisionSummary" class="loading">等待数据...</div>
+
+  <details class="dc-sec" open>
+    <summary>📊 基本面预警<span class="dc-sub">仅供需(供给端+需求端)，不含基差/月差/量价</span></summary>
+    <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🧭 市场结构<span class="dc-sub">基差/月差/量价：来自价格本身，跟技术面同源，不是独立于价格的证据</span></summary>
+    <div id="structureContent" class="loading">等待数据...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🔀 技术面 × 基本面 × 外资动向<span class="dc-sub">三方关系</span></summary>
+    <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>📅 近期事件与休市<span class="dc-sub">未来14天 · 北京时间</span></summary>
+    <div id="eventCalendarContent" class="loading">正在生成...</div>
+  </details>
+  <details class="dc-sec">
+    <summary>🩺 数据健康度<span class="dc-sub">哪些指标不可用/降权、哪些投票缺席、每小时同步是否还活着</span></summary>
+    <div id="healthContent" class="loading">正在检查...</div>
+  </details>
 </div>
 
-<details class="contract-control">
-  <summary>合约：<span id="contractControlLabel">自动跟随当前交易窗口</span> · 手动查看 ▸</summary>
-  <div class="contract-tabs">
-    <button class="contract-tab" id="tab-sep" onclick="selectContract('sep')">9月合约<span class="ctab-sub" id="ctab-sub-sep">北美生长关键期</span></button>
-    <button class="contract-tab" id="tab-may" onclick="selectContract('may')">5月合约<span class="ctab-sub" id="ctab-sub-may">南美收获期</span></button>
-    <button class="contract-tab" id="tab-jan" onclick="selectContract('jan')">1月合约<span class="ctab-sub" id="ctab-sub-jan">美豆收获期</span></button>
-  </div>
-</details>
-
-<!-- 兼容现有计算逻辑：原决策卡保留为“依据/审计层”，不再抢首屏 -->
-<details class="secondary-panel">
-  <summary>决策依据与风险审计 <span>基本面 · 市场结构 · 三方共振 · 事件 · 数据健康</span></summary>
-  <div class="secondary-content">
-    <div id="tradingWindowInfo"></div>
-    <div class="card" id="contractContext" style="font-size:11px;color:var(--t2);line-height:1.7"></div>
-    <div class="card" id="decisionCard" style="border-color:var(--gold)">
-      <div class="card-head">
-        <div class="card-title">决策依据<span style="font-size:9px;color:var(--t3);font-weight:400">· 首屏只显示结论，这里保留完整证据链</span></div>
-        <span class="badge" id="healthBadge">检查中...</span>
-      </div>
-      <div id="decisionSummary" class="loading">等待数据...</div>
-      <details class="dc-sec" open>
-        <summary>📊 基本面预警<span class="dc-sub">仅供需(供给端+需求端)，不含基差/月差/量价</span></summary>
-        <div id="alertContent" class="loading">请至少填写部分手动数据以生成预警...</div>
-      </details>
-      <details class="dc-sec">
-        <summary>🧭 市场结构<span class="dc-sub">基差/月差/量价：来自价格本身</span></summary>
-        <div id="structureContent" class="loading">等待数据...</div>
-      </details>
-      <details class="dc-sec">
-        <summary>🔀 技术面 × 基本面 × 外资动向<span class="dc-sub">三方关系</span></summary>
-        <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
-      </details>
-      <details class="dc-sec">
-        <summary>📅 近期事件与休市<span class="dc-sub">未来14天 · 北京时间</span></summary>
-        <div id="eventCalendarContent" class="loading">正在生成...</div>
-      </details>
-      <details class="dc-sec">
-        <summary>🩺 数据健康度<span class="dc-sub">同步、不可用、降权、缺席投票</span></summary>
-        <div id="healthContent" class="loading">正在检查...</div>
-      </details>
-    </div>
-  </div>
-</details>
-
-<!-- 全部监测数据：默认折叠。功能完整保留，首屏不再重复叙事 -->
-<details class="secondary-panel" id="allDataPanel">
-  <summary>全部监测数据 <span>天气 · USDA · 国内供需 · 技术 · 资金 · 价差 · 自动抓取</span></summary>
-  <div class="secondary-content">
 <!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
 <div class="contract-group" id="group-us-weather">
 <div class="stitle">🌦️ 美国主产区天气监测</div>
@@ -674,9 +388,6 @@ body{background:var(--term-bg)}
   <div id="vpContent" class="loading">正在读取同步数据...</div>
 </div>
 
-
-  </div>
-</details>
 </div><!-- /main -->
 <script>
 // ===================== 天气板块：Open-Meteo 实时抓取 =====================
@@ -1120,7 +831,7 @@ const AUTO_INDICATORS = [
      }
      lines.push(`数据日期${d.date}(调查周五截止，当天傍晚发布)；样本：50家饲料企业`);
      let holidayDiscount = '';
-     const hs = d.history, sOK = !!(hs && hs.seasonal && hs.seasonal.percentile != null && hs.seasonal.n >= FEED_信号.minSeasonalN);
+     const hs = d.history, sOK = !!(hs && hs.seasonal && hs.seasonal.percentile != null && hs.seasonal.n >= FEED_SIGNAL.minSeasonalN);
      if(hs){
        lines.push(`历史分位：往年同月 ${sOK ? `<b>${hs.seasonal.percentile}%</b>(第${hs.seasonal.month}月，${hs.seasonal.n}个样本，中位${hs.seasonal.median}天)——<b>用于计分</b>` : '样本不足'}；全部历史 ${hs.percentile==null?'--':hs.percentile+'%'}——只展示、不计分(季节性很强：1月中位10.1天、5月6.7天，全部历史的分位几乎总在两端，没有信息量)`);
      }
@@ -2599,7 +2310,7 @@ function computeKDJ(bars, period=9, kSmooth=3, dSmooth=3){
 }
 
 // ===================== 合约切换：不同月份合约关注重点不同 =====================
-const 合约_CONTEXT = {
+const CONTRACT_CONTEXT = {
   sep: {
     label: '9月合约',
     text: '💡 <b>9月合约</b>对应美豆生长关键期(6-8月开花结荚)，天气是最主要的行情驱动。当前页面默认配置就是围绕这个窗口期设计的——美国12州天气/干旱监测/NOAA展望/美豆优良率这几项权重最大。仪表盘按美国天气类综合信号计算。',
@@ -2626,7 +2337,7 @@ const 合约_CONTEXT = {
 };
 const MONTH_CN = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 
-/** 根据"现在"是几月，自动判断该默认显示哪个合约——直接复用合约_CONTEXT里
+/** 根据"现在"是几月，自动判断该默认显示哪个合约——直接复用CONTRACT_CONTEXT里
  *  已经定义好的recommendedMonths，不重新定义一套判断规则。逐月核对过：
  *  三个合约的recommendedMonths加起来正好覆盖全年12个月，不重不漏，
  *  所以任何月份都能唯一命中一个合约，不需要对谨慎/避开月份做特殊处理。*/
@@ -2634,7 +2345,7 @@ function getDefaultContractByDate(now){
   now = now || new Date();
   const nowMonth = now.getMonth()+1;
   for(const key of ['sep','may','jan']){
-    if(合约_CONTEXT[key].recommendedMonths.includes(nowMonth)) return key;
+    if(CONTRACT_CONTEXT[key].recommendedMonths.includes(nowMonth)) return key;
   }
   return 'sep'; // 理论上不会走到这里(12个月都被覆盖了)，纯防御性兜底
 }
@@ -2706,17 +2417,17 @@ function renderTradingWindow(ctx){
 /** 每个合约要隐藏哪些板块。1月合约8-9月例外：美豆仍在灌浆收尾/刚开始收获，美国天气类综合信号计入评分，
  *  对应的美国天气板块也就不能藏起来(否则评分里有一票用户看不到依据)。*/
 function contractHiddenGroups(month){
-  const ctx = 合约_CONTEXT[month];
+  const ctx = CONTRACT_CONTEXT[month];
   const nowMonth = new Date().getMonth()+1;
   if(month==='jan' && (nowMonth===8 || nowMonth===9)) return ctx.hide.filter(g=>g!=='group-us-weather');
   return ctx.hide;
 }
-window._contractRecommended = {sep: 合约_CONTEXT.sep.recommendedMonths, may: 合约_CONTEXT.may.recommendedMonths, jan: 合约_CONTEXT.jan.recommendedMonths};   // 每天记录方向时标"是否在该合约的推荐交易窗口内"
+window._contractRecommended = {sep: CONTRACT_CONTEXT.sep.recommendedMonths, may: CONTRACT_CONTEXT.may.recommendedMonths, jan: CONTRACT_CONTEXT.jan.recommendedMonths};   // 每天记录方向时标"是否在该合约的推荐交易窗口内"
 function selectContract(month){
   ['sep','may','jan'].forEach(m=>{
     document.getElementById('tab-'+m).classList.toggle('active', m===month);
   });
-  const ctx = 合约_CONTEXT[month];
+  const ctx = CONTRACT_CONTEXT[month];
   document.getElementById('contractContext').innerHTML = ctx.text;
   document.getElementById('tradingWindowInfo').innerHTML = renderTradingWindow(ctx);
   document.getElementById('esrPsdContractNote').innerHTML = ctx.esrPsdNote;
@@ -2730,7 +2441,6 @@ function selectContract(month){
   refreshTermSpreadForContract(month); // 月差同理
   refreshVolumePriceForContract(month); // 量价关系同理
   updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
-  updateCockpit();
 }
 
 // ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
@@ -2838,12 +2548,12 @@ function fmtTime(iso){
 //   历史数据先清洗：剔除2018-19美国政府停摆期间的不可靠周、市场年度切换周(每年8/31~9/6，含上年度结转的销售，虚高)用相邻两周均值代替。
 //   没有历史样本(seasonal.n不足)、或最新一周本身就是切换周时不判方向，只展示数据。
 //   ⚠️局限：中国近年缺席美豆市场，跟12年历史比整体偏低，分位偏低反映的是"相对历史需求弱"，不是短期变化。
-const ESR_信号 = {hi:80, lo:20, minSeasonalN:20};
+const ESR_SIGNAL = {hi:80, lo:20, minSeasonalN:20};
 function esrSignalFrom(esr){
   if(!esr || esr.latestIsRollover) return null;
   const s = esr.history && esr.history.seasonal;
-  if(!s || s.percentile==null || s.n < ESR_信号.minSeasonalN) return null;
-  return s.percentile >= ESR_信号.hi ? 1 : s.percentile <= ESR_信号.lo ? -1 : 0;
+  if(!s || s.percentile==null || s.n < ESR_SIGNAL.minSeasonalN) return null;
+  return s.percentile >= ESR_SIGNAL.hi ? 1 : s.percentile <= ESR_SIGNAL.lo ? -1 : 0;
 }
 function renderEsr(esr, genAt){
   const badge = document.getElementById('esrBadge');
@@ -2901,7 +2611,7 @@ function renderEsr(esr, genAt){
     ${esr.chinaMatched===false?`<div class="alert-box neutral"><span class="at">⚠️ 没有在数据里匹配到"中国"</span>国家名匹配是按名称里含"china"做的，可能接口里写法不同。接口里出现过的国家名：${(esr.countryNamesSeen||[]).slice(0,25).join('、')||'无'}</div>`:''}
     ${esr.history ? `<div class="ir"><div class="il">历史位置</div><div class="iv" style="font-size:10.5px;line-height:1.7">${historyBlock(esr.history, {unit:'吨', label:'历史分位', pol:1, dir:sig})}</div></div>` : ''}
     <div class="ir"><div class="il">本周装船量(已发货)</div><div class="iv">${fmt(esr.shipmentsMT)} 吨　<span style="color:var(--t3)">中国${fmt(esr.chinaShipmentsMT)}吨</span></div></div>
-    <div style="font-size:10px;color:var(--t3);margin-top:6px">净销售=当周新签的出口合同(买家的采购意愿)；装船量=已经发走的货，是滞后的执行结果，不混在一起看。<br>"未知目的地"不能直接当成中国：买家国家明确后，ESR是在那一周记一笔目的地变更(未知记负、具体国家记正)，历史周数不会回头修改，所以单周的中国数字忽小忽大，看近4周合计更稳。<b>中国采购量只展示、不参与打分</b>——中国买美豆对CBOT是利多，但3-5个月后到港会增加国内供给，对国内豆粕是利空，方向相反，所以不直接计分。<br>信号：近4周净销售合计在往年同月里的分位，≥${ESR_信号.hi}%偏多、≤${ESR_信号.lo}%偏空(暂定值；样本至少${ESR_信号.minSeasonalN}个)。历史里已剔除2018-19美国政府停摆期间的不可靠周，市场年度切换周(每年8/31~9/6，含上年度结转)用相邻两周均值代替。旧的"较前4周均值±40%"规则在12年历史上有一半的周会触发，且随季节剧烈波动，已弃用，上面的"较近4周均值"只作参考。数据来源：${esr.source}</div>
+    <div style="font-size:10px;color:var(--t3);margin-top:6px">净销售=当周新签的出口合同(买家的采购意愿)；装船量=已经发走的货，是滞后的执行结果，不混在一起看。<br>"未知目的地"不能直接当成中国：买家国家明确后，ESR是在那一周记一笔目的地变更(未知记负、具体国家记正)，历史周数不会回头修改，所以单周的中国数字忽小忽大，看近4周合计更稳。<b>中国采购量只展示、不参与打分</b>——中国买美豆对CBOT是利多，但3-5个月后到港会增加国内供给，对国内豆粕是利空，方向相反，所以不直接计分。<br>信号：近4周净销售合计在往年同月里的分位，≥${ESR_SIGNAL.hi}%偏多、≤${ESR_SIGNAL.lo}%偏空(暂定值；样本至少${ESR_SIGNAL.minSeasonalN}个)。历史里已剔除2018-19美国政府停摆期间的不可靠周，市场年度切换周(每年8/31~9/6，含上年度结转)用相邻两周均值代替。旧的"较前4周均值±40%"规则在12年历史上有一半的周会触发，且随季节剧烈波动，已弃用，上面的"较近4周均值"只作参考。数据来源：${esr.source}</div>
     </div></details>
     ${esrMismatchWarning}
   `;
@@ -3072,11 +2782,11 @@ function renderCftc(cftc, genAt){
 //   ★但榨利的**绝对数没有意义**：这里算的是毛利(豆粕×出粕率+豆油×出油率-豆二)，没扣加工费，几乎永远为正；
 //   旧规则"毛利>0就偏空"等于永远偏空，所以不能用。只能看"跟历史同期比"：同一合约类型、同一日历月、往年的分位。
 //   ≥80%偏空、≤20%偏多(暂定，跟出口销售一样)；同月样本至少20个才判；没有历史(还没回填/累积)时只显示、不计分。
-const CRUSH_信号 = {hi:80, lo:20, minSeasonalN:20};
+const CRUSH_SIGNAL = {hi:80, lo:20, minSeasonalN:20};
 function crushSignalFrom(margin){
   const s = margin && margin.history && margin.history.seasonal;
-  if(!s || s.percentile == null || s.n < CRUSH_信号.minSeasonalN) return null;
-  return s.percentile >= CRUSH_信号.hi ? -1 : s.percentile <= CRUSH_信号.lo ? 1 : 0;
+  if(!s || s.percentile == null || s.n < CRUSH_SIGNAL.minSeasonalN) return null;
+  return s.percentile >= CRUSH_SIGNAL.hi ? -1 : s.percentile <= CRUSH_SIGNAL.lo ? 1 : 0;
 }
 function renderCrushMargin(margin, genAt){
   const badge = document.getElementById('crushBadge');
@@ -3119,7 +2829,7 @@ function renderCrushMargin(margin, genAt){
     ${margin.history ? `<div style="font-size:10.5px;line-height:1.7;margin-top:6px">${historyBlock(margin.history, {unit:'元/吨', label:'历史分位(该合约建议交易窗口)', pol:-1, dir:sig})}</div>` : ''}
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       为什么看分位不看绝对数：这里是<b>毛利</b>(没扣加工费)，几乎永远为正，所以"毛利>0"不代表油厂赚钱、也不能据此判方向；只有跟历史同期比才知道油厂现在的压榨动力是强是弱。
-      ≥${CRUSH_信号.hi}%偏空、≤${CRUSH_信号.lo}%偏多(暂定值)，同月样本至少${CRUSH_信号.minSeasonalN}个才判。历史来自各合约建议交易窗口(9月合约4-7月、5月合约12-3月、1月合约8-11月)的逐日毛利。<br>
+      ≥${CRUSH_SIGNAL.hi}%偏空、≤${CRUSH_SIGNAL.lo}%偏多(暂定值)，同月样本至少${CRUSH_SIGNAL.minSeasonalN}个才判。历史来自各合约建议交易窗口(9月合约4-7月、5月合约12-3月、1月合约8-11月)的逐日毛利。<br>
       公式：豆粕×${(margin.yieldMeal*100).toFixed(1)}% + 豆油×${(margin.yieldOil*100).toFixed(1)}% − 豆二　(出粕率/出油率为大商所豆二交割置换官方标准)<br>数据日期：${margin.date || '未知'}${margin.datesAligned===false?'(三个合约的最新日期不一致，以最旧的为准)':''}　来源：${margin.source}
     </div>
     </div></details>
@@ -3133,11 +2843,11 @@ function renderCrushMargin(margin, genAt){
 //   所以只看"价差占近月价格的百分比"在往年同月里的分位(占比才能跨年比：不同年份价格水平不同)：
 //   ≥80%偏多(近月对远月的升水处于历史高位=近端偏紧)，≤20%偏空(远月升水比往年更深=近端宽松)；同月样本至少20个才判(暂定值)。
 //   跟基差同属"市场反馈"分组(两者都是盘面对近端供需的表态，相关性高，分组等权时不会重复放大)。
-const SPREAD_信号 = {hi:80, lo:20, minSeasonalN:20};
+const SPREAD_SIGNAL = {hi:80, lo:20, minSeasonalN:20};
 function spreadSignalFrom(sp){
   const s = sp && sp.history && sp.history.seasonal;
-  if(!s || s.percentile == null || s.n < SPREAD_信号.minSeasonalN) return null;
-  return s.percentile >= SPREAD_信号.hi ? 1 : s.percentile <= SPREAD_信号.lo ? -1 : 0;
+  if(!s || s.percentile == null || s.n < SPREAD_SIGNAL.minSeasonalN) return null;
+  return s.percentile >= SPREAD_SIGNAL.hi ? 1 : s.percentile <= SPREAD_SIGNAL.lo ? -1 : 0;
 }
 function renderTermSpread(sp, genAt){
   const badge = document.getElementById('spreadBadge');
@@ -3182,7 +2892,7 @@ function renderTermSpread(sp, genAt){
     <div style="font-size:10px;color:var(--t3);margin-top:6px">
       为什么看分位不看正负：粮食可以储存，远月升水(contango)是持有成本造成的正常状态，所以月差是正是负本身不是信号；只有跟历史同期比才知道近端是紧是松。
       用"占近月价格的百分比"而不是元/吨：不同年份价格水平不同(2500 vs 4000)，绝对价差没法跨年比。
-      ≥${SPREAD_信号.hi}%偏多、≤${SPREAD_信号.lo}%偏空(暂定值)，同月样本至少${SPREAD_信号.minSeasonalN}个才判。历史来自各合约建议交易窗口(9月合约4-7月、5月合约12-3月、1月合约8-11月)的逐日月差。<br>
+      ≥${SPREAD_SIGNAL.hi}%偏多、≤${SPREAD_SIGNAL.lo}%偏空(暂定值)，同月样本至少${SPREAD_SIGNAL.minSeasonalN}个才判。历史来自各合约建议交易窗口(9月合约4-7月、5月合约12-3月、1月合约8-11月)的逐日月差。<br>
       数据日期：${sp.date || '未知'}${sp.datesAligned===false?'(两个合约的最新日期不一致，以最旧的为准)':''}　来源：${sp.source}
     </div>
     </div></details>
@@ -3720,7 +3430,7 @@ const STU_THRESH = {tight:10, loose:16};
 // ★v96：信号改用"往年同月"分位，不再用"全部历史"分位。用户贴出的270周数据显示季节性极强(各月中位数：1月10.1天、5月6.7天、9月9.3天)，
 //   全部历史的分位会被1-2月春节峰和4-5月低谷主导、几乎总在两端，没有信息量(当前8.55天：全部历史59.7%=中性，往年同月13.0%=偏低)。
 //   交叉检验：水平调整后(÷过去52周中位数)同月分位5.6%、近3年同月23.1%、同比差分位25.7%——方向一致(偏低)，幅度取决于口径。同月样本至少12个(约3年)才判。
-const FEED_信号 = {hi:80, lo:20, minSeasonalN:12};
+const FEED_SIGNAL = {hi:80, lo:20, minSeasonalN:12};
 // 组内权重：库消比=库存÷消费，跟商业库存是同一数据的两种口径(库存是分子)，所以库存只给20，主要作兜底和一致性参考；
 // 库消比不可用时回到第1步的60/40(库存/开机率)。整组是主导档，投2票。
 const TIGHTNESS_WEIGHTS = {withStu:{stu:50, crush:30, stock:20}, withoutStu:{stock:60, crush:40}};
@@ -3771,14 +3481,14 @@ const MANUAL_RULES = {
   // 饲料企业豆粕库存天数：只看历史分位。历史不够(还没累积够/样本不连续)时返回[null,说明]——显示但不计分。
   feed: v => {
     const st = window._indState.feed || {}, h = st.history, sea = h && h.seasonal;
-    if(!sea || sea.percentile == null || sea.n < FEED_信号.minSeasonalN){
+    if(!sea || sea.percentile == null || sea.n < FEED_SIGNAL.minSeasonalN){
       const why = !h ? '还没有历史序列' : h.sparse ? h.sparse
-        : !sea ? `还没有往年同月的样本(需要≥${FEED_信号.minSeasonalN}个)` : `往年同月样本只有${sea.n}个(需要≥${FEED_信号.minSeasonalN}个)`;
+        : !sea ? `还没有往年同月的样本(需要≥${FEED_SIGNAL.minSeasonalN}个)` : `往年同月样本只有${sea.n}个(需要≥${FEED_SIGNAL.minSeasonalN}个)`;
       return [null, `饲料企业豆粕库存${v}天：${why}，暂不计分(不退回用全部历史分位：季节性太强，没有信息量)`];
     }
     const p = sea.percentile, span = `往年${sea.month}月${sea.n}个样本`;
-    return p >= FEED_信号.hi ? [-1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏高) → 饲料厂手里有货，近期补库需求弱，偏空`]
-         : p <= FEED_信号.lo ? [1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏低) → 饲料厂需要补库，采购需求偏强，偏多`]
+    return p >= FEED_SIGNAL.hi ? [-1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏高) → 饲料厂手里有货，近期补库需求弱，偏空`]
+         : p <= FEED_SIGNAL.lo ? [1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏低) → 饲料厂需要补库，采购需求偏强，偏多`]
          : [0, `饲料企业豆粕库存${v}天(${span}的${p}%分位，常态区间)`];
   },
   basis: v => v>0 ? [1, `正基差${v}→ 偏多`] : v<0 ? [-1, `负基差${v}→ 偏空`] : [0, `基差${v}（中性/持平）`],
@@ -4104,132 +3814,6 @@ function renderDecisionSummary(){
     rows += row('数据', `<span class="${syncCls}">${h.sync.icon} ${h.sync.label}</span>　<span class="${indCls}">${indIcon} 指标${indParts.length ? '：' + indParts.join('、') : '正常'}</span>`);
   }catch(e){ rows += row('数据', '<span style="color:var(--t3)">暂不可用</span>'); }
   el.innerHTML = marketStateHtml(ok, pure) + head + rows;
-  updateCockpit();
-}
-
-
-/* ===================== vNext 驾驶舱同步 ===================== */
-function cockpitDirectionClass(d){
-  return d==='偏多'?'bull':d==='偏空'?'bear':'neutral';
-}
-function cockpitBar(el, ratio){
-  if(!el) return;
-  const track=el.closest('.cbar-track'), val=el.parentElement.querySelector('.cbar-val');
-  if(ratio==null || isNaN(ratio)){ el.className='cbar-fill neutral'; el.style.left='50%'; el.style.width='0'; if(val) val.textContent='—'; return; }
-  const pct=Math.max(-100,Math.min(100,Math.round(ratio*100)));
-  const w=Math.abs(pct)/2;
-  el.className='cbar-fill '+(pct>0?'bull':pct<0?'bear':'neutral');
-  el.style.left=(pct>=0?'50%':(50-w)+'%'); el.style.width=w+'%';
-  if(val) val.textContent=(pct>0?'+':'')+pct+'%';
-}
-function cockpitSetKpi(id, value, dir, sub){
-  const el=document.getElementById(id); if(!el) return;
-  el.textContent=value||'—';
-  const card=el.closest('.ckpi'); card.classList.remove('bull','bear','warn');
-  if(dir==='偏多') card.classList.add('bull'); else if(dir==='偏空') card.classList.add('bear'); else if(dir==='预警') card.classList.add('warn');
-  if(sub){ const s=card.querySelector('.s'); if(s) s.textContent=sub; }
-}
-function updateSignalMatrix(fundDir, structDir, techDir, fa){
-  const rows=document.querySelectorAll('#signalMatrix .sm-row');
-  if(!rows.length) return;
-  const vals={fund:fundDir||null,struct:structDir||null,tech:techDir||null,capital:(fa&&fa.status==='active'?'偏多':fa&&fa.status==='quiet'?'中性':null)};
-  const labels={fund:'供需锚',struct:'定价确认',tech:'交易节奏',capital:'资金确认'};
-  const name=v=>v==='偏多'?'偏多':v==='偏空'?'偏空':v==='中性'?'中性':'—';
-  const cls=v=>v==='偏多'?'bull':v==='偏空'?'bear':v==='中性'?'neutral':'neutral';
-  rows.forEach(r=>{
-    const k=r.dataset.system, v=vals[k];
-    const sig=r.querySelector('.sm-signal'), rel=r.querySelector('.sm-rel'), role=r.querySelector('.sm-role');
-    if(role) role.textContent=labels[k];
-    if(sig){sig.textContent=name(v);sig.className='sm-signal '+cls(v)}
-    if(rel){rel.textContent='—';rel.className='sm-rel'}
-    r.classList.remove('conflict');
-  });
-  const conflict=fundDir&&structDir&&fundDir!=='中性'&&structDir!=='中性'&&fundDir!==structDir;
-  const sr=document.querySelector('#signalMatrix [data-system="struct"] .sm-rel');
-  const fr=document.querySelector('#signalMatrix [data-system="fund"] .sm-rel');
-  if(conflict){
-    if(fr) fr.textContent='方向基准';
-    if(sr){sr.textContent='⚠ 与基本面背离';sr.className='sm-rel warn'}
-    document.querySelector('#signalMatrix [data-system="struct"]')?.classList.add('conflict');
-  } else if(fundDir&&structDir&&fundDir===structDir&&fundDir!=='中性'){
-    if(fr) fr.textContent='方向基准';
-    if(sr){sr.textContent='✓ 与基本面共振';sr.className='sm-rel'}
-  } else {
-    if(fr) fr.textContent=fundDir?'方向基准':'等待';
-    if(sr) sr.textContent=structDir?'独立确认':'等待';
-  }
-  const tr=document.querySelector('#signalMatrix [data-system="tech"] .sm-rel');
-  if(tr) tr.textContent=techDir ? (fundDir&&techDir===fundDir?'✓ 同向':'独立节奏') : '等待';
-  const cr=document.querySelector('#signalMatrix [data-system="capital"] .sm-rel');
-  if(cr) cr.textContent=fa&&fa.status==='active'?'⚡ 活跃':'背景参考';
-}
-
-function updateCockpit(){
-  const pure=window._fundamentalPure, sys=window._structureSystem;
-  const tech=window._technicalDirection||null, fa=window._foreignActivity||null;
-  const contract=window._selectedContract || (typeof getDefaultContractByDate==='function'?getDefaultContractByDate():null);
-  const contractNames={sep:'9月',may:'5月',jan:'1月'};
-  const cc=document.getElementById('cockpitContract');
-  if(cc) cc.textContent=(contractNames[contract]||'自动')+'合约 · 自动跟随';
-  const tapeContract=document.getElementById('tapeContract'); if(tapeContract) tapeContract.textContent=(contractNames[contract]||'自动')+' · AUTO';
-  const label=document.getElementById('contractControlLabel');
-  if(label) label.textContent='当前 '+(contractNames[contract]||'自动')+'合约 · 自动跟随当前交易窗口';
-
-  const fundDir=pure&&pure.direction, fundRatio=pure&&pure.ratio!=null?pure.ratio:null;
-  const structDir=sys&&sys.direction, structRatio=sys&&sys.ratio!=null?sys.ratio:null;
-  const techRatio=(window._technicalRatio!=null?window._technicalRatio:null);
-  const capLabel=fa ? (fa.status==='active'?(fa.isGoldman?'高盛活跃':'外资活跃'):fa.status==='quiet'?'平静':fa.status==='unavailable'?'数据不足':'—') : '数据不足';
-  updateSignalMatrix(fundDir, structDir, tech, fa);
-
-  const verdict=document.getElementById('cockpitVerdict');
-  const sub=document.getElementById('cockpitVerdictSub');
-  let v='数据不足', cls='neutral', st='供需与盘面正在汇总';
-  if(fundDir){ v=fundDir==='中性'?'信号混合':fundDir; cls=cockpitDirectionClass(fundDir); st=`基本面净倾向 ${fundRatio>0?'+':''}${Math.round(fundRatio*100)}%`; }
-  if(fundDir && structDir && fundDir!=='中性' && structDir!=='中性' && fundDir!==structDir){
-    v='基本面 × 盘面背离'; cls='neutral'; st=`基本面${fundDir}，市场结构${structDir} · 背离优先关注`;
-  }
-  if(verdict){ verdict.textContent=v; verdict.className='big '+cls; }
-  if(sub) sub.textContent=st;
-  const td=document.getElementById('tapeDecision'); if(td) td.textContent=v;
-  const tb=document.getElementById('tapeBias'); if(tb) tb.textContent=fundDir||'—';
-
-  const fills=document.querySelectorAll('#cockpitBars .cbar-fill');
-  cockpitBar(fills[0],fundRatio); cockpitBar(fills[1],structRatio); cockpitBar(fills[2],techRatio);
-
-  cockpitSetKpi('ckFund',fundDir||'数据不足',fundDir, pure?`有效 ${pure.n||0} 项`:'等待有效票');
-  cockpitSetKpi('ckStruct',structDir||'暂无信号',structDir,sys?`有效 ${sys.n||0} 项`:'等待盘面数据');
-  cockpitSetKpi('ckTech',tech||'数据不足',tech,tech?'K线方向':'等待K线');
-  cockpitSetKpi('ckCapital',capLabel,fa&&fa.status==='active'?'预警':null,fa&&fa.status==='active'?'资金活跃':'持仓 / 外资');
-  const th=document.getElementById('tapeData'); if(th){ try { const h=computeDataHealth(); th.textContent=h.bad?'CHECK':h.warn?'DEGRADED':'OK'; } catch(e){ th.textContent='—'; } }
-
-  const dr=Array.isArray(window._topDrivers)?window._topDrivers.slice(0,3):[];
-  const dEl=document.getElementById('ckDrivers');
-  if(dEl) dEl.innerHTML=dr.length?dr.map(d=>`<b class="${d.signal===1?'bull':'bear'}">${d.label}${d.signal===1?' ▲':' ▼'}</b>`).join(' · '):'当前没有足够强的主导驱动';
-
-  const divEl=document.getElementById('ckDivergence');
-  if(divEl) divEl.innerHTML=(fundDir&&structDir&&fundDir!==structDir)?`<span class="warn">⚠ 基本面${fundDir} / 结构${structDir}</span>`:'暂无明确系统背离';
-
-  let ev='暂无已核实关键事件';
-  try{
-    const now=(typeof clockNow==='function')?clockNow():Date.now();
-    const evs=buildEventList(now,now+14*DAY_MS).filter(e=>e.kind==='usda'||e.kind==='closure'||e.kind==='reopen').slice(0,1);
-    if(evs.length) ev=evs[0].label+' · '+evs[0].title.replace(/\(.*\)/,'');
-  }catch(e){}
-  const evEl=document.getElementById('ckEvent'); if(evEl) evEl.textContent=ev;
-
-  try{
-    const h=computeDataHealth();
-    const healthText=h.sync.state==='ok' && !h.bad ? '🟢 数据链正常' : h.bad ? `🔴 ${h.bad}项不可用` : `🟡 ${h.warn||0}项降权`;
-    const hEl=document.getElementById('ckHealth'); if(hEl) hEl.textContent=healthText;
-    const hb=document.getElementById('cockpitHealth'); if(hb){hb.textContent=healthText;hb.className='badge '+(h.bad?'badge-offline':'badge-auto');}
-  }catch(e){}
-
-  const action=document.getElementById('ckAction');
-  if(action){
-    if(fundDir&&structDir&&fundDir!==structDir) action.innerHTML='<b class="warn">优先事项：</b>基本面与市场定价背离，先验证背离来源，不要被单一指标带偏。';
-    else if(dr.length) action.innerHTML='<b>优先事项：</b>先看主导驱动，再看结构确认；其余数据进入证据层。';
-    else action.innerHTML='核心原则：首屏只回答“现在是什么状态、什么最重要、哪里存在冲突、下一件需要关注什么”。';
-  }
 }
 
 function updateOverallAlert(){
@@ -4543,9 +4127,9 @@ function updateOverallAlert(){
 //   休市：沪深北交易所2026-09-17公告(国庆10月1日~7日休市，10月8日起开市)；郑商所2026-09-17公告(期货10月8日恢复交易)。
 //         ⚠️大商所自己的国庆公告我没有直接查到，期货交易所的休市安排一般与此同步，请以大商所公告为准。
 //   USDA：usda.gov/wasde(2026年WASDE日期)、CME《Understanding major USDA reports in 2026》(Grain Stocks、Crop Progress、Export Sales)。
-// 每年底国办公布下一年放假安排、USDA公布下一年报告日期后，需要更新这里；日历只覆盖到下一事件_CALENDAR_END，过了会有提示。
-const 下一事件_CALENDAR_CHECKED = '2026-09-30';
-const 下一事件_CALENDAR_END = '2026-12-31';
+// 每年底国办公布下一年放假安排、USDA公布下一年报告日期后，需要更新这里；日历只覆盖到EVENT_CALENDAR_END，过了会有提示。
+const EVENT_CALENDAR_CHECKED = '2026-09-30';
+const EVENT_CALENDAR_END = '2026-12-31';
 const DCE_CLOSURES = [
   {from:'2026-10-01', to:'2026-10-07', name:'国庆节', reopen:'2026-10-08',
    src:'沪深北交易所、郑商所2026-09-17公告；大商所通常同步，请以大商所公告为准'},
@@ -4722,12 +4306,12 @@ function renderEventCalendar(nowMs){
     return `<div class="ir" style="align-items:flex-start${past?';opacity:.55':''}"><div class="il" style="width:96px;flex:none">${e.label}<br><span style="color:var(--t3);font-size:9.5px">${WEEK_CN[p.dow]}(北京)</span></div>`
       + `<div class="iv" style="text-align:left;flex:1"><span class="b">${e.title}</span>${past?' <span style="color:var(--t3)">(已发生)</span>':''}<br><span style="font-size:10px;color:var(--t2)">${e.note||''}</span>${dceTxt?`<br><span style="font-size:10px">${dceTxt}</span>`:''}</div></div>`;
   };
-  const beyond = nowMs > bjToMs(...Object.values(parseYmd(下一事件_CALENDAR_END)), 23, 59);
+  const beyond = nowMs > bjToMs(...Object.values(parseYmd(EVENT_CALENDAR_END)), 23, 59);
   el.className = '';
   el.innerHTML = banner
     + (main.length ? main.map(row).join('') : '<div style="font-size:11px;color:var(--t3)">未来14天没有已核实的休市/USDA关键报告</div>')
     + (weekly.length ? `<details class="tier-details"><summary>每周例行(${weekly.length}项，遇美国联邦假日可能顺延) ▸</summary><div class="tier-body">${weekly.map(row).join('')}</div></details>` : '')
-    + `<div style="font-size:10px;color:var(--t3);margin-top:6px">时间换算成北京时间(美东夏令时自动处理)。日历覆盖到${下一事件_CALENDAR_END}，日期核对于${下一事件_CALENDAR_CHECKED}(USDA官网/CME/交易所公告)。这里只列出"什么时候发生什么、国内能不能交易"，不判断方向。`
+    + `<div style="font-size:10px;color:var(--t3);margin-top:6px">时间换算成北京时间(美东夏令时自动处理)。日历覆盖到${EVENT_CALENDAR_END}，日期核对于${EVENT_CALENDAR_CHECKED}(USDA官网/CME/交易所公告)。这里只列出"什么时候发生什么、国内能不能交易"，不判断方向。`
     + (beyond ? '<br><span style="color:var(--gold)">⚠️ 日历已超过覆盖期，请更新日期(休市安排/USDA报告日程)</span>' : '') + `</div>`;
 }
 window._eventCal = {buildEventList, closureStatus, dceIsOpenAt, dceNextOpenAfter, dceIsTradingDay, dceHasNightSession, etToMs, bjToMs, bjLabel, isUsDst, renderEventCalendar};   // 暴露给测试
@@ -4745,51 +4329,4 @@ markCurrentContractTab(); // 根据今天日期标记哪个合约tab是"当前"�
 selectContract(getDefaultContractByDate()); // ★已修复：之前写死selectContract('sep')，现在根据日期自动选中该做的合约
 </script>
 </body>
-
-<style>
-/* vNext.4 — 桌面首屏锁定：首屏不滚动，详情移到首屏以下 */
-@media(min-width:901px){
-  html,body{scroll-behavior:auto}
-  .topbar{height:34px;min-height:34px}
-  .main{padding-top:6px}
-  .cockpit{
-    grid-template-columns:minmax(0,1fr) 300px;
-    grid-template-rows:29px minmax(0,1fr);
-    grid-template-areas:"tape tape" "core side";
-    height:calc(100vh - 46px);
-    min-height:500px;
-    max-height:760px;
-    overflow:hidden;
-  }
-  .market-tape{grid-area:tape;border:0;border-bottom:1px solid var(--term-line);height:29px}
-  .cockpit-main{grid-area:core;min-height:0;overflow:hidden}
-  .cockpit-side{grid-area:side;min-height:0;overflow:hidden}
-  .cockpit-head{height:31px}
-  .cockpit-state{padding:7px 11px 6px!important;min-height:0!important}
-  .cockpit-verdict{min-height:58px!important}
-  .cockpit-verdict .big{font-size:26px!important}
-  .cockpit-verdict .subline{margin-top:3px!important}
-  .cockpit-bars{gap:5px!important}
-  .cbar-track{height:6px}
-  .signal-matrix .sm-head{height:17px!important}
-  .signal-matrix .sm-row{min-height:23px!important}
-  .ckpi{min-height:46px;padding:6px 9px}
-  .cockpit-side-title{height:31px}
-  .focus-row{padding:7px 9px}
-  .cockpit-action{padding:7px 9px}
-  .contract-control{margin-top:3px}
-}
-/* 中文化残留标签 */
-.ckpi .k{ text-transform:none; }
-</style>
-<script>
-/* 首屏高度诊断：仅桌面端，便于后续验收，不改变业务逻辑 */
-window.addEventListener('load',function(){
-  if(window.innerWidth>=901){
-    const c=document.querySelector('.cockpit');
-    if(c){c.dataset.firstScreen='locked';}
-  }
-});
-</script>
-
 </html>
