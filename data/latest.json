@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-05T21:15:11.912144+00:00",
+  "generatedAt": "2026-10-05T21:38:08.781739+00:00",
   "cbotPrice": {
     "available": true,
     "price": 347.5,
@@ -778,34 +778,8 @@
   },
   "crushMargins": {
     "sep": {
-      "available": true,
-      "contractMonth": 9,
-      "date": "2026-09-30",
-      "datesAligned": true,
-      "mealSymbol": "M2709",
-      "mealPrice": 3078.0,
-      "oilSymbol": "Y2709",
-      "oilPrice": 8641.0,
-      "beanSymbol": "B2709",
-      "beanPrice": 3862.0,
-      "grossMargin": 152.8,
-      "yieldMeal": 0.785,
-      "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
-      "history": {
-        "n": 654,
-        "minPoints": 12,
-        "asOf": "2026-09-30",
-        "since": "2019-04-01",
-        "percentile": 58.2,
-        "min": 22.0,
-        "max": 229.4,
-        "median": 138.45,
-        "seasonal": null,
-        "cohort": null,
-        "sparse": null,
-        "window": null
-      }
+      "available": false,
+      "reason": "以下合约价格缺失，无法计算压榨利润: 豆油Y2709(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
     },
     "may": {
       "available": true,
