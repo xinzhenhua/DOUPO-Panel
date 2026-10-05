@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-05T08:45:30.518059+00:00",
+  "generatedAt": "2026-10-05T10:19:00.859794+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 346.8,
-    "change": 2.1,
-    "changePct": 0.61,
+    "price": 347.8,
+    "change": 3.1,
+    "changePct": 0.9,
     "asOf": "2026-10-05T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -706,28 +706,12 @@
     }
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.37,
-    "date": "2026-10-05",
-    "pigPrice": 10.26,
-    "cornPricePerTon": 2347.0,
-    "pigLatestDate": "2026-10-05",
-    "cornLatestDate": "2026-10-05",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn",
-    "history": {
-      "n": 5,
-      "minPoints": 12,
-      "asOf": "2026-10-05",
-      "since": "2026-09-30",
-      "percentile": null,
-      "min": 4.32,
-      "max": 4.43,
-      "median": 4.37,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fc0ab9b2110>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
     }
   },
   "sowInventory": {
