@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T19:18:43.469934+00:00",
+  "generatedAt": "2026-10-07T19:55:44.510290+00:00",
   "cbotPrice": {
     "available": true,
     "price": 365.5,
@@ -2758,20 +2758,24 @@
     "weekEnding": "2026-10-04",
     "goodExcellentPct": 57.0,
     "wowChangePts": -1.0,
-    "yoyValue": null,
-    "yoyChangePts": null,
-    "fiveYearAvg": 57.5,
-    "fiveYearAvgChangePts": -0.5,
+    "yoyValue": 62.0,
+    "yoyChangePts": -5.0,
+    "fiveYearAvg": 59.0,
+    "fiveYearAvgChangePts": -2.0,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usPlantingProgress": {
-    "available": false,
-    "reason": "NASS接口无返回数据(注意：每年4-6月播种季才有进度数据)",
-    "debug": {
-      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=PROGRESS&unit_desc=PCT+PLANTED&agg_level_desc=NATIONAL&format=JSON&year=2026",
-      "error": "The read operation timed out"
-    }
+    "available": true,
+    "weekEnding": "2026-06-14",
+    "pctPlanted": 95.0,
+    "wowChangePts": 3.0,
+    "yoyValue": null,
+    "yoyChangePts": null,
+    "fiveYearAvg": 92.8,
+    "fiveYearAvgChangePts": 2.2,
+    "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
+    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usHarvestProgress": {
     "available": true,
