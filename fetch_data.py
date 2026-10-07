@@ -3744,6 +3744,24 @@ def _parse_eastmoney_position_rows(raw_rows, category_key):
     return rows
 
 
+def candidate_trading_dates(now, n_trading_days=6, min_calendar_days=14, max_calendar_days=30):
+    """龙虎榜往回找数据的候选日期：从 now 往回，只取日历判断为"大商所交易日"的日子(休市日不发网络请求、不占名额)，从新到旧。
+    取到"至少 n_trading_days 个交易日，并且至少覆盖 min_calendar_days 个日历日"为止，但不超过 max_calendar_days 个日历日(日历数据有错时不死循环)。
+    为什么：原来 `for days_back in range(6)` 每个日历日算一次尝试，国庆休市10-01~10-07时，10-06往回数6个日历日只到10-01，
+    够不到最后一个有数据的交易日09-30，龙虎榜整块失效(线上：'尝试了最近6个日期都没能获取到M2701的持仓排名数据')。
+    为什么还要日历下限：休市表(cn_calendar.DCE_CLOSURES)里现在只有2026国庆，春节(约9天)还没进表，日历会把它当交易日；
+    只数交易日个数覆盖不了春节，所以另外保证至少回溯14个日历日。平时第一个候选就拿到数据，循环里"全部类别拿到就break"，不会多发请求。"""
+    import cn_calendar
+    out = []
+    for back in range(max_calendar_days + 1):
+        d = now - timedelta(days=back)
+        if cn_calendar.dce_is_trading_day(d.date() if hasattr(d, "date") else d):
+            out.append(d)
+        if len(out) >= n_trading_days and back + 1 >= min_calendar_days:
+            break
+    return out
+
+
 def fetch_dce_position_rank_multi(symbols, max_attempts=6, categories=None):
     """大商所持仓排名(龙虎榜)：每个合约六类榜单(多头持仓/空头持仓/净多头/净空头/
     多头增仓/多头减仓)的前20名会员，含外资独资期货公司标注。
@@ -3781,10 +3799,9 @@ def fetch_dce_position_rank_multi(symbols, max_attempts=6, categories=None):
         tables = {cat: None for cat in categories}
         used_date = None
 
-        for days_back in range(max_attempts):
+        for try_date in candidate_trading_dates(now_beijing, n_trading_days=max_attempts):
             if all(v is not None for v in tables.values()):
                 break
-            try_date = now_beijing - timedelta(days=days_back)
             date_str = try_date.strftime("%Y-%m-%d")
 
             for cat in categories:

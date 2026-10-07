@@ -1566,13 +1566,16 @@ def test_eastmoney_position_rank_integration(monkeypatch_fetch):
     fetch_dce_position_rank_multi()对指定的类别(净多头/净空头/多头增仓/多头减仓)
     正确发起请求、正确处理T+1重试(模拟"今天"数据还没发布，要往前找)、
     结果正确组织成tables字典结构(不是扁平的rows列表)。"""
+    # v101.1：场景日期从 09-19(周六)/09-20(周日) 改成 09-28(周一)/09-29(周二)。龙虎榜现在按"交易日"往回找，休市日不发请求；
+    # 原来的两个日期都是周末，"今天没数据→往前找"的场景在真实日历里不成立，旧逻辑不查日历才凑巧通过。想保护的行为不变：交易日当天数据还没发布(T+1)→
+    # 往前找到最近一个有数据的交易日。所有断言都只是换了日期，一条没删。
     import fetch_data as fd_module
 
     def fake_fetch_jsonp(url, headers=None, retries=3, timeout=20):
-        if "TRADE_DATE%3D%272026-09-20%27" in url:
+        if "TRADE_DATE%3D%272026-09-29%27" in url:
             # 模拟"今天"数据还没发布
             return {"success": True, "result": {"data": []}, "message": "ok"}, {"url": url}
-        if "TRADE_DATE%3D%272026-09-19%27" in url:
+        if "TRADE_DATE%3D%272026-09-28%27" in url:
             if "NLPRANK" in url:
                 return {"success": True, "result": {"data": [
                     {"MEMBER_NAME_ABBR": "国泰君安", "ORG_NAME_ABBR_NEW": "国泰君安", "NLP_RANK": 1, "NET_LONG_POSITION": 5000, "NLP_CHANGE": 100},
@@ -1599,15 +1602,15 @@ def test_eastmoney_position_rank_integration(monkeypatch_fetch):
         class FixedDatetime(real_datetime):
             @classmethod
             def now(cls, tz=None):
-                return real_datetime(2026, 9, 20, 12, 0, 0, tzinfo=real_timezone.utc)
+                return real_datetime(2026, 9, 29, 12, 0, 0, tzinfo=real_timezone.utc)
         fd_module.datetime = FixedDatetime
         try:
             result = fd_module.fetch_dce_position_rank_multi(["M2701"], max_attempts=3, categories=["netLong", "netShort", "longUp", "longDown"])
         finally:
             fd_module.datetime = old_datetime
 
-        assert result["M2701"]["available"] is True, "★应该往前找到9-19号的数据(9-20号模拟还没发布)"
-        assert result["M2701"]["date"] == "2026-09-19"
+        assert result["M2701"]["available"] is True, "★应该往前找到9-28号的数据(9-29号模拟还没发布)"
+        assert result["M2701"]["date"] == "2026-09-28"
         tables = result["M2701"]["tables"]
         assert set(tables.keys()) == {"netLong", "netShort", "longUp", "longDown"}, f"★应该只包含请求的4个类别，实际: {list(tables.keys())}"
         assert tables["netLong"][0]["name"] == "国泰君安"
@@ -1615,7 +1618,7 @@ def test_eastmoney_position_rank_integration(monkeypatch_fetch):
         assert tables["longUp"][0]["name"] == "中粮期货"
         assert tables["longDown"][0]["name"] == "中信期货"
         assert "东方财富" in result["M2701"]["source"], "数据来源说明应该提到东方财富(不再是大商所官网直连)"
-        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-20无数据→往前找到9-19)，4个指定类别正确组织成tables字典，外资标注正确")
+        print(f"✅ 完整集成测试通过：正确处理T+1重试(9-29无数据→往前找到9-28)，4个指定类别正确组织成tables字典，外资标注正确")
     finally:
         fd_module.fetch_jsonp_debug = old_fn
 
@@ -4088,3 +4091,4 @@ if __name__ == "__main__":
         print(f"🎉 全部 {len(tests)} 项解析逻辑测试通过")
     else:
         print(f"⚠️ {failed}/{len(tests)} 项测试失败，请检查 fetch_data.py")
+        sys.exit(1)      # v101.1：失败时必须返回非0退出码。原来只打印不退出，所有"退出码0=通过"的判断(包括批量脚本)对这个文件都不可靠

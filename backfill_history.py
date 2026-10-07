@@ -747,6 +747,52 @@ def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, slee
 
 
 
+def merge_report_series(prev_series, new_entries, ran_at):
+    """把上一份报告里'这次没跑的项'的结果保留下来，并给每一项标明何时运行(ranAt)、是不是上次留下的(fromPreviousRun)。
+    为什么：报告每次运行都整体覆盖。先跑回填、再跑校准(不联网，series 为空)，回填的统计就被盖掉了——
+    用户把校准的报告发来，看不出回填成功没有(2026-10-07 真实发生)。
+    规则：①同一项新旧都有→以新的为准，ranAt=本次；②这次失败(有 error)→不抹掉上次成功的结果，挂在 previousGood 下；
+    ③旧报告损坏/缺key的条目一律忽略，不崩；④顺序：旧报告里已有的项保持原位置，新项追加在后面。"""
+    prev = {}
+    order = []
+    if isinstance(prev_series, list):
+        for it in prev_series:
+            if isinstance(it, dict) and isinstance(it.get("key"), str) and it.get("key"):
+                if it["key"] not in prev:
+                    order.append(it["key"])
+                prev[it["key"]] = it
+    new = {}
+    for it in new_entries or []:
+        if isinstance(it, dict) and isinstance(it.get("key"), str) and it.get("key"):
+            new[it["key"]] = it
+            if it["key"] not in order:
+                order.append(it["key"])
+    out = []
+    for k in order:
+        if k in new:
+            cur = dict(new[k], ranAt=ran_at, fromPreviousRun=False)
+            old = prev.get(k)
+            if "error" in cur and old and "error" not in old:
+                cur["previousGood"] = {kk: vv for kk, vv in old.items() if kk != "previousGood"}
+            out.append(cur)
+        else:
+            old = dict(prev[k])
+            old.setdefault("ranAt", None)
+            old["fromPreviousRun"] = True
+            out.append(old)
+    return out
+
+
+def _read_previous_series(out_dir):
+    """读上一份报告里的 series；文件不存在/损坏/不是预期结构都返回空列表，不影响这次运行。"""
+    try:
+        with open(os.path.join(out_dir, "_backfill_report.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        return d.get("series") if isinstance(d, dict) else []
+    except Exception:  # noqa: BLE001
+        return []
+
+
 # ---------------------------------------------------------------------------
 JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate}
 DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
@@ -786,6 +832,8 @@ def main(argv=None, base_dir=None):
         report["calibration"] = {"error": f"{type(e).__name__}: {e}"}
     out_dir = base_dir or hs.HISTORY_DIR
     os.makedirs(out_dir, exist_ok=True)
+    # 这次没跑的项(比如这次只跑校准)保留上次的结果，并标明何时运行——不再每次都把回填的统计抹掉
+    report["series"] = merge_report_series(_read_previous_series(out_dir), report["series"], report["generatedAt"])
     with open(os.path.join(out_dir, "_backfill_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     return report
