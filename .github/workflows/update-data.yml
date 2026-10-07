@@ -51,6 +51,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: 语法检查(装依赖之前先做：不需要任何依赖，几秒内失败并指出行号；Python 版本与实际运行一致)
+        run: python -m compileall -q -f .
+
       - name: 安装依赖(akshare，用于抓取DCE豆粕期货K线数据、猪粮比(生猪+玉米价格))
         run: pip install -r requirements-akshare.lock.txt      # 精确版本(含全部间接依赖)，不装"最新版"；升级前先手动验证
 

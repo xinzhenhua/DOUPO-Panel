@@ -188,6 +188,25 @@ def test_arrival_requires_ships_and_total_structure():
     assert P.parse_arrival_forecast("2024年8月份国内全样本油厂大豆到港预估160.5船，共计约1043.25万吨", "2024-07-25")[0] == want, "对照：完整结构(有'约')"
     ok("★到港预报必须是'N船，共计(约)X万吨'的完整结构：缺船数/缺逗号/缺'共计'的5种写法都不提取；完整结构(有无'约')都提取")
 
+def test_arrival_conflicting_calibres_in_one_article_are_rejected_with_a_readable_note():
+    """★v101.1：这个分支此前从没被任何测试执行过，所以它的 Python 3.11 语法错误(f-string 嵌套同样的引号)一直没被发现，直到回填在 GitHub Actions 里失败。
+    Mysteel 2023-11 同时发布两个样本口径(111家 783.25万吨 / 123家 845万吨，相差8%)：口径不同则不可比，整月不采用，并把每个冲突样本写进存疑，不替用户悄悄选一个。"""
+    txt = "2023年11月份国内主要地区111家油厂大豆到港预估150船，共计约783.25万吨。2023年11月份国内主要地区123家油厂大豆到港预估160船，共计约845万吨。"
+    out, rejected = P.parse_arrival_forecast(txt, "2023-11-10")
+    assert out == [], "冲突口径的月份不能采用其中任何一个"
+    assert len(rejected) == 1 and rejected[0].startswith("2023-11: 同一篇出现2个口径("), rejected
+    assert "783.25万吨" in rejected[0] and "845万吨" in rejected[0] and rejected[0].endswith("，不可比，不采用"), "两个冲突的值都要写进存疑，用户才能核对"
+    # 对照：同一个月两句话但万吨值相同 → 不算冲突，正常采用(第一句)
+    same = "2023年11月份国内主要地区111家油厂大豆到港预估150船，共计约783.25万吨。2023年11月份国内主要地区123家油厂大豆到港预估150船，共计约783.25万吨。"
+    out2, rej2 = P.parse_arrival_forecast(same, "2023-11-10")
+    assert out2 == [{"month": "2023-11", "value": 783.25, "ships": 150.0}] and rej2 == [], (out2, rej2)
+    # 对照：不同月份各一个值 → 都采用
+    two = "2024年7月份国内全样本油厂大豆到港预估150船，共计约900万吨。2024年8月份国内全样本油厂大豆到港预估160.5船，共计约1043.25万吨。"
+    out3, rej3 = P.parse_arrival_forecast(two, "2024-07-25")
+    assert [o["month"] for o in out3] == ["2024-07", "2024-08"] and rej3 == []
+    ok("★到港预报同一月出现2个不同口径(783.25/845万吨)：整月不采用，存疑里写出两个值；值相同不算冲突；不同月份各自采用")
+
+
 def test_select_import_months_rules():
     obs = [("2025-06", 1226.4, "2025-07-14", True), ("2025-06", 1226.5, "2025-07-20", True),      # 差0.01%：一致
            ("2025-05", 1391.8, "2025-09-09", False),                                                # 单篇、推断年份、间隔4个月(回顾类)

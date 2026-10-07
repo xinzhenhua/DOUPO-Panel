@@ -150,7 +150,9 @@ def parse_arrival_forecast(text, pub_date):
         if len(vals) > 1:
             # ★同一篇里同一个月给了多个不同的万吨值：Mysteel在2023-11~2024-01同时发布了两个样本口径(111家 783.25万吨 / 123家 845万吨，相差8%)，
             #   样本家数在扩大(111→123→125→全样本)，口径不同则船数和万吨都不可比。不替用户悄悄选一个，整月不采用，写进存疑。
-            rejected.append(f"{month}: 同一篇出现{len(vals)}个口径({', '.join(f'{i['sample'][12:20]}…{i['value']:g}万吨' for i in items)})，不可比，不采用")
+            # 先把每个冲突样本拼成一小段文字再放进消息：f-string 的 {} 里不再嵌套 f-string(原来的写法在 Python 3.11 是 SyntaxError，3.12 才合法)
+            conflicts = ', '.join(f"{it['sample'][12:20]}…{it['value']:g}万吨" for it in items)
+            rejected.append(f"{month}: 同一篇出现{len(vals)}个口径({conflicts})，不可比，不采用")
             continue
         out.append({"month": month, "value": items[0]["value"], "ships": items[0]["ships"]})
     return out, rejected

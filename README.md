@@ -16,6 +16,26 @@
 | 💰 CBOT豆粕价格 | 🟢 自动，每天2次由GitHub Actions同步 | Yahoo Finance非官方接口 |
 | 📦 开机率/豆粕库存/基差/到港预报/进口量/国储拍卖/猪粮比/能繁母猪/肉鸡利润/豆菜粕价差 | 🟢 自动，页面加载时直接覆盖；卡片详情里可手动修正 | Mysteel/中储粮/玄田数据(GitHub Actions同步，见下文各指标章节) |
 
+## v101.1 热修复：回填和校准在 GitHub Actions 里失败(Python 3.11 语法错误)
+
+**症状**：回填(`only=soy_import,arrival,crush_rate`)和校准(`only=calibrate`)都在装完依赖后立刻失败：
+`mysteel_parsers.py` 第153行 `SyntaxError: f-string: f-string: unmatched '['`。
+
+**原因**：那一行在 f-string 的 `{}` 里又写了一个用**同样引号**的 f-string(`f"…{', '.join(f'{i['sample']…}')}…"`)。**Python 3.12 才允许，GitHub Actions 固定用的 3.11 是语法错误**。我的开发环境是 3.12，所以我这边所有测试都通过，一直没发现。每小时更新(`update-data`)不导入这个模块，所以数据照常更新、看门狗是绿的——坏的只有回填和校准，因为它们走 `backfill_history.py`。
+
+**为什么这行一直躲着**：它在"同一个月出现多个互相冲突的到港口径"这个分支里，**此前没有任何一个测试执行过这个分支**，现在补了(`test_arrival_conflicting_calibres_in_one_article_are_rejected_with_a_readable_note`)。
+
+**修复**(输出文字逐字不变，修复前后对拍过)：把嵌套的 f-string 拆成一个命名变量再放进消息。
+
+**防止再发生**(三层)：
+1. `test_py311_compat.py`：①用 `tokenize` 在**任何 Python 版本下**检查 3.12 才合法的 f-string 写法(`{}` 里重用外层引号、`{}` 里有反斜杠)，检查器本身有测试(能抓到这次的真实写法、不误报 7 种合法写法)；②找得到真 `python3.11` 时逐个文件编译；③断言两个工作流都固定在 3.11(以后升级版本会提醒同步)。
+2. **两个工作流在装依赖之前先做语法检查**(`python -m compileall`)：语法错误几秒内失败并指出文件和行号，不再跑完 15 秒安装才炸。
+3. **我现在在和 GitHub Actions 相同的环境里跑全部 Python 测试**：Python 3.11.15 + 锁定文件里的 akshare 1.19.1 / pandas 3.0.6 / agrobr(两份锁定文件都装)。18 个测试文件全部通过。
+
+**这件事暴露的流程问题**(已写进交接文档的工作约定)：开发环境和运行环境的 Python 版本不一致，是"测试全绿但线上失败"的典型来源。以后所有后端测试以 3.11 为准。
+
+**没能验证的**：回填的联网部分(搜索 Mysteel、解析、写 `data/history/`)我在沙盒里没有外网，没法端到端跑；能确认的是 3.11 下**导入和校准模式都正常**(校准用你上传的真实 history 跑出了 58KB 的报告)。回填联网跑通之前，请把 `_backfill_report.json` 发我。
+
 ## v101 更新：开始累积龙虎榜和 CFTC 历史
 
 **评分规则版本不变(v99)**：只记历史、只展示，不进任何投票。
