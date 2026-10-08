@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-08T14:30:33.034070+00:00",
+  "generatedAt": "2026-10-08T15:02:07.653676+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 359.7,
-    "change": -6.2,
-    "changePct": -1.69,
+    "price": 359.5,
+    "change": -6.4,
+    "changePct": -1.75,
     "asOf": "2026-10-08T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -106,14 +106,31 @@
   },
   "ndrcPoultryProfit": {
     "available": false,
-    "reason": "发改委文章列表取不到: 点了子栏目后，等不到标题含'猪料、鸡料、蛋料比价'的文章条目(列表没加载出来，或被站点拦截)",
+    "reason": "发改委文章列表取不到: 找到10个文章条目，但取不到任何详情页地址(条目没有链接、点击也没跳转)；诊断见 debug.sampleOuter",
     "debug": {
       "entry": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593",
-      "steps": [],
+      "steps": [
+        {
+          "page": 1,
+          "items": 10,
+          "withHref": 0
+        }
+      ],
+      "attempts": [
+        {
+          "how": "native",
+          "result": "CLICKED",
+          "items": 10
+        }
+      ],
       "bodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n202",
       "navClick": "CLICKED",
-      "afterClickBodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n2026年9月9日全国生猪出场价格及 主要批发市场玉米价格\n2026年9月2日全国生猪出场价格及主要批发市场玉米价格\n2026年8月26日全国生猪出场价格及主要批发市场玉米价格\n2026年8月19日全国生猪",
-      "currentUrl": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593"
+      "opened": "native",
+      "resolveTried": 3,
+      "items": 10,
+      "itemsWithHref": 0,
+      "sampleOuter": "<a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a>",
+      "sampleParent": "<span data-v-8593fa2e=\"\" class=\"w-full flex items-center\"><div data-v-8593fa2e=\"\" class=\"w-[11px] h-[9px] mr-[9px] titIcon\"></div><a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a><!----></span>"
     }
   },
   "mysteelRmSpread": {
@@ -3612,11 +3629,11 @@
       {
         "datetime": "2026-10-08 23:00:00",
         "open": 3082.0,
-        "high": 3085.0,
+        "high": 3086.0,
         "low": 3080.0,
-        "close": 3084.0,
-        "volume": 2.0,
-        "hold": 33325.0
+        "close": 3085.0,
+        "volume": 469.0,
+        "hold": 33381.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -6198,11 +6215,11 @@
       {
         "datetime": "2026-10-08 23:00:00",
         "open": 2992.0,
-        "high": 2995.0,
+        "high": 2996.0,
         "low": 2988.0,
         "close": 2994.0,
-        "volume": 4.0,
-        "hold": 841150.0
+        "volume": 5640.0,
+        "hold": 841064.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -7941,15 +7958,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-19 14:15:00",
-        "open": 3246.0,
-        "high": 3257.0,
-        "low": 3243.0,
-        "close": 3249.0,
-        "volume": 152611.0,
-        "hold": 2504317.0
-      },
-      {
         "datetime": "2026-08-19 15:00:00",
         "open": 3248.0,
         "high": 3253.0,
@@ -9556,9 +9564,18 @@
         "open": 3375.0,
         "high": 3381.0,
         "low": 3372.0,
-        "close": 3378.0,
+        "close": 3379.0,
+        "volume": 146.0,
+        "hold": 2441021.0
+      },
+      {
+        "datetime": "2026-10-09 10:00:00",
+        "open": 3379.0,
+        "high": 3379.0,
+        "low": 3379.0,
+        "close": 3379.0,
         "volume": 7.0,
-        "hold": 2444285.0
+        "hold": 2441019.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
