@@ -793,9 +793,36 @@ def _read_previous_series(out_dir):
         return []
 
 
+def backfill_hog_ratio(base_dir=None, start=None, today=None):
+    """猪粮比历史回填。数据源(akshare 的猪价网数据)每次返回的就是生猪价和玉米价的完整历史序列，fetch_hog_ratio 只取了最后一个共同日期；
+    这里把所有共同日期都算出来存进历史。不搜索、不抓正文、不联网以外的东西；每个日期的计算与 fetch_hog_ratio 共用 fd.hog_ratio_at。
+    日期之前的 start 不进历史；生猪价或玉米价任一获取失败：只在报告里写 error，不写任何文件。"""
+    pig_df, err = fd._fetch_akshare_hog_df("外三元", func_name="futures_hog_core")
+    if err:
+        return {"key": "hog_ratio", "error": f"生猪价格(外三元)获取失败: {err.get('reason')}"}
+    corn_df, err = fd._fetch_akshare_hog_df("玉米", func_name="futures_hog_cost")
+    if err:
+        return {"key": "hog_ratio", "error": f"玉米价格获取失败: {err.get('reason')}"}
+    try:
+        pig, corn = fd._hog_series_to_dict(pig_df), fd._hog_series_to_dict(corn_df)
+    except (KeyError, TypeError) as e:
+        return {"key": "hog_ratio", "error": f"字段解析失败: {e}(接口可能改了字段名)"}
+    pts, dropped = fd.hog_ratio_points(pig, corn)
+    if start is not None:
+        s_iso = start.isoformat() if hasattr(start, "isoformat") else str(start)
+        pts = [p for p in pts if p["d"] >= s_iso]
+    if not pts:
+        return {"key": "hog_ratio", "error": "生猪价格和玉米价格没有任何可用的共同日期", "notes": [f"生猪{len(pig)}天，玉米{len(corn)}天，丢弃{len(dropped)}天"]}
+    hs.record_points("hog_ratio", pts, base_dir)
+    notes = [f"生猪价格{len(pig)}天({min(pig)}~{max(pig)})，玉米价格{len(corn)}天({min(corn)}~{max(corn)})，共同日期{len(set(pig) & set(corn))}天，写入{len(pts)}天"]
+    if dropped:
+        notes.append(f"丢弃{len(dropped)}天(比值超出合理范围/玉米价异常等)，前5个：" + "；".join(f"{x['d']} {x['reason']}" for x in dropped[:5]))
+    return _report_entry("hog_ratio", base_dir, len(pts), notes=notes, extra={"droppedDates": dropped[:20]})
+
+
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate}
-DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio}
+DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate", "hog_ratio"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 
 

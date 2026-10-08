@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,margin,spread,feed_days,soy_import,arrival,crush_rate,calibrate；默认all=这9项除calibrate外的全部：us_stu,esr,meal_stu,margin,spread,feed_days,soy_import,arrival,crush_rate；margin=盘面压榨毛利；spread=月差/期限结构；feed_days=饲料企业豆粕库存天数；soy_import=海关大豆月度进口量(多篇交叉验证)；arrival=大豆到港预报(2024-02~2026-06)；crush_rate=油厂开机率(日频，快讯只保留到2024-12，分90天窗口搜索；v98/v99的开机率规则要用)；calibrate=不联网，只重新生成校准摘要(含榨利/月差的窗口与阈值校准诊断，约7秒)。采样诊断sample与周度库存回填meal_stock已在v99移除。★只点一次(一次填多项)：同一并发组最多1个在跑+1个排队，连点多次会取消中间的)"
+        description: "回填哪几项(逗号分隔：us_stu,esr,meal_stu,margin,spread,feed_days,soy_import,arrival,crush_rate,hog_ratio,calibrate；默认all=这10项除calibrate外的全部：us_stu,esr,meal_stu,margin,spread,feed_days,soy_import,arrival,crush_rate,hog_ratio；margin=盘面压榨毛利；spread=月差/期限结构；feed_days=饲料企业豆粕库存天数；soy_import=海关大豆月度进口量(多篇交叉验证)；arrival=大豆到港预报(2024-02~2026-06)；crush_rate=油厂开机率(日频，快讯只保留到2024-12，分90天窗口搜索；v98/v99的开机率规则要用)；hog_ratio=猪粮比(数据源本来就带完整历史，不搜索，几秒完成；只点这一项就够补猪粮比)；calibrate=不联网，只重新生成校准摘要(含榨利/月差的窗口与阈值校准诊断，约7秒)。采样诊断sample与周度库存回填meal_stock已在v99移除。★只点一次(一次填多项)：同一并发组最多1个在跑+1个排队，连点多次会取消中间的)"
         default: "all"
       start:
         description: "Mysteel两项的起始日期"

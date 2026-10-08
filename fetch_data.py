@@ -2799,6 +2799,38 @@ def _hog_series_to_dict(df):
     return out
 
 
+def hog_ratio_at(pig_price, corn_price):
+    """单个日期的猪粮比 = 外三元生猪价(元/公斤) ÷ 玉米价(元/公斤)。返回 (ratio, kind, detail)：
+    成功 (ratio, None, None)；失败 (None, kind, 说明)，kind ∈ corn_nonpositive / range / plausibility。
+    fetch_hog_ratio(取最新一天)和 hog_ratio_points(取全部共同日期，回填用)共用这一个函数，两处口径不会分叉。"""
+    # 玉米价格正常是元/吨(2358这种量级)；如果哪天接口改成元/公斤(2.358这种量级)，不再除以1000，避免算出一个小1000倍的荒谬结果。
+    corn_per_kg = corn_price / 1000.0 if corn_price > 100 else corn_price
+    if not (corn_per_kg > 0):
+        return None, "corn_nonpositive", f"玉米价格异常({corn_price})，没法计算猪粮比"
+    ratio = round(pig_price / corn_per_kg, 2)
+    # 单位/字段搞错时(比如取错了序列)算出来的结果会离谱，宁可不展示也不展示错数字
+    if not (1.0 <= ratio <= 20.0):
+        return None, "range", f"计算出的猪粮比{ratio}超出合理范围(1~20)，可能是单位或字段对错了"
+    for key, val, label in (("pigPrice", pig_price, "生猪价格"), ("cornPricePerTon", corn_per_kg * 1000.0, "玉米价格")):
+        problem = _plausibility_problem(key, val)
+        if problem:
+            return None, "plausibility", f"{label}{problem}，可能取错了序列或单位变了"
+    return ratio, None, None
+
+
+def hog_ratio_points(pig, corn):
+    """pig/corn: {日期: 价格}。返回 (points, dropped)：points=[{d, v}]，所有'两个序列都有'的日期各算一个，按日期升序；
+    每个日期独立校验，不合格的只丢这一个并记 {d, kind, reason}，不连累其他日期。点的结构与每天累积的完全一致(只有 d、v)。"""
+    pts, dropped = [], []
+    for d in sorted(set(pig) & set(corn)):
+        r, kind, detail = hog_ratio_at(pig[d], corn[d])
+        if r is None:
+            dropped.append({"d": d, "kind": kind, "reason": detail})
+        else:
+            pts.append({"d": d, "v": r})
+    return pts, dropped
+
+
 def fetch_hog_ratio():
     """猪粮比：外三元生猪价格(元/公斤) ÷ 玉米价格(元/公斤)，取两个序列共同的
     最新一天。"""
@@ -2833,24 +2865,16 @@ def fetch_hog_ratio():
     latest = common[-1]
     pig_price = pig[latest]
     corn_price = corn[latest]
-    # 玉米价格正常是元/吨(2358这种量级)；如果哪天接口改成元/公斤(2.358这种
-    # 量级)，不再除以1000，避免算出一个小1000倍的荒谬结果。
     corn_per_kg = corn_price / 1000.0 if corn_price > 100 else corn_price
-    if corn_per_kg <= 0:
-        return {"available": False, "reason": f"玉米价格异常({corn_price})，没法计算猪粮比", "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price}}
-    ratio = round(pig_price / corn_per_kg, 2)
-    # 单位/字段搞错时(比如取错了序列)算出来的结果会离谱，宁可不展示也不展示错数字
-    if not (1.0 <= ratio <= 20.0):
-        return {
-            "available": False,
-            "reason": f"计算出的猪粮比{ratio}超出合理范围(1~20)，可能是单位或字段对错了",
-            "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price},
-        }
-    for key, val, label in (("pigPrice", pig_price, "生猪价格"), ("cornPricePerTon", corn_per_kg * 1000.0, "玉米价格")):
-        problem = _plausibility_problem(key, val)
-        if problem:
-            return {"available": False, "reason": f"{label}{problem}，可能取错了序列或单位变了",
-                    "debug": {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price, "ratio": ratio}}
+    ratio, kind, detail = hog_ratio_at(pig_price, corn_price)
+    if ratio is None:
+        # 报错文案和重构前逐字一致(已有测试依赖)；只是计算移到了共用函数里
+        dbg = {"date": latest, "pigPrice": pig_price, "cornPrice": corn_price}
+        if kind == "range":
+            return {"available": False, "reason": detail, "debug": dbg}
+        if kind == "plausibility":
+            return {"available": False, "reason": detail, "debug": {**dbg, "ratio": round(pig_price / corn_per_kg, 2)}}
+        return {"available": False, "reason": detail, "debug": dbg}
     return {
         "available": True,
         "value": ratio,
