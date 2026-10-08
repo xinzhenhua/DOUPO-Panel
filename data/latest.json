@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-08T14:15:44.065555+00:00",
+  "generatedAt": "2026-10-08T14:30:33.034070+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.3,
-    "change": -5.6,
-    "changePct": -1.53,
+    "price": 359.7,
+    "change": -6.2,
+    "changePct": -1.69,
     "asOf": "2026-10-08T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -790,12 +790,33 @@
     }
   },
   "hogRatio": {
-    "available": false,
-    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fabd440a9d0>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-    "debug": {
-      "symbol": "外三元",
-      "errorType": "ConnectTimeout",
-      "retriesAttempted": 2
+    "available": true,
+    "value": 4.41,
+    "date": "2026-10-08",
+    "pigPrice": 10.3,
+    "cornPricePerTon": 2337.0,
+    "pigLatestDate": "2026-10-08",
+    "cornLatestDate": "2026-10-08",
+    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
+    "sourceUrl": "https://zhujia.zhuwang.com.cn",
+    "history": {
+      "n": 366,
+      "minPoints": 12,
+      "asOf": "2026-10-08",
+      "since": "2025-10-07",
+      "percentile": 37.0,
+      "min": 3.65,
+      "max": 5.68,
+      "median": 4.6,
+      "seasonal": {
+        "month": 10,
+        "n": 25,
+        "percentile": 0.0,
+        "median": 4.87
+      },
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "sowInventory": {
@@ -3593,9 +3614,9 @@
         "open": 3082.0,
         "high": 3085.0,
         "low": 3080.0,
-        "close": 3081.0,
-        "volume": 1.0,
-        "hold": 33320.0
+        "close": 3084.0,
+        "volume": 2.0,
+        "hold": 33325.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -6171,7 +6192,7 @@
         "high": 2998.0,
         "low": 2983.0,
         "close": 2993.0,
-        "volume": 1.0,
+        "volume": 37081.0,
         "hold": 840811.0
       },
       {
@@ -6179,9 +6200,9 @@
         "open": 2992.0,
         "high": 2995.0,
         "low": 2988.0,
-        "close": 2991.0,
-        "volume": 31.0,
-        "hold": 841160.0
+        "close": 2994.0,
+        "volume": 4.0,
+        "hold": 841150.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -9535,9 +9556,9 @@
         "open": 3375.0,
         "high": 3381.0,
         "low": 3372.0,
-        "close": 3375.0,
-        "volume": 147.0,
-        "hold": 2444635.0
+        "close": 3378.0,
+        "volume": 7.0,
+        "hold": 2444285.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
