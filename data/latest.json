@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-08T13:53:29.604162+00:00",
+  "generatedAt": "2026-10-08T14:15:44.065555+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 361.6,
-    "change": -4.3,
-    "changePct": -1.18,
+    "price": 360.3,
+    "change": -5.6,
+    "changePct": -1.53,
     "asOf": "2026-10-08T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -106,10 +106,14 @@
   },
   "ndrcPoultryProfit": {
     "available": false,
-    "reason": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接(页面可能改版)",
+    "reason": "发改委文章列表取不到: 点了子栏目后，等不到标题含'猪料、鸡料、蛋料比价'的文章条目(列表没加载出来，或被站点拦截)",
     "debug": {
-      "url": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593",
-      "htmlHead": "<!DOCTYPE html><html  lang=\"zh-cn\" data-capo=\"\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, height=device-height, initial-scale=0.3, minimum-scale=0.3, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover\">\n<title>中华人民共和国国家发展和改革委员会 - undefined-生猪出场价与玉米价格周报</ti"
+      "entry": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593",
+      "steps": [],
+      "bodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n202",
+      "navClick": "CLICKED",
+      "afterClickBodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n2026年9月9日全国生猪出场价格及 主要批发市场玉米价格\n2026年9月2日全国生猪出场价格及主要批发市场玉米价格\n2026年8月26日全国生猪出场价格及主要批发市场玉米价格\n2026年8月19日全国生猪",
+      "currentUrl": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593"
     }
   },
   "mysteelRmSpread": {
@@ -771,37 +775,27 @@
       },
       "cohort": null,
       "sparse": null,
-      "window": null
+      "window": null,
+      "sameContract": {
+        "contract": "m2701",
+        "n": 42,
+        "minN": 20,
+        "percentile": 100.0,
+        "median": -62.0,
+        "min": -123.0,
+        "max": 51.0,
+        "since": "2026-08-03",
+        "why": ""
+      }
     }
   },
   "hogRatio": {
-    "available": true,
-    "value": 4.41,
-    "date": "2026-10-08",
-    "pigPrice": 10.3,
-    "cornPricePerTon": 2337.0,
-    "pigLatestDate": "2026-10-08",
-    "cornLatestDate": "2026-10-08",
-    "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
-    "sourceUrl": "https://zhujia.zhuwang.com.cn",
-    "history": {
-      "n": 366,
-      "minPoints": 12,
-      "asOf": "2026-10-08",
-      "since": "2025-10-07",
-      "percentile": 37.0,
-      "min": 3.65,
-      "max": 5.68,
-      "median": 4.6,
-      "seasonal": {
-        "month": 10,
-        "n": 25,
-        "percentile": 0.0,
-        "median": 4.87
-      },
-      "cohort": null,
-      "sparse": null,
-      "window": null
+    "available": false,
+    "reason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fabd440a9d0>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+    "debug": {
+      "symbol": "外三元",
+      "errorType": "ConnectTimeout",
+      "retriesAttempted": 2
     }
   },
   "sowInventory": {
@@ -2971,7 +2965,7 @@
   "dceM09Hourly": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 69,
+    "totalBarsReturned": 70,
     "bars": [
       {
         "datetime": "2026-09-14 22:00:00",
@@ -3590,9 +3584,18 @@
         "open": 3073.0,
         "high": 3086.0,
         "low": 3071.0,
-        "close": 3080.0,
-        "volume": 5.0,
+        "close": 3082.0,
+        "volume": 1188.0,
         "hold": 33334.0
+      },
+      {
+        "datetime": "2026-10-08 23:00:00",
+        "open": 3082.0,
+        "high": 3085.0,
+        "low": 3080.0,
+        "close": 3081.0,
+        "volume": 1.0,
+        "hold": 33320.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4560,15 +4563,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-19 11:15:00",
-        "open": 2908.0,
-        "high": 2912.0,
-        "low": 2905.0,
-        "close": 2911.0,
-        "volume": 12810.0,
-        "hold": 697605.0
-      },
       {
         "datetime": "2026-08-19 14:15:00",
         "open": 2911.0,
@@ -6176,9 +6170,18 @@
         "open": 2984.0,
         "high": 2998.0,
         "low": 2983.0,
-        "close": 2992.0,
-        "volume": 11.0,
-        "hold": 840363.0
+        "close": 2993.0,
+        "volume": 1.0,
+        "hold": 840811.0
+      },
+      {
+        "datetime": "2026-10-08 23:00:00",
+        "open": 2992.0,
+        "high": 2995.0,
+        "low": 2988.0,
+        "close": 2991.0,
+        "volume": 31.0,
+        "hold": 841160.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -7917,15 +7920,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-19 11:15:00",
-        "open": 3249.0,
-        "high": 3250.0,
-        "low": 3242.0,
-        "close": 3247.0,
-        "volume": 54776.0,
-        "hold": 2482532.0
-      },
-      {
         "datetime": "2026-08-19 14:15:00",
         "open": 3246.0,
         "high": 3257.0,
@@ -9532,9 +9526,18 @@
         "open": 3372.0,
         "high": 3388.0,
         "low": 3371.0,
-        "close": 3373.0,
-        "volume": 791.0,
-        "hold": 2444756.0
+        "close": 3376.0,
+        "volume": 11.0,
+        "hold": 2444591.0
+      },
+      {
+        "datetime": "2026-10-08 23:00:00",
+        "open": 3375.0,
+        "high": 3381.0,
+        "low": 3372.0,
+        "close": 3375.0,
+        "volume": 147.0,
+        "hold": 2444635.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
