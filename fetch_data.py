@@ -2668,6 +2668,35 @@ def _extract_basis_from_article(content):
     return None, None
 
 
+def parse_basis_table(text):
+    """解析《全国主要市场豆粕基差价格汇总》正文里的数据表。真实正文长这样(2026-10-08 回填报告里的 bodyFailures，逐字)：
+        ...智能摘要 内容由AI生成 2026年8月11日，...。 省份 市场 期货合约 现货基差 涨跌 云南 昆明 09 60 0 吉林 长春 09 110 20 ... 山东 日照 09 -90 20 广东 湛江 ...
+    每行：省份 市场 期货合约(两位月份) 现货基差 涨跌(都是整数，可负)。返回 {市场: {value, change, contract}}。
+    页面顶部那段"智能摘要 内容由AI生成"只是这张表的AI概括(线上抓取用的就是它，之前的回填也是)，表才是权威数据；表里每天都有日照，选城市不再每天切换。
+    只认"市场名(已知城市) 两位合约 整数 整数"，纯文字里的数字不会被误读；缺涨跌列/基差不是数字的残缺行跳过。"""
+    out = {}
+    if not text:
+        return out
+    cities = "|".join(sorted(_BASIS_ALL_CITIES, key=len, reverse=True))
+    # 不要求城市名前面不是汉字：省份和市场粘在一起写("山东日照 09 -90 20")也要能读；真正的约束是后面必须紧跟"两位合约 整数 整数"
+    for m in re.finditer(rf"({cities})\s+(\d{{2}})\s+(-?\d+)\s+(-?\d+)(?!\d)", str(text)):
+        city = m.group(1)
+        if city not in out:
+            out[city] = {"value": float(m.group(3)), "change": float(m.group(4)), "contract": m.group(2)}
+    return out
+
+
+def basis_from_table(text):
+    """表里按沿海城市优先级(日照/南通/东莞/湛江/防城港/厦门/天津)取第一个有数值的，返回 (城市, 基差, 合约月份)；取不出返回 (None, None, None)。
+    只用沿海城市(不拿内陆凑)；合理范围与线上一致(meaBasis)，超出就当没有。"""
+    t = parse_basis_table(text)
+    for city in _BASIS_COASTAL_PRIORITY:
+        r = t.get(city)
+        if r is not None and not _plausibility_problem("meaBasis", r["value"]):
+            return city, r["value"], r["contract"]
+    return None, None, None
+
+
 def fetch_mysteel_basis(today=None):
     """通过Mysteel文章搜索"全国主要市场豆粕基差价格汇总"(每日一篇)，从最新几篇里找第一篇能
     解析出沿海代表城市确切基差的，作为全国基差的代理值。today参数只给测试用。"""

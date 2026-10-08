@@ -244,6 +244,159 @@ def test_nothing_found_reports_error_and_writes_nothing():
     ok("没搜到文章 / 一篇都取不出：报告写 error，不写任何文件")
 
 
+# ================= v101.5：正文里的数据表 =================
+# 真实正文开头(逐字，来自 2026-10-08 的回填报告 bodyFailures)。每篇文章底下有一张每个市场一行的数据表(省份 市场 期货合约 现货基差 涨跌)，
+# 页面顶部"智能摘要 内容由AI生成"那段只是它的AI概括——线上抓取和之前的回填解析的都是那段概括，不是表。
+R_0811 = "Mysteel：全国主要市场豆粕基差价格汇总（20260811） 2026-08-11 13:41 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 内容由AI生成 2026年8月11日，全国主要市场豆粕基差针对09合约普遍上涨。 省份 市场 期货合约 现货基差 涨跌 云南 昆明 09 60 0 吉林 长春 09 110 20 四川 成都 09 50 20 天津 天津 09 -30 20 山东 日照 09 -90 20 广东 湛江"
+R_0812 = "Mysteel：全国主要市场豆粕基差价格汇总（20260812） 2026-08-12 11:52 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 内容由AI生成 2026年8月12日，全国主要市场豆粕基差以09合约为准。昆明、南通、武汉及岳阳基差持平；其余多数地区基差下跌10-20元/吨。 省份 市场 期货合约 现货基差 涨跌 云南 昆明 09 60 0 吉林 长春 09 100 -10 四川 成都 09 40 -10 天津 "
+# 以下是我按表的格式构造的完整表(真实表的其余行没有样本)，用来验证多城市、合约月份切换、负数涨跌
+R_FULL = ("Mysteel：全国主要市场豆粕基差价格汇总（20260828） 2026-08-28 12:00 来源：我的钢铁网(Mysteel) 资讯监督 智能摘要 内容由AI生成 2026年8月28日，全国主要市场豆粕基差以01合约为准。 "
+          "省份 市场 期货合约 现货基差 涨跌 云南 昆明 01 -20 0 吉林 长春 01 10 -10 天津 天津 01 -80 10 山东 日照 01 -160 -10 江苏 南通 01 -170 0 广东 东莞 01 -160 20 广东 湛江 01 -150 10 广西 防城港 01 -180 -20 福建 厦门 01 -100 0")
+
+
+def test_table_parser_reads_every_market_row_from_the_real_body_head():
+    t = fd.parse_basis_table
+    r = t(R_0811)
+    assert r["日照"] == {"value": -90.0, "change": 20.0, "contract": "09"} and r["天津"] == {"value": -30.0, "change": 20.0, "contract": "09"}, r
+    assert r["昆明"]["value"] == 60.0 and r["长春"]["value"] == 110.0 and r["成都"]["value"] == 50.0, r
+    assert "湛江" not in r, "正文开头在 湛江 处被截断(没有基差数字)，不能编造"
+    r2 = t(R_0812)
+    assert r2["昆明"]["value"] == 60.0 and r2["长春"] == {"value": 100.0, "change": -10.0, "contract": "09"} and "天津" not in r2, r2
+    ok("★真实正文(逐字)：08-11 表里日照 09合约 -90(涨20)、天津 -30、昆明 60…；被截断的湛江不编造；08-12 长春 100(跌10)，被截断的天津不编造")
+
+
+def test_table_parser_full_table_negative_changes_and_contract_months():
+    r = fd.parse_basis_table(R_FULL)
+    assert r["日照"] == {"value": -160.0, "change": -10.0, "contract": "01"} and r["防城港"]["value"] == -180.0 and r["防城港"]["change"] == -20.0, r
+    assert {c: r[c]["contract"] for c in ("日照", "南通", "东莞", "湛江", "防城港", "厦门", "天津")} == {c: "01" for c in ("日照", "南通", "东莞", "湛江", "防城港", "厦门", "天津")}
+    assert len(r) == 9, sorted(r)
+    ok("（构造的完整表）9个市场都读到；涨跌为负(日照 -10、防城港 -20)；合约月份 01 被记下来")
+
+
+def test_table_parser_ignores_prose_numbers_and_malformed_rows():
+    prose = "日照基差-90元/吨，南通基差-100。昆明、长春基差分别为70和60。"
+    assert fd.parse_basis_table(prose) == {}, "没有表格行的纯文字里不能误读(那是摘要，交给原来的解析器)"
+    assert fd.parse_basis_table("") == {} and fd.parse_basis_table(None) == {}
+    odd = "省份 市场 期货合约 现货基差 涨跌 山东 日照 09 abc 20 广东 东莞 09 -50"      # 基差不是数字 / 缺涨跌列
+    r = fd.parse_basis_table(odd)
+    assert "日照" not in r and "东莞" not in r, r
+    ok("纯文字(摘要)里不会被当成表；空/None 不崩；基差不是数字或缺涨跌列的残缺行被跳过")
+
+
+def test_table_value_follows_the_same_coastal_priority_and_plausibility_as_live():
+    assert fd.basis_from_table(R_0811) == ("日照", -90.0, "09"), fd.basis_from_table(R_0811)      # 日照是优先级第一，表里有
+    t = R_FULL.replace("山东 日照 01 -160 -10 ", "")      # 去掉日照：优先级里下一个是 南通
+    assert fd.basis_from_table(t) == ("南通", -170.0, "01"), fd.basis_from_table(t)
+    only_inland = "省份 市场 期货合约 现货基差 涨跌 云南 昆明 09 60 0 吉林 长春 09 100 -10"
+    assert fd.basis_from_table(only_inland) == (None, None, None), "表里没有沿海代表城市：取不出，不拿内陆城市凑"
+    assert fd.basis_from_table("省份 市场 期货合约 现货基差 涨跌 山东 日照 09 -9999 20") == (None, None, None), "日照 -9999 超出合理范围(-500~500)：当没有，取不出(上一版这里写成了 A or B，两种结果都放行，等于没测)"
+    assert fd.basis_from_table("省份 市场 期货合约 现货基差 涨跌 山东 日照 09 -9999 20 江苏 南通 09 -110 10") == ("南通", -110.0, "09"), "日照离谱：退到优先级里的下一个南通"
+    ok("★表里按沿海城市优先级取第一个：有日照取日照(-90，合约09)；没有日照取南通(-170，合约01)；只有内陆城市取不出，不拿内陆凑")
+
+
+def test_job_prefers_the_table_over_the_ai_summary_and_always_picks_the_same_city():
+    """★表是权威数据，AI摘要只是概括，两者可能不一致；表里每天都有日照，所以选城市不再每天切换。"""
+    items = [mk("2026-08-11", "AI摘要里写的是南通基差-999元/吨，日照基差-888元/吨")]
+    fb = Bodies({items[0]["url"]: (R_0811, None)})
+    d = tempfile.mkdtemp()
+    try:
+        rep = run(items, d, fetch=fb, start=date(2026, 8, 1), today=date(2026, 8, 31))
+        assert pts(d) == [("2026-08-11", -90.0, "日照", "table")], pts(d)
+        p = hs.load_series("basis", d)["points"][0]
+        assert p["x"] == {"city": "日照", "src": "table", "contract": "09"}, p
+        assert rep["viaTable"] == 1 and rep["viaSummary"] == 0 and rep["bodiesFetched"] == 1, rep
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★有表就用表：AI摘要写 -888/-999，表里日照是 -90 → 取 -90；点里记下 x={city:日照, src:table, contract:09}")
+
+
+def test_job_falls_back_to_summary_when_the_body_has_no_usable_table():
+    items = [mk("2026-09-30", S_0930), mk("2026-09-24", S_0924)]
+    fb = Bodies({items[0]["url"]: ("正文里没有表格，只有一句话。", None)}, default=(None, "正文请求失败(HTTP 403)"))
+    d = tempfile.mkdtemp()
+    try:
+        rep = run(items, d, fetch=fb, start=date(2026, 9, 1), today=date(2026, 9, 30))
+        assert pts(d) == [("2026-09-24", -90.0, "日照", "summary"), ("2026-09-30", -100.0, "南通", "summary")], pts(d)
+        assert rep["viaSummary"] == 2 and rep["viaTable"] == 0 and len(rep["bodyFailures"]) == 2, rep
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("表取不出(正文没表 / 正文请求失败)时退回摘要(用线上同一规则)，两种失败原因都记进 bodyFailures")
+
+
+def test_old_summary_points_are_upgraded_by_the_table_but_live_points_are_never_touched():
+    items = [mk("2026-09-30", S_0930), mk("2026-09-24", S_0924), mk("2026-08-11", "")]
+    fb = Bodies({items[0]["url"]: ("省份 市场 期货合约 现货基差 涨跌 山东 日照 01 -110 -20", None), items[1]["url"]: ("正文没有表", None), items[2]["url"]: (R_0811, None)})
+    d = tempfile.mkdtemp()
+    try:
+        hs.record_points("basis", [{"d": "2026-09-30", "v": -100.0, "x": {"city": "南通", "src": "summary"}},      # 上一版回填用摘要写的
+                                   {"d": "2026-09-24", "v": -91.0, "x": {"city": "日照", "src": "summary"}},      # 故意与摘要里重新取到的 -90 不同：升级失败(正文没表)时必须保持这个原点，不能被重写
+                                   {"d": "2026-09-29", "v": -777.0, "x": {"city": "日照"}}], d)         # 线上每天累积的(没有 src)
+        rep = run(items, d, fetch=fb, start=date(2026, 8, 1), today=date(2026, 9, 30))
+        p = {x["d"]: (x["v"], x["x"]) for x in hs.load_series("basis", d)["points"]}
+        assert p["2026-09-30"] == (-110.0, {"city": "日照", "src": "table", "contract": "01"}), p["2026-09-30"]      # 摘要点被表升级
+        assert p["2026-09-24"][0] == -91.0 and p["2026-09-24"][1]["src"] == "summary", "这篇正文没有表：保留原来的摘要点(-91，不是重新取到的-90)，不丢不改"
+        assert p["2026-09-29"] == (-777.0, {"city": "日照"}), "线上累积的点(没有src)原样保留"
+        assert p["2026-08-11"][0] == -90.0 and rep["upgraded"] == 1, rep
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★上一版用摘要写的点会被表升级(09-30：摘要南通-100 → 表日照-110)；正文没有表的保留原摘要点；线上累积的点(无src)永不动")
+
+
+def test_bodies_without_a_table_are_remembered_and_not_refetched_until_the_parser_version_changes():
+    """★正文请求成功但里面没有表的日期记进 triedNoTable，下次不再重抓(否则顽固的日期每次占掉抓取配额)；parserVersion 变了就全部重试。"""
+    items = [mk("2024-03-05", ""), mk("2024-03-06", "")]
+    d = tempfile.mkdtemp()
+    try:
+        fb = Bodies({items[0]["url"]: ("这篇没有表，也没有城市。", None), items[1]["url"]: (R_0811, None)})
+        rep = run(items, d, fetch=fb, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        assert rep["triedNoTable"] == ["2024-03-05"] and rep["parserVersion"] == bf.BASIS_PARSER_VERSION and len(fb.log) == 2, rep
+        report = {"generatedAt": "x", "series": [dict(rep, ranAt="x")], "calibration": {}}
+        import json
+        json.dump(report, open(os.path.join(d, "_backfill_report.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        fb2 = Bodies({items[0]["url"]: (R_0811, None)})
+        rep2 = run(items, d, fetch=fb2, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        assert rep2["skippedKnownNoTable"] == 1 and rep2["existingSkipped"] == 1, rep2      # 03-05 已知没有表、也没有摘要值→跳过并计数；03-06 已有表点→跳过
+        assert fb2.log == [], f"已知没有表的日期不再重抓：{fb2.log}"
+        report["series"][0]["parserVersion"] = "table-v0"
+        json.dump(report, open(os.path.join(d, "_backfill_report.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        fb3 = Bodies({items[0]["url"]: (R_0811, None)})
+        run(items, d, fetch=fb3, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        assert fb3.log == [items[0]["url"]], f"解析规则版本变了：重新尝试：{fb3.log}"
+        assert ("2024-03-05", -90.0, "日照", "table") in pts(d), pts(d)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★正文没有表的日期被记下来、同版本下次不再重抓；parserVersion 变了就全部重试(这次用新规则从正文里读到了表)")
+
+
+def test_table_row_requires_exactly_a_two_digit_contract_and_accepts_glued_province():
+    """★变异检查发现：没有测试验证合约月份必须恰好两位——否则别的数字序列会被误读成表格行。另：省份和市场粘在一起写(山东日照)也要能读。"""
+    assert fd.parse_basis_table("山东 日照 123 -90 20") == {}, "三位数不是合约月份：不当成表格行"
+    assert fd.parse_basis_table("山东 日照 9 -90 20") == {}, "一位数不是合约月份：不当成表格行"
+    assert fd.parse_basis_table("山东 日照 09 -90 20")["日照"]["contract"] == "09"
+    g = fd.parse_basis_table("山东日照 09 -90 20 广东东莞 09 -80 10")
+    assert g["日照"]["value"] == -90.0 and g["东莞"]["value"] == -80.0, g
+    ok("★合约月份必须恰好两位(123、9都不行)；省份和市场粘在一起写(山东日照、广东东莞)也能读——原来多余的'城市名前不能是汉字'限制已删")
+
+
+def test_table_parser_uses_the_first_occurrence_of_a_market():
+    t = "省份 市场 期货合约 现货基差 涨跌 山东 日照 09 -90 20 备注 山东 日照 09 -500 0"
+    assert fd.parse_basis_table(t)["日照"]["value"] == -90.0, fd.parse_basis_table(t)
+    ok("同一个市场在正文里出现两次(比如备注里又列了一遍)：取第一次(数据表里的)")
+
+
+def test_a_failed_body_request_is_transient_and_never_remembered_as_no_table():
+    """★变异检查发现：403/超时是暂时性的，如果被记成'这篇没有表'，下次就永远不重抓了。只有'请求成功但里面没有表'才记。"""
+    items = [mk("2024-03-05", "")]
+    d = tempfile.mkdtemp()
+    try:
+        fb = Bodies(default=(None, "正文请求失败(HTTP 403)"))
+        rep = run(items, d, fetch=fb, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        assert rep.get("triedNoTable", []) == [] and len(fb.log) == 1, rep
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★请求失败(403)不记进 triedNoTable(暂时性的，下次还要重试)；只有请求成功但没有表才记")
+
+
 def test_registration_query_default_start_and_not_in_default_jobs():
     calls = []
     d = tempfile.mkdtemp()

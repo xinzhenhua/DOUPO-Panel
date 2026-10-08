@@ -715,17 +715,41 @@ def _item_key(it):
     return str(it.get("url") or "") or (str(it.get("title") or "") + "|" + str(it.get("publishTime") or ""))
 
 
-def search_windowed(search, query, w_start, w_end, cap=SEARCH_CAP, **kw):
+PAGE_SIZE = 20       # _search_articles 每页20条
+
+
+def search_windowed(search, query, w_start, w_end, cap=SEARCH_CAP, probe=False, **kw):
     """在 [w_start, w_end](日期，含两端)内搜索；某个窗口返回满 cap 条(或接口报告的 total 达到 cap)就**对半切开重搜**，直到不再封顶。
     为什么：窗口返回恰好 cap 条无法区分"刚好这么多"和"被截断"，必须当作被截断；原来只在报告里提醒、不补救，开机率因此漏了约12%的交易日。
     返回 (items, info)：items 按 url(没有 url 用 标题+发布时间)去重；info={calls, splits, unresolved:[切到单日仍封顶的'日期~日期'], notes:[接口失败说明]}。
     叶子窗口无缝无重叠地覆盖原区间；接口失败(没有返回)不切(切了也没用)；单日仍封顶就标进 unresolved，不假装拿全了。
     kw(max_pages/url/sleep_s…)原样传给 search。"""
-    info = {"calls": 0, "splits": 0, "unresolved": [], "notes": []}
+    info = {"calls": 0, "splits": 0, "probes": 0, "unresolved": [], "notes": []}
     seen = {}
 
     def go(a, b):
-        items, total, note = search(query, datetime(a.year, a.month, a.day), datetime(b.year, b.month, b.day, 12), **kw)
+        a_dt, b_dt = datetime(a.year, a.month, a.day), datetime(b.year, b.month, b.day, 12)
+        if probe:
+            # ★先只请求第1页：接口会报告这个窗口的总数。总数达到 cap 就直接对半切，不再把750条翻完再丢掉(2026-10-08 真实：开机率回填因此跑满60分钟被取消)。
+            #   第一页就是全部(少于一页)：直接用，不再请求；否则才整窗翻页。
+            items1, total1, note1 = search(query, a_dt, b_dt, **dict(kw, max_pages=1))
+            info["calls"] += 1
+            info["probes"] += 1
+            if note1:
+                info["notes"].append(f"{a}~{b}: {note1}")
+            capped1 = len(items1) >= cap or (total1 or 0) >= cap
+            if capped1 and (b - a).days >= 1:
+                mid = a + timedelta(days=(b - a).days // 2)
+                info["splits"] += 1
+                go(a, mid)
+                go(mid + timedelta(days=1), b)
+                return
+            if not capped1 and len(items1) < PAGE_SIZE:
+                for it in items1:
+                    if isinstance(it, dict):
+                        seen.setdefault(_item_key(it), it)
+                return
+        items, total, note = search(query, a_dt, b_dt, **kw)
         info["calls"] += 1
         if note:
             info["notes"].append(f"{a}~{b}: {note}")
@@ -746,26 +770,70 @@ def search_windowed(search, query, w_start, w_end, cap=SEARCH_CAP, **kw):
     return list(seen.values()), info
 
 
-def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, sleep_s=0.6):
+def gap_ranges(days, gap_merge=4, max_days=90):
+    """缺的日期 → 要搜索的日期段 [(起, 止)]。相隔≤gap_merge天(含周末)的合并成一段(少发请求)，更远的单独成段；每段超过max_days天的切成≤max_days天的块。"""
+    runs = []
+    for d in sorted(set(days)):
+        if runs and (d - runs[-1][1]).days <= gap_merge:
+            runs[-1][1] = d
+        else:
+            runs.append([d, d])
+    out = []
+    for a, b in runs:
+        s0 = a
+        while s0 <= b:
+            e0 = min(s0 + timedelta(days=max_days - 1), b)
+            out.append((s0, e0))
+            s0 = e0 + timedelta(days=1)
+    return out
+
+
+CRUSH_TIME_BUDGET_S = 40 * 60      # 工作流总超时是60分钟，留足余量给装依赖和提交；超过就优雅地停，不被强杀
+
+
+def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, sleep_s=0.6, time_budget_s=CRUSH_TIME_BUDGET_S, clock=time.monotonic):
+    """油厂开机率回填。★v101.5：只补历史里缺的交易日，并有时间预算。
+    为什么：v101.4 的自适应切窗让它把整个22个月重新下载一遍(每个被截断的父窗口先翻完约38页再丢掉)，在真实环境里跑满60分钟被工作流取消，一个点都没保存。
+    现在：①用交易日历算出历史里缺哪些交易日，只搜缺口附近(相隔≤4天合并成一段)，已有的点不覆盖；②每个窗口先探一页(probe)，总数达到750条就直接切，不再翻完；
+    ③超过 time_budget_s 就停下，已补的保存，报告写 stoppedEarly 和还缺哪些天，再点一次接着补。历史为空(第一次)时与以前一样从起点按90天窗口无缝覆盖。"""
+    import cn_calendar
     if today is None:
         today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
     start = start or CRUSH_BACKFILL_FROM
     search = search or _search_articles
+    existing = {p.get("d") for p in hs.load_series("crush_rate", base_dir).get("points", [])}
+    all_td, d0 = [], start
+    while d0 <= today:
+        if cn_calendar.dce_is_trading_day(d0):
+            all_td.append(d0)
+        d0 += timedelta(days=1)
+    missing = [d for d in all_td if d.isoformat() not in existing]
+    if existing:
+        ranges = gap_ranges(missing, max_days=CRUSH_WINDOW_DAYS)
+    else:       # 第一次：与以前一样，从起点到今天按90天窗口无缝覆盖
+        ranges, w0 = [], start
+        while w0 <= today:
+            w1 = min(w0 + timedelta(days=CRUSH_WINDOW_DAYS - 1), today)
+            ranges.append((w0, w1))
+            w0 = w1 + timedelta(days=1)
     by_day, excluded, caps, windows, total_items = {}, [], [], 0, 0
-    splits, calls_n, search_notes = 0, 0, []
-    w_start = start
-    while w_start <= today:
-        w_end = min(w_start + timedelta(days=CRUSH_WINDOW_DAYS - 1), today)
-        items, sinfo = search_windowed(search, "全国动态全样本油厂开机率", w_start, w_end, max_pages=60, url=fd.MYSTEEL_SEARCH_URL, sleep_s=sleep_s)
+    splits, probes, calls_n, search_notes = 0, 0, 0, []
+    t0, stopped = clock(), False
+    for a, b in ranges:
+        if clock() - t0 > time_budget_s:
+            stopped = True
+            break
+        items, sinfo = search_windowed(search, "全国动态全样本油厂开机率", a, b, probe=True, max_pages=60, url=fd.MYSTEEL_SEARCH_URL, sleep_s=sleep_s)
         windows += 1
         total_items += len(items)
         splits += sinfo["splits"]
+        probes += sinfo["probes"]
         calls_n += sinfo["calls"]
         caps += sinfo["unresolved"]
         search_notes += sinfo["notes"]
         for it in items:
             d = _pub(it)
-            if d is None:
+            if d is None or d.isoformat() in existing:        # 已有的点不覆盖(线上每天累积的和上次回填的都保留)
                 continue
             got, rej = mp.parse_crush_rate(str(it.get("content") or ""), d.isoformat())
             if rej:
@@ -775,18 +843,24 @@ def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, slee
             stamp = str(it.get("publishTime") or "")
             if d.isoformat() not in by_day or stamp >= by_day[d.isoformat()][0]:
                 by_day[d.isoformat()] = (stamp, got[0]["value"])
-        w_start = w_end + timedelta(days=1)
     pts = [{"d": k, "v": v} for k, (_, v) in sorted(by_day.items())]
-    hs.record_points("crush_rate", pts, base_dir)
-    notes = [f"{windows}个窗口(每窗{CRUSH_WINDOW_DAYS}天)共搜到{total_items}条快讯，采用{len(pts)}个交易日的油厂开机率(同一天多条取发布最晚的)；"
+    if pts:
+        hs.record_points("crush_rate", pts, base_dir)
+    still = [d.isoformat() for d in missing if d.isoformat() not in by_day]
+    notes = [f"历史里已有{len(existing)}个点，{start}~{today}共{len(all_td)}个交易日，缺{len(missing)}个；搜了{windows}段(相隔≤4天的缺口合并)共搜到{total_items}条快讯，本次补上{len(pts)}个交易日；"
              "春节停机期的低值(如2025-01-26的9.80%)是真实数据，照常入库，但评分时的参照分布会把春节窗口去掉"]
     if splits:
-        notes.append(f"自适应切窗：{windows}个90天窗口里共切了{splits}次(窗口返回满750条就对半切开重搜)，共{calls_n}次搜索——避免被接口的750条上限截断")
+        notes.append(f"自适应切窗{splits}次(先探一页，总数达到750条就对半切开重搜)，共{calls_n}次请求(其中探测{probes}次)")
+    if stopped:
+        notes.append(f"⚠️用完了{time_budget_s // 60}分钟的时间预算，还有{len(still)}个交易日没补(已保存已补的部分)：再点一次 only=crush_rate 接着补")
+    elif still:
+        notes.append(f"这{len(still)}个交易日搜了但快讯里没有开机率读数(可能当天确实没发布，或春节期间)，下次运行还会再试一次，开销很小")
     if caps:
         notes.append(f"⚠️这些日期切到最小的1天窗口仍然恰好返回750条(接口上限)，这几天可能还是不全：{', '.join(caps)}")
     notes += [f"搜索说明：{n}" for n in search_notes[:5]]
     return _report_entry("crush_rate", base_dir, len(pts), notes=notes,
-                         extra={"windowsHitCap": caps, "excluded(非油厂/超范围，前6条)": excluded[:6]})
+                         extra={"windowsHitCap": caps, "excluded(非油厂/超范围，前6条)": excluded[:6], "missingBefore": len(missing), "stillMissing": still[:60],
+                                "stoppedEarly": stopped, "rangesSearched": windows, "probeRequests": probes})
 
 
 
@@ -850,19 +924,34 @@ def _fetch_basis_body(url, title):
     return fd._extract_article_region(fd._html_to_text(raw), title), None
 
 
+BASIS_PARSER_VERSION = "table-v1"      # 解析规则版本：报告里记下"正文没有表"的日期，只在版本相同时下次才跳过(解析规则改了就全部重试)
+
+
+def _basis_known_no_table(out_dir):
+    """上次报告里记下的'抓了正文但里面没有数据表'的日期(只在 parserVersion 相同时有效)。读不到/损坏/版本不同都返回空集。"""
+    for it in _read_previous_series(out_dir) or []:
+        if isinstance(it, dict) and it.get("key") == "basis" and it.get("parserVersion") == BASIS_PARSER_VERSION:
+            return {d for d in (it.get("triedNoTable") or []) if isinstance(d, str)}
+    return set()
+
+
 def backfill_basis(base_dir=None, start=None, today=None, search=None, fetch_body=None, max_bodies=300, sleep_s=0.8):
-    """现货基差回填。取值规则与线上 fetch_mysteel_basis 完全一致(fd._extract_basis_from_article：沿海城市优先级里第一个有确切数值的城市)，每个点带 x.city 和 x.src。
-    ①先用搜索摘要(2026-06-16 以后的文章摘要里有数字)；②摘要取不出的(2026-06 以前摘要为空)才抓正文，每次最多抓 max_bodies 篇，**从最新的开始**；
-    ③**已经有历史的日期跳过**(不覆盖线上每天累积的点，也不重抓)，所以可以重复点、每次接着补，补完后再点一篇正文都不抓；
-    ④只抓可信域名(fd.is_trusted_article_url)的正文。
-    ★老文章的正文格式没有真实样本，正文路径能否解析只能在真实环境第一次运行后看报告里的 bodyFailures(附正文开头)来迭代。
-    ★城市切换噪声：每天取到的城市不同(日照/南通/东莞/防城港…)，城市之间相差中位10、最大120，和每天的真实变动一样大；报告里给出 cityCounts。"""
+    """现货基差回填。★v101.5：用正文里的数据表。
+    真实情况(2026-10-08 回填报告)：每篇《全国主要市场豆粕基差价格汇总》正文底下有一张每市场一行的表(省份 市场 期货合约 现货基差 涨跌)，
+    页面顶部"智能摘要 内容由AI生成"只是它的概括——线上抓取和 v101.4 的回填解析的都是那段AI概括，所以300篇正文一个都没解析出来。
+    取值：①抓正文，读表，按沿海城市优先级(日照/南通/东莞/湛江/防城港/厦门/天津)取第一个有数值的(表里每天都有日照，不再每天切换城市)，点里记 x={city,src:'table',contract}；
+          ②表取不出：退回搜索摘要(线上同一规则，src='summary')；③再不行用正文里的文字(src='body')。
+    每次最多抓 max_bodies 篇正文、从最新的开始；配额用完的日期若摘要有值先用摘要记上(src='summary')，下次运行用表升级。
+    ★已有的点：src='table'/'body' 或没有 src(线上每天累积的)永不动、不重抓；src='summary'(上一版回填)会被表升级(表取不出就保留原点)。
+    ★正文请求成功但里面没有表的日期记进报告 triedNoTable(带 parserVersion)，下次不再重抓，免得顽固的日期每次占掉配额。"""
     if today is None:
         today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
     start = start or BASIS_BACKFILL_FROM
     search = search or _search_articles
     fetch_body = fetch_body or _fetch_basis_body
-    existing = {p.get("d") for p in hs.load_series("basis", base_dir).get("points", [])}
+    out_dir = base_dir or hs.HISTORY_DIR
+    ex_pts = {p.get("d"): p for p in hs.load_series("basis", base_dir).get("points", [])}
+    known_no_table = _basis_known_no_table(out_dir)
     arts, other_titles, windows, splits, calls_n, caps, search_notes, total_items = {}, 0, 0, 0, 0, [], [], 0
     w_start = start
     while w_start <= today:
@@ -885,73 +974,110 @@ def backfill_basis(base_dir=None, start=None, today=None, search=None, fetch_bod
             if d.isoformat() not in arts or stamp >= arts[d.isoformat()][0]:
                 arts[d.isoformat()] = (stamp, it)
         w_start = w_end + timedelta(days=1)
-    new_pts, via_s, via_b, city_counts, body_fail, no_value = {}, 0, 0, {}, [], 0
-    bodies, untrusted, existing_skipped, need_body = 0, 0, 0, 0
-    for d in sorted(arts, reverse=True):          # 最新的先处理：近期的先补上，正文配额也先用在近期
-        if d in existing:
-            existing_skipped += 1
-            continue
-        it = arts[d][1]
-        city, val = fd._extract_basis_from_article(str(it.get("content") or ""))
-        src = "summary"
-        if val is None:
-            url = str(it.get("url") or "")
-            if not url or not fd.is_trusted_article_url(url):
-                untrusted += 1
-                no_value += 1
-                continue
-            if bodies >= max_bodies:
-                need_body += 1
-                continue
-            bodies += 1
-            text, err = fetch_body(url, str(it.get("title") or ""))
-            time.sleep(sleep_s)
-            if err or not text:
-                if len(body_fail) < 8:
-                    body_fail.append({"d": d, "reason": err or "正文为空"})
-                no_value += 1
-                continue
-            city, val = fd._extract_basis_from_article(text)
-            src = "body"
-            if val is None:
-                if len(body_fail) < 8:
-                    body_fail.append({"d": d, "reason": "正文里没有沿海城市(日照/南通/东莞/湛江/防城港/厦门/天津)的确切基差数值", "regionHead": text[:220]})
-                no_value += 1
-                continue
+    new_pts, via = {}, {"table": 0, "summary": 0, "body": 0}
+    city_counts, contract_counts, body_fail, no_value, tried_no_table = {}, {}, [], 0, []
+    bodies, untrusted, existing_skipped, need_body, upgraded, upgrade_pending, skipped_known = 0, 0, 0, 0, 0, 0, 0
+
+    def accept(d, city, val, src, contract=None):
         problem = fd._plausibility_problem("meaBasis", val)
         if problem:
             if len(body_fail) < 8:
                 body_fail.append({"d": d, "reason": f"{city}基差{problem}，已丢弃"})
+            return False
+        x = {"city": city, "src": src}
+        if contract:
+            x["contract"] = contract
+        new_pts[d] = {"d": d, "v": val, "x": x}
+        city_counts[city] = city_counts.get(city, 0) + 1
+        if contract:
+            contract_counts[contract] = contract_counts.get(contract, 0) + 1
+        via[src] += 1
+        return True
+
+    for d in sorted(arts, reverse=True):          # 最新的先处理：近期的先补上，正文配额也先用在近期
+        old = ex_pts.get(d)
+        upgrade = bool(old) and (old.get("x") or {}).get("src") == "summary"
+        if old and not upgrade:
+            existing_skipped += 1
+            continue
+        it = arts[d][1]
+        s_city, s_val = fd._extract_basis_from_article(str(it.get("content") or ""))
+        url = str(it.get("url") or "")
+        can_fetch = bool(url) and fd.is_trusted_article_url(url)
+        if d in known_no_table or not can_fetch or bodies >= max_bodies:
+            # 不抓正文：已知这篇正文没有表 / 网址不可用 / 配额用完。有摘要值就先用摘要(新日期)；升级点保持原样
+            if upgrade:
+                if d not in known_no_table and can_fetch:
+                    upgrade_pending += 1
+                continue
+            if d in known_no_table:
+                skipped_known += 1
+            elif not can_fetch:
+                untrusted += 1
+            if s_val is not None and accept(d, s_city, s_val, "summary"):
+                continue
+            if can_fetch and bodies >= max_bodies and d not in known_no_table:
+                need_body += 1
+            else:
+                no_value += 1
+            continue
+        bodies += 1
+        text, err = fetch_body(url, str(it.get("title") or ""))
+        time.sleep(sleep_s)
+        if err or not text:
+            if len(body_fail) < 8:
+                body_fail.append({"d": d, "reason": err or "正文为空"})
+            if not upgrade and s_val is not None and accept(d, s_city, s_val, "summary"):
+                continue
             no_value += 1
             continue
-        new_pts[d] = {"d": d, "v": val, "x": {"city": city, "src": src}}
-        city_counts[city] = city_counts.get(city, 0) + 1
-        if src == "summary":
-            via_s += 1
-        else:
-            via_b += 1
+        t_city, t_val, t_contract = fd.basis_from_table(text)
+        if t_val is not None:
+            if accept(d, t_city, t_val, "table", t_contract) and upgrade:
+                upgraded += 1
+            continue
+        # 正文请求成功但表里取不出沿海城市：记下来(下次不再重抓)，退回摘要/正文文字
+        tried_no_table.append(d)
+        if len(body_fail) < 8:
+            body_fail.append({"d": d, "reason": "正文里没有数据表，或表里没有沿海城市(日照/南通/东莞/湛江/防城港/厦门/天津)的数值", "regionHead": text[:220]})
+        if upgrade:
+            continue
+        if s_val is not None and accept(d, s_city, s_val, "summary"):
+            continue
+        b_city, b_val = fd._extract_basis_from_article(text)
+        if b_val is not None and accept(d, b_city, b_val, "body"):
+            continue
+        no_value += 1
     if not new_pts and not existing_skipped:
-        # ★一个点都没取到时恰恰最需要诊断：把能说明原因的计数都带上(之前只带了3个，用例里 untrustedOrMissingUrl 缺失)
+        # ★一个点都没取到时恰恰最需要诊断：把能说明原因的计数都带上
         return {"key": "basis", "error": "没有搜到能提取出沿海城市基差的文章", "searchTotal": total_items, "articleDates": len(arts), "otherTitlesSkipped": other_titles,
                 "bodiesFetched": bodies, "needBodyRemaining": need_body, "untrustedOrMissingUrl": untrusted, "noValue": no_value, "bodyFailures": body_fail,
+                "parserVersion": BASIS_PARSER_VERSION, "triedNoTable": sorted(set(tried_no_table) | known_no_table)[:900],
                 "notes": [f"搜索说明：{n}" for n in search_notes[:5]]}
     if new_pts:
         hs.record_points("basis", [new_pts[k] for k in sorted(new_pts)], base_dir)
-    notes = [f"{windows}个窗口共搜到{total_items}条，基差文章{len(arts)}个日期；本次新增{len(new_pts)}个点(摘要{via_s}、正文{via_b})，已有历史的{existing_skipped}个日期跳过，抓了{bodies}篇正文(上限{max_bodies})",
-             "取值规则与线上一致(沿海城市优先级里第一个有确切数值的城市)；每天取到的城市不同，城市之间相差中位10、最大120，与每天的真实变动一样大，看趋势时要留意(见 cityCounts)"]
+    notes = [f"{windows}个窗口共搜到{total_items}条，基差文章{len(arts)}个日期；本次写入{len(new_pts)}个点(表{via['table']}、摘要{via['summary']}、正文文字{via['body']})，其中升级旧摘要点{upgraded}个；"
+             f"已有历史且不动的{existing_skipped}个日期跳过，抓了{bodies}篇正文(上限{max_bodies})",
+             "取值：读正文数据表，按沿海城市优先级取第一个有数值的(表里每天都有日照，城市不再每天切换)；表取不出才退回AI摘要/正文文字，点里的 x.src 标明来源，x.contract 是表里的合约月份(09→01 换月处基差会有断层)"]
     if need_body:
-        notes.append(f"⚠️还有{need_body}篇摘要取不出、本次没抓正文(达到每次{max_bodies}篇的上限)：再点一次 only=basis 接着补(已有的日期会跳过)")
+        notes.append(f"⚠️还有{need_body}篇没有任何可用的值、本次也没抓正文(达到每次{max_bodies}篇的上限)：再点一次 only=basis 接着补(已有的日期会跳过)")
+    if upgrade_pending:
+        notes.append(f"还有{upgrade_pending}个旧的摘要点等着用表升级(本次配额用完)：再点一次 only=basis")
+    if tried_no_table or skipped_known:
+        notes.append(f"正文里没有表的日期{len(tried_no_table)}个(本次新发现)+{skipped_known}个(上次已知，本次跳过)：已记入 triedNoTable，下次不再重抓；解析规则改了(parserVersion 变)会全部重试")
     if body_fail:
-        notes.append("⚠️有正文没解析出来(老文章正文格式没有真实样本)：看 bodyFailures 里的原因和正文开头，据此改解析规则")
+        notes.append("有正文没取到值：看 bodyFailures 里的原因和正文开头")
     if splits:
         notes.append(f"自适应切窗{splits}次(窗口返回满750条就对半切开重搜)，共{calls_n}次搜索")
     if caps:
         notes.append(f"⚠️这些日期切到1天仍恰好返回750条，可能不全：{', '.join(caps)}")
     notes += [f"搜索说明：{n}" for n in search_notes[:5]]
     return _report_entry("basis", base_dir, len(new_pts), notes=notes,
-                         extra={"viaSummary": via_s, "viaBody": via_b, "bodiesFetched": bodies, "needBodyRemaining": need_body, "existingSkipped": existing_skipped,
-                                "noValue": no_value, "untrustedOrMissingUrl": untrusted, "cityCounts": city_counts, "bodyFailures": body_fail,
-                                "otherTitlesSkipped": other_titles, "windowsHitCap": caps})
+                         extra={"viaTable": via["table"], "viaSummary": via["summary"], "viaBody": via["body"], "upgraded": upgraded, "bodiesFetched": bodies,
+                                "needBodyRemaining": need_body, "upgradePending": upgrade_pending, "existingSkipped": existing_skipped, "skippedKnownNoTable": skipped_known,
+                                "noValue": no_value, "untrustedOrMissingUrl": untrusted, "cityCounts": city_counts, "contractCounts": contract_counts, "bodyFailures": body_fail,
+                                "otherTitlesSkipped": other_titles, "windowsHitCap": caps,
+                                "parserVersion": BASIS_PARSER_VERSION, "triedNoTable": sorted(set(tried_no_table) | known_no_table)[:900]})
 
 
 RMSPREAD_QUERY = "豆菜粕价差"

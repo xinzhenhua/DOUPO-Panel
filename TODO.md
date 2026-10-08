@@ -52,12 +52,12 @@
 - [ ] **回填到底成功没有：等你把 `crush_rate.json`、`arrival_forecast.json`、`soy_import.json`(或整个 data/history 打包)发来**，v101.2 之后再跑回填，报告里每项都会带 ranAt。
 
 - [x] ~~豆菜粕价差回填~~：v101.4 已做(见 README)。**部署后要做**：Actions 回填 `only=rm_spread` 一次，把报告发我(看 formatSwitches 和 gapsOver14Days)。
-- [ ] **现货基差回填的第一次真实运行**：`only=basis`，看报告里 `viaSummary/viaBody/needBodyRemaining/bodyFailures`；正文格式不对就把 `bodyFailures` 发我改解析；`needBodyRemaining>0` 就再点一次。
-- [ ] **基差"沿海城市均值"要不要替代"第一个有数值的城市"**：城市切换噪声≈每天真实变动(见 README v101.4)。要改会改变线上基差卡片的含义和阈值，需要你决定。
-- [ ] **开机率重跑一次回填**(`only=crush_rate`)：旧的399个点被750条上限截断，自适应切窗后应更全；对照报告里的点数和 windowsHitCap。
+- [ ] **现货基差再跑一次回填(v101.5)**：`only=basis`，看 `viaTable/upgraded/needBodyRemaining/upgradePending/bodyFailures/triedNoTable/contractCounts`；每次最多300篇，约760篇要点3次；表格式在更老的文章里是否一致只能看这次报告。
+- [ ] **线上基差抓取也改读表**：线上每小时抓的是AI摘要(取'第一个有数值的沿海城市'，会切换)，回填取表里的日照，新旧点口径有断层(x.src 标明)。要根治需要线上也抓正文读表(多一次请求，要在测试里处理好网络)。需要你决定。
+- [ ] **开机率重跑一次回填**(`only=crush_rate`)：v101.4 版本超时被取消；v101.5 只补缺的交易日并有40分钟预算，看报告里 `missingBefore/added/stillMissing/stoppedEarly`。
 - [ ] **肉鸡利润**：回填不可行(样本25点、不规则)；只能靠每次抓取累积，或找结构化数据源。
 
-## ✅ 已完成(v97~v101.4)
+## ✅ 已完成(v97~v101.5)
 顶部拆开(基本面预警/市场结构)、开机率春节扰动期不计分、移除出口检验、开机率滚动分位规则+回填、数据同步看门狗、榨利/月差校准诊断工具、进口量/到港预报回填、
 **开机率往年同月分位(三档)、决策卡合成一张、豆菜粕价差新口径不计分、砍掉采样诊断和周度库存回填(v99)、龙虎榜+CFTC进市场结构并把当前市场状态写在最上边、修摩根大通外资识别bug(v100)、龙虎榜和CFTC历史开始累积+同合约连续N日+CFTC近156周回填(v101)**。
 
