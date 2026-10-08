@@ -42,7 +42,10 @@ W1 = "2026年3月第1周猪料、鸡料、蛋料比价"
 class FakeDriver:
     """pages: 列表页序列(每页是 item 列表)；nav_delay: 点击子栏目后要再轮询几次才出现条目；click_nav: 导航元素是否存在"""
 
-    def __init__(self, pages, nav_delay=0, click_nav=True, has_next=True, next_changes=True, resolve=None, boom_on=None, clock=None, slow_get=0):
+    def __init__(self, pages, nav_delay=0, click_nav=True, has_next=True, next_changes=True, resolve=None, boom_on=None, clock=None, slow_get=0,
+                 works=("native", "js", "ancestor", "events"), hydrate_at=0.0, direct_ok=False):
+        # works: 哪些点击办法真的能让列表加载；hydrate_at: 前端框架在这个(假)时刻之后才激活，之前的点击没有任何效果；direct_ok: 直接打开带子栏目 id 的地址就能加载
+        self.works, self.hydrate_at, self.direct_ok, self.clicks = set(works), hydrate_at, direct_ok, []
         self.pages, self.nav_delay, self.click_nav, self.has_next, self.next_changes = pages, nav_delay, click_nav, has_next, next_changes
         self.resolve = resolve or {}          # 条目文字 -> 点击后跳转到的详情页 URL
         self.boom_on, self.clock, self.slow_get = boom_on, clock, slow_get
@@ -54,6 +57,19 @@ class FakeDriver:
         if self.clock:
             self.clock.t += self.slow_get
         self.current_url = url
+        self.loaded = bool(self.direct_ok and "sclmId=1840280592963387394" in url or self.direct_ok and url.endswith("list?clmId=1840280592963387394"))
+        self.polls_after_nav = 0
+
+    def find_elements(self, by, expr):
+        return [_El(self)] if self.click_nav else []
+
+    def _nav_click(self, how):
+        self.clicks.append(how)
+        if not self.click_nav:
+            return "NOT_FOUND"
+        if (self.clock.t if self.clock else 0.0) >= self.hydrate_at and how in self.works:
+            self.loaded, self.polls_after_nav = True, 0
+        return "CLICKED"
 
     def back(self):
         self.calls.append(("back",))
@@ -77,10 +93,7 @@ class FakeDriver:
         if script == nb.JS_CLICK_TEXT:
             want = args[0]
             if want == nb.NAV_TEXT:
-                if not self.click_nav:
-                    return "NOT_FOUND"
-                self.loaded, self.polls_after_nav = True, 0
-                return "CLICKED"
+                return self._nav_click("js")
             if want == "下一页":
                 if not self.has_next:
                     return "NOT_FOUND"
@@ -94,6 +107,14 @@ class FakeDriver:
             self.stack.append(self.current_url)
             self.current_url, self.page_source = url, f"<html>详情 {url}</html>"
             return "CLICKED"
+        if script == nb.JS_CLICK_ANCESTOR:
+            return self._nav_click("ancestor")
+        if script == nb.JS_CLICK_EVENTS:
+            return self._nav_click("events")
+        if script == nb.JS_DESCRIBE:
+            return {"readyState": "complete", "nuxt": True, "candidates": [], "anchors": []}
+        if script == "return document.readyState":
+            return "complete"
         if script == nb.JS_BODY_HEAD:
             return "监测信息 猪料、鸡料、蛋料比价信息"
         if "innerText.length > 50" in script:
@@ -101,8 +122,24 @@ class FakeDriver:
         return None
 
 
+class _El:
+    def __init__(self, drv):
+        self.drv = drv
+
+    def is_displayed(self):
+        return True
+
+    def click(self):
+        self.drv._nav_click("native")
+
+
 def lister(drv, clk=None, **kw):
     clk = clk or Clock()
+    if drv.clock is None:
+        drv.clock = clk
+    kw.setdefault("settle_s", 0.5)
+    kw.setdefault("click_wait_s", 2.0)
+    kw.setdefault("direct_wait_s", 2.0)
     kw.setdefault("total_timeout_s", 90)
     return nb.SeleniumLister(driver_factory=lambda: drv, sleep=clk.sleep, clock=clk.now, **kw), clk
 
@@ -127,6 +164,48 @@ def test_items_that_never_appear_give_a_timeout_error_with_diagnostics_and_no_ex
     L.close()
     assert drv.quit_called
     ok("★条目一直不出现：最多等30秒，错误里写明'点了子栏目后等不到条目'，诊断带上点击结果和页面开头文字；不抛异常，浏览器关掉")
+
+
+def test_click_before_the_front_end_is_hydrated_does_nothing_so_the_lister_waits_then_retries():
+    """★真实运行(2026-10-08)的现象：点击执行了、页面没变。假设：Nuxt 还没激活，点击无处理函数。fake 在假时刻 3.0 才激活。"""
+    page = [[item(W4, D + "4", "2026-09-25")]]
+    early = FakeDriver(page, hydrate_at=3.0)
+    L, clk = lister(early, settle_s=0.5, click_wait_s=1.0)
+    r = L.list_articles()
+    assert r["error"] is None and len(r["links"]) == 1 and r["debug"]["opened"] in ("js", "ancestor", "events", "native"), r
+    assert early.clicks[0] == "native" and len(early.clicks) >= 2, early.clicks          # 第一次点击没效果 → 换办法再点
+    ok("★前端没激活时第一次点击无效：不放弃，换办法再点，激活后成功")
+
+
+def test_each_click_strategy_is_tried_in_order_until_one_works():
+    page = [[item(W4, D + "4", "2026-09-25")]]
+    d = FakeDriver(page, works=("events",))
+    L, _ = lister(d)
+    r = L.list_articles()
+    assert r["error"] is None and r["debug"]["opened"] == "events" and d.clicks == ["native", "js", "ancestor", "events"], (r["debug"], d.clicks)
+    assert [a["how"] for a in r["debug"]["attempts"]] == ["native", "js", "ancestor", "events"]
+    ok("★点击办法依次：原生点击→JS点击→祖先元素→完整鼠标事件，哪个先奏效用哪个，诊断记录每一步")
+
+
+def test_when_no_click_works_the_direct_sub_column_url_is_tried_and_can_succeed():
+    page = [[item(W4, D + "4", "2026-09-25")]]
+    d = FakeDriver(page, works=(), direct_ok=True)
+    L, _ = lister(d)
+    r = L.list_articles()
+    assert r["error"] is None and r["debug"]["opened"] == "direct" and len(r["links"]) == 1, r["debug"]
+    gets = [c[1] for c in d.calls if c[0] == "get"]
+    assert gets[0] == fd.NDRC_ENTRY_LIST and "sclmId=1840280592963387394" in gets[1], gets
+    ok("★所有点击都无效 → 直接打开带子栏目 id 的地址，能加载就用")
+
+
+def test_all_strategies_failing_leaves_complete_diagnostics():
+    d = FakeDriver([[item(W4, D + "4", "2026-09-25")]], works=())
+    L, clk = lister(d)
+    r = L.list_articles()
+    dbg = r["debug"]
+    assert "等不到" in r["error"] and len(dbg["attempts"]) == 6 and dbg["describe"]["readyState"] == "complete" and dbg["currentUrl"], dbg
+    assert clk.t < 30, clk.t
+    ok("全部失败：错误+6次尝试(4种点击+2个直接地址)+页面现场描述，且耗时有限")
 
 
 def test_missing_navigation_element_is_reported():

@@ -66,6 +66,47 @@ hits[0].click();
 return 'CLICKED';
 """
 
+# 点击"文字恰好是 X 的最小元素"的最近可点击祖先(a/button/[onclick]/[role=button]/cursor:pointer)；处理函数常常挂在 li/div 上而不是文字所在的 span
+JS_CLICK_ANCESTOR = r"""
+const want = arguments[0];
+const leaf = Array.from(document.querySelectorAll('body *')).filter(e => e.children.length === 0 && (e.innerText || e.textContent || '').trim() === want)[0];
+if (!leaf) return 'NOT_FOUND';
+let el = leaf, target = leaf.parentElement || leaf;
+for (let i = 0; i < 5 && el; i++, el = el.parentElement) {
+  const cs = window.getComputedStyle(el);
+  if (el.tagName === 'A' || el.tagName === 'BUTTON' || el.hasAttribute('onclick') || el.getAttribute('role') === 'button' || cs.cursor === 'pointer') { target = el; break; }
+}
+try { target.scrollIntoView({block: 'center'}); } catch (e) {}
+target.click();
+return 'CLICKED:' + target.tagName;
+"""
+
+# 派发完整的鼠标事件序列(mouseover/mousedown/mouseup/click)到文字元素和它的几层祖先——有些框架监听的是 mousedown/mouseup 而不是 click
+JS_CLICK_EVENTS = r"""
+const want = arguments[0];
+const leaf = Array.from(document.querySelectorAll('body *')).filter(e => e.children.length === 0 && (e.innerText || e.textContent || '').trim() === want)[0];
+if (!leaf) return 'NOT_FOUND';
+let el = leaf;
+for (let i = 0; i < 4 && el; i++, el = el.parentElement) {
+  for (const t of ['mouseover', 'mousedown', 'mouseup', 'click']) el.dispatchEvent(new MouseEvent(t, {bubbles: true, cancelable: true, view: window}));
+}
+return 'CLICKED';
+"""
+
+# 失败时的现场描述：导航元素的候选(可见性/标签/类名/祖先链/HTML片段)、页面里带 clmId/sclmId 的链接、框架是否已就绪——第一次真实运行失败时靠它定位
+JS_DESCRIBE = r"""
+const want = arguments[0];
+const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && window.getComputedStyle(e).visibility !== 'hidden'; };
+const cands = Array.from(document.querySelectorAll('body *')).filter(e => e.children.length === 0 && (e.innerText || e.textContent || '').trim() === want).slice(0, 4).map(e => {
+  const chain = []; let x = e;
+  for (let i = 0; i < 4 && x; i++, x = x.parentElement) chain.push(x.tagName.toLowerCase() + (x.className && typeof x.className === 'string' ? '.' + x.className.split(' ')[0] : '') + (x.getAttribute('href') ? '[href=' + x.getAttribute('href').slice(0, 80) + ']' : '') + (x.hasAttribute('onclick') ? '[onclick]' : '') + (window.getComputedStyle(x).cursor === 'pointer' ? '[pointer]' : ''));
+  return {visible: vis(e), outer: (e.outerHTML || '').slice(0, 200), chain: chain};
+});
+const anchors = Array.from(document.querySelectorAll('a[href]')).filter(a => /clmId|sclmId/.test(a.getAttribute('href')) || /比价/.test(a.innerText || '')).slice(0, 15).map(a => ({text: (a.innerText || '').trim().slice(0, 40), href: a.getAttribute('href').slice(0, 120)}));
+const res = (performance.getEntriesByType('resource') || []).filter(r => /xhr|fetch/.test(r.initiatorType)).slice(-20).map(r => r.name.slice(0, 160));
+return {xhr: res, readyState: document.readyState, nuxt: !!(window.__NUXT__ || document.querySelector('#__nuxt')), candidates: cands, anchors: anchors};
+"""
+
 JS_BODY_HEAD = "return (document.body && document.body.innerText || '').slice(0, 400);"
 
 
@@ -97,7 +138,8 @@ def _norm_date(s):
 class SeleniumLister:
     """文章列表提供者(浏览器版)。接口：list_articles(max_pages) / page_html(url) / close()。driver_factory 可注入(测试用假 driver)。"""
 
-    def __init__(self, driver_factory=None, total_timeout_s=90, poll_s=0.5, sleep=time.sleep, clock=time.monotonic, entry_url=None):
+    def __init__(self, driver_factory=None, total_timeout_s=90, poll_s=0.5, sleep=time.sleep, clock=time.monotonic, entry_url=None,
+                 settle_s=4.0, click_wait_s=6.0, direct_wait_s=12.0, direct_urls=None):
         self._factory = driver_factory or open_chrome
         self._drv = None
         self.total_timeout_s = total_timeout_s
@@ -105,6 +147,11 @@ class SeleniumLister:
         self._sleep = sleep
         self._clock = clock
         self.entry_url = entry_url or fd.NDRC_ENTRY_LIST
+        self.settle_s, self.click_wait_s, self.direct_wait_s = settle_s, click_wait_s, direct_wait_s
+        # 直接地址：详情页的栏目 id(clmId=1840280592963387394)很可能就是'猪料、鸡料、蛋料比价信息'子栏目的 id；服务器端渲染的 HTML 不看这个参数，但前端激活后可能按它加载列表
+        self.direct_urls = direct_urls if direct_urls is not None else [
+            fd.NDRC_BASE + "/list?clmId=1832298113994649601&sclmId=1840280592963387394",
+            fd.NDRC_BASE + "/list?clmId=1840280592963387394"]
         self._t0 = None
 
     # ---- 内部 ----
@@ -160,6 +207,99 @@ class SeleniumLister:
             pass
         return True
 
+    # ---- 打开"猪料、鸡料、蛋料比价信息"列表 ----
+    def _body_head(self, n=200):
+        try:
+            return (self._drv.execute_script(JS_BODY_HEAD) or "")[:n]
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _wait_ready(self):
+        """等页面加载完 + 稳定几秒。
+        ★v101.10：第一次真实运行(GitHub Actions)证明：页面能打开、导航文字能找到、'点击'也执行了，但列表没变化、地址也没变——最可能的原因是**服务器端渲染的 HTML 已经显示出来、
+        但前端框架(Nuxt)还没完成激活(hydration)，此时点击没有任何处理函数**(我们用 page_load_strategy=eager，DOMContentLoaded 就返回了)。所以要等 readyState=complete 再多等几秒，并且点击失败要重试。"""
+        self._wait(lambda: bool(self._drv.execute_script("return document.body && document.body.innerText.length > 50")), min(30, self._left()))
+        self._wait(lambda: self._drv.execute_script("return document.readyState") == "complete", min(15, max(0, self._left())))
+        self._sleep(self.settle_s)
+
+    def _native_click(self):
+        """用 Selenium 自己的点击(真实鼠标事件序列，带焦点)点第一个可见的、文字恰好是 NAV_TEXT 的元素。返回 'CLICKED'/'NOT_FOUND'/'ERROR:...'。"""
+        els = self._drv.find_elements("xpath", f"//*[normalize-space(text())='{NAV_TEXT}']")
+        if not els:
+            return "NOT_FOUND"
+        pick = next((e for e in els if self._safe(lambda: e.is_displayed())), els[0])
+        try:
+            pick.click()
+            return "CLICKED"
+        except Exception as e:  # noqa: BLE001
+            try:
+                self._drv.execute_script("arguments[0].click()", pick)
+                return "CLICKED(js)"
+            except Exception as e2:  # noqa: BLE001
+                return f"ERROR:{type(e).__name__}/{type(e2).__name__}"
+
+    @staticmethod
+    def _safe(f):
+        try:
+            return f()
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _open_list(self, dbg):
+        """打开子栏目文章列表。成功返回 _collect() 的条目；失败返回 None，并在 dbg["_why"] 写明原因、dbg 里留诊断。
+        依次：①点击(5种办法，每种后等条目出现)，②直接打开带子栏目 id 的地址(前端可能按地址里的 sclmId 加载列表)。"""
+        drv = self._drv
+        dbg["attempts"] = []
+        drv.get(self.entry_url)
+        self._wait_ready()
+        dbg["bodyHead"] = self._body_head()
+        clicks = [("native", self._native_click),
+                  ("js", lambda: drv.execute_script(JS_CLICK_TEXT, NAV_TEXT)),
+                  ("ancestor", lambda: drv.execute_script(JS_CLICK_ANCESTOR, NAV_TEXT)),
+                  ("events", lambda: drv.execute_script(JS_CLICK_EVENTS, NAV_TEXT))]
+        not_found = 0
+        for name, fn in clicks:
+            if self._left() <= 1:
+                break
+            try:
+                r = str(fn())
+            except Exception as e:  # noqa: BLE001
+                r = f"ERROR:{type(e).__name__}:{str(e)[:60]}"
+            att = {"how": name, "result": r}
+            dbg["attempts"].append(att)
+            dbg["navClick"] = r if r.startswith("CLICKED") or "navClick" not in dbg else dbg["navClick"]
+            if r == "NOT_FOUND":
+                not_found += 1
+                continue
+            items = self._wait(self._collect, min(self.click_wait_s, max(1, self._left())))
+            att["items"] = len(items or [])
+            if items:
+                dbg["opened"] = name
+                return items
+            att["url"] = drv.current_url
+        dbg.setdefault("navClick", "NOT_FOUND" if not_found == len(dbg["attempts"]) else dbg.get("navClick"))
+        for variant in self.direct_urls:
+            if self._left() <= 1:
+                break
+            drv.get(variant)
+            self._wait_ready()
+            items = self._wait(self._collect, min(self.direct_wait_s, max(1, self._left())))
+            dbg["attempts"].append({"how": "direct", "url": variant, "items": len(items or [])})
+            if items:
+                dbg["opened"] = "direct"
+                return items
+        dbg["afterClickBodyHead"] = self._body_head(300)
+        dbg["currentUrl"] = drv.current_url
+        try:
+            dbg["describe"] = drv.execute_script(JS_DESCRIBE, NAV_TEXT)
+        except Exception as e:  # noqa: BLE001
+            dbg["describe"] = f"ERROR:{type(e).__name__}"
+        if dbg.get("navClick") == "NOT_FOUND":
+            dbg["_why"] = f"页面上找不到文字为'{NAV_TEXT}'的导航元素(页面可能改版，或还没渲染出来)"
+        else:
+            dbg["_why"] = "点了子栏目后，等不到标题含'猪料、鸡料、蛋料比价'的文章条目(列表没加载出来，或被站点拦截)"
+        return None
+
     # ---- 对外 ----
     def list_articles(self, max_pages=1, resolve_limit=3, skip_weeks=()):
         """返回 {"links": [...], "pages": n, "noNext": bool, "error": str|None, "debug": {...}}；绝不抛异常。
@@ -174,19 +314,9 @@ class SeleniumLister:
             out["error"] = f"浏览器启动失败(selenium 没装或没有 Chrome?): {type(e).__name__}: {str(e)[:150]}"
             return out
         try:
-            self._drv.get(self.entry_url)
-            self._wait(lambda: bool(self._drv.execute_script("return document.body && document.body.innerText.length > 50")), min(30, self._left()))
-            dbg["bodyHead"] = (self._drv.execute_script(JS_BODY_HEAD) or "")[:200]
-            r = self._drv.execute_script(JS_CLICK_TEXT, NAV_TEXT)
-            dbg["navClick"] = r
-            if r != "CLICKED":
-                out["error"] = f"页面上找不到文字为'{NAV_TEXT}'的导航元素(页面可能改版，或还没渲染出来)"
-                return out
-            first = self._wait(self._collect, min(30, self._left()))
+            first = self._open_list(dbg)
             if not first:
-                out["error"] = "点了子栏目后，等不到标题含'猪料、鸡料、蛋料比价'的文章条目(列表没加载出来，或被站点拦截)"
-                dbg["afterClickBodyHead"] = (self._drv.execute_script(JS_BODY_HEAD) or "")[:300]
-                dbg["currentUrl"] = self._drv.current_url
+                out["error"] = dbg.pop("_why")
                 return out
             links, seen, page = [], set(), 0
             items = first
