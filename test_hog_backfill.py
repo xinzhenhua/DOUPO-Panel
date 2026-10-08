@@ -10,6 +10,7 @@ import backfill_history as bf
 import history_store as hs
 
 _pass = 0
+KW = []      # 每次调用数据源时传入的 重试/超时 参数
 
 
 def ok(m):
@@ -25,6 +26,7 @@ def df(d):
 def fake_source(pig, corn, fail=None):
     """替换 _fetch_akshare_hog_df：按 symbol 返回假数据。fail='pig'/'corn' 时对应序列返回失败。"""
     def _f(symbol, retries=2, timeout_seconds=15, retry_delay_seconds=2, func_name="futures_hog_supply"):
+        KW.append({"symbol": symbol, "retries": retries, "timeout_seconds": timeout_seconds, "retry_delay_seconds": retry_delay_seconds})
         if symbol == "外三元":
             return (None, {"available": False, "reason": "假的失败"}) if fail == "pig" else (df(pig), None)
         if symbol == "玉米":
@@ -194,6 +196,81 @@ def test_backfill_start_date_filters_and_failures_do_not_write_anything():
             assert not os.path.exists(os.path.join(d2, "hog_ratio.json")), "失败时不写文件"
         shutil.rmtree(d2, ignore_errors=True)
         ok("★start 之前的日期不进历史(09-28 起 3 个点)；生猪价或玉米价任一失败：报告写 error 且指明是哪个序列失败，不写任何文件")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def test_backfill_retries_more_and_waits_longer_than_the_hourly_fetch():
+    """★2026-10-08 真实报告：回填的猪粮比请求连接超时(重试2次都超时)，历史库里仍只有8个点。一次性任务值得多重试、多等：≥5次、超时≥30秒、两个序列都一样。"""
+    d = tempfile.mkdtemp()
+    try:
+        del KW[:]
+        with Patch({"2026-09-30": 10.0}, {"2026-09-30": 2300.0}):
+            bf.backfill_hog_ratio(base_dir=d)
+        assert {k["symbol"] for k in KW} == {"外三元", "玉米"}, KW
+        assert all(k["retries"] >= 5 and k["timeout_seconds"] >= 30 and k["retry_delay_seconds"] >= 3 for k in KW), KW
+        del KW[:]
+        with Patch({"2026-09-30": 10.0}, {"2026-09-30": 2300.0}):
+            fd.fetch_hog_ratio()
+        assert all(k["retries"] <= 2 for k in KW), "每小时的抓取保持原来的轻量重试，不拖慢整批抓取"
+        ok("★回填：两个序列都重试≥5次、超时≥30秒、重试间隔≥3秒；每小时的线上抓取保持原来的轻量参数(≤2次)")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def test_live_fetch_carries_the_whole_series_capped_to_recent_days():
+    from datetime import date, timedelta
+    base = date(2022, 1, 1)
+    pig = {(base + timedelta(days=i)).isoformat(): 10.0 + (i % 5) * 0.1 for i in range(1500)}
+    corn = {(base + timedelta(days=i)).isoformat(): 2300.0 for i in range(1500)}
+    with Patch(pig, corn):
+        r = fd.fetch_hog_ratio()
+    sp = r["seriesPoints"]
+    assert len(sp) == fd.HOG_SERIES_KEEP_DAYS == 1100 and sp[-1] == {"d": r["date"], "v": r["value"]}, (len(sp), sp[-1], r["value"])
+    assert sp == sorted(sp, key=lambda p: p["d"]) and all(set(p) == {"d", "v"} for p in sp)
+    ok("★线上抓取带出整段历史，最多保留最近1100天(约3年，防止文件无限变大)，最后一个点=当天的值，按日期升序，点只有 d、v")
+
+
+def test_update_and_attach_records_the_series_before_summarising_and_strips_it_from_latest_json():
+    d = tempfile.mkdtemp()
+    try:
+        sp = [{"d": f"2026-09-{day:02d}", "v": 4.0 + day * 0.01} for day in range(1, 31)]
+        res = {"hogRatio": {"available": True, "value": 4.3, "date": "2026-09-30", "seriesPoints": sp}}
+        touched = hs.update_and_attach(res, base_dir=d)
+        s = hs.load_series("hog_ratio", d)["points"]
+        assert len(s) == 30 and s[0]["d"] == "2026-09-01" and "hog_ratio" in touched, (len(s), touched)
+        assert "seriesPoints" not in res["hogRatio"], "整段历史已存进序列文件，不能留在 latest.json 里每小时重复写一遍"
+        h = res["hogRatio"]["history"]
+        assert h["n"] == 29 and h["since"] == "2026-09-01", h      # 摘要的参照集不含当天这个点本身：30个点里参照是29个；起点09-01说明读到的是整段历史
+        # 对照：如果只记当天一个点(旧行为)，参照集是空的
+        d0 = tempfile.mkdtemp()
+        r0 = {"hogRatio": {"available": True, "value": 4.3, "date": "2026-09-30"}}
+        hs.update_and_attach(r0, base_dir=d0)
+        assert r0["hogRatio"]["history"]["n"] == 0, r0["hogRatio"]["history"]
+        shutil.rmtree(d0, ignore_errors=True)
+        ok("★线上更新：整段历史记进 hog_ratio 序列(30点)，从 latest.json 里去掉明细，并且分位摘要基于整段历史(参照29个点、起点09-01；只记当天时参照是0个)")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def test_update_and_attach_ignores_bad_points_and_works_without_series_points():
+    d = tempfile.mkdtemp()
+    try:
+        res = {"hogRatio": {"available": True, "value": 4.3, "date": "2026-09-30", "seriesPoints": [{"d": "2026-09-29", "v": 4.2}, {"d": "", "v": 4}, {"d": "2026-09-28", "v": "x"}, "垃圾", None, {"v": 4.1}, {"d": "2026-09-30", "v": float("nan")}]}}
+        hs.update_and_attach(res, base_dir=d)
+        assert [p["d"] for p in hs.load_series("hog_ratio", d)["points"]] == ["2026-09-29", "2026-09-30"], hs.load_series("hog_ratio", d)["points"]
+        assert "seriesPoints" not in res["hogRatio"]
+        d2 = tempfile.mkdtemp()
+        res2 = {"hogRatio": {"available": True, "value": 4.3, "date": "2026-09-30"}}
+        hs.update_and_attach(res2, base_dir=d2)
+        assert [p["d"] for p in hs.load_series("hog_ratio", d2)["points"]] == ["2026-09-30"], "没有 seriesPoints(旧结果/别的数据源)照常只记当天"
+        d3 = tempfile.mkdtemp()
+        res3 = {"hogRatio": {"available": False, "reason": "x", "seriesPoints": [{"d": "2026-09-01", "v": 4.0}]}}
+        hs.update_and_attach(res3, base_dir=d3)
+        assert not os.path.exists(os.path.join(d3, "hog_ratio.json")) and "seriesPoints" not in res3["hogRatio"], "不可用时不记，但明细也不能留在 latest.json 里"
+        shutil.rmtree(d2, ignore_errors=True)
+        shutil.rmtree(d3, ignore_errors=True)
+        ok("坏点(空日期/非数字/NaN/垃圾)单独忽略；没有 seriesPoints 照常只记当天；不可用时不记且明细也不留在 latest.json")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

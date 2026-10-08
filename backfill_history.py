@@ -708,21 +708,61 @@ CRUSH_BACKFILL_FROM = date(2024, 12, 1)
 CRUSH_WINDOW_DAYS = 90
 
 
+SEARCH_CAP = 750      # Mysteel 搜索接口一次最多返回 750 条(真实报告：开机率的 8 个 90 天窗口全部恰好返回 750)
+
+
+def _item_key(it):
+    return str(it.get("url") or "") or (str(it.get("title") or "") + "|" + str(it.get("publishTime") or ""))
+
+
+def search_windowed(search, query, w_start, w_end, cap=SEARCH_CAP, **kw):
+    """在 [w_start, w_end](日期，含两端)内搜索；某个窗口返回满 cap 条(或接口报告的 total 达到 cap)就**对半切开重搜**，直到不再封顶。
+    为什么：窗口返回恰好 cap 条无法区分"刚好这么多"和"被截断"，必须当作被截断；原来只在报告里提醒、不补救，开机率因此漏了约12%的交易日。
+    返回 (items, info)：items 按 url(没有 url 用 标题+发布时间)去重；info={calls, splits, unresolved:[切到单日仍封顶的'日期~日期'], notes:[接口失败说明]}。
+    叶子窗口无缝无重叠地覆盖原区间；接口失败(没有返回)不切(切了也没用)；单日仍封顶就标进 unresolved，不假装拿全了。
+    kw(max_pages/url/sleep_s…)原样传给 search。"""
+    info = {"calls": 0, "splits": 0, "unresolved": [], "notes": []}
+    seen = {}
+
+    def go(a, b):
+        items, total, note = search(query, datetime(a.year, a.month, a.day), datetime(b.year, b.month, b.day, 12), **kw)
+        info["calls"] += 1
+        if note:
+            info["notes"].append(f"{a}~{b}: {note}")
+        capped = len(items) >= cap or (total or 0) >= cap
+        if capped and (b - a).days >= 1:
+            mid = a + timedelta(days=(b - a).days // 2)
+            info["splits"] += 1
+            go(a, mid)
+            go(mid + timedelta(days=1), b)
+            return      # 父窗口被截断的结果丢弃，由两个子窗口覆盖
+        if capped:
+            info["unresolved"].append(f"{a}~{b}")
+        for it in items:
+            if isinstance(it, dict):
+                seen.setdefault(_item_key(it), it)
+
+    go(w_start, w_end)
+    return list(seen.values()), info
+
+
 def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, sleep_s=0.6):
     if today is None:
         today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
     start = start or CRUSH_BACKFILL_FROM
     search = search or _search_articles
     by_day, excluded, caps, windows, total_items = {}, [], [], 0, 0
+    splits, calls_n, search_notes = 0, 0, []
     w_start = start
     while w_start <= today:
         w_end = min(w_start + timedelta(days=CRUSH_WINDOW_DAYS - 1), today)
-        items, total, note = search("全国动态全样本油厂开机率", datetime(w_start.year, w_start.month, w_start.day), datetime(w_end.year, w_end.month, w_end.day, 12),
-                                    max_pages=60, url=fd.MYSTEEL_SEARCH_URL, sleep_s=sleep_s)
+        items, sinfo = search_windowed(search, "全国动态全样本油厂开机率", w_start, w_end, max_pages=60, url=fd.MYSTEEL_SEARCH_URL, sleep_s=sleep_s)
         windows += 1
         total_items += len(items)
-        if total >= 750 or len(items) >= 750:
-            caps.append(f"{w_start}~{w_end}")
+        splits += sinfo["splits"]
+        calls_n += sinfo["calls"]
+        caps += sinfo["unresolved"]
+        search_notes += sinfo["notes"]
         for it in items:
             d = _pub(it)
             if d is None:
@@ -740,8 +780,11 @@ def backfill_crush_rate(base_dir=None, start=None, today=None, search=None, slee
     hs.record_points("crush_rate", pts, base_dir)
     notes = [f"{windows}个窗口(每窗{CRUSH_WINDOW_DAYS}天)共搜到{total_items}条快讯，采用{len(pts)}个交易日的油厂开机率(同一天多条取发布最晚的)；"
              "春节停机期的低值(如2025-01-26的9.80%)是真实数据，照常入库，但评分时的参照分布会把春节窗口去掉"]
+    if splits:
+        notes.append(f"自适应切窗：{windows}个90天窗口里共切了{splits}次(窗口返回满750条就对半切开重搜)，共{calls_n}次搜索——避免被接口的750条上限截断")
     if caps:
-        notes.append(f"⚠️这些窗口恰好返回750条(接口上限)，可能被截断，需要把窗口再切小：{', '.join(caps)}")
+        notes.append(f"⚠️这些日期切到最小的1天窗口仍然恰好返回750条(接口上限)，这几天可能还是不全：{', '.join(caps)}")
+    notes += [f"搜索说明：{n}" for n in search_notes[:5]]
     return _report_entry("crush_rate", base_dir, len(pts), notes=notes,
                          extra={"windowsHitCap": caps, "excluded(非油厂/超范围，前6条)": excluded[:6]})
 
@@ -793,14 +836,199 @@ def _read_previous_series(out_dir):
         return []
 
 
+BASIS_QUERY = "全国主要市场豆粕基差价格汇总"
+BASIS_TITLE_KEY = "豆粕基差价格汇总"
+BASIS_BACKFILL_FROM = date(2023, 9, 1)      # 采样里最早一篇是 2023-09-18
+BASIS_WINDOW_DAYS = 90
+
+
+def _fetch_basis_body(url, title):
+    """抓一篇文章的正文并截出正文区域。返回 (文本, 错误)；沿用 backfill_meal_stu 的做法(Referer、_html_to_text、_extract_article_region)。"""
+    raw, dbg = fd.fetch_text_debug(url, headers={"Referer": "https://ncp.mysteel.com/"})
+    if not raw:
+        return None, f"正文请求失败({dbg.get('error') or dbg.get('httpStatus')})"
+    return fd._extract_article_region(fd._html_to_text(raw), title), None
+
+
+def backfill_basis(base_dir=None, start=None, today=None, search=None, fetch_body=None, max_bodies=300, sleep_s=0.8):
+    """现货基差回填。取值规则与线上 fetch_mysteel_basis 完全一致(fd._extract_basis_from_article：沿海城市优先级里第一个有确切数值的城市)，每个点带 x.city 和 x.src。
+    ①先用搜索摘要(2026-06-16 以后的文章摘要里有数字)；②摘要取不出的(2026-06 以前摘要为空)才抓正文，每次最多抓 max_bodies 篇，**从最新的开始**；
+    ③**已经有历史的日期跳过**(不覆盖线上每天累积的点，也不重抓)，所以可以重复点、每次接着补，补完后再点一篇正文都不抓；
+    ④只抓可信域名(fd.is_trusted_article_url)的正文。
+    ★老文章的正文格式没有真实样本，正文路径能否解析只能在真实环境第一次运行后看报告里的 bodyFailures(附正文开头)来迭代。
+    ★城市切换噪声：每天取到的城市不同(日照/南通/东莞/防城港…)，城市之间相差中位10、最大120，和每天的真实变动一样大；报告里给出 cityCounts。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or BASIS_BACKFILL_FROM
+    search = search or _search_articles
+    fetch_body = fetch_body or _fetch_basis_body
+    existing = {p.get("d") for p in hs.load_series("basis", base_dir).get("points", [])}
+    arts, other_titles, windows, splits, calls_n, caps, search_notes, total_items = {}, 0, 0, 0, 0, [], [], 0
+    w_start = start
+    while w_start <= today:
+        w_end = min(w_start + timedelta(days=BASIS_WINDOW_DAYS - 1), today)
+        items, sinfo = search_windowed(search, BASIS_QUERY, w_start, w_end, max_pages=40, sleep_s=sleep_s)
+        windows += 1
+        total_items += len(items)
+        splits += sinfo["splits"]
+        calls_n += sinfo["calls"]
+        caps += sinfo["unresolved"]
+        search_notes += sinfo["notes"]
+        for it in items:
+            if BASIS_TITLE_KEY not in str(it.get("title") or ""):
+                other_titles += 1
+                continue
+            d = _pub(it)
+            if d is None:
+                continue
+            stamp = str(it.get("publishTime") or "")
+            if d.isoformat() not in arts or stamp >= arts[d.isoformat()][0]:
+                arts[d.isoformat()] = (stamp, it)
+        w_start = w_end + timedelta(days=1)
+    new_pts, via_s, via_b, city_counts, body_fail, no_value = {}, 0, 0, {}, [], 0
+    bodies, untrusted, existing_skipped, need_body = 0, 0, 0, 0
+    for d in sorted(arts, reverse=True):          # 最新的先处理：近期的先补上，正文配额也先用在近期
+        if d in existing:
+            existing_skipped += 1
+            continue
+        it = arts[d][1]
+        city, val = fd._extract_basis_from_article(str(it.get("content") or ""))
+        src = "summary"
+        if val is None:
+            url = str(it.get("url") or "")
+            if not url or not fd.is_trusted_article_url(url):
+                untrusted += 1
+                no_value += 1
+                continue
+            if bodies >= max_bodies:
+                need_body += 1
+                continue
+            bodies += 1
+            text, err = fetch_body(url, str(it.get("title") or ""))
+            time.sleep(sleep_s)
+            if err or not text:
+                if len(body_fail) < 8:
+                    body_fail.append({"d": d, "reason": err or "正文为空"})
+                no_value += 1
+                continue
+            city, val = fd._extract_basis_from_article(text)
+            src = "body"
+            if val is None:
+                if len(body_fail) < 8:
+                    body_fail.append({"d": d, "reason": "正文里没有沿海城市(日照/南通/东莞/湛江/防城港/厦门/天津)的确切基差数值", "regionHead": text[:220]})
+                no_value += 1
+                continue
+        problem = fd._plausibility_problem("meaBasis", val)
+        if problem:
+            if len(body_fail) < 8:
+                body_fail.append({"d": d, "reason": f"{city}基差{problem}，已丢弃"})
+            no_value += 1
+            continue
+        new_pts[d] = {"d": d, "v": val, "x": {"city": city, "src": src}}
+        city_counts[city] = city_counts.get(city, 0) + 1
+        if src == "summary":
+            via_s += 1
+        else:
+            via_b += 1
+    if not new_pts and not existing_skipped:
+        # ★一个点都没取到时恰恰最需要诊断：把能说明原因的计数都带上(之前只带了3个，用例里 untrustedOrMissingUrl 缺失)
+        return {"key": "basis", "error": "没有搜到能提取出沿海城市基差的文章", "searchTotal": total_items, "articleDates": len(arts), "otherTitlesSkipped": other_titles,
+                "bodiesFetched": bodies, "needBodyRemaining": need_body, "untrustedOrMissingUrl": untrusted, "noValue": no_value, "bodyFailures": body_fail,
+                "notes": [f"搜索说明：{n}" for n in search_notes[:5]]}
+    if new_pts:
+        hs.record_points("basis", [new_pts[k] for k in sorted(new_pts)], base_dir)
+    notes = [f"{windows}个窗口共搜到{total_items}条，基差文章{len(arts)}个日期；本次新增{len(new_pts)}个点(摘要{via_s}、正文{via_b})，已有历史的{existing_skipped}个日期跳过，抓了{bodies}篇正文(上限{max_bodies})",
+             "取值规则与线上一致(沿海城市优先级里第一个有确切数值的城市)；每天取到的城市不同，城市之间相差中位10、最大120，与每天的真实变动一样大，看趋势时要留意(见 cityCounts)"]
+    if need_body:
+        notes.append(f"⚠️还有{need_body}篇摘要取不出、本次没抓正文(达到每次{max_bodies}篇的上限)：再点一次 only=basis 接着补(已有的日期会跳过)")
+    if body_fail:
+        notes.append("⚠️有正文没解析出来(老文章正文格式没有真实样本)：看 bodyFailures 里的原因和正文开头，据此改解析规则")
+    if splits:
+        notes.append(f"自适应切窗{splits}次(窗口返回满750条就对半切开重搜)，共{calls_n}次搜索")
+    if caps:
+        notes.append(f"⚠️这些日期切到1天仍恰好返回750条，可能不全：{', '.join(caps)}")
+    notes += [f"搜索说明：{n}" for n in search_notes[:5]]
+    return _report_entry("basis", base_dir, len(new_pts), notes=notes,
+                         extra={"viaSummary": via_s, "viaBody": via_b, "bodiesFetched": bodies, "needBodyRemaining": need_body, "existingSkipped": existing_skipped,
+                                "noValue": no_value, "untrustedOrMissingUrl": untrusted, "cityCounts": city_counts, "bodyFailures": body_fail,
+                                "otherTitlesSkipped": other_titles, "windowsHitCap": caps})
+
+
+RMSPREAD_QUERY = "豆菜粕价差"
+RMSPREAD_TITLE_KEY = "价差统计分析"            # 主系列《国内主要市场豆菜粕价差统计分析》(每3~5天一篇)；月度解读等其它类文章口径不同，按标题排除
+RMSPREAD_BACKFILL_FROM = date(2023, 12, 1)      # 主系列最早一篇是 2024-01-09，留一点余量
+RMSPREAD_WINDOW_DAYS = 90
+
+
+def backfill_rm_spread(base_dir=None, start=None, today=None, search=None, sleep_s=0.6):
+    """豆菜粕价差回填。取值规则与线上共用 fd.parse_rmspread(城市单值≥2个取平均，否则区间中点)，每个点带 x.fmt。
+    只收标题含"价差统计分析"的主系列文章。每个90天窗口用 search_windowed(返回满750条就对半切)。
+    采样(2026-10-02)里主系列 211 篇、2024-01-09~2026-09-30、间隔中位5天；10篇摘要里只有定性描述(如"价差下跌")，没有数字，跳过。
+    评分仍然关闭(新口径暂不计分)，回填只用于趋势展示。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or RMSPREAD_BACKFILL_FROM
+    search = search or _search_articles
+    by_day, other_titles, no_value, windows, splits, calls_n, caps, search_notes, total_items = {}, 0, [], 0, 0, 0, [], [], 0
+    w_start = start
+    while w_start <= today:
+        w_end = min(w_start + timedelta(days=RMSPREAD_WINDOW_DAYS - 1), today)
+        items, sinfo = search_windowed(search, RMSPREAD_QUERY, w_start, w_end, max_pages=40, sleep_s=sleep_s)
+        windows += 1
+        total_items += len(items)
+        splits += sinfo["splits"]
+        calls_n += sinfo["calls"]
+        caps += sinfo["unresolved"]
+        search_notes += sinfo["notes"]
+        for it in items:
+            title = str(it.get("title") or "")
+            if RMSPREAD_TITLE_KEY not in title:
+                other_titles += 1
+                continue
+            d = _pub(it)
+            if d is None:
+                continue
+            res, _rej = fd.parse_rmspread(str(it.get("content") or ""))
+            if not res:
+                if len(no_value) < 8:
+                    no_value.append({"d": d.isoformat(), "title": title[:40], "content": str(it.get("content") or "")[:40]})
+                continue
+            stamp = str(it.get("publishTime") or "")
+            if d.isoformat() not in by_day or stamp >= by_day[d.isoformat()][0]:
+                by_day[d.isoformat()] = (stamp, res["value"], res["fmt"])
+        w_start = w_end + timedelta(days=1)
+    if not by_day:
+        return {"key": "rm_spread", "error": "没有搜到能提取出价差数值的'价差统计分析'文章", "searchTotal": total_items, "otherTitlesSkipped": other_titles,
+                "noValueSamples": no_value, "notes": [f"搜索说明：{n}" for n in search_notes[:5]]}
+    ds = sorted(by_day)
+    pts = [{"d": k, "v": by_day[k][1], "x": {"fmt": by_day[k][2]}} for k in ds]
+    hs.record_points("rm_spread", pts, base_dir)
+    counts = {}
+    for k in ds:
+        counts[by_day[k][2]] = counts.get(by_day[k][2], 0) + 1
+    switches = [{"from": a, "to": b, "fmt": f"{by_day[a][2]}→{by_day[b][2]}"} for a, b in zip(ds, ds[1:]) if by_day[a][2] != by_day[b][2]]
+    gaps = [{"from": a, "to": b, "days": (date.fromisoformat(b) - date.fromisoformat(a)).days} for a, b in zip(ds, ds[1:]) if (date.fromisoformat(b) - date.fromisoformat(a)).days > 14]
+    notes = [f"{windows}个窗口共搜到{total_items}条，主系列文章提取出{len(pts)}个日期的价差({ds[0]}~{ds[-1]})；口径：城市单值≥2个取平均，否则区间中点",
+             f"口径切换点{len(switches)}处：切换前后可能有约±5%的断层(重叠的4篇上两种取法相差+5/+33/-5/+37)，看趋势时留意；评分仍然关闭"]
+    if splits:
+        notes.append(f"自适应切窗{splits}次(窗口返回满750条就对半切开重搜)，共{calls_n}次搜索")
+    if caps:
+        notes.append(f"⚠️这些日期切到1天仍恰好返回750条，可能不全：{', '.join(caps)}")
+    notes += [f"搜索说明：{n}" for n in search_notes[:5]]
+    return _report_entry("rm_spread", base_dir, len(pts), notes=notes,
+                         extra={"formatCounts": counts, "formatSwitches": switches[:12], "gapsOver14Days": gaps[:12], "noValueSamples": no_value,
+                                "otherTitlesSkipped": other_titles, "windowsHitCap": caps})
+
+
 def backfill_hog_ratio(base_dir=None, start=None, today=None):
     """猪粮比历史回填。数据源(akshare 的猪价网数据)每次返回的就是生猪价和玉米价的完整历史序列，fetch_hog_ratio 只取了最后一个共同日期；
     这里把所有共同日期都算出来存进历史。不搜索、不抓正文、不联网以外的东西；每个日期的计算与 fetch_hog_ratio 共用 fd.hog_ratio_at。
     日期之前的 start 不进历史；生猪价或玉米价任一获取失败：只在报告里写 error，不写任何文件。"""
-    pig_df, err = fd._fetch_akshare_hog_df("外三元", func_name="futures_hog_core")
+    # 一次性任务：多重试、多等(2026-10-08 真实报告：默认的重试2次/超时15秒连续超时，猪粮比历史没补上)
+    pig_df, err = fd._fetch_akshare_hog_df("外三元", retries=5, timeout_seconds=30, retry_delay_seconds=5, func_name="futures_hog_core")
     if err:
         return {"key": "hog_ratio", "error": f"生猪价格(外三元)获取失败: {err.get('reason')}"}
-    corn_df, err = fd._fetch_akshare_hog_df("玉米", func_name="futures_hog_cost")
+    corn_df, err = fd._fetch_akshare_hog_df("玉米", retries=5, timeout_seconds=30, retry_delay_seconds=5, func_name="futures_hog_cost")
     if err:
         return {"key": "hog_ratio", "error": f"玉米价格获取失败: {err.get('reason')}"}
     try:
@@ -821,8 +1049,8 @@ def backfill_hog_ratio(base_dir=None, start=None, today=None):
 
 
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio}
-DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate", "hog_ratio"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio, "rm_spread": backfill_rm_spread, "basis": backfill_basis}
+DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate", "hog_ratio", "rm_spread"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 
 

@@ -156,13 +156,16 @@ def test_failure_modes_empty_and_garbage():
     ok("空结果/日期乱码/title和content为None：不报错、不写入")
 
 
-def test_registered_and_in_default_jobs_but_not_the_rm_spread():
+def test_registered_and_in_default_jobs():
     assert "soy_import" in bf.JOBS and "arrival" in bf.JOBS and "soy_import" in bf.DEFAULT_JOBS and "arrival" in bf.DEFAULT_JOBS
-    assert "rm_spread" not in bf.JOBS and "rm_spread" not in bf.DEFAULT_JOBS, "豆菜粕价差(口径2026-06换了)的回填有意不做——这条守卫一直有效"
+    # v101.4：原来这里断言"豆菜粕价差的回填有意不做(口径2026-06换了)"。2026-10-02 的真实采样推翻了这个判断：主系列《国内主要市场豆菜粕价差统计分析》
+    #   211篇、2024-01~2026-09，区间写法与城市单值写法在切换点上数值连续(区间680↔单值696.7、区间800↔单值826.7)，用户也明确要求做。
+    #   原守卫想防的"口径不一致的文章混进来"现在由两处承担：①标题必须含"价差统计分析"(月度解读等其它类文章排除)；②报告标出口径切换点。见 test_rmspread_backfill.py。
+    assert "rm_spread" in bf.JOBS and "rm_spread" in bf.DEFAULT_JOBS and bf.JOBS["rm_spread"] is bf.backfill_rm_spread
     # v96.3时开机率的回填也是有意不做(评分规则要先改)；v98重做了开机率规则(滚动365天分位)需要历史，所以现在做了(见test_crush_rate_rule.py)
     assert "crush_rate" in bf.JOBS and "crush_rate" in bf.DEFAULT_JOBS
     assert bf.JOBS["soy_import"] is bf.backfill_soy_import and bf.JOBS["arrival"] is bf.backfill_arrival_forecast
-    ok("两个任务已注册并进默认清单；豆菜粕价差的回填有意没做(口径换了，一直有效)；开机率回填v98起有了(规则重做要用历史)")
+    ok("两个任务已注册并进默认清单；豆菜粕价差回填v101.4起有了(主系列标题过滤+城市平均优先，见test_rmspread_backfill.py)；开机率回填v98起有了(规则重做要用历史)")
 
 
 def test_no_body_fetch_no_link_following():

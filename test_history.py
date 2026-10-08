@@ -595,7 +595,7 @@ def test_backfill_meal_stu_stores_stock_consumption_and_defaults_skip_meal_stock
         pts = {p["d"]: p for p in hs.load_series("meal_stu", d)["points"]}
         assert pts["2026-08"]["x"] == {"how": "stated", "stock": 117.0, "consumption": 772.0, "production": 800.0}, pts["2026-08"]
         assert pts["2026-05"]["x"]["consumption"] == 673.0 and "stock" not in pts["2026-05"]["x"], "5月：库存30万吨与库消比不自洽被丢弃，不存"
-    assert bf.DEFAULT_JOBS == list(bf.JOBS.keys()) and "hog_ratio" in bf.DEFAULT_JOBS and "meal_stock" not in bf.JOBS and "sample" not in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS      # v96.3起默认清单加了soy_import、arrival，v98加了crush_rate；meal_stock(补不全)和sample(一次性诊断)仍不在默认里
+    assert set(bf.DEFAULT_JOBS) <= set(bf.JOBS) and set(bf.JOBS) - set(bf.DEFAULT_JOBS) == {"basis"} and "hog_ratio" in bf.DEFAULT_JOBS and "meal_stock" not in bf.JOBS and "sample" not in bf.JOBS and "margin" in bf.JOBS and "spread" in bf.JOBS      # v96.3起默认清单加了soy_import、arrival，v98加了crush_rate；meal_stock(补不全)和sample(一次性诊断)仍不在默认里
     assert "meal_stock" not in bf.DEFAULT_JOBS and "sample" not in bf.DEFAULT_JOBS and set(bf.DEFAULT_JOBS) <= set(bf.JOBS)      # ★v99起meal_stock(一直补不全)和sample(一次性诊断)都已移除，见REMOVED_backfill_sample_and_meal_stock.md；这条守卫防止它们被悄悄加回来；默认清单里的每一项都必须是已注册的任务
     ok("回填国内库消比：存库存/消费/产量；默认回填项不含补不全的周度库存")
 

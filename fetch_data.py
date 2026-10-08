@@ -1287,6 +1287,40 @@ MYSTEEL_RMSPREAD_RANGE_PATTERN = re.compile(r"价差.{0,8}?(\d+)-(\d+)元/吨")
 MYSTEEL_RMSPREAD_SINGLE_PATTERN = re.compile(r"价差(\d+)元/吨")
 
 
+def parse_rmspread(text):
+    """从一段文字(搜索摘要)里提取豆菜粕价差。返回 (结果, rejected)：结果 None 或 {value, fmt, ...}。
+    取值规则(v101.4统一，线上抓取和回填共用)：
+      ①文字里有≥2个城市的价差单值("广东价差800元/吨")→取这些单值的平均，fmt='cities'；
+      ②否则有区间("价差在420-600元/吨之间")→取区间中点，fmt='range'；
+      ③否则只有1个单值→取该单值，fmt='single'(沿用原来线上的行为)。
+    为什么城市平均优先：同一篇文章常同时有"各城市单值"和一句概括"各区域价差在700-900元/吨区间"。原来区间优先，会因为概括句写"700-900"(短横线)
+    还是"720至920"(至字)而取到不同的值——重叠的4篇上两种取法相差 +5/+33/-5/+37(约±5%)，是偶然因素。
+    离谱的值(超出100~3000，如"较前一日跌10-20元/吨"的中点15)单独丢掉，原因记在 rejected 里，不拉偏平均。"""
+    rejected, singles, rng = [], [], None
+    for x in MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(text or ""):
+        problem = _plausibility_problem("rmSpread", float(x))
+        if problem:
+            rejected.append(problem)
+        else:
+            singles.append(float(x))
+    for m in MYSTEEL_RMSPREAD_RANGE_PATTERN.finditer(text or ""):
+        low, high = float(m.group(1)), float(m.group(2))
+        mid = round((low + high) / 2, 1)
+        problem = f"区间{low:g}-{high:g}上下限颠倒" if low > high else _plausibility_problem("rmSpread", mid)
+        if problem:
+            rejected.append(problem)
+            continue
+        rng = {"value": mid, "fmt": "range", "low": low, "high": high}
+        break
+    if len(singles) >= 2:
+        return {"value": round(sum(singles) / len(singles), 1), "fmt": "cities", "samples": singles}, rejected
+    if rng:
+        return rng, rejected
+    if singles:
+        return {"value": round(singles[0], 1), "fmt": "single", "samples": singles}, rejected
+    return None, rejected
+
+
 def fetch_mysteel_rmspread():
     """通过Mysteel文章搜索"豆菜粕价差"这个关键词，从最新一条能提取出价差
     数值的文章里提取(格式A的区间取中点，格式B的多城市单值取平均)。"""
@@ -1329,42 +1363,16 @@ def fetch_mysteel_rmspread():
         for v in item.values():
             if not isinstance(v, str):
                 continue
-            # 先试格式A(区间中点)。★"较前一日跌10-20元/吨"这种变动幅度区间中点只有15，
-            #   过不了合理范围(100~3000)，会被丢弃而不是当成价差
-            for m in MYSTEEL_RMSPREAD_RANGE_PATTERN.finditer(v):
-                low, high = float(m.group(1)), float(m.group(2))
-                mid = round((low + high) / 2, 1)
-                problem = f"区间{low:g}-{high:g}上下限颠倒" if low > high else _plausibility_problem("rmSpread", mid)
-                if problem:
-                    rejected.append(problem)
-                    continue
-                return {
-                    "available": True,
-                    "value": mid,
-                    "rangeLow": low, "rangeHigh": high,
-                    "date": item.get("publishTime", "")[:10],
-                    "matchedText": v, "formatUsed": "区间中点",
-                    "source": "Mysteel文章(豆菜粕价差)",
-                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
-                }
-            # 格式A没匹配到，试格式B(多城市单值平均)
-            values = []
-            for x in MYSTEEL_RMSPREAD_SINGLE_PATTERN.findall(v):
-                problem = _plausibility_problem("rmSpread", float(x))
-                if problem:
-                    rejected.append(problem)  # 个别城市的离谱值单独丢掉，不拉偏平均值
+            res, rej = parse_rmspread(v)
+            rejected += rej
+            if res:
+                out = {"available": True, "value": res["value"], "date": item.get("publishTime", "")[:10], "matchedText": v,
+                       "source": "Mysteel文章(豆菜粕价差)", "sourceUrl": "https://search.mysteel.com/fastcomment.html"}
+                if res["fmt"] == "range":
+                    out.update({"rangeLow": res["low"], "rangeHigh": res["high"], "formatUsed": "区间中点"})
                 else:
-                    values.append(float(x))
-            if values:
-                return {
-                    "available": True,
-                    "value": round(sum(values) / len(values), 1),
-                    "citySamples": values,
-                    "date": item.get("publishTime", "")[:10],
-                    "matchedText": v, "formatUsed": "多城市单值平均",
-                    "source": "Mysteel文章(豆菜粕价差)",
-                    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
-                }
+                    out.update({"citySamples": res["samples"], "formatUsed": "多城市单值平均"})
+                return out
 
     if rejected:
         return {"available": False, "reason": f"提取到的价差数值都不合理，已丢弃: {'; '.join(rejected[:3])}",
@@ -2799,6 +2807,9 @@ def _hog_series_to_dict(df):
     return out
 
 
+HOG_SERIES_KEEP_DAYS = 1100      # 线上每次抓取带出的猪粮比历史最多保留最近这么多天(约3年)，防止历史文件无限变大
+
+
 def hog_ratio_at(pig_price, corn_price):
     """单个日期的猪粮比 = 外三元生猪价(元/公斤) ÷ 玉米价(元/公斤)。返回 (ratio, kind, detail)：
     成功 (ratio, None, None)；失败 (None, kind, 说明)，kind ∈ corn_nonpositive / range / plausibility。
@@ -2883,6 +2894,9 @@ def fetch_hog_ratio():
         "cornPricePerTon": round(corn_per_kg * 1000.0, 1),
         "pigLatestDate": max(pig),
         "cornLatestDate": max(corn),
+        # ★数据源每次返回的是整段历史：带出来由 history_store 记成 hog_ratio 序列(线上抓取成功一次，历史就补齐，不依赖一次手动回填)，
+        #   记完从 latest.json 里去掉(和 CFTC 的156周明细一样)
+        "seriesPoints": hog_ratio_points(pig, corn)[0][-HOG_SERIES_KEEP_DAYS:],
         "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
         "sourceUrl": "https://zhujia.zhuwang.com.cn",
     }

@@ -635,6 +635,21 @@ def update_and_attach(result, base_dir=None):
     def note(key, err):
         errors.append(f"{key}: {err}")
 
+    # 猪粮比：数据源每次返回生猪价和玉米价的整段历史，抓取时带出 seriesPoints。★必须在下面逐个指标算摘要之前记进去，摘要才基于整段历史；
+    #   记完(或不可用时)一律从 latest.json 里去掉，不留明细。
+    try:
+        res = result.get("hogRatio")
+        if isinstance(res, dict):
+            raw = res.pop("seriesPoints", None)
+            if res.get("available") and isinstance(raw, list):
+                pts = [{"d": p["d"], "v": p["v"]} for p in raw if isinstance(p, dict) and isinstance(p.get("d"), str) and p.get("d") and _is_num(p.get("v"))]
+                if pts:
+                    _s, changed = record_points("hog_ratio", pts, base_dir)
+                    if changed:
+                        touched.append("hog_ratio")
+    except Exception as e:  # noqa: BLE001
+        note("hogRatio", e)
+
     for rk, key, extract in _simple_specs():
         try:
             res = result.get(rk)
