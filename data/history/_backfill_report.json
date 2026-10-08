@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T03:02:35.809195+00:00",
+  "generatedAt": "2026-10-08T03:40:10.247915+00:00",
   "series": [
     {
       "key": "soy_import",
@@ -203,8 +203,49 @@
     },
     {
       "key": "hog_ratio",
-      "error": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f3d985e2350>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
-      "ranAt": "2026-10-08T03:02:35.809195+00:00",
+      "name": "猪粮比",
+      "unit": "",
+      "freq": "daily",
+      "added": 367,
+      "total": 367,
+      "first": "2025-10-07",
+      "last": "2026-10-08",
+      "min": 3.65,
+      "max": 5.68,
+      "median": 4.6,
+      "lowest3": [
+        {
+          "d": "2026-04-15",
+          "v": 3.65
+        },
+        {
+          "d": "2026-04-14",
+          "v": 3.66
+        },
+        {
+          "d": "2026-04-13",
+          "v": 3.7
+        }
+      ],
+      "highest3": [
+        {
+          "d": "2026-01-20",
+          "v": 5.68
+        },
+        {
+          "d": "2026-01-19",
+          "v": 5.64
+        },
+        {
+          "d": "2026-01-21",
+          "v": 5.61
+        }
+      ],
+      "notes": [
+        "生猪价格367天(2025-10-07~2026-10-08)，玉米价格367天(2025-10-07~2026-10-08)，共同日期367天，写入367天"
+      ],
+      "droppedDates": [],
+      "ranAt": "2026-10-08T03:40:10.247915+00:00",
       "fromPreviousRun": false
     }
   ],
