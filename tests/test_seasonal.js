@@ -17,7 +17,7 @@ function reset(){
 function neutralBase(){
   reset();
   const v = {crush:50, stock:70, basis:0, arrival:900, import:900, hogratio:6, sows:3750, poultry:1, rmspread:550, reserve:0};
-  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k]));
+  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k])); H.setBasis('0');
   window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
 }
 const html = ()=>makeEl('alertContent').innerHTML;

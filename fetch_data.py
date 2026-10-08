@@ -1357,53 +1357,115 @@ def _ndrc_get(fetch, url):
     return raw, None
 
 
-def fetch_ndrc_poultry(now_bj=None, fetch=None, max_articles=NDRC_LIVE_MAX_ARTICLES):
-    """肉鸡养殖预期盈利(元/只)：国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报。不用 Selenium：文章页和列表页都是服务器端渲染(已验证)。
-    流程：父栏目页 → 找'猪料、鸡料、蛋料比价信息'子栏目链接 → 子栏目列表 → 最新一篇(解析不出就退到前一篇) → 解析。每一环失败都写明是哪一环，绝不抛异常。
+class NdrcHttpLister:
+    """文章列表提供者(纯 HTTP 版)：父栏目页 → 子栏目链接 → 列表页 → 逐页'下一页'。
+    ⚠️2026-10-08 实测：该站点服务器端渲染出来的列表永远是默认栏目(生猪出场价)，子栏目是点击后才加载的，所以这个版本在真实站点上取不到比价文章——
+    保留它是因为：①页面以后若改成服务器端渲染它就能直接用；②测试里用它喂构造好的页面，验证下游(解析/选日期/回填)。线上默认用 ndrc_browser.SeleniumLister。"""
+
+    def __init__(self, fetch=None):
+        self.fetch = fetch or fetch_text_debug
+
+    def list_articles(self, max_pages=1, resolve_limit=0, skip_weeks=()):
+        out = {"links": [], "pages": 0, "noNext": False, "error": None, "debug": {"url": NDRC_ENTRY_LIST}}
+        raw, err = _ndrc_get(self.fetch, NDRC_ENTRY_LIST)
+        if err:
+            out["error"] = f"发改委价格监测中心父栏目页取不到: {err}"
+            return out
+        sub = find_ndrc_feed_ratio_list_url(raw, NDRC_ENTRY_LIST)
+        if not sub:
+            out["error"] = "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接(页面可能改版)"
+            out["debug"]["htmlHead"] = raw[:300]
+            return out
+        url, seen, html_ = sub, set(), ""
+        while url and out["pages"] < max_pages:
+            html_, err = _ndrc_get(self.fetch, url)
+            if err:
+                out["error"] = out["error"] or f"子栏目列表页取不到: {err}"
+                break
+            out["pages"] += 1
+            for ln in extract_ndrc_article_links(html_, url):
+                if ln["url"] not in seen:
+                    seen.add(ln["url"])
+                    out["links"].append(ln)
+            nxt = find_ndrc_next_page(html_, url)
+            if not nxt:
+                out["noNext"] = True
+                break
+            url = nxt if nxt != sub else None
+        if not out["links"] and not out["error"]:
+            out["error"] = "子栏目列表里没有文章链接(标题含'猪料、鸡料、蛋料比价')，页面可能改版或列表改成了前端渲染"
+            out["debug"]["htmlHead"] = html_[:300]
+        return out
+
+    def page_html(self, url):
+        return _ndrc_get(self.fetch, url)
+
+    def close(self):
+        pass
+
+
+def default_ndrc_lister(total_timeout_s=90):
+    """线上默认：Selenium 无头 Chrome(只用来拿文章列表；详情页仍走纯 HTTP)。线上每小时抓取 90 秒总时限；回填会给更长的。"""
+    import ndrc_browser
+    return ndrc_browser.SeleniumLister(total_timeout_s=total_timeout_s)
+
+
+def fetch_ndrc_poultry(now_bj=None, fetch=None, max_articles=NDRC_LIVE_MAX_ARTICLES, lister=None):
+    """肉鸡养殖预期盈利(元/只)：国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报。
+    列表靠 Selenium(lister)：站点的子栏目列表是点击后才加载的，纯 HTTP 拿不到；详情页是服务器端渲染，纯 HTTP 读(失败时才退回用浏览器读)。
+    流程：浏览器取列表(最新在前) → 最新一篇(解析不出就退到前一篇，最多 max_articles 篇) → 解析。每一环失败都写明是哪一环，绝不抛异常，浏览器一定关掉。
     ★与 Mysteel 的'白羽肉鸡养殖利润'不是同一个定义：这是发改委按成本模型推算的'未来肉鸡养殖预期盈利'(=2.75×(鸡料比价-平衡点)×饲料价格)，取公布的数字。"""
     if now_bj is None:
         now_bj = (datetime.now(timezone.utc) + timedelta(hours=8)).replace(tzinfo=None)
     fetch = fetch or fetch_text_debug
-    raw, err = _ndrc_get(fetch, NDRC_ENTRY_LIST)
-    if err:
-        return {"available": False, "reason": f"发改委价格监测中心父栏目页取不到: {err}", "debug": {"url": NDRC_ENTRY_LIST}}
-    sub = find_ndrc_feed_ratio_list_url(raw, NDRC_ENTRY_LIST)
-    if not sub:
-        return {"available": False, "reason": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接(页面可能改版)", "debug": {"url": NDRC_ENTRY_LIST, "htmlHead": raw[:300]}}
-    raw2, err = _ndrc_get(fetch, sub)
-    if err:
-        return {"available": False, "reason": f"子栏目列表页取不到: {err}", "debug": {"url": sub}}
-    links = extract_ndrc_article_links(raw2, sub)
-    if not links:
-        return {"available": False, "reason": "子栏目列表里没有文章链接(标题含'猪料、鸡料、蛋料比价')，页面可能改版或列表改成了前端渲染", "debug": {"url": sub, "htmlHead": raw2[:300]}}
-    attempted = []
-    for k, ln in enumerate(links[:max_articles]):
-        raw3, err = _ndrc_get(fetch, ln["url"])
-        if err:
-            attempted.append(f"{ln['title']}: 详情页取不到: {err}")
-            continue
-        parsed, why = parse_ndrc_poultry(_html_to_text(raw3))
-        if parsed is None:
-            attempted.append(f"{ln['title']}: {why}")
-            continue
-        pub = None
-        if parsed.get("publishDate"):
-            pub = _date_cls.fromisoformat(parsed["publishDate"])
-        elif ln.get("pageDate"):
-            pub = _date_cls.fromisoformat(ln["pageDate"])
-        body = _date_cls.fromisoformat(parsed["monitorDate"]) if parsed.get("monitorDate") else None
-        d, fb = pick_ndrc_monitor_date(parsed.get("weekLabel") or ln.get("week"), body, pub)
-        if d is None:
-            attempted.append(f"{ln['title']}: 正文和页面都没有可用的日期")
-            continue
-        age = (now_bj.date() - d).days
-        return {"available": True, "value": parsed["value"], "date": d.isoformat(), "ratio": parsed["ratio"], "ratioChangePct": parsed["ratioChangePct"], "balance": parsed["balance"],
-                "chickenPrice": parsed["chickenPrice"], "feedPrice": parsed["feedPrice"], "weekLabel": parsed["weekLabel"] or ln.get("week"), "publishDate": parsed.get("publishDate"),
-                "formulaCheckOk": parsed["formulaCheckOk"], "formulaCheckValue": parsed["formulaCheckValue"], "dateFallback": fb, "usedFallback": k > 0, "fallbackWeeks": k,
-                "ageDays": age, "stale": age > NDRC_STALE_DAYS, "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)", "sourceUrl": ln["url"],
-                "definition": "发改委按成本模型推算的未来肉鸡养殖预期盈利=2.75×(鸡料比价-平衡点)×饲料价格，不是Mysteel的白羽肉鸡养殖利润"}
-    last = attempted[-1].split(": ", 1)[-1] if attempted else ""
-    return {"available": False, "reason": f"最新{min(len(links), max_articles)}篇周报都没取到肉鸡预期盈利(最后一篇：{last})", "debug": {"attempted": attempted, "listUrl": sub}}
+    try:
+        lister = lister or default_ndrc_lister()
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "reason": f"浏览器模块加载失败: {type(e).__name__}: {str(e)[:120]}", "debug": {}}
+    try:
+        lst = lister.list_articles(max_pages=1)
+        links = lst.get("links") or []
+        if lst.get("error") and not links:
+            return {"available": False, "reason": f"发改委文章列表取不到: {lst['error']}", "debug": lst.get("debug") or {}}
+        if not links:
+            return {"available": False, "reason": "子栏目列表里没有文章链接", "debug": lst.get("debug") or {}}
+        attempted = []
+        for k, ln in enumerate(links[:max_articles]):
+            raw3, err = (ln["html"], None) if ln.get("html") else _ndrc_get(fetch, ln["url"])
+            if err:
+                raw3, err2 = lister.page_html(ln["url"])
+                if err2:
+                    attempted.append(f"{ln['title']}: 详情页取不到: {err}；浏览器也取不到: {err2}")
+                    continue
+            parsed, why = parse_ndrc_poultry(_html_to_text(raw3))
+            if parsed is None:
+                attempted.append(f"{ln['title']}: {why}")
+                continue
+            pub = None
+            if parsed.get("publishDate"):
+                pub = _date_cls.fromisoformat(parsed["publishDate"])
+            elif ln.get("pageDate"):
+                pub = _date_cls.fromisoformat(ln["pageDate"])
+            body = _date_cls.fromisoformat(parsed["monitorDate"]) if parsed.get("monitorDate") else None
+            d, fb = pick_ndrc_monitor_date(parsed.get("weekLabel") or ln.get("week"), body, pub)
+            if d is None:
+                attempted.append(f"{ln['title']}: 正文和页面都没有可用的日期")
+                continue
+            age = (now_bj.date() - d).days
+            return {"available": True, "value": parsed["value"], "date": d.isoformat(), "ratio": parsed["ratio"], "ratioChangePct": parsed["ratioChangePct"], "balance": parsed["balance"],
+                    "chickenPrice": parsed["chickenPrice"], "feedPrice": parsed["feedPrice"], "weekLabel": parsed["weekLabel"] or ln.get("week"), "publishDate": parsed.get("publishDate"),
+                    "formulaCheckOk": parsed["formulaCheckOk"], "formulaCheckValue": parsed["formulaCheckValue"], "dateFallback": fb, "usedFallback": k > 0, "fallbackWeeks": k,
+                    "ageDays": age, "stale": age > NDRC_STALE_DAYS, "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)", "sourceUrl": ln["url"],
+                    "definition": "发改委按成本模型推算的未来肉鸡养殖预期盈利=2.75×(鸡料比价-平衡点)×饲料价格，不是Mysteel的白羽肉鸡养殖利润"}
+        last = attempted[-1].split(": ", 1)[-1] if attempted else ""
+        return {"available": False, "reason": f"最新{min(len(links), max_articles)}篇周报都没取到肉鸡预期盈利(最后一篇：{last})", "debug": {"attempted": attempted}}
+    except Exception as e:  # noqa: BLE001 - 任何意外都只影响这一个指标
+        return {"available": False, "reason": f"发改委抓取出现意外: {type(e).__name__}: {str(e)[:150]}", "debug": {}}
+    finally:
+        try:
+            lister.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def fetch_mysteel_poultry_profit():

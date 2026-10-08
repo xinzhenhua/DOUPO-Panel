@@ -4,6 +4,7 @@
 const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
+window._sdBalance.minN = 1e9;   // 本文件验证的是别的行为（阈值/排序/质量），期望值是按未均衡票权手算的；供需均衡的单元+集成测试见 test_sd_balance.js / test_sd_balance_integration.js
 window._selectedContract = 'sep';
 H.setMockedMonth(5);   // 5月：9月合约的作物票在"参与"档(×1)，票数好算；季节档位另见test_seasonal.js
 const AUTO = window._autoIndicators;
@@ -62,7 +63,7 @@ function reset(){
 function neutral(){
   reset();
   const v = {crush:50, stock:70, stu:12, basis:0, arrival:900, import:900, hogratio:6, sows:3750, poultry:1, rmspread:550, reserve:0};
-  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k]));
+  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k])); H.setBasis('0');
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0;
   window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
 }
@@ -92,7 +93,7 @@ check('★偏空依据里带出主导因素(含双倍票权的国内供应松紧
 check('偏多依据里列出猪粮比/能繁母猪', html().includes('偏多依据：') && html().includes('猪粮比') && html().includes('能繁母猪'));
 
 // 高置信度：供给偏空 + 基差偏空 + 需求中性，覆盖100%，一致性100%
-neutral(); supplyBear(); makeEl('m_basis').value='-100'; updateOverallAlert();
+neutral(); supplyBear(); H.setBasis('-100'); updateOverallAlert();
 check('★高置信度：多空一致(全部偏空)、无分歧、覆盖100% → 高', html().includes('结论置信度：高') && window._fundamentalConfidence==='高' && !html().includes('方向分歧'));
 check('高置信度时置信度框不是警告样式', !/alert-box warn"><span class="at">🔎/.test(html()));
 
@@ -112,7 +113,7 @@ check('★供给端条形向左(绿/neg)，需求端条形向右(红/pos)', /供
 check('条形宽度=|净倾向|×50%：供给-100%→50%，需求+50%→25%', (rows[0]||'').includes('width:50.0%') && (rows[1]||'').includes('width:25.0%'));
 
 // 分歧不受"样本少"的维度干扰：基差偏多(单项)不应和供给偏空构成分歧
-neutral(); supplyBear(); makeEl('m_basis').value='100'; updateOverallAlert();
+neutral(); supplyBear(); H.setBasis('100'); updateOverallAlert();
 check('★市场结构只有基差1项：即使与供给端相反也不算"方向分歧"', !html().includes('方向分歧'));
 
 H.clearMockedMonth();

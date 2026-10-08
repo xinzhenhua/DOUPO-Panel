@@ -56,10 +56,10 @@ check('★市场结构区块里明确写"资金持仓不参与上面的市场结
 load(MC);   // 默认空场景：没有任何价格类结构票的信号 → renderStructureCard走"暂无信号"分支
 check('前置：这个场景里市场结构(价格类)暂无信号(走第一个提前return分支)', window._structureSystem && window._structureSystem.n === 0 && /市场结构暂无信号/.test(stText()));
 check('★价格类结构票暂无信号时，资金持仓小节仍然显示(它们是独立的数据，不能跟着消失)', /资金持仓/.test(stText()) && stText().includes('152,092'));
-reset(); window._nowMs = NOW; makeEl('m_basis').value = '-100'; window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
+reset(); window._nowMs = NOW; H.setBasis('-100'); window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
 check('前置：只有基差1项有信号(thin分支)', window._structureSystem.thin === true && /样本少/.test(stText()));
 check('★thin分支：资金持仓仍显示', /资金持仓/.test(stText()) && stText().includes('152,092'));
-reset(); window._nowMs = NOW; makeEl('m_basis').value = '-100'; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
+reset(); window._nowMs = NOW; H.setBasis('-100'); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
 check('前置：基差+月差2项(正常分支，有净倾向)', window._structureSystem.n === 2 && window._structureSystem.thin === false && /净倾向/.test(stText()));
 check('★正常分支：资金持仓仍显示，且在价格类结构票的表格之后', /资金持仓/.test(stText()) && stText().indexOf('资金持仓') > stText().indexOf('净倾向'));
 window._spreadSignal = undefined; window._spreadQuality = undefined;
@@ -129,7 +129,7 @@ check('★状态行只读不写：有/无资金面数据时评分导出完全相
 // ===================== 7. 变异检查补的两个盲区 =====================
 // 7a. 资金持仓在价格类结构票的**表格之后**：原先用"净倾向"做锚点，但"净倾向"出现在最上面的结论框里(在表格之前)，资金持仓放表格前后都排在它后面——锚点选错了。
 //     用表格里的内容(现货基差那一格)和资金持仓小节自己的标题做锚点。
-reset(); window._nowMs = NOW; makeEl('m_basis').value = '-100'; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
+reset(); window._nowMs = NOW; H.setBasis('-100'); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._syncedData = {generatedAt:new Date(NOW-3600000).toISOString(), marketCapital: MC}; updateOverallAlert();
 const iBasisCell = st().indexOf('现货基差'), iCapHead = st().indexOf('资金持仓(龙虎榜+CFTC)'), iNote = st().indexOf('三者都来自价格本身');
 check('前置：价格类结构票的表格(现货基差那一格)和说明文字都存在', iBasisCell > 0 && iNote > 0 && iCapHead > 0);
 check('★资金持仓小节在价格类结构票的表格**和**"三者都来自价格本身"说明**之后**(价格类的先说完，再说资金持仓)', iCapHead > iBasisCell && iCapHead > iNote);

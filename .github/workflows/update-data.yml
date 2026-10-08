@@ -60,6 +60,12 @@ jobs:
       - name: 安装依赖(agrobr，用于抓取CONAB巴西大豆播种进度——纯HTTP+XLSX解析，不需要浏览器)
         run: pip install -r requirements-agrobr.lock.txt      # 精确版本；pandas已在akshare那一份里锁定
 
+      # 肉鸡养殖预期盈利(发改委价格监测中心)的文章列表是点击后才加载的，只能用浏览器读：selenium + 运行器自带的 Chrome/chromedriver。
+      # continue-on-error：这一步装失败只影响肉鸡这一项(它会显示"不可用"并写明原因)，绝不能拖垮整个数据同步。
+      - name: 安装依赖(selenium，读发改委文章列表用；Chrome 由 ubuntu-latest 自带)
+        continue-on-error: true
+        run: pip install -r requirements-selenium.lock.txt
+
       - name: 运行数据抓取脚本
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}

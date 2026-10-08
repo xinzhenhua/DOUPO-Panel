@@ -4,6 +4,7 @@
 const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
+window._sdBalance.minN = 1e9;   // 本文件验证的是别的行为（阈值/排序/质量），期望值是按未均衡票权手算的；供需均衡的单元+集成测试见 test_sd_balance.js / test_sd_balance_integration.js
 window._selectedContract = 'sep';
 H.setMockedMonth(5);   // 5月：作物票"参与"档(×1)
 const AUTO = window._autoIndicators;
@@ -65,7 +66,7 @@ check('★库消比159%(荒谬)：不填入，提示超出合理范围', makeEl(
 function baseNeutral(){
   reset();
   const v = {crush:50, stock:70, stu:12, basis:0, arrival:900, import:900, hogratio:6, sows:3750, poultry:1, rmspread:550, reserve:0};
-  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k]));
+  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k])); H.setBasis('0');
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0;
   window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
 }

@@ -112,7 +112,7 @@ const AUTO = window._autoIndicators;
 AUTO.forEach(c=>{ makeEl(c.inputId).value=''; makeEl('ind_'+c.key); makeEl('alert_'+c.key); window._indState[c.key]={}; });
 makeEl('alertContent'); H.setMockedMonth(5);
 window._selectedContract='sep'; window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0; window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
-makeEl('m_crush').value='70'; makeEl('m_stock').value='120'; makeEl('m_basis').value='-100'; makeEl('m_arrival').value='1100'; makeEl('m_import').value='1100'; makeEl('m_hogratio').value='4'; makeEl('m_sows').value='3900';
+makeEl('m_crush').value='70'; makeEl('m_stock').value='120'; H.setBasis('-100'); makeEl('m_arrival').value='1100'; makeEl('m_import').value='1100'; makeEl('m_hogratio').value='4'; makeEl('m_sows').value='3900';
 updateOverallAlert();
 check('★updateOverallAlert写入window._fundamentalMeta：方向明确时带置信度和原因', window._fundamentalMeta && ['高','中','低'].includes(window._fundamentalMeta.confidence) && Array.isArray(window._fundamentalMeta.reasons) && window._fundamentalMeta.reasons.length>0);
 AUTO.forEach(c=>{ makeEl(c.inputId).value=''; }); makeEl('m_crush').value='35';

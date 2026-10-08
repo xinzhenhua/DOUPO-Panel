@@ -135,7 +135,7 @@ function resetManualFieldsForResonance(){
   });
 }
 resetManualFieldsForResonance();
-makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10';
+makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; H.setBasis('10');
 makeEl('m_arrival').value='700'; makeEl('m_hogratio').value='8'; makeEl('m_sows').value='3600';
 makeEl('m_import').value='700';
 window._weatherRisk = 'high'; window._droughtSignal = 1; window._noaaOutlookSignal = 1; window._soyCondSignal = 1;

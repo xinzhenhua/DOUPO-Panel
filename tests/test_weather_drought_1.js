@@ -14,7 +14,7 @@ function check(desc, actual, expected){
 // 场景1：全部字段都填写偏多方向的值，验证score和每个指示器
 elements['m_crush'].value = '35';    // <40 偏多
 elements['m_stock'].value = '40';    // <50 偏多
-elements['m_basis'].value = '20';    // >0 偏多
+H.setBasis('20');    // >0 偏多
 elements['m_arrival'].value = '150'; // <180 偏多
 elements['m_hogratio'].value = '8';  // >7 偏多
 elements['m_sows'].value = '3600';   // <3700 偏多

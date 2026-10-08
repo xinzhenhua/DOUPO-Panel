@@ -76,7 +76,7 @@ check('★9月合约：即使收获进度信号存在，也不应该计入评分
 
 // ===================== 测试5：1月合约(10月)全部指标偏多时票数必须精确 =====================
 resetAll();
-elements['m_stock'].value='40'; elements['m_basis'].value='10'; elements['m_arrival'].value='700';
+elements['m_stock'].value='40'; H.setBasis('10'); elements['m_arrival'].value='700';
 elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_import'].value='700';
 elements['m_poultry'].value='2'; elements['m_rmspread'].value='350';
 window._saWeatherSignal=1; window._saPsdSignal=1; window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;

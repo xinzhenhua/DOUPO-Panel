@@ -57,7 +57,7 @@ check('★失败且没有保存值：徽标显示"抓取失败"，结论框显�
 
 // ===================== 4. 数据过期：显示但不计分 =====================
 resetKey('basis');
-window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(20)}};   // 基差日度，7天算过期
+window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(20), history:H.basisHist(10)}};   // 基差日度，7天算过期
 refreshMysteelBasis();
 check('★过期数据照样显示数值', makeEl('m_basis').value == '-100');
 check('★徽标标出"数据过期"并说明不计分(具体错过几个交易日写在详情里)', makeEl('badge_basis').textContent.includes('数据过期') && makeEl('badge_basis').textContent.includes('不计分') && makeEl('ai_basis').innerHTML.includes('错过') && makeEl('ai_basis').innerHTML.includes('个大商所交易日'));
@@ -65,7 +65,7 @@ check('★结论框说明不参与综合评分', makeEl('alert_basis').innerHTML
 check('★过期数据的信号被排除(市场结构卡里现货基差是"无信号"格，不是偏空；v97起基差在市场结构卡)', /sd-cell sd-empty">现货基差/.test(makeEl('structureContent').innerHTML));
 
 resetKey('basis');
-window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(3)}};
+window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(3), history:H.basisHist(10)}};
 refreshMysteelBasis();
 check('★新鲜数据参与评分(市场结构卡里现货基差是偏空格)', /sd-cell sd-neg">现货基差/.test(makeEl('structureContent').innerHTML));
 

@@ -111,7 +111,7 @@ function resetScore(){
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0; window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
   window._selectedContract='sep'; H.setMockedMonth(5);
   const fill = {crush:'50', stock:'70', basis:'0', arrival:'900', import:'900', hogratio:'6', poultry:'1', rmspread:'550'};
-  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]);
+  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]); H.setBasis('0');
   window._crushSignal = undefined;
 }
 const cell = ()=> (makeEl('structureContent').innerHTML.match(/sd-cell (sd-\w+)">月差\/期限结构[^<]*/)||[]);      // v97：月差在"市场结构"卡里，不在顶部
@@ -133,7 +133,7 @@ check('★月差晚了一期：票权×0.5，质量分里点名', window._qualit
 resetScore(); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; updateOverallAlert();
 check('★基差中性(0) + 月差偏多(+1)：市场结构维度净倾向=+1÷2=+50%', Math.abs(window._structureSystem.ratio - 0.5) < 1e-9);
 // 基差和月差同向偏空 → 市场结构偏空；与供给端偏多形成分歧
-resetScore(); makeEl('m_basis').value = '-100'; window._spreadSignal = -1; window._spreadQuality = {m:1, why:''};
+resetScore(); H.setBasis('-100'); window._spreadSignal = -1; window._spreadQuality = {m:1, why:''};
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;   // 供给端偏多
 window._psdSignal=1; window._fxSignal=1; makeEl('m_stu').value='9'; makeEl('m_arrival').value='700'; makeEl('m_import').value='700';
 updateOverallAlert();

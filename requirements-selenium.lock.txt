@@ -1,0 +1,21 @@
+# selenium(无头 Chrome 读发改委价格监测中心《猪料、鸡料、蛋料比价》文章列表)及其全部依赖
+# 来源：2026-10-08 在 Python 3.11 干净环境里 pip install selenium==4.50.0 的实际解析结果(pip freeze)；与 requirements-akshare.lock.txt / requirements-agrobr.lock.txt
+#   放进同一个环境后 `pip check` 无冲突(共有的 certifi/idna/urllib3/typing-extensions/h11 版本完全一致)。⚠️这是在我的沙盒里解析的，不是 GitHub Actions 的安装日志——
+#   第一次在 Actions 上装完后，请对照"Successfully installed"那一行；有出入以 Actions 为准。
+# Chrome 和 chromedriver：GitHub 的 ubuntu-latest 运行器自带；selenium 4.6+ 的 selenium-manager 会自己找到它们，不需要另外装。
+# 升级方法：改动前先在一次手动运行里验证；间接依赖要一起看。
+selenium==4.50.0
+attrs==26.1.0
+certifi==2026.7.22
+h11==0.16.0
+idna==3.20
+outcome==1.3.0.post0
+PySocks==1.7.1
+sniffio==1.3.1
+sortedcontainers==2.4.0
+trio==0.34.0
+trio-websocket==0.12.2
+typing-extensions==4.16.0
+urllib3==2.8.0
+websocket-client==1.9.2
+wsproto==1.3.2

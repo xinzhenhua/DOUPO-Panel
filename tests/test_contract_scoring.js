@@ -43,7 +43,7 @@ check('1月合约：不应该显示"南美天气状况"', !elements['alertConten
 resetAll();
 window._weatherRisk=null; window._droughtSignal=null; window._noaaOutlookSignal=null; window._soyCondSignal=null; window._saWeatherSignal=null;
 window._esrSignal=1; window._fxSignal=1; window._psdSignal=1;
-elements['m_stock'].value='40'; elements['m_basis'].value='10'; elements['m_arrival'].value='700';
+elements['m_stock'].value='40'; H.setBasis('10'); elements['m_arrival'].value='700';
 elements['m_hogratio'].value='8'; elements['m_sows'].value='3600'; elements['m_import'].value='700';
 elements['m_poultry'].value='2'; elements['m_rmspread'].value='350';
 selectContract('jan'); // 11月：没有天气类。有效投票：库存/开机率合并、到港/进口合并、库存消费比、汇率 = 4票供应；出口销售、基差、猪粮比、能繁、肉鸡、豆菜粕价差 = 6票需求

@@ -90,9 +90,23 @@ function printSummary(){
   if(fail > 0) process.exit(1);
 }
 
+
+// ---- 现货基差(v101.9起按"当前主力合约内部分位"计分，不再看正负号) ----
+// 旧测试大量用"基差填-100/100"来表达"基差投了偏空/偏多一票"。这里把这个意图显式化：值的符号→分位(正→90%偏多、负→10%偏空、0→50%中性)，
+// 并把同合约摘要放进指标状态。新规则本身的边界/回退在 test_basis_same_contract.js 里测。
+function basisHist(percentile){
+  return {n:745, percentile:60, sameContract:{contract:'m2701', n:50, minN:20, percentile, median:0, min:-100, max:100, since:'2026-08-03', why:''}};
+}
+function setBasis(value){
+  const v = parseFloat(value), p = v>0 ? 90 : v<0 ? 10 : 50;
+  const el = makeEl('m_basis'); el.value = String(value);
+  const st = window._indState && (window._indState.basis || (window._indState.basis = {}));
+  if(st) st.history = basisHist(p);
+}
+
 module.exports = {
   makeEl, elements, resetElements,
   setMockedMonth, clearMockedMonth,
   loadDashboardJs, setClipboardMock,
-  check, printSummary,
+  check, printSummary, basisHist, setBasis,
 };

@@ -9,6 +9,7 @@ const H = require('./test_helpers');
 const { makeEl, check } = H;
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 eval(H.loadDashboardJs());
+window._sdBalance.minN = 1e9;   // 本文件验证的是别的行为（阈值/排序/质量），期望值是按未均衡票权手算的；供需均衡的单元+集成测试见 test_sd_balance.js / test_sd_balance_integration.js
 const E = window._eventCal;
 const AUTO = window._autoIndicators;
 const KEYS = AUTO.map(c=>c.key);
@@ -83,7 +84,7 @@ check('★第一行：基本面方向、净倾向%、置信度——与顶部预
 check('方向用颜色/样式类区分(偏多/偏空/中性)', /dc-(bull|bear|neutral)/.test(sum()));
 
 // 基本面数据不足
-reset(); window._nowMs = NOW; makeEl('m_basis').value = '-100'; updateOverallAlert();
+reset(); window._nowMs = NOW; H.setBasis('-100'); updateOverallAlert();
 check('★基本面数据不足：第一行写"数据不足"，不显示净倾向/置信度，也不崩', text().includes('基本面数据不足') && !/置信度：/.test(text()) && !/净倾向/.test(text()));
 
 // ===================== 4. 需留意(≤3条，来自meta) =====================
@@ -155,7 +156,7 @@ check('★摘要只读不写：反复渲染不改变任何评分导出(_fundamen
 // 10a. 驱动只来自供需票：★原场景里市场结构票没有信号，带不带都一样。让基差有方向(-100→偏空)、月差偏多、量价偏多，且权重(1)与供需票并列
 reset(); window._nowMs = NOW;
 makeEl('m_stu').value='9'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='3'; window._psdSignal = 1; window._fxSignal = 1;
-makeEl('m_basis').value = '-100'; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''};
+H.setBasis('-100'); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''};
 updateOverallAlert();
 check('前置：市场结构有信号(基差偏空、月差偏多)，且在全部投票里确实有这些票——所以"驱动不含结构票"这条断言有意义', window._structureSystem.n >= 2 && window._structureSystem.direction !== null);
 check('★驱动里没有现货基差/月差/量价：即使它们有方向、权重(1)与供需票并列，也不进驱动', window._topDrivers.length === 3 && window._topDrivers.every(d => !/基差|月差|量价/.test(d.label)) && !text().match(/主导驱动.*(现货基差|月差)/));
@@ -214,7 +215,7 @@ check('★质量差的高基础权重票不再排第一：第一名的生效权�
 //      正确实现：_topDrivers只有供需票(最多2个~3个，取决于默认来源)；误含结构票会出现基差/月差/量价。
 reset(); window._nowMs = NOW;
 window._psdSignal = 1; window._fxSignal = 1;
-makeEl('m_basis').value = '-100'; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._vpSignal = 1;
+H.setBasis('-100'); window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; window._vpSignal = 1;
 updateOverallAlert();
 const ds = window._topDrivers || [];
 check('前置：市场结构有方向的票(基差/月差等)确实存在，且数量≥2', (window._structureSystem || {n:0}).n >= 2);

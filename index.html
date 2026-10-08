@@ -658,7 +658,8 @@ function sanityProblem(key, value){
 // 样本不足minPoints(12)期时只显示"历史积累中"，不给一个没有统计意义的百分位。
 // 一致性提示：绝对阈值(暂定值)判偏多/偏空，但这个值在历史分布里并不站在对应的一侧 → 提示阈值可能需要校准，
 // 这正是"用历史回填来校准暂定阈值"要找的东西。pol=+1表示"数值越高越偏多"，-1表示"数值越高越偏空"。
-const HISTORY_POLARITY = {feed:-1, crush:-1, stock:-1, stu:-1, basis:1, arrival:-1, import:-1, hogratio:1, sows:-1, poultry:1, rmspread:-1};
+// basis(现货基差)有意不在这里：它按"当前主力合约内部分位"计分，和这里用的跨合约整体分位不是一回事，拿整体分位去"提示阈值不一致"会误导(v101.9)
+const HISTORY_POLARITY = {feed:-1, crush:-1, stock:-1, stu:-1, arrival:-1, import:-1, hogratio:1, sows:-1, poultry:1, rmspread:-1};
 function histNum(v){
   if(v==null || isNaN(v)) return '--';
   const a = Math.abs(v);
@@ -774,7 +775,7 @@ const AUTO_INDICATORS = [
    // v101.7起不再用 Mysteel：基差 = 生意社豆粕现货价 − 主力合约结算价，后端自己算(现货高于期货为正)。
    // 现货价口径文档未明确(疑为多地综合基准价)；主力合约是生意社认定的，换月处基差会有断层；当天数据没出时用的是前一个交易日，诚实标注。
    extract:d=>({value:d.value, valueText:`${d.value}元/吨(现货${d.spot} − 主力${(d.domSymbol||'合约').toUpperCase()}的${d.domPrice})`, date:d.date,
-     detail:`数据日期：${d.date}<br>现货价口径：${d.spotDefinition||'生意社现货价'}`,
+     detail:`数据日期：${d.date}<br>现货价口径：${d.spotDefinition||'生意社现货价'}<br>分位口径：<b>只在当前主力合约（${String(d.domSymbol||'').toUpperCase()||'未知'}）自己的历史里比</b>${(d.history&&d.history.sameContract)?(d.history.sameContract.percentile!=null?`——${d.history.sameContract.n}个交易日，当前在第${d.history.sameContract.percentile}%分位（最低${d.history.sameContract.min}、中位${d.history.sameContract.median}、最高${d.history.sameContract.max}）`:`——${d.history.sameContract.why||'样本不足'}`):'——后端还没有给出同合约摘要'}；主力换月处基差会有几百元的断层，所以不跨合约比`,
      warn:[d.usedFallback?`⚠️ 当天的数据还没出，用的是${d.fallbackDays}天前的交易日(${d.date})`:'',
            d.consistent===false?`⚠️ 站点自己给的基差(${d.siteBasis})与现货−主力结算价自算的(${d.value})不一致，页面取自算值`:''].filter(Boolean).join('<br>')})},
   {key:'arrival', group:'supply', inputId:'m_arrival', title:'大豆到港预报', unit:'万吨', ph:'如1100', freq:'月度', sourceName:'Mysteel',
@@ -3389,7 +3390,7 @@ function renderDataHealth(){
 // ★评分规则版本号：每天记录两个系统的方向时会一并记下它(scripts/snapshot_systems.js→data/history/systems_*.json)。
 //   以后只要改了阈值/权重/投票清单/门槛这类会改变方向的规则，就必须递增——否则几个月后检验"背离有没有信息"时，
 //   会把不同规则算出来的方向混在一起，结论没有意义。
-const SCORING_VERSION = 'v99';    // v99：开机率改往年同月分位(三档：往年同月→近365天滚动→固定阈值)；豆菜粕价差不再计分(2026-06换口径后阈值失效)；v98：开机率滚动分位    // v98：开机率改用近365天滚动分位(去掉春节窗口)，历史不足时回退固定阈值；v97：开机率春节停机扰动期(节前7天~节后14天)不计分
+const SCORING_VERSION = 'v100';    // v100：①现货基差改按"当前主力合约内部分位"计分(不再看正负号)；②供给/需求先各算净倾向再50/50合成(票权各占一半、总票权不变)——两处都改变了方向的含义，快照历史按版本区分；v99：开机率改往年同月分位(三档：往年同月→近365天滚动→固定阈值)；豆菜粕价差不再计分(2026-06换口径后阈值失效)；v98：开机率滚动分位    // v98：开机率改用近365天滚动分位(去掉春节窗口)，历史不足时回退固定阈值；v97：开机率春节停机扰动期(节前7天~节后14天)不计分
 window._scoringVersion = SCORING_VERSION;
 
 // ===================== 季节性档位 + 天气开关 =====================
@@ -3439,6 +3440,10 @@ const STU_THRESH = {tight:10, loose:16};
 //   全部历史的分位会被1-2月春节峰和4-5月低谷主导、几乎总在两端，没有信息量(当前8.55天：全部历史59.7%=中性，往年同月13.0%=偏低)。
 //   交叉检验：水平调整后(÷过去52周中位数)同月分位5.6%、近3年同月23.1%、同比差分位25.7%——方向一致(偏低)，幅度取决于口径。同月样本至少12个(约3年)才判。
 const FEED_SIGNAL = {hi:80, lo:20, minSeasonalN:12};
+// 现货基差：只在"当前主力合约自己的历史"里比分位(≥80%偏多、≤20%偏空)。基差=现货−主力结算价，主力是5月/1月合约时天然偏大(+300~+450)、9月合约接近0，
+// 所以不能用正负号，也不能把所有合约混在一起比。该合约历史不足minN个交易日(换月后约一个月内)就不计分。用户2026-10-08规定，所有换月断层同此处理。
+const BASIS_SIGNAL = {hi:80, lo:20, minN:20};
+window._basisSignal = BASIS_SIGNAL;   // 暴露给测试用
 // 组内权重：库消比=库存÷消费，跟商业库存是同一数据的两种口径(库存是分子)，所以库存只给20，主要作兜底和一致性参考；
 // 库消比不可用时回到第1步的60/40(库存/开机率)。整组是主导档，投2票。
 const TIGHTNESS_WEIGHTS = {withStu:{stu:50, crush:30, stock:20}, withoutStu:{stock:60, crush:40}};
@@ -3499,7 +3504,17 @@ const MANUAL_RULES = {
          : p <= FEED_SIGNAL.lo ? [1, `饲料企业豆粕库存${v}天(${span}的${p}%分位，偏低) → 饲料厂需要补库，采购需求偏强，偏多`]
          : [0, `饲料企业豆粕库存${v}天(${span}的${p}%分位，常态区间)`];
   },
-  basis: v => v>0 ? [1, `正基差${v}→ 偏多`] : v<0 ? [-1, `负基差${v}→ 偏空`] : [0, `基差${v}（中性/持平）`],
+  basis: v => {
+    const st = window._indState.basis || {}, h = st.history, sc = h && h.sameContract;
+    if(!sc || sc.percentile == null || sc.n < BASIS_SIGNAL.minN){
+      const why = !h ? '还没有历史序列' : !sc ? '历史摘要里没有"同一主力合约"的分位（旧版数据）' : (sc.why || `该合约的历史只有${sc.n}个交易日（需要≥${BASIS_SIGNAL.minN}个）`);
+      return [null, `现货基差${v}元/吨：${why}，暂不计分（不退回用正负号：主力是5月/1月合约时基差天然偏大，符号不代表供需）`];
+    }
+    const p = sc.percentile, span = `${String(sc.contract||'').toUpperCase()}作为主力合约以来${sc.n}个交易日`;
+    return p >= BASIS_SIGNAL.hi ? [1, `现货基差${v}元/吨(${span}的${p}%分位，偏高) → 现货相对期货偏强，偏多`]
+         : p <= BASIS_SIGNAL.lo ? [-1, `现货基差${v}元/吨(${span}的${p}%分位，偏低) → 现货相对期货偏弱，偏空`]
+         : [0, `现货基差${v}元/吨(${span}的${p}%分位，常态区间)`];
+  },
   // ★到港预报是月度数字，阈值用月度量级(800/1000)，不是周度量级
   arrival: v => v<800 ? [1, `到港${v}万吨（&lt;800，到港量小）→ 偏多`] : v>1000 ? [-1, `到港${v}万吨（&gt;1000，到港量大）→ 偏空`] : [0, `到港${v}万吨（中性区间）`],
   import: v => v<800 ? [1, `进口${v}万吨（&lt;800）→ 供给偏紧，偏多`] : v>1000 ? [-1, `进口${v}万吨（&gt;1000）→ 供给宽松，偏空`] : [0, `进口${v}万吨（中性区间）`],
@@ -3547,6 +3562,44 @@ function tallyVotes(list){
   return {n:valid.length, total:list.length, weight:W, score, ratio, dir:dirOfRatio(ratio), bullW, bearW};
 }
 
+// ===================== 供需均衡：先各算净倾向，再按固定比例合成 =====================
+// 起因：供给端有7~10票(作物/库消比/国内松紧/到港/榨利/汇率/播种/收获…)、需求端只有5票(出口/猪粮比/饲料库存/肉鸡/豆菜粕)，
+// 票权加权汇总时供给端天然占约2/3，需求端被稀释——不是方向偏，是影响力不对等。
+// 做法：把两个维度各自的有效票权合计缩放到目标占比(默认50/50)，**总票权不变**。这样汇总后的总净倾向恰好等于
+// 占比×供给净倾向 + 占比×需求净倾向，而下游(置信度/稳健性/驱动排序/维度拆分)仍然是同一批票、同一套公式，全部一致。
+// 为什么50/50：没有任何可信资料能给出"供给还是需求更能决定豆粕期货走势"的固定比例——主导方随季节/行情轮换(南美和美国天气季供给主导，
+// 之后常转向需求/库存)，历史也太短没法回测。在没有证据偏向任何一边时，等权是唯一不需要编理由的选择。比例是常量，要调只改这里。
+// 不均衡的两种情形：①某一侧有效票<2(单票独占一半话语权比票数不均更糟)；②天气开关打开(作物信号极端偏多，已经有意偏向供给端)。
+const SD_BALANCE = {share:{supply:0.5, demand:0.5}, minN:2};
+window._sdBalance = SD_BALANCE;   // 暴露给测试用
+function balanceSupplyDemand(votes, opts){
+  opts = opts || {};
+  const share = opts.share || SD_BALANCE.share;
+  const sv = votes.filter(v=>v.side==='supply' && v.signal!==null), dv = votes.filter(v=>v.side==='demand' && v.signal!==null);
+  const Ws = sv.reduce((a,v)=>a+v.weight,0), Wd = dv.reduce((a,v)=>a+v.weight,0);
+  const res = {applied:false, reason:'', supplyN:sv.length, demandN:dv.length, supplyW:Ws, demandW:Wd, supplyFactor:1, demandFactor:1, share};
+  if(opts.skip){ res.reason = opts.skip; return res; }
+  if(sv.length < SD_BALANCE.minN || dv.length < SD_BALANCE.minN){
+    res.reason = `${sv.length < SD_BALANCE.minN ? '供给端' : '需求端'}有效票不足${SD_BALANCE.minN}个（供给${sv.length}、需求${dv.length}），不做供需均衡（单票独占一半话语权比票数不均更糟）`;
+    return res;
+  }
+  if(!(Ws > 0) || !(Wd > 0)){ res.reason = '某一侧有效票权合计为0，不做供需均衡'; return res; }
+  const T = Ws + Wd, fs = share.supply*T/Ws, fd = share.demand*T/Wd;
+  sv.forEach(v=>{ v.rawWeight = v.weight; v.weight = v.weight*fs; });
+  dv.forEach(v=>{ v.rawWeight = v.weight; v.weight = v.weight*fd; });
+  res.applied = true; res.supplyFactor = fs; res.demandFactor = fd;
+  return res;
+}
+
+/** 供需均衡的一行说明：做了(各占多少、供给/需求各乘多少)或没做(原因)。 */
+function sdBalanceNoteHtml(b){
+  if(!b) return '';
+  const pct = x=>Math.round(x*100)+'%';
+  const txt = b.applied
+    ? `⚖️ 供需均衡：供给${b.supplyN}票、需求${b.demandN}票 → 票权各占${pct(b.share.supply)}/${pct(b.share.demand)}（供给票权×${b.supplyFactor.toFixed(2)}、需求×${b.demandFactor.toFixed(2)}），总票权不变；总倾向=${pct(b.share.supply)}×供给净倾向+${pct(b.share.demand)}×需求净倾向`
+    : `⚖️ 供需均衡未启用：${b.reason}`;
+  return `<div style="font-size:10px;color:var(--t3);margin-top:2px">${txt}</div>`;
+}
 function computeDimensions(votes){
   const dims = {};
   DIM_META.forEach(m=>{
@@ -4020,6 +4073,9 @@ function updateOverallAlert(){
   }
   window._weatherDominant = weatherDominant;
 
+  // ---- 供需均衡：供给、需求两个维度各占固定比例(见 balanceSupplyDemand)；天气开关打开时不做(那是有意的偏向) ----
+  window._sdBalanceResult = balanceSupplyDemand(votes, weatherDominant ? {skip:'天气开关打开：作物信号主导，有意偏向供给端'} : {});
+
   // ---- 汇总：净倾向 = 票权加权分数 ÷ 有效票权合计 ----
   const overall = tallyVotes(votes);          // 全部投票(含市场结构)：只用于composite(每天记录的"综合"，保持连续)，不再是顶部的headline
   // ★v97 顶部拆开：顶部卡片只看"供需"(供给+需求)，所有headline计算(总分/仪表/置信度/维度/稳健性/质量)都在fundVotes上跑；
@@ -4115,7 +4171,7 @@ function updateOverallAlert(){
     + `<br><span style="color:var(--t3)">等权=每票各1；分组等权=按相关性分${robust.groupsUsed}组、组内取平均、组间等权；现行=顶部总分(季节档位+票权+天气开关)</span></div>`;
   const qualityHtml = quality.lowItems.length
     ? `<div style="font-size:10.5px;color:var(--t2);margin-top:4px;line-height:1.7">⏱ 数据质量：<b>${Math.round(quality.score*100)}%</b>，被降权的：${quality.lowItems.map(x=>`${x.label.split('(')[0]}(×${x.q}：${x.why})`).join('；')}</div>` : '';
-  const dimHtml = `<div style="margin-top:8px">${dimensionBarsHtml(dims, ['supply','demand'])}<div style="font-size:10px;color:var(--t3);margin-top:2px">${dimensionSummary(dims, ['supply','demand'])} · 淡刻度线=±${Math.round(DIRECTION_RATIO*100)}%方向门槛，两个维度是同一批投票的拆分，不是额外指标</div></div>`;
+  const dimHtml = `<div style="margin-top:8px">${dimensionBarsHtml(dims, ['supply','demand'])}<div style="font-size:10px;color:var(--t3);margin-top:2px">${dimensionSummary(dims, ['supply','demand'])} · 淡刻度线=±${Math.round(DIRECTION_RATIO*100)}%方向门槛，两个维度是同一批投票的拆分，不是额外指标</div>${sdBalanceNoteHtml(window._sdBalanceResult)}</div>`;
   // 仪表：量程±66%，这样1/3分界线正好落在±22%(=方向判定门槛)，指针落在哪一段跟文字结论一致
   const gauge = renderGaugeSVG(pct, -66, 66, '%');
   el.innerHTML = `${gauge}<div class="alert-box ${cls}"><span class="at">${title}</span>${coverageNote}${lowCoverage?'　⚠️ 有效指标偏少，结论可信度较低':''}</div>${weatherHtml}${dimHtml}${divergenceHtml}${confHtml}${robustHtml}${qualityHtml}${driversHtml(fundVotes)}${sdTable}

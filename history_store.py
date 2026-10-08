@@ -549,6 +549,47 @@ def summarize(points, value, cur_d, freq=None, cohort_fn=None):
     return out
 
 
+SAME_CONTRACT_MIN_N = 20     # 当前主力合约自己的历史至少这么多个交易日才给分位(约一个月)
+
+# ★换月断层的统一处理(用户2026-10-08规定)：凡是受"主力/近月合约换月"影响的序列，分位只在**当前合约自己的历史**里算，不跨合约混算。
+#   这张表登记每个这类序列及其处理方式；以后新增含合约信息的序列，必须来这里登记，并检查它的分位口径。
+#   sameContract=序列里每个点带合约标记(x.dom)，算分位时只取同一合约的点；perContractFile=每个合约窗口单独一个文件，天然不混；retired=已停用。
+CONTRACT_ROLL_SERIES = {
+    "spot_basis": {"method": "sameContract", "note": "现货-主力结算价；主力换月时基差一天内可跳几百元（5月/1月合约天然大、9月合约接近0）"},
+    "crush_margin_sep": {"method": "perContractFile", "note": "盘面榨利，按合约窗口分文件"},
+    "crush_margin_may": {"method": "perContractFile", "note": "盘面榨利，按合约窗口分文件"},
+    "crush_margin_jan": {"method": "perContractFile", "note": "盘面榨利，按合约窗口分文件"},
+    "term_spread_sep": {"method": "perContractFile", "note": "月差，按合约对分文件"},
+    "term_spread_may": {"method": "perContractFile", "note": "月差，按合约对分文件"},
+    "term_spread_jan": {"method": "perContractFile", "note": "月差，按合约对分文件"},
+    "basis": {"method": "retired", "note": "Mysteel沿海基差(v101.7起停用)，里面有表内合约月份x.contract，换月处有断层"},
+}
+
+
+def summarize_same_contract(points, value, cur_d, dom, min_n=SAME_CONTRACT_MIN_N):
+    """value 在"同一主力合约"自己历史里的位置。只取 x.dom 与 dom 相同(大小写不敏感)的点，剔除 cur_d 当天自己；
+    没有合约标记的点不算任何合约的样本。样本不足 min_n 时 percentile=None 并写明原因——不退回混合所有合约的分位。"""
+    code = (dom or "").strip().lower()
+    out = {"contract": code or None, "n": 0, "minN": min_n, "percentile": None, "median": None, "min": None, "max": None, "since": None, "why": ""}
+    if not code:
+        out["why"] = "没有主力合约代码，无法按合约分组"
+        return out
+    refs = [p for p in points
+            if p.get("d") != cur_d and _is_num(p.get("v"))
+            and str(((p.get("x") or {}).get("dom")) or "").strip().lower() == code]
+    refs.sort(key=lambda p: str(p["d"]))
+    vals = [p["v"] for p in refs]
+    out["n"] = len(vals)
+    if vals:
+        out["min"], out["max"], out["median"] = round(min(vals), 2), round(max(vals), 2), round(statistics.median(vals), 2)
+        out["since"] = refs[0]["d"]
+    if len(vals) >= min_n:
+        out["percentile"] = percentile_rank(value, vals)
+    else:
+        out["why"] = f"{code}作为主力合约的历史只有{len(vals)}个交易日（需要≥{min_n}个），换月后约一个月内这一项暂不计分"
+    return out
+
+
 # ---------------------------------------------------------------------------
 # 出口净销售的两类数据毛病(第一次回填报告里发现的)
 # ---------------------------------------------------------------------------
@@ -675,6 +716,8 @@ def update_and_attach(result, base_dir=None):
             res["history"] = summarize(usable_points(series["key"], series["points"]), v, d, series["freq"])
             if key in TRAILING_SERIES:       # ★开机率：再挂一份滚动窗口分位(含分位点表)，页面的评分规则读它(第二档)
                 res["history"]["trailing"] = summarize_trailing(usable_points(series["key"], series["points"]), v, d, **TRAILING_SERIES[key])
+            if key == "spot_basis":          # ★现货基差：再挂一份"同一主力合约内部"的分位，页面的评分规则读它(整体摘要只展示)
+                res["history"]["sameContract"] = summarize_same_contract(usable_points(series["key"], series["points"]), v, d, res.get("domSymbol"))
             if key in SAME_MONTH_SERIES:     # ★开机率：往年同月分位(含分位点表)，页面的评分规则优先读它(第一档)；参照里排除关税战区间
                 res["history"]["sameMonth"] = summarize_same_month(usable_points(series["key"], series["points"]), v, d, exclude_key=key, **SAME_MONTH_SERIES[key])
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花，不能拖垮主流程

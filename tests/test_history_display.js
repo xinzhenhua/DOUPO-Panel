@@ -58,7 +58,11 @@ check('★库消比16.5%(≥16判偏空)但历史分位40%：详情里提示阈�
 resetKey('basis');
 window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(1), history:hist({percentile:60, n:400})}};
 refreshMysteelBasis();
-check('★基差(数值越高越偏多)：-100判偏空但历史分位60%(不算低)，提示不一致', makeEl('ai_basis').innerHTML.includes('绝对阈值判<b>偏空</b>'));
+check('★v101.9基差按"当前主力合约内部分位"计分，不再有绝对阈值：不能拿跨合约整体分位(60%)去提示"阈值不一致"', !makeEl('ai_basis').innerHTML.includes('绝对阈值判'));
+resetKey('basis');
+window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(1), history:Object.assign(hist({percentile:60, n:400}), {sameContract:{contract:'m2701', n:50, minN:20, percentile:8, median:-20, min:-120, max:60, since:'2026-08-03', why:''}})}};
+refreshMysteelBasis();
+check('★同合约分位8%（偏空）时，也不因整体分位60%出现"阈值不一致"的误导提示', !makeEl('ai_basis').innerHTML.includes('绝对阈值判'));
 
 // 没有history字段：卡片照常，不出现undefined
 resetKey('crush');

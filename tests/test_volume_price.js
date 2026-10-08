@@ -155,7 +155,7 @@ function resetScore(){
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0; window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
   window._selectedContract='sep'; H.setMockedMonth(5);
   const fill = {crush:'50', stock:'70', basis:'0', arrival:'900', import:'900', hogratio:'6', poultry:'1', rmspread:'550'};
-  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]);
+  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]); H.setBasis('0');
   window._crushSignal = undefined; window._spreadSignal = undefined; window._vpSignal = undefined;
 }
 const cell = ()=> (makeEl('structureContent').innerHTML.match(/sd-cell (sd-\w+)">量价关系[^<]*/)||[]);      // v97：量价在"市场结构"卡里，不在顶部
@@ -177,7 +177,7 @@ check('★K线晚了一期：票权×0.5，质量分里点名', window._quality.
 resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; updateOverallAlert();
 check('★基差中性(0) + 量价偏多(+1)：市场结构维度2项，净倾向+50%，不再是"样本少"', window._structureSystem.n === 2 && Math.abs(window._structureSystem.ratio - 0.5) < 1e-9 && window._structureSystem.thin === false);
 // 三个市场结构信号一起
-resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; makeEl('m_basis').value = '100'; updateOverallAlert();
+resetScore(); window._vpSignal = 1; window._vpQuality = {m:1, why:''}; window._spreadSignal = 1; window._spreadQuality = {m:1, why:''}; H.setBasis('100'); updateOverallAlert();
 check('★基差偏多+月差偏多+量价偏多：市场结构维度3项全偏多，+100%', window._structureSystem.n === 3 && window._structureSystem.ratio === 1);
 H.clearMockedMonth(); window._vpSignal = undefined; window._spreadSignal = undefined; window._crushSignal = undefined;
 H.printSummary();

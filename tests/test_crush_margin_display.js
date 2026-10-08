@@ -69,7 +69,7 @@ function resetScore(){
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0; window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
   window._selectedContract='sep'; H.setMockedMonth(5);
   const fill = {crush:'50', stock:'70', basis:'0', arrival:'900', import:'900', hogratio:'6', poultry:'1', rmspread:'550'};
-  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]);
+  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = fill[k]); H.setBasis('0');
 }
 const cellOf = ()=> (makeEl('alertContent').innerHTML.match(/sd-cell (sd-\w+)">盘面压榨毛利[^<]*/)||[]);
 resetScore(); window._crushSignal = undefined; updateOverallAlert();

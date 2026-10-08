@@ -21,7 +21,7 @@ function resetManualFields(){
 // 9月合约、这次给了值的投票：作物综合、库存消费比、国内豆粕供应松紧(库存+开机率合并)、大豆到港/进口(到港+进口合并)、人民币汇率 = 5票供应；
 // 出口销售、现货基差、猪粮比、能繁母猪 = 4票需求。合计9票(国储拍卖/肉鸡/豆菜粕价差没填，不投票)。
 resetManualFields();
-elements['m_crush'].value='35'; elements['m_stock'].value='40'; elements['m_basis'].value='10';
+elements['m_crush'].value='35'; elements['m_stock'].value='40'; H.setBasis('10');
 elements['m_arrival'].value='700'; elements['m_hogratio'].value='8'; elements['m_sows'].value='3600';
 elements['m_import'].value='700';
 

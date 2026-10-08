@@ -35,7 +35,7 @@ check('亏损-4元/只(<0)应判定偏空', elements['alertContent'].innerHTML.i
 
 // ===================== 测试3：票数审计(肉鸡指标正确并入) =====================
 resetFields();
-elements['m_crush'].value='35'; elements['m_stock'].value='40'; elements['m_basis'].value='10';
+elements['m_crush'].value='35'; elements['m_stock'].value='40'; H.setBasis('10');
 elements['m_arrival'].value='700'; elements['m_hogratio'].value='8'; elements['m_sows'].value='3600';
 elements['m_import'].value='700'; elements['m_poultry'].value='2';
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;

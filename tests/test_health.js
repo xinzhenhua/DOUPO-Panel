@@ -185,7 +185,7 @@ reset(); Object.keys(okAll).forEach(k=>{ makeEl('m_'+k).value = okAll[k]; window
 check('对照：参与评分的开机率没有数据 → 整体🔴', computeDataHealth(NOW).level==='red');
 
 // ===================== 5. 缺席的投票 + 渲染 =====================
-reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
+reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; H.setBasis('10'); makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
 KEYS.forEach(k=>{ window._indState[k] = {mode:'auto', dataDate: ago(2)}; });
 window._syncedData = {generatedAt: iso(2026,9,30,9,58)};
 updateOverallAlert();

@@ -4,6 +4,7 @@
 const H = require('./test_helpers');
 const { makeEl, elements, check } = H;
 eval(H.loadDashboardJs());
+window._sdBalance.minN = 1e9;   // 本文件验证的是别的行为（阈值/排序/质量），期望值是按未均衡票权手算的；供需均衡的单元+集成测试见 test_sd_balance.js / test_sd_balance_integration.js
 window._selectedContract = 'sep';
 H.setMockedMonth(5);   // 固定5月(9月合约窗口，作物票"参与"档×1)，不随真实日期变化
 
@@ -20,7 +21,7 @@ window._indState = window._indState || {};
 function neutralBaseline(){
   reset();
   const v = {crush:50, stock:70, stu:12, basis:0, arrival:900, import:900, hogratio:6, sows:3750, poultry:1, rmspread:550, reserve:0};
-  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k]));
+  Object.keys(v).forEach(k=>makeEl('m_'+k).value = String(v[k])); H.setBasis('0');
   window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0;
   window._esrSignal=0; window._fxSignal=0; window._psdSignal=0;
 }
@@ -46,14 +47,14 @@ neutralBaseline(); ['poultry','rmspread'].forEach(k=>makeEl('m_'+k).value=''); w
 check('★有效指标少(7个供需投票，有效票权8)：2票偏多(2÷8=25%≥22%)即基本面偏多(门槛是固定的22%，不是按比例降低；原2÷9=22%刚好压线，v97起基差不计入后是25%)', html().includes('基本面偏多 +2（净倾向+25%）') && html().includes('有效7/9'));
 
 // ===================== 2. 数据不足：有效指标<5不下结论 =====================
-reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8';
+reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; H.setBasis('10'); makeEl('m_hogratio').value='8';
 window._weatherRisk = null; updateOverallAlert();
 check('★有效指标<5(这里只有2个供需票：供应松紧/猪粮比；基差是市场结构票，不计入顶部)：不下结论，显示"数据不足"', html().includes('数据不足，暂不下结论') && html().includes('只有2项'));
 check('★数据不足时基本面方向置空(不让三方共振沿用旧值)', window._fundamentalDirection === null);
 check('数据不足时仍显示供需表格，方便看缺哪些', html().includes('sd-table'));
 
 // 覆盖率低(有效5/12=42%<60%)：能下结论，但提示可信度较低
-reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; makeEl('m_basis').value='10'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
+reset(); makeEl('m_crush').value='35'; makeEl('m_stock').value='40'; H.setBasis('10'); makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
 window._psdSignal = 1; window._fxSignal = 1;   // v97：基差不再计入顶部，原靠它凑的5票变4票；补人民币汇率(成本类供需票)凑够5项
 updateOverallAlert();
 check('★有效5项(<60%覆盖)：给出结论但提示"有效指标偏少，结论可信度较低"', html().includes('基本面偏多') && html().includes('有效指标偏少'));

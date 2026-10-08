@@ -46,6 +46,11 @@ jobs:
       - name: 安装依赖(akshare，榨利/月差回填用；精确版本见 requirements-akshare.lock.txt)
         run: pip install -r requirements-akshare.lock.txt
 
+      # only=poultry_ndrc(发改委肉鸡预期盈利回填)要用浏览器读文章列表；其余项目不需要。装失败不影响其它项目(continue-on-error)，肉鸡项会在报告里写明原因。
+      - name: 安装依赖(selenium，只有 poultry_ndrc 回填用；Chrome 由 ubuntu-latest 自带)
+        continue-on-error: true
+        run: pip install -r requirements-selenium.lock.txt
+
       - name: 运行回填脚本(其余几项只用标准库；榨利/月差需要上一步装的akshare)
         env:
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}

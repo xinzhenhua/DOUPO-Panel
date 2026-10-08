@@ -100,7 +100,7 @@ function reset(){
   // 其余指标用中性值补齐，让有效投票凑满10个(基差/猪粮比/肉鸡/豆菜粕/到港/进口)；这些是直接填的，没有经过抓取，质量乘数为1
   ({basis:0, hogratio:6, poultry:1, rmspread:550, arrival:900, import:900}, null);
   const fill = {basis:0, hogratio:6, poultry:1, rmspread:550, arrival:900, import:900};
-  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = String(fill[k]));
+  Object.keys(fill).forEach(k=>makeEl('m_'+k).value = String(fill[k])); H.setBasis('0');
 }
 const d0 = (n)=>ago(n);
 window._selectedContract='sep'; H.setMockedMonth(5);

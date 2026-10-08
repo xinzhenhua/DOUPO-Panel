@@ -35,7 +35,7 @@ check('价差750(>700，菜粕明显划算)应判定偏空', elements['alertCont
 
 // ===================== 测试3：票数审计(豆菜粕价差正确并入) =====================
 resetFields();
-elements['m_crush'].value='35'; elements['m_stock'].value='40'; elements['m_basis'].value='10';
+elements['m_crush'].value='35'; elements['m_stock'].value='40'; H.setBasis('10');
 elements['m_arrival'].value='700'; elements['m_hogratio'].value='8'; elements['m_sows'].value='3600';
 elements['m_import'].value='700'; elements['m_poultry'].value='2'; elements['m_rmspread'].value='350';
 window._weatherRisk='high'; window._droughtSignal=1; window._noaaOutlookSignal=1; window._soyCondSignal=1;

@@ -914,43 +914,41 @@ POULTRY_NDRC_TIME_BUDGET_S = 20 * 60
 
 
 def backfill_poultry_ndrc(base_dir=None, today=None, fetch=None, sleep_s=1.0, time_budget_s=POULTRY_NDRC_TIME_BUDGET_S, clock=time.monotonic,
-                          max_consecutive_misses=6, max_list_pages=60, save_every=20):
-    """肉鸡养殖预期盈利回填(发改委价格监测中心×卓创资讯周报)。沿子栏目列表页的'下一页'链接翻页取文章链接，每篇取详情页解析。
-    ★不猜分页参数：列表页里找不到'下一页'链接就只处理已经拿到的，并在报告里写明 noNextPageLink=True(真实页面的分页链接结构我没有看到，web_fetch 把链接丢了)。
-    从最新开始；历史里已有的周(按监测日或 x.wk 周标签)不重抓详情页；时间预算；连续 max_consecutive_misses 篇失败判断站点不可达并停手；每攒 save_every 个点落盘。"""
+                          max_consecutive_misses=6, max_list_pages=60, save_every=20, lister=None):
+    """肉鸡养殖预期盈利回填(发改委价格监测中心×卓创资讯周报)。文章列表靠 Selenium(lister)：先点开'猪料、鸡料、蛋料比价信息'子栏目，再逐页点'下一页'；
+    每篇详情页走纯 HTTP(服务器端渲染)，失败才退回用浏览器读。不猜分页参数：找不到'下一页'就只处理已经拿到的，并在报告里写明 noNextPageLink=True。
+    从最新开始；历史里已有的周(按监测日或 x.wk 周标签)不重抓详情页；时间预算；连续 max_consecutive_misses 篇失败判断站点不可达并停手；每攒 save_every 个点落盘；浏览器一定关掉。"""
     if today is None:
         today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
     fetch = fetch or fd.fetch_text_debug
-    t_start = clock()      # ★预算从函数开头算：翻列表页(最多60页，每页几秒)的时间也要算进去(测试发现之前 t0 记在翻页之后，翻页超时不会被发现)
+    t_start = clock()      # ★预算从函数开头算：翻列表页的时间也要算进去
     ex = hs.load_series("poultry_ndrc", base_dir).get("points", [])
     have_dates = {p.get("d") for p in ex}
     have_weeks = {(p.get("x") or {}).get("wk") for p in ex if (p.get("x") or {}).get("wk")}
-    raw, err = fd._ndrc_get(fetch, fd.NDRC_ENTRY_LIST)
-    if err:
-        return {"key": "poultry_ndrc", "error": f"发改委价格监测中心父栏目页取不到: {err}", "notes": ["海外 IP 访问国内政府站点可能超时或被拒；web_fetch 工具能访问，但 GitHub Actions 的出口我无法验证"]}
-    sub = fd.find_ndrc_feed_ratio_list_url(raw, fd.NDRC_ENTRY_LIST)
-    if not sub:
-        return {"key": "poultry_ndrc", "error": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接", "debug": {"htmlHead": raw[:300]}}
-    links, pages, url, no_next, seen_urls, paging_stopped = [], 0, sub, False, set(), False
-    while url and pages < max_list_pages:
-        if clock() - t_start > time_budget_s:
-            paging_stopped = True
-            break
-        html_, err = fd._ndrc_get(fetch, url)
-        if err:
-            break
-        pages += 1
-        for ln in fd.extract_ndrc_article_links(html_, url):
-            if ln["url"] not in seen_urls:
-                seen_urls.add(ln["url"])
-                links.append(ln)
-        nxt = fd.find_ndrc_next_page(html_, url)
-        if not nxt:
-            no_next = True
-            break
-        url = nxt if nxt not in {sub} else None
+    try:
+        lister = lister or fd.default_ndrc_lister(total_timeout_s=15 * 60)
+    except Exception as e:  # noqa: BLE001
+        return {"key": "poultry_ndrc", "error": f"浏览器模块加载失败: {type(e).__name__}: {str(e)[:120]}"}
+    try:
+        return _backfill_poultry_ndrc_body(lister, fetch, base_dir, today, ex, have_dates, have_weeks, t_start, sleep_s, time_budget_s, clock,
+                                           max_consecutive_misses, max_list_pages, save_every)
+    finally:
+        try:
+            lister.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _backfill_poultry_ndrc_body(lister, fetch, base_dir, today, ex, have_dates, have_weeks, t_start, sleep_s, time_budget_s, clock,
+                                max_consecutive_misses, max_list_pages, save_every):
+    lst = lister.list_articles(max_pages=max_list_pages, resolve_limit=None, skip_weeks=have_weeks)      # 条目没有链接时要点开才有地址：不限个数(受总时限约束)，已有的周不点
+    links, pages, no_next, paging_stopped = lst.get("links") or [], lst.get("pages") or 0, bool(lst.get("noNext")), False
     if not links:
-        return {"key": "poultry_ndrc", "error": "子栏目列表里没有任何文章链接", "listPages": pages, "noNextPageLink": no_next}
+        return {"key": "poultry_ndrc", "error": lst.get("error") or "子栏目列表里没有任何文章链接", "listPages": pages, "noNextPageLink": no_next, "debug": lst.get("debug") or {},
+                "notes": ["海外 IP 访问国内政府站点可能超时或被拒；GitHub Actions 的出口我无法验证。debug 里是浏览器看到的页面情况，发我据此调整"]}
+    list_note = lst.get("error")
+    if clock() - t_start > time_budget_s:
+        paging_stopped = True
     new_pts, unsaved, misses, skipped, stopped, consecutive = {}, [], [], 0, False, 0
     for ln in links:
         if ln.get("week") and ln["week"] in have_weeks:
@@ -965,7 +963,10 @@ def backfill_poultry_ndrc(base_dir=None, today=None, fetch=None, sleep_s=1.0, ti
         if clock() - t_start > time_budget_s:
             stopped = True
             break
-        raw3, err = fd._ndrc_get(fetch, ln["url"])
+        raw3, err = (ln["html"], None) if ln.get("html") else fd._ndrc_get(fetch, ln["url"])
+        if err:
+            raw3, err2 = lister.page_html(ln["url"])
+            err = None if not err2 else f"{err}；浏览器也取不到: {err2}"
         parsed, why = (fd.parse_ndrc_poultry(fd._html_to_text(raw3)) if not err else (None, err))
         if parsed is None:
             if len(misses) < 40:
@@ -1003,6 +1004,8 @@ def backfill_poultry_ndrc(base_dir=None, today=None, fetch=None, sleep_s=1.0, ti
     ds = sorted(new_pts)
     notes = [f"列表翻了{pages}页，共{len(links)}篇周报；本次写入{len(new_pts)}个周" + (f"({ds[0]}~{ds[-1]})" if ds else "") + f"，已有的{skipped}个周跳过",
              "★与 Mysteel 的白羽肉鸡养殖利润不是同一个定义：这是发改委按成本模型推算的未来肉鸡养殖预期盈利(取公布的数字)；公式脚注的系数曾被转载页写错，不重算"]
+    if list_note:
+        notes.append(f"列表读取过程中的问题：{list_note}")
     if no_next:
         notes.append("⚠️列表页里没有找到'下一页'链接，只处理了已经拿到的文章(不猜分页参数)：把报告里的 listPages/articlesSeen 发我，我根据真实的分页结构改")
     if stopped:

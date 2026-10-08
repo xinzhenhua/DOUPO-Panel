@@ -49,8 +49,8 @@ function fundBull(){
   makeEl('m_stu').value='9'; makeEl('m_arrival').value='700'; makeEl('m_import').value='700'; makeEl('m_hogratio').value='8'; makeEl('m_poultry').value='2';
   makeEl('m_crush').value='50'; makeEl('m_stock').value='70'; makeEl('m_rmspread').value='550';
 }
-const stBear = ()=>{ makeEl('m_basis').value='-100'; window._spreadSignal=-1; window._spreadQuality={m:1,why:''}; window._vpSignal=-1; window._vpQuality={m:1,why:''}; };
-const stBull = ()=>{ makeEl('m_basis').value='100'; window._spreadSignal=1; window._spreadQuality={m:1,why:''}; window._vpSignal=1; window._vpQuality={m:1,why:''}; };
+const stBear = ()=>{ H.setBasis('-100'); window._spreadSignal=-1; window._spreadQuality={m:1,why:''}; window._vpSignal=-1; window._vpQuality={m:1,why:''}; };
+const stBull = ()=>{ H.setBasis('100'); window._spreadSignal=1; window._spreadQuality={m:1,why:''}; window._vpSignal=1; window._vpQuality={m:1,why:''}; };
 reset(); fundBull(); stBear(); updateOverallAlert();
 check('★基本面(仅供需票)偏多：不含市场结构票，只看供给/需求', window._fundamentalPure.direction === '偏多' && window._fundamentalPure.n >= 5);
 check('★市场结构：基差偏空+月差偏空+量价偏空 → 3项全偏空(-100%)', window._structureSystem.direction === '偏空' && window._structureSystem.n === 3 && window._structureSystem.ratio === -1 && window._structureSystem.thin === false);
@@ -66,7 +66,7 @@ reset(); fundBull(); stBull(); updateOverallAlert();
 check('★基本面偏多 + 市场结构偏多：同向', window._structureSystem.direction === '偏多' && makeEl('resonanceContent').innerHTML.includes('基本面与市场结构同向：偏多'));
 
 // 市场结构只有基差1项(月差/量价还没信号)：thin
-reset(); fundBull(); makeEl('m_basis').value='-100'; updateOverallAlert();
+reset(); fundBull(); H.setBasis('-100'); updateOverallAlert();
 check('★市场结构只有基差1项：thin=true，方向按这一项，但面板不做背离判断', window._structureSystem.n === 1 && window._structureSystem.thin === true && window._structureSystem.direction === '偏空');
 panel = makeEl('resonanceContent').innerHTML;
 check('★面板写"市场结构样本少(仅1项：偏空)"，行里标"(仅1项)"，不出现"背离："结论框(底部说明文字里会说"背离才是需要关注的信息"，那不是结论)', panel.includes('市场结构样本少(仅1项：偏空)') && panel.includes('偏空(仅1项)') && !panel.includes('背离：') && !panel.includes('title">背离'));
@@ -81,11 +81,11 @@ check('★基本面(仅供需)的净倾向不受市场结构影响：加上三�
 check('★v97顶部就是纯基本面：加上三个偏空的市场结构票，顶部仍是+85%(不再被拉低到+50%)；被拉低的是composite(全部投票的综合，只用于每天记录)', (function(){ const m = makeEl('alertContent').innerHTML.match(/净倾向([+-]?\d+)%/); const head = m ? parseInt(m[1]) : null; return head === 85 && Math.round(window._fundamentalPure.ratio*100) === 85 && Math.round(window._composite.ratio*100) === 50; })());
 
 // 基本面数据不足：null
-reset(); makeEl('m_crush').value='35'; makeEl('m_basis').value='-100'; window._weatherRisk=null; window._droughtSignal=null; window._noaaOutlookSignal=null; window._soyCondSignal=null; window._esrSignal=null; window._fxSignal=null; window._psdSignal=null;
+reset(); makeEl('m_crush').value='35'; H.setBasis('-100'); window._weatherRisk=null; window._droughtSignal=null; window._noaaOutlookSignal=null; window._soyCondSignal=null; window._esrSignal=null; window._fxSignal=null; window._psdSignal=null;
 updateOverallAlert();
 check('★基本面数据不足(供需票<5)：基本面方向置null、不沿用上次(_fundamentalPure={direction:null})；★市场结构是独立系统，不跟着置空(这里基差-100，n=1、thin)，且市场结构卡照常显示', window._fundamentalPure !== null && window._fundamentalPure.direction === null && window._fundamentalDirection === null && window._structureSystem !== null && window._structureSystem.n === 1 && window._structureSystem.thin === true && makeEl('structureContent').innerHTML.includes('市场结构样本少'));
 // 纯基本面票数不足(总票数够，但供需票<5)：基本面方向null，面板"数据不足"
-reset(); makeEl('m_basis').value='-100'; window._spreadSignal=-1; window._spreadQuality={m:1,why:''}; window._vpSignal=-1; window._vpQuality={m:1,why:''};
+reset(); H.setBasis('-100'); window._spreadSignal=-1; window._spreadQuality={m:1,why:''}; window._vpSignal=-1; window._vpQuality={m:1,why:''};
 makeEl('m_crush').value='35'; makeEl('m_stock').value='40';                      // 供需票只有国内供应松紧+作物(0)+美豆库消比(0)+汇率(0)=4项 <5
 window._psdSignal = 0; window._esrSignal = null; updateOverallAlert();
 check('★总票数够(≥5)但供需票不足5项：基本面方向=null(数据不足)，不拿市场结构去凑。_fundamentalPure保持{direction:null,n<5}(不置null)——面板靠"对象存在"区分"数据不足"和"加载中"', window._fundamentalPure !== null && window._fundamentalPure.n < 5 && window._fundamentalPure.direction === null && window._fundamentalDirection === null && makeEl('resonanceContent').innerHTML.includes('基本面(仅供需，不含市场结构)：数据不足'));
@@ -162,7 +162,7 @@ reset();
 window._weatherRisk='medium'; window._droughtSignal=0; window._noaaOutlookSignal=0; window._soyCondSignal=0; window._esrSignal=0; window._fxSignal=1; window._psdSignal=1;
 makeEl('m_hogratio').value='8'; makeEl('m_arrival').value='900'; makeEl('m_import').value='900';     // 供需票刚好5个、权重各1：作物(中性)/美豆库消比/汇率/猪粮比/到港进口
 stBear(); window._spreadQuality = {m:0.5, why:'晚了一期'}; window._vpQuality = {m:0.5, why:'晚了一期'};
-makeEl('m_basis').value='-100'; window._indState.basis = {late:true, mode:'manual'};
+H.setBasis('-100'); window._indState.basis = {late:true, mode:'manual', history:H.basisHist(10)};
 updateOverallAlert();
 const m5d = window._fundamentalMeta;
 check('★前置(手算：6个供需票权重各1×质量1 + 3个结构票×0.5 = (6+1.5)/9 = 83.33%)：全部投票的质量分<85%——如果误把结构票算进置信度，会触发降级(供需票越多越稀释，≥7个就不会越线，所以场景必须压到6个)', Math.abs(window._quality.score - 7.5/9) < 1e-9 && window._quality.score < 0.85 && window._quality.lowItems.length === 3 && window._fundamentalPure.n === 6);
@@ -178,7 +178,7 @@ check('★维度说明只提供给端/需求端，不出现"市场结构"', sum5
 check('★维度说明写"两个维度"，不再写"三个维度"', sum5e.includes('两个维度是同一批投票的拆分') && !sum5e.includes('三个维度'));
 check('★整张顶部卡里没有"市场结构无数据"(市场结构有数据时更不能这么写)', !t5e.includes('市场结构无数据') && window._structureSystem.n === 3);
 // 基本面数据不足时顶部走另一条分支，也不能出现
-reset(); makeEl('m_basis').value='-100'; updateOverallAlert();
+reset(); H.setBasis('-100'); updateOverallAlert();
 check('★数据不足分支的顶部也没有"市场结构无数据"', !makeEl('alertContent').innerHTML.includes('市场结构无数据'));
 // 函数本身：默认(不传onlyKeys)仍包含全部三个维度，保持向后兼容；传了只含指定的
 check('函数兼容：dimensionSummary(dims)默认含3个维度，传onlyKeys只含指定的', dimensionSummary(computeDimensions([])).includes('市场结构无数据') && !dimensionSummary(computeDimensions([]), ['supply','demand']).includes('市场结构') && dimensionSummary(computeDimensions([]), ['supply','demand']) === '供给端无数据，需求端无数据');

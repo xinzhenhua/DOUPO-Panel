@@ -222,13 +222,24 @@ def web(pages, log=None):
     return _f
 
 
+class _TestLister(fd.NdrcHttpLister):
+    """没有浏览器的测试列表提供者：详情页纯 HTTP 失败后的'浏览器后备'在这里直接报失败(不重复请求，请求次数的断言才有意义)。"""
+    def page_html(self, url):
+        return None, "测试里没有浏览器"
+
+
+def both(f):
+    """同一个假抓取函数同时给详情页(fetch)和列表(NdrcHttpLister)用：下游逻辑(解析/选日期/回填)沿用原来构造的页面验证；真实站点的列表靠 Selenium，见 test_ndrc_browser.py"""
+    return dict(fetch=f, lister=_TestLister(f))
+
+
 PAGES = {fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: SUB_LIST, URL_0904: P_0904, URL_0301: P_0301}
 NOW = datetime(2026, 10, 8, 12, 0)
 
 
 def test_live_follows_parent_list_then_sub_column_then_latest_article():
     log = []
-    r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(PAGES, log))
+    r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(PAGES, log)))
     assert r["available"] and r["value"] == -4.10 and r["date"] == "2026-09-23" and r["ratio"] == 1.79 and r["balance"] == 2.25 and r["weekLabel"] == "2026年9月第4周", r
     assert [x["url"] for x in log] == [fd.NDRC_ENTRY_LIST, SUB_URL, URL_0904], [x["url"] for x in log]
     assert r["sourceUrl"] == URL_0904 and r["ageDays"] == 15 and r["stale"] is False and "发改委" in r["source"], r
@@ -237,7 +248,7 @@ def test_live_follows_parent_list_then_sub_column_then_latest_article():
 
 def test_live_marks_stale_data_but_still_returns_it():
     old = datetime(2026, 11, 20, 12, 0)      # 距 09-23 已 58 天
-    r = fd.fetch_ndrc_poultry(now_bj=old, fetch=web(PAGES))
+    r = fd.fetch_ndrc_poultry(now_bj=old, **both(web(PAGES)))
     assert r["available"] and r["stale"] is True and r["ageDays"] == 58, r
     ok("数据距今58天(超过21天)：仍然返回(页面的新鲜度规则会处理)，但标 stale=True")
 
@@ -247,9 +258,9 @@ def test_live_reports_which_step_failed():
              ({fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: None}, "子栏目列表"), ({fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: "<html>空列表</html>"}, "没有文章"),
              ({fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: SUB_LIST, URL_0904: None}, "详情页"), ({fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: SUB_LIST, URL_0904: "<html>改版了，没有那句话</html>", URL_0301: "<html>也改版了，没有那句话</html>"}, "没有找到")]      # 两篇都要给页面，否则第二篇的'取不到'会盖住'没有找到'(上一版用例就是这样设计错的)
     for pages, kw in cases:
-        r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(pages))
+        r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(pages)))
         assert r["available"] is False and kw in r["reason"], (kw, r)
-    r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web({fd.NDRC_ENTRY_LIST: RuntimeError("网络炸了")}))
+    r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web({fd.NDRC_ENTRY_LIST: RuntimeError("网络炸了")})))
     assert r["available"] is False and "网络炸了" in r["reason"], r
     ok("★每一环失败都写明是哪一环：父栏目页取不到/没有子栏目链接/子栏目列表取不到/列表里没有文章/详情页取不到/详情页改版找不到那句话/网络异常——绝不抛异常")
 
@@ -257,17 +268,17 @@ def test_live_reports_which_step_failed():
 def test_live_falls_back_to_the_next_article_when_the_latest_one_cannot_be_parsed():
     pages = dict(PAGES)
     pages[URL_0904] = "<html>这一期页面还没排好版，没有数据</html>"
-    r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(pages), max_articles=2)
+    r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(pages)), max_articles=2)
     assert r["available"] and r["value"] == 1.54 and r["date"] == "2026-03-04" and r["usedFallback"] is True and r["fallbackWeeks"] == 1, r
     ok("最新一篇解析不出(刚发布、排版没好)：退到前一篇(2026年3月第1周 +1.54)，usedFallback=True；最多试 max_articles 篇")
 
 
 def test_live_request_budget_and_light_retry():
     log = []
-    fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(PAGES, log))
+    fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(PAGES, log)))
     assert len(log) == 3 and all(x["retries"] <= 2 and x["timeout"] <= 15 for x in log), log
     log2 = []
-    fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web({}, log2))
+    fd.fetch_ndrc_poultry(now_bj=NOW, **both(web({}, log2)))
     assert len(log2) == 1, "父栏目页取不到就停，不再请求别的"
     ok("★请求预算：成功只用3次、重试≤2次、超时≤15秒(每小时的线上抓取不能被拖慢)；父栏目页取不到就只请求1次")
 
@@ -277,7 +288,7 @@ def test_live_uses_the_publish_date_fallback_when_the_body_date_has_a_typo():
     pages = dict(PAGES)
     pages[URL_0904] = None
     pages[URL_0301] = typo
-    r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(pages), max_articles=2)
+    r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(pages)), max_articles=2)
     assert r["available"] and r["date"] == "2026-03-04" and r["dateFallback"] is True, r      # 发布日 03-06(周五) → 最近的周三 03-04
     ok("★正文日期年份笔误(2025年3月4日，标题是2026年)：退到发布日(03-06)之前最近的周三 03-04，dateFallback=True")
 
@@ -364,29 +375,33 @@ def test_live_tries_at_most_max_articles_before_giving_up():
     many = "".join(f'<li><a href="/detail?clmId=1840280592963387394&amp;tId={i}">2026年{9 - i // 4}月第{4 - i % 4}周猪料、鸡料、蛋料比价</a><span>2026-09-{25 - i:02d}</span></li>' for i in range(6))
     pages = {fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: f"<html>{many}</html>"}
     log = []
-    r = fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(pages, log), max_articles=2)
+    r = fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(pages, log)), max_articles=2)
     details = [x["url"] for x in log if "detail" in x["url"]]
     assert r["available"] is False and len(details) == 2, details
     log2 = []
-    fd.fetch_ndrc_poultry(now_bj=NOW, fetch=web(pages, log2), max_articles=4)
+    fd.fetch_ndrc_poultry(now_bj=NOW, **both(web(pages, log2)), max_articles=4)
     assert len([x for x in log2 if "detail" in x["url"]]) == 4
     ok("★6篇文章都取不到时，最多只试 max_articles 篇(2→2次详情请求，4→4次)，不会把整个列表都请求一遍")
 
 
 def test_backfill_paging_phase_respects_the_budget_and_does_not_guess_pagination():
-    # 翻页阶段超预算：只翻了第一页就停(每次请求100秒，预算150秒：第1页后已用时200>150)
+    # v101.9：翻页由 lister 负责(浏览器版有自己的总时限)；回填这边验证的是"翻页已经用掉了整个预算 → 一篇详情页都不再请求，stoppedEarly=True，并说明是预算用完"
     pages = {fd.NDRC_ENTRY_LIST: LIST_HTML, SUB_URL: SUB_LIST, "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1840280592963387394&page=2": SUB_LIST_2,
              URL_0904: P_0904, URL_0301: P_0301}
     t = {"now": 0.0}
-    base = web(pages)
-    def slow(*a, **k):
-        t["now"] += 100.0
-        return base(*a, **k)
+    log = []
+    base = web(pages, log)
+
+    class SlowPaging(_TestLister):
+        def list_articles(self, max_pages=1, **kw):
+            t["now"] += 200.0                 # 翻页用掉200秒
+            return super().list_articles(max_pages=max_pages)
     d = tempfile.mkdtemp()
     try:
-        rep = bf.backfill_poultry_ndrc(base_dir=d, today=date(2026, 10, 8), fetch=slow, sleep_s=0, time_budget_s=150, clock=lambda: t["now"], save_every=1)
-        # 时间线：父栏目页→100秒，子栏目第1页→200秒(pages=1)；翻第2页之前检查：200>150 → 停。(上一版预算写250，算错了：200≤250 还会继续翻)
-        assert rep.get("stoppedEarly") is True and rep.get("listPages") == 1, rep
+        rep = bf.backfill_poultry_ndrc(base_dir=d, today=date(2026, 10, 8), fetch=base, lister=SlowPaging(base), sleep_s=0, time_budget_s=150, clock=lambda: t["now"], save_every=1)
+        assert rep.get("stoppedEarly") is True and "预算" in rep.get("error", ""), rep
+        detail = [x["url"] for x in log if "detail" in x["url"]]
+        assert detail == [], f"预算用完后不应再请求详情页：{detail}"
     finally:
         shutil.rmtree(d, ignore_errors=True)
     # 没有'下一页'链接：绝不猜 &page=2 去请求
@@ -395,7 +410,7 @@ def test_backfill_paging_phase_respects_the_budget_and_does_not_guess_pagination
     try:
         no_next = dict(pages)
         no_next[SUB_URL] = SUB_LIST.replace("下一页", "更多")
-        bf.backfill_poultry_ndrc(base_dir=d2, today=date(2026, 10, 8), fetch=web(no_next, log), sleep_s=0)
+        bf.backfill_poultry_ndrc(base_dir=d2, today=date(2026, 10, 8), **both(web(no_next, log)), sleep_s=0)
         guessed = [x["url"] for x in log if "page=" in x["url"]]
         assert guessed == [], f"没有'下一页'链接时不能猜分页参数去请求：{guessed}"
     finally:
@@ -455,7 +470,7 @@ def test_history_records_the_ndrc_poultry_point_with_its_context():
 # ---------------- 回填 ----------------
 def run_bf(d, pages, log=None, **kw):
     kw.setdefault("sleep_s", 0)
-    return bf.backfill_poultry_ndrc(base_dir=d, today=kw.pop("today", date(2026, 10, 8)), fetch=web(pages, log), **kw)
+    return bf.backfill_poultry_ndrc(base_dir=d, today=kw.pop("today", date(2026, 10, 8)), **both(web(pages, log)), **kw)
 
 
 def test_backfill_walks_the_list_pages_and_stores_every_week_newest_first():
@@ -528,7 +543,7 @@ def test_backfill_budget_miss_streak_and_errors():
         def slow(*a, **k):
             t["now"] += 100.0
             return base(*a, **k)
-        rep = bf.backfill_poultry_ndrc(base_dir=d, today=date(2026, 10, 8), fetch=slow, sleep_s=0, time_budget_s=250, clock=lambda: t["now"])
+        rep = bf.backfill_poultry_ndrc(base_dir=d, today=date(2026, 10, 8), **both(slow), sleep_s=0, time_budget_s=250, clock=lambda: t["now"])
         assert rep["stoppedEarly"] is True, rep
         d2 = tempfile.mkdtemp()
         rep2 = run_bf(d2, {fd.NDRC_ENTRY_LIST: None})
@@ -564,6 +579,8 @@ def test_end_to_end_main_run_writes_ndrc_poultry_into_latest_json_and_the_histor
         fd.fetch_dce_position_rank_multi = lambda codes, *a, **k: {c: {"available": False, "reason": "测试桩"} for c in codes}
         fd.fetch_spot_basis = lambda *a, **k: {"available": False, "reason": "测试桩"}
         fd.fetch_text_debug = web(PAGES)      # 肉鸡走假网页(父栏目页→子栏目→最新一篇)
+        saved["default_ndrc_lister"] = fd.default_ndrc_lister
+        fd.default_ndrc_lister = lambda *a, **k: _TestLister(web(PAGES))      # 线上默认是 Selenium；测试里换成喂构造页面的列表提供者
         fd.OUTPUT_PATH = os.path.join(d, "latest.json")
         buf = io.StringIO()
         try:

@@ -72,7 +72,7 @@ window._weatherRisk='low'; window._droughtSignal=-1; window._noaaOutlookSignal=-
 window._psdSignal=-1; window._esrSignal=-1;                                                                       // 美豆库消比、出口销售偏空
 window._fxSignal=1;                                                                                                // 成本组偏多
 makeEl('m_stu').value='9';                                                                                         // 国内供应链偏多(库消比≤10%，×2票权)
-makeEl('m_hogratio').value='8'; makeEl('m_basis').value='50';                                                      // 需求、市场反馈偏多
+makeEl('m_hogratio').value='8'; H.setBasis('50');                                                      // 需求、市场反馈偏多
 makeEl('m_arrival').value='700';                                                                                   // 到港偏少→偏多(国内供应链)
 updateOverallAlert();
 let html = makeEl('alertContent').innerHTML;
@@ -90,7 +90,7 @@ if(!agreeUi){
 // 一致场景：所有投票都偏空
 reset();
 window._weatherRisk='low'; window._droughtSignal=-1; window._noaaOutlookSignal=-1; window._soyCondSignal=-1; window._psdSignal=-1; window._esrSignal=-1; window._fxSignal=-1;
-makeEl('m_stu').value='17'; makeEl('m_hogratio').value='4'; makeEl('m_basis').value='-100'; makeEl('m_arrival').value='1100';
+makeEl('m_stu').value='17'; makeEl('m_hogratio').value='4'; H.setBasis('-100'); makeEl('m_arrival').value='1100';
 updateOverallAlert();
 html = makeEl('alertContent').innerHTML;
 check('★全部偏空：三套一致，界面显示"三套一致，结论对权重不敏感"，共振meta.robust为null', html.includes('三套一致，结论对权重不敏感') && window._fundamentalMeta.robust === null);

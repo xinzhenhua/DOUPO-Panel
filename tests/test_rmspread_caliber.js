@@ -61,5 +61,5 @@ function scenario(withCity){
 const newB = scenario(true), oldB = scenario(false);
 check('★同样的823.3：新口径下需求侧少一个投票(缺席)，旧规则(手填无口径信息)下多一个偏空票——需求侧有效票数差1', newB.demand.n === oldB.demand.n - 1);
 check('★新口径下需求侧净倾向不再被这一票压低：新≥旧(旧规则多了一票-1)', newB.demand.ratio >= oldB.demand.ratio && oldB.demand.ratio < newB.demand.ratio);
-check('评分规则版本v99', window._scoringVersion === 'v99');
+check('评分规则版本v100', window._scoringVersion === 'v100');
 H.printSummary();
