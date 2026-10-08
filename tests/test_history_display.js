@@ -56,7 +56,7 @@ check('★库消比16.5%(≥16判偏空)但历史分位40%：详情里提示阈�
 
 // 基差(pol=+1)：-100判偏空，历史分位若只有60%(即基差并不算低)也应提示
 resetKey('basis');
-window._syncedData = {mysteelBasis:{available:true, value:-100, city:'日照', date:dayStr(1), usedFallback:false, history:hist({percentile:60, n:400})}};
+window._syncedData = {spotBasis:{available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dayStr(1), history:hist({percentile:60, n:400})}};
 refreshMysteelBasis();
 check('★基差(数值越高越偏多)：-100判偏空但历史分位60%(不算低)，提示不一致', makeEl('ai_basis').innerHTML.includes('绝对阈值判<b>偏空</b>'));
 

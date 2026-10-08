@@ -29,7 +29,7 @@ function testOneIndicator(name, refreshFn, badgeId, dataKey){
 }
 
 testOneIndicator('开机率', refreshMysteelCrushRate, 'ai_crush', 'mysteelCrushRate');
-testOneIndicator('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'mysteelPoultryProfit');
+testOneIndicator('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'ndrcPoultryProfit');
 testOneIndicator('豆菜粕价差', refreshMysteelRmSpread, 'ai_rmspread', 'mysteelRmSpread');
 testOneIndicator('到港预报', refreshMysteelArrivalForecast, 'ai_arrival', 'mysteelArrivalForecast');
 
@@ -54,7 +54,7 @@ function testDebugInfoShown(name, refreshFn, badgeId, dataKey){
 }
 
 testDebugInfoShown('开机率', refreshMysteelCrushRate, 'ai_crush', 'mysteelCrushRate');
-testDebugInfoShown('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'mysteelPoultryProfit');
+testDebugInfoShown('养殖利润', refreshMysteelPoultryProfit, 'ai_poultry', 'ndrcPoultryProfit');
 testDebugInfoShown('豆菜粕价差', refreshMysteelRmSpread, 'ai_rmspread', 'mysteelRmSpread');
 testDebugInfoShown('到港预报', refreshMysteelArrivalForecast, 'ai_arrival', 'mysteelArrivalForecast');
 

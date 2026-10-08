@@ -26,14 +26,14 @@ function buildLatest(){
   L.supplyDemand = {available:true, commodity:'Oilseed, Soybean', marketYear:2026, marketYearLabel:'2026/27', wasdeVintage:'2026年09月版', endingStocks:8436, production:120700, domesticConsumption:61000, exports:62000, totalUse:123000, stocksToUsePct:6.9, unit:'千公吨', source:'x'};
   L.mysteelCrushRate = {available:true, value:69.98, date:dAgo(2)};
   L.mysteelMealStock = {available:true, value:117.3, date:dAgo(4), weekLabel:'第38周'};
-  L.mysteelBasis = {available:true, value:-100, city:'日照', date:dAgo(1), usedFallback:false};
+  L.spotBasis = {available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, usedFallback:false, date:dAgo(1)};
   L.mysteelArrivalForecast = {available:true, value:1100, forecastYear:2026, forecastMonth:10, date:dAgo(3)};
   L.mysteelSoyImport = {available:true, value:1214.14, monthLabel:'2026年8月', date:dAgo(20)};
   L.mysteelMealStu = {available:true, value:16.04, month:'2026-09', monthLabel:'2026年9月', isForecast:true, usedFallbackMonth:false, method:'stated', methodLabel:'文章明示', recordSource:'body', stockWan:125, consumptionWan:779, productionWan:795, next:null, trend:null, weeklyCheck:null, date:dAgo(2), articleAgeDays:2, articleTitle:'x', festival:{name:null, level:null, disturbed:false}};
   L.mysteelReserveAuction = {available:true, value:54.3, auctionDate:dAgo(2), soldWan:19.2, soldRate:37.3, date:dAgo(1)};
   L.hogRatio = {available:true, value:5.6, date:dAgo(1)};
   L.sowInventory = {available:true, value:3980, quarterLabel:'2026年二季度末', date:dAgo(60)};
-  L.mysteelPoultryProfit = {available:true, value:-0.4, date:dAgo(5)};
+  L.ndrcPoultryProfit = {available:true, value:-0.4, date:dAgo(5)};
   L.mysteelRmSpread = {available:true, value:550, formatUsed:'区间中点', rangeLow:500, rangeHigh:600, date:dAgo(6)};
   return L;
 }

@@ -910,6 +910,192 @@ def _read_previous_series(out_dir):
         return []
 
 
+POULTRY_NDRC_TIME_BUDGET_S = 20 * 60
+
+
+def backfill_poultry_ndrc(base_dir=None, today=None, fetch=None, sleep_s=1.0, time_budget_s=POULTRY_NDRC_TIME_BUDGET_S, clock=time.monotonic,
+                          max_consecutive_misses=6, max_list_pages=60, save_every=20):
+    """肉鸡养殖预期盈利回填(发改委价格监测中心×卓创资讯周报)。沿子栏目列表页的'下一页'链接翻页取文章链接，每篇取详情页解析。
+    ★不猜分页参数：列表页里找不到'下一页'链接就只处理已经拿到的，并在报告里写明 noNextPageLink=True(真实页面的分页链接结构我没有看到，web_fetch 把链接丢了)。
+    从最新开始；历史里已有的周(按监测日或 x.wk 周标签)不重抓详情页；时间预算；连续 max_consecutive_misses 篇失败判断站点不可达并停手；每攒 save_every 个点落盘。"""
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    fetch = fetch or fd.fetch_text_debug
+    t_start = clock()      # ★预算从函数开头算：翻列表页(最多60页，每页几秒)的时间也要算进去(测试发现之前 t0 记在翻页之后，翻页超时不会被发现)
+    ex = hs.load_series("poultry_ndrc", base_dir).get("points", [])
+    have_dates = {p.get("d") for p in ex}
+    have_weeks = {(p.get("x") or {}).get("wk") for p in ex if (p.get("x") or {}).get("wk")}
+    raw, err = fd._ndrc_get(fetch, fd.NDRC_ENTRY_LIST)
+    if err:
+        return {"key": "poultry_ndrc", "error": f"发改委价格监测中心父栏目页取不到: {err}", "notes": ["海外 IP 访问国内政府站点可能超时或被拒；web_fetch 工具能访问，但 GitHub Actions 的出口我无法验证"]}
+    sub = fd.find_ndrc_feed_ratio_list_url(raw, fd.NDRC_ENTRY_LIST)
+    if not sub:
+        return {"key": "poultry_ndrc", "error": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接", "debug": {"htmlHead": raw[:300]}}
+    links, pages, url, no_next, seen_urls, paging_stopped = [], 0, sub, False, set(), False
+    while url and pages < max_list_pages:
+        if clock() - t_start > time_budget_s:
+            paging_stopped = True
+            break
+        html_, err = fd._ndrc_get(fetch, url)
+        if err:
+            break
+        pages += 1
+        for ln in fd.extract_ndrc_article_links(html_, url):
+            if ln["url"] not in seen_urls:
+                seen_urls.add(ln["url"])
+                links.append(ln)
+        nxt = fd.find_ndrc_next_page(html_, url)
+        if not nxt:
+            no_next = True
+            break
+        url = nxt if nxt not in {sub} else None
+    if not links:
+        return {"key": "poultry_ndrc", "error": "子栏目列表里没有任何文章链接", "listPages": pages, "noNextPageLink": no_next}
+    new_pts, unsaved, misses, skipped, stopped, consecutive = {}, [], [], 0, False, 0
+    for ln in links:
+        if ln.get("week") and ln["week"] in have_weeks:
+            skipped += 1
+            continue
+        # 没有 x.wk 的旧点(线上或手工记的)：用列表页上的发布日推出监测日(发布日之前最近的周三)，已在历史里就不重抓详情页
+        if ln.get("pageDate"):
+            pd_ = _date_from_iso(ln["pageDate"])
+            if pd_ is not None and (pd_ - timedelta(days=(pd_.weekday() - 2) % 7)).isoformat() in have_dates:
+                skipped += 1
+                continue
+        if clock() - t_start > time_budget_s:
+            stopped = True
+            break
+        raw3, err = fd._ndrc_get(fetch, ln["url"])
+        parsed, why = (fd.parse_ndrc_poultry(fd._html_to_text(raw3)) if not err else (None, err))
+        if parsed is None:
+            if len(misses) < 40:
+                misses.append({"title": ln["title"], "why": str(why)[:80]})
+            consecutive += 1
+            if consecutive >= max_consecutive_misses:
+                break
+            continue
+        consecutive = 0
+        pub = _date_from_iso(parsed.get("publishDate")) or _date_from_iso(ln.get("pageDate"))
+        body = _date_from_iso(parsed.get("monitorDate"))
+        d, fb = fd.pick_ndrc_monitor_date(parsed.get("weekLabel") or ln.get("week"), body, pub)
+        if d is None:
+            if len(misses) < 40:
+                misses.append({"title": ln["title"], "why": "没有可用的日期"})
+            continue
+        if d.isoformat() in have_dates or d.isoformat() in new_pts:
+            skipped += 1
+            continue
+        x = {"ratio": parsed["ratio"], "bal": parsed["balance"], "wk": parsed["weekLabel"] or ln.get("week"), "cp": parsed["chickenPrice"], "fp": parsed["feedPrice"]}
+        pt = {"d": d.isoformat(), "v": parsed["value"], "x": {k: v for k, v in x.items() if v is not None}}
+        new_pts[pt["d"]] = pt
+        unsaved.append(pt)
+        if len(unsaved) >= save_every:
+            hs.record_points("poultry_ndrc", unsaved, base_dir)
+            unsaved = []
+        if sleep_s:
+            time.sleep(sleep_s)
+    if unsaved:
+        hs.record_points("poultry_ndrc", unsaved, base_dir)
+    stopped = stopped or paging_stopped
+    if not new_pts and not ex:
+        return {"key": "poultry_ndrc", "error": ("时间预算用完，还没来得及解析任何一篇周报(翻页就用掉了预算)" if stopped else "列表里的周报一篇都没解析出肉鸡预期盈利"), "misses": misses, "articlesSeen": len(links),
+                "listPages": pages, "noNextPageLink": no_next, "stoppedEarly": stopped}
+    ds = sorted(new_pts)
+    notes = [f"列表翻了{pages}页，共{len(links)}篇周报；本次写入{len(new_pts)}个周" + (f"({ds[0]}~{ds[-1]})" if ds else "") + f"，已有的{skipped}个周跳过",
+             "★与 Mysteel 的白羽肉鸡养殖利润不是同一个定义：这是发改委按成本模型推算的未来肉鸡养殖预期盈利(取公布的数字)；公式脚注的系数曾被转载页写错，不重算"]
+    if no_next:
+        notes.append("⚠️列表页里没有找到'下一页'链接，只处理了已经拿到的文章(不猜分页参数)：把报告里的 listPages/articlesSeen 发我，我根据真实的分页结构改")
+    if stopped:
+        notes.append(f"⚠️用完了{time_budget_s // 60}分钟的时间预算，已保存已拿到的：再点一次 only=poultry_ndrc 接着补")
+    if misses:
+        notes.append(f"{len(misses)}篇没取到/没解析出(见 misses)")
+    return _report_entry("poultry_ndrc", base_dir, len(new_pts), notes=notes,
+                         extra={"articlesSeen": len(links), "listPages": pages, "noNextPageLink": no_next, "skippedWeeks": skipped, "misses": misses, "stoppedEarly": stopped})
+
+
+def _date_from_iso(s):
+    try:
+        return date.fromisoformat(s) if s else None
+    except ValueError:
+        return None
+
+
+SPOT_BASIS_BACKFILL_FROM = date(2023, 9, 1)
+SPOT_BASIS_TIME_BUDGET_S = 40 * 60
+
+
+def backfill_spot_basis(base_dir=None, start=None, today=None, fetch=None, sleep_s=1.0, time_budget_s=SPOT_BASIS_TIME_BUDGET_S, clock=time.monotonic,
+                        max_consecutive_misses=8, save_every=25, deadline_s=fd.SPOT_BASIS_DEADLINE_S):
+    """现货基差回填(生意社现货价 - 主力合约结算价，自己算)。不用 Mysteel。
+    数据源 ak.futures_spot_price(日期, vars_list=['M'])：**每个交易日一次网页请求**(akshare 内部请求 100ppi.com/sf/day-日期.html，页面日期对不上会 sleep(3)，被限流返回空表)；
+    所以不用 futures_spot_price_daily(它只是日期循环，中途被切断就什么都拿不到)，自己按交易日逐天调用：从最新开始、休市日不请求、已有历史的日期跳过(可重复点接着补)、
+    每次请求有硬性时限、40分钟时间预算、连续 max_consecutive_misses 天拿不到就判断被限流并停手、每攒够 save_every 个点就落盘(被强杀也不丢)。
+    每个点 x={sp现货价, dom主力合约, dp结算价, sb站点基差}；报告标出站点基差与自算不符的日期和主力合约换月点(换月处基差会有断层，是换了对比的合约，不是行情)。"""
+    import cn_calendar
+    if today is None:
+        today = (datetime.now(timezone.utc) + timedelta(hours=8)).date()
+    start = start or SPOT_BASIS_BACKFILL_FROM
+    fetch = fetch or fd._akshare_spot_price
+    existing = {p.get("d") for p in hs.load_series("spot_basis", base_dir).get("points", [])}
+    cands, d0 = [], today
+    while d0 >= start:
+        if cn_calendar.dce_is_trading_day(d0) and d0.isoformat() not in existing:
+            cands.append(d0)
+        d0 -= timedelta(days=1)
+    new_pts, unsaved, misses, mismatches = {}, [], [], []
+    consecutive, attempted, stopped, blocked, t0 = 0, 0, False, False, clock()
+    for d in cands:
+        if clock() - t0 > time_budget_s:
+            stopped = True
+            break
+        attempted += 1
+        ok_, res = fd._run_with_deadline(lambda d=d: fetch(d.isoformat()), deadline_s)
+        parsed, why = fd.parse_spot_basis(res) if ok_ else (None, res)
+        if parsed is None:
+            if len(misses) < 60:
+                misses.append(d.isoformat())
+            consecutive += 1
+            if consecutive >= max_consecutive_misses:
+                blocked = True
+                break
+        else:
+            consecutive = 0
+            x = {"sp": parsed["spot"], "dom": parsed["domSymbol"], "dp": parsed["domPrice"], "sb": parsed["siteBasis"]}
+            pt = {"d": d.isoformat(), "v": parsed["value"], "x": {k: v for k, v in x.items() if v is not None}}
+            new_pts[pt["d"]] = pt
+            unsaved.append(pt)
+            if parsed["consistent"] is False:
+                mismatches.append({"d": pt["d"], "computed": parsed["value"], "site": parsed["siteBasis"]})
+            if len(unsaved) >= save_every:
+                hs.record_points("spot_basis", unsaved, base_dir)
+                unsaved = []
+        if sleep_s:
+            time.sleep(sleep_s)
+    if unsaved:
+        hs.record_points("spot_basis", unsaved, base_dir)
+    remaining = len(cands) - attempted
+    if not new_pts and not existing:
+        return {"key": "spot_basis", "error": "一个交易日都没取到生意社的豆粕现货价", "misses": misses, "blocked": blocked, "attempted": attempted,
+                "notes": ["连续拿不到：可能被站点限流、akshare 版本/接口变了、或网络不通——看 misses 和 Actions 日志里 akshare 打印的生意社连接失败信息"]}
+    ds = sorted(new_pts)
+    rolls = []
+    for a, b in zip(ds, ds[1:]):
+        da, db = new_pts[a]["x"].get("dom"), new_pts[b]["x"].get("dom")
+        if da and db and da != db:
+            rolls.append({"from": a, "to": b, "dom": f"{da}→{db}"})
+    notes = [f"候选{len(cands)}个交易日(已有历史的跳过)，本次请求{attempted}个，写入{len(new_pts)}个点" + (f"({ds[0]}~{ds[-1]})" if ds else ""),
+             "基差=生意社现货价-主力合约结算价(自己算，现货高于期货为正)；sp 的口径文档没写明(疑为多地综合的基准价)；主力合约换月处基差会有断层(见 contractRolls)"]
+    if stopped:
+        notes.append(f"⚠️用完了{time_budget_s // 60}分钟的时间预算，还有{remaining}个交易日没请求(已保存已拿到的)：再点一次 only=spot_basis 接着补")
+    if blocked:
+        notes.append(f"⚠️连续{max_consecutive_misses}个交易日拿不到数据，判断站点在限流，已停手(已保存已拿到的，还有{remaining}个交易日没请求)：隔一段时间再点一次 only=spot_basis")
+    if mismatches:
+        notes.append(f"{len(mismatches)}个交易日站点给的基差与自算(现货-主力结算价)相差≥{fd.SPOT_BASIS_TOLERANCE}元，已取自算值")
+    return _report_entry("spot_basis", base_dir, len(new_pts), notes=notes,
+                         extra={"attempted": attempted, "remaining": remaining, "stoppedEarly": stopped, "blocked": blocked, "misses": misses,
+                                "siteMismatches": len(mismatches), "siteMismatchSamples": mismatches[:5], "contractRolls": rolls[:20]})
+
+
 BASIS_QUERY = "全国主要市场豆粕基差价格汇总"
 BASIS_TITLE_KEY = "豆粕基差价格汇总"
 BASIS_BACKFILL_FROM = date(2023, 9, 1)      # 采样里最早一篇是 2023-09-18
@@ -917,14 +1103,14 @@ BASIS_WINDOW_DAYS = 90
 
 
 def _fetch_basis_body(url, title):
-    """抓一篇文章的正文并截出正文区域。返回 (文本, 错误)；沿用 backfill_meal_stu 的做法(Referer、_html_to_text、_extract_article_region)。"""
-    raw, dbg = fd.fetch_text_debug(url, headers={"Referer": "https://ncp.mysteel.com/"})
-    if not raw:
-        return None, f"正文请求失败({dbg.get('error') or dbg.get('httpStatus')})"
-    return fd._extract_article_region(fd._html_to_text(raw), title), None
+    """抓一篇文章并返回 (该读表的文字, 错误, 诊断)。与线上共用 fd.fetch_basis_page(区域里没有表就在整页文字里找；没读到表给出诊断)。"""
+    page = fd.fetch_basis_page(url, title)
+    if not page["ok"]:
+        return None, page["err"], None
+    return page["text"], None, page["diag"]
 
 
-BASIS_PARSER_VERSION = "table-v1"      # 解析规则版本：报告里记下"正文没有表"的日期，只在版本相同时下次才跳过(解析规则改了就全部重试)
+BASIS_PARSER_VERSION = "table-v2"      # 解析规则版本：报告里记下"正文没有表"的日期，只在版本相同时下次才跳过(解析规则改了就全部重试)。v2：整页兜底读表(v1 只在"标题~免责声明"的区域里找，735个日期只读到24个)
 
 
 def _basis_known_no_table(out_dir):
@@ -1022,7 +1208,8 @@ def backfill_basis(base_dir=None, start=None, today=None, search=None, fetch_bod
                 no_value += 1
             continue
         bodies += 1
-        text, err = fetch_body(url, str(it.get("title") or ""))
+        res = fetch_body(url, str(it.get("title") or ""))
+        text, err, diag = res[0], res[1], (res[2] if len(res) > 2 else None)       # fetch_body 可以返回 (文字, 错误) 或 (文字, 错误, 诊断)
         time.sleep(sleep_s)
         if err or not text:
             if len(body_fail) < 8:
@@ -1039,7 +1226,7 @@ def backfill_basis(base_dir=None, start=None, today=None, search=None, fetch_bod
         # 正文请求成功但表里取不出沿海城市：记下来(下次不再重抓)，退回摘要/正文文字
         tried_no_table.append(d)
         if len(body_fail) < 8:
-            body_fail.append({"d": d, "reason": "正文里没有数据表，或表里没有沿海城市(日照/南通/东莞/湛江/防城港/厦门/天津)的数值", "regionHead": text[:220]})
+            body_fail.append({"d": d, "reason": "正文里没有数据表，或表里没有沿海城市(日照/南通/东莞/湛江/防城港/厦门/天津)的数值", "regionHead": text[:220], **({"diag": diag} if diag else {})})
         if upgrade:
             continue
         if s_val is not None and accept(d, s_city, s_val, "summary"):
@@ -1175,7 +1362,7 @@ def backfill_hog_ratio(base_dir=None, start=None, today=None):
 
 
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio, "rm_spread": backfill_rm_spread, "basis": backfill_basis}
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio, "rm_spread": backfill_rm_spread, "poultry_ndrc": backfill_poultry_ndrc, "spot_basis": backfill_spot_basis}
 DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate", "hog_ratio", "rm_spread"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 

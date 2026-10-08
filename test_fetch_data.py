@@ -23,6 +23,19 @@ import fetch_data as fd
 #   随时可能已经被前面某个测试污染过的属性。
 _REAL_FETCH_JSON_DEBUG = fd.fetch_json_debug
 
+# ★v101.6：线上基差抓取现在会请求正文读数据表(fetch_text_debug)。这个文件里的测试都是离线的，只替换了 fetch_json_debug；
+#   如果某个测试走到 fetch_text_debug，在有网络的机器上会发出真实请求(沙盒没网络所以恰好'失败→退回摘要'而通过)。
+#   这里给一个全局的"不联网"默认值，并记录调用，保证测试不依赖网络；需要读正文的测试(test_basis_live_table.py)用 fetch_page 参数注入。
+NETWORK_CALLS_FROM_TESTS = []
+
+
+def _no_network_text(url, headers=None, retries=2, timeout=20):
+    NETWORK_CALLS_FROM_TESTS.append(url)
+    return None, {"error": "测试里不联网"}
+
+
+fd.fetch_text_debug = _no_network_text
+
 # ---- 模拟 ESR commodities 列表返回 ----
 MOCK_ESR_COMMODITIES = [
     {"commodityCode": 107, "commodityName": "All Wheat"},
@@ -4089,6 +4102,7 @@ if __name__ == "__main__":
     print()
     if failed == 0:
         print(f"🎉 全部 {len(tests)} 项解析逻辑测试通过")
+        print(f"   (这些离线测试里被拦下的网络正文请求：{len(NETWORK_CALLS_FROM_TESTS)} 次)")
     else:
         print(f"⚠️ {failed}/{len(tests)} 项测试失败，请检查 fetch_data.py")
         sys.exit(1)      # v101.1：失败时必须返回非0退出码。原来只打印不退出，所有"退出码0=通过"的判断(包括批量脚本)对这个文件都不可靠

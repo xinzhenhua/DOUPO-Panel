@@ -6,7 +6,7 @@ eval(H.loadDashboardJs());
 const cases = [
   {name:'豆粕商业库存(用户遇到的0.7万吨)', fn: refreshMysteelMealStock, ai:'ai_stock', input:'m_stock', key:'mysteelMealStock', bad:{value:0.7, date:'2026-09-28'}, good:{value:117.32, date:'2026-09-21'}},
   {name:'油厂开机率', fn: refreshMysteelCrushRate, ai:'ai_crush', input:'m_crush', key:'mysteelCrushRate', bad:{value:1.14, date:'2026-09-28'}, good:{value:68.84, date:'2026-09-23'}},
-  {name:'养殖利润', fn: refreshMysteelPoultryProfit, ai:'ai_poultry', input:'m_poultry', key:'mysteelPoultryProfit', bad:{value:99, date:'2026-09-24'}, good:{value:-4.18, date:'2026-09-24'}},
+  {name:'养殖利润', fn: refreshMysteelPoultryProfit, ai:'ai_poultry', input:'m_poultry', key:'ndrcPoultryProfit', bad:{value:99, date:'2026-09-24'}, good:{value:-4.18, date:'2026-09-24'}},
   {name:'豆菜粕价差', fn: refreshMysteelRmSpread, ai:'ai_rmspread', input:'m_rmspread', key:'mysteelRmSpread', bad:{value:15, formatUsed:'区间中点', rangeLow:10, rangeHigh:20, date:'2026-09-28'}, good:{value:500, formatUsed:'区间中点', rangeLow:480, rangeHigh:520, date:'2026-09-28'}},
   {name:'到港预报', fn: refreshMysteelArrivalForecast, ai:'ai_arrival', input:'m_arrival', key:'mysteelArrivalForecast', bad:{value:30, forecastYear:2026, forecastMonth:10, date:'2026-09-24'}, good:{value:854.1, forecastYear:2026, forecastMonth:10, date:'2026-09-24'}},
   {name:'猪粮比', fn: refreshHogRatio, ai:'ai_hogratio', input:'m_hogratio', key:'hogRatio', bad:{value:42, date:'2026-09-27'}, good:{value:4.4, date:'2026-09-27'}},

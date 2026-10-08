@@ -45,7 +45,9 @@ SERIES_META = {
     "systems_jan": {"name": "每日系统方向记录(1月合约：基本面仅供需 + 市场结构 + 价格)", "unit": "净倾向", "freq": "daily"},
     # ---- 只能日常累积 ----
     "crush_rate": {"name": "油厂开机率", "unit": "%", "freq": "weekly"},
-    "basis": {"name": "豆粕现货基差(沿海代表)", "unit": "元/吨", "freq": "daily"},
+    "basis": {"name": "豆粕现货基差(沿海代表，Mysteel，v101.7起停止更新)", "unit": "元/吨", "freq": "daily"},
+    "poultry_ndrc": {"name": "肉鸡养殖预期盈利(发改委价格监测中心×卓创)", "unit": "元/只", "freq": "weekly"},
+    "spot_basis": {"name": "豆粕现货基差(生意社现货价-主力合约，自算)", "unit": "元/吨", "freq": "daily"},
     "arrival_forecast": {"name": "大豆到港预报(按预报月份)", "unit": "万吨", "freq": "monthly"},
     "soy_import": {"name": "大豆月度进口量", "unit": "万吨", "freq": "monthly"},
     "reserve_auction": {"name": "国储进口大豆拍卖计划量", "unit": "万吨", "freq": "irregular"},
@@ -612,7 +614,9 @@ def _simple_specs():
     """(结果字段, 序列key, 取(日期, 数值, 发布日期, 附加信息)的函数, 什么情况下不记录)"""
     return [
         ("mysteelCrushRate", "crush_rate", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
-        ("mysteelBasis", "basis", lambda r: (_day(r.get("date")), r.get("value"), None, {"city": r.get("city")})),
+        ("ndrcPoultryProfit", "poultry_ndrc", lambda r: (_day(r.get("date")), r.get("value"), None, {"ratio": r.get("ratio"), "bal": r.get("balance"), "wk": r.get("weekLabel"), "cp": r.get("chickenPrice"), "fp": r.get("feedPrice")})),
+        ("spotBasis", "spot_basis", lambda r: (_day(r.get("date")), r.get("value"), None, {"sp": r.get("spot"), "dom": r.get("domSymbol"), "dp": r.get("domPrice"), "sb": r.get("siteBasis")})),
+        ("mysteelBasis", "basis", lambda r: (_day(r.get("date")), r.get("value"), None, {"city": r.get("city"), "src": r.get("src"), "contract": r.get("contract")})),
         ("mysteelPoultryProfit", "poultry_profit", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
         ("mysteelRmSpread", "rm_spread", lambda r: (_day(r.get("date")), r.get("value"), None, None)),
         ("hogRatio", "hog_ratio", lambda r: (_day(r.get("date")), r.get("value"), None, None)),

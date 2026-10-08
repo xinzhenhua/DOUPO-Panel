@@ -397,6 +397,51 @@ def test_a_failed_body_request_is_transient_and_never_remembered_as_no_table():
     ok("★请求失败(403)不记进 triedNoTable(暂时性的，下次还要重试)；只有请求成功但没有表才记")
 
 
+def test_job_default_body_fetcher_uses_the_shared_page_reader_with_whole_page_fallback():
+    """★v101.6：回填的默认正文抓取与线上共用 fd.fetch_basis_page(整页兜底、诊断)，不再各写一套。"""
+    import fetch_data as fdm
+    html_ = ("<html><body><h1>%s</h1><p>智能摘要 摘要</p><div>相关推荐 %s</div><p>免责声明：x</p>"
+             "<table><tr><td>山东</td><td>日照</td><td>01</td><td>-110</td><td>-20</td></tr></table></body></html>") % (TITLE("2026-10-08"), TITLE("2026-10-08"))
+    orig = fdm.fetch_text_debug
+    fdm.fetch_text_debug = lambda url, headers=None, retries=2, timeout=20: (html_, {})
+    try:
+        res = bf._fetch_basis_body("https://ncp.mysteel.com/a/x.html", TITLE("2026-10-08"))
+    finally:
+        fdm.fetch_text_debug = orig
+    assert res[1] is None and fdm.basis_from_table(res[0]) == ("日照", -110.0, "01"), res
+    ok("★回填的默认正文抓取：推荐区重复标题 + 表在免责声明之后的页面，整页兜底读到表(与线上同一个函数)")
+
+
+def test_body_failures_carry_the_diagnostics_from_the_page_reader():
+    items = [mk("2024-03-05", "")]
+    diag = {"tableTags": 0, "imgTags": 3, "headerSeen": False, "afterHeader": "", "titleCount": 1, "disclaimerAt": 500, "rawLen": 9000, "fullLen": 800, "regionLen": 400}
+    fb = Bodies({items[0]["url"]: ("没有表的正文", None, diag)})
+    d = tempfile.mkdtemp()
+    try:
+        rep = run(items, d, fetch=fb, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        f = rep["bodyFailures"][0]
+        assert f["d"] == "2024-03-05" and f["diag"]["imgTags"] == 3 and f["diag"]["tableTags"] == 0 and f["diag"]["rawLen"] == 9000, f
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★读不到表的正文：诊断(图片数、table标签数、表头、标题次数、免责声明位置、各段长度)原样写进报告的 bodyFailures[].diag")
+
+
+def test_parser_version_is_v2_so_dates_marked_no_table_by_v1_are_retried():
+    assert bf.BASIS_PARSER_VERSION == "table-v2", bf.BASIS_PARSER_VERSION
+    items = [mk("2024-03-05", "")]
+    d = tempfile.mkdtemp()
+    try:
+        import json
+        json.dump({"generatedAt": "x", "series": [{"key": "basis", "parserVersion": "table-v1", "triedNoTable": ["2024-03-05"], "ranAt": "x"}], "calibration": {}},
+                  open(os.path.join(d, "_backfill_report.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        fb = Bodies({items[0]["url"]: (R_0811, None)})
+        run(items, d, fetch=fb, start=date(2024, 3, 1), today=date(2024, 3, 31))
+        assert fb.log == [items[0]["url"]] and pts(d) == [("2024-03-05", -90.0, "日照", "table")], (fb.log, pts(d))
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★解析版本升到 table-v2：v1 时记成'没有表'的日期这次全部重试(用整页兜底这次读到了)")
+
+
 def test_registration_query_default_start_and_not_in_default_jobs():
     calls = []
     d = tempfile.mkdtemp()
@@ -407,9 +452,10 @@ def test_registration_query_default_start_and_not_in_default_jobs():
     assert calls[0]["query"] == "全国主要市场豆粕基差价格汇总" and calls[0]["start"] == date(2023, 9, 1) and calls[-1]["end"] == date(2026, 10, 1)
     for a, b in zip(calls, calls[1:]):
         assert b["start"] == a["end"] + timedelta(days=1)
-    assert "basis" in bf.JOBS and bf.JOBS["basis"] is bf.backfill_basis
-    assert "basis" not in bf.DEFAULT_JOBS, "基差要抓约700篇正文、可能分几次，不进默认(all)，需要时 only=basis 单独点"
-    ok("搜索词'全国主要市场豆粕基差价格汇总'，默认从2023-09-01分窗口无缝覆盖到今天；basis 已登记但不在默认(all)里——要抓大量正文，单独 only=basis")
+    # v101.7：用户决定不再用 Mysteel 取基差，改用 AKShare(生意社)自己算(见 test_spot_basis.py)。backfill_basis 函数保留(作为回退/参考)，但已从任务表移除。
+    assert "basis" not in bf.JOBS and callable(bf.backfill_basis), "Mysteel 基差回填已退役：函数还在，不在任务表里"
+    assert "basis" not in bf.DEFAULT_JOBS
+    ok("搜索词'全国主要市场豆粕基差价格汇总'，默认从2023-09-01分窗口无缝覆盖到今天；Mysteel 基差回填 v101.7 起已退役(函数保留，不在任务表和默认里)")
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

@@ -60,8 +60,8 @@ const fresh = (n)=>({available:true, value:50, date:ago(n)});
 window._syncedData = {generatedAt: iso(2026,9,30,9,58),
   mysteelCrushRate: fresh(3),                                   // 正常
   mysteelMealStock: {available:true, value:70, date:ago(11)},   // 周频11天：晚了一期
-  mysteelBasis: {available:true, value:-100, city:'日照', date:ago(20)},   // 过期
-  mysteelPoultryProfit: {available:false, reason:'搜索结果为空(测试)'}, // 无数据
+  spotBasis: {available:true, value:-100, spot:3300, domSymbol:'M2701', domPrice:3400, date:ago(20)},   // 过期
+  ndrcPoultryProfit: {available:false, reason:'搜索结果为空(测试)'}, // 无数据
   mysteelReserveAuction: {available:true, value:54.3, auctionDate:ago(3), soldWan:19.2, soldRate:37.3}}; // 事件提示
 ['crush','stock','basis','poultry','reserve'].forEach(k=>{ const m={crush:'refreshMysteelCrushRate',stock:'refreshMysteelMealStock',basis:'refreshMysteelBasis',poultry:'refreshMysteelPoultryProfit',reserve:'refreshMysteelReserveAuction'}; globalThis[m[k]] ? globalThis[m[k]]() : eval(m[k]+'()'); });
 let h = computeDataHealth(NOW);

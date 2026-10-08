@@ -37,6 +37,7 @@ import re
 import sys
 import time
 import socket
+import threading
 import base64
 import urllib.request
 import urllib.error
@@ -1057,6 +1058,9 @@ MYSTEEL_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchFlashNew
 #   有测试保证两边一致。范围故意放宽(比如开机率10~100)，只挡明显荒谬的值，不是
 #   要替用户判断行情好坏。
 PLAUSIBLE_RANGES = {
+    "chickenFeedRatio": (0.5, 6.0, ""),               # 鸡料比价(肉鸡价格÷饲料价格；实测1.79~2.41)
+    "spotMealPrice": (1500.0, 6000.0, "元/吨"),     # 豆粕现货价/主力合约结算价(生意社)
+    "spotBasis": (-1000.0, 1000.0, "元/吨"),         # 现货-主力合约结算价(自己算；比 Mysteel 沿海代表的 ±500 宽，全国综合现货对主力合约的基差更大)
     "crushRate": (10.0, 100.0, "%"),            # 油厂开机率
     "poultryProfit": (-20.0, 20.0, "元/只"),     # 白羽肉鸡养殖利润(可为负)
     "rmSpread": (100.0, 3000.0, "元/吨"),        # 豆菜粕现货价差(变动幅度一般只有几十，会被挡掉)
@@ -1190,6 +1194,216 @@ def fetch_mysteel_crush_rate():
 #   "亏损"依然会被正确跳过)。
 MYSTEEL_ARTICLE_SEARCH_URL = "https://search.mysteel.com/searchapi/search/searchArticle"
 MYSTEEL_POULTRY_PATTERN = re.compile(r"(盈利|亏损)[在为约]{0,2}(\d+\.?\d*)元/只")
+
+
+NDRC_BASE = "https://www.jgjcndrc.org.cn"
+NDRC_ENTRY_LIST = NDRC_BASE + "/list?clmId=1832298113994649601&sclmId=1836667772799598593"      # 父栏目页(已验证是服务器端渲染，导航里有'猪料、鸡料、蛋料比价信息'子栏目)
+NDRC_TITLE_KEY = "猪料、鸡料、蛋料比价"
+
+
+def _ndrc_num(s):
+    """'2.2 5'(表格排版错误，中间有空格)、'-4.10'、'1.54' → float；读不出返回 None。"""
+    try:
+        return float(re.sub(r"\s+", "", str(s)))
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_ndrc_poultry(text):
+    """从发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报的正文文字里取肉鸡部分。返回 (结果, 原因)。
+    ★取**公布的预期盈利/亏损**，不自己重算：用 2.75×(鸡料比价-平衡点)×饲料价格 只做核对(formulaCheckOk/formulaCheckValue)——卓创转载页脚注把系数写成过2.5，官方页是2.75。
+    ★只认'肉鸡养殖预期(盈利|亏损)'：同一篇里还有生猪('头均亏损')和蛋鸡('每只盈利/亏损')，不能误取。**亏损写成正数('预期亏损3.31元/只')，转成负值。**
+    ★表格里偶有排版错误('本 周'、'2.2 5')，所以主要靠文字句子；表格只用来补肉鸡价/饲料价/平衡点，并且数字中间的空格会被去掉。"""
+    if not text:
+        return None, "没有文字可解析"
+    t = str(text)
+    m = re.search(r"肉鸡养殖预期\s*(盈利|亏损)\s*(?:为)?\s*(-?\d+(?:\.\d+)?)\s*元\s*/\s*只", t)
+    if not m:
+        return None, "没有找到'肉鸡养殖预期盈利/亏损 X元/只'这句话(只有生猪/蛋鸡的句子不算)"
+    mag = float(m.group(2))
+    value = round(-abs(mag) if m.group(1) == "亏损" else mag, 2)
+    problem = _plausibility_problem("poultryProfit", value)
+    if problem:
+        return None, f"肉鸡预期盈利{value}{problem}"
+    # 鸡料比价与环比：取离这句话最近的前面那一句'本周全国鸡料比价为X，环比…'
+    head = t[:m.start()]
+    ms = list(re.finditer(r"鸡料比价为\s*(\d+(?:\.\d+)?)\s*[，,]?\s*(?:环比\s*(上涨|下跌|持平)\s*(\d+(?:\.\d+)?)?\s*%?|与上周持平)", head))
+    ratio, chg = None, None
+    if ms:
+        mm = ms[-1]
+        ratio = float(mm.group(1))
+        if mm.group(2) is None or mm.group(2) == "持平":
+            chg = 0.0
+        else:
+            chg = round(float(mm.group(3)) * (1 if mm.group(2) == "上涨" else -1), 2)
+    else:
+        mr = list(re.finditer(r"鸡料比价为\s*(\d+(?:\.\d+)?)", head))
+        if mr:
+            ratio = float(mr[-1].group(1))
+    if ratio is None:
+        return None, "没有找到'鸡料比价为X'"
+    problem = _plausibility_problem("chickenFeedRatio", ratio)
+    if problem:
+        return None, f"鸡料比价{ratio}{problem}"
+    out = {"value": value, "ratio": ratio, "ratioChangePct": chg, "balance": None, "chickenPrice": None, "feedPrice": None, "weekLabel": None,
+           "monitorDate": None, "publishDate": None, "formulaCheckOk": None, "formulaCheckValue": None}
+    # 表格：'本周 7.04 3.12 2.26 2.08 1.54'(肉鸡价 饲料价 鸡料比价 平衡点 预期盈利)，容忍'本 周'和数字里的空格
+    for tm in re.finditer(r"本\s*周\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\s*\.\s*\d+(?:\s\d+)?)?)\s+(-?\d+(?:\.\d+)?)\b", t):
+        c, f, r_, b, p = (_ndrc_num(x) for x in tm.groups())
+        if None in (c, f, r_, b, p):
+            continue
+        if abs(r_ - ratio) < 0.011 and abs(p - value) < 0.011 and 3 < c < 20 and 1 < f < 8:      # 必须与句子里的鸡料比价/预期盈利对得上，才认这一行(排除生猪/蛋鸡的表)
+            out["chickenPrice"], out["feedPrice"], out["balance"] = c, f, b
+            break
+    if out["balance"] is not None and out["feedPrice"] is not None:
+        chk = round(2.75 * (ratio - out["balance"]) * out["feedPrice"], 2)
+        out["formulaCheckValue"] = chk
+        out["formulaCheckOk"] = abs(chk - value) <= 0.06
+    w = re.search(r"(20\d{2})\s*年\s*(\d{1,2})\s*月\s*第\s*(\d)\s*周", t)
+    if w:
+        out["weekLabel"] = f"{w.group(1)}年{int(w.group(2))}月第{w.group(3)}周"
+    pm = re.search(r"发布时间[：:]\s*(20\d{2})[/\-年](\d{1,2})[/\-月](\d{1,2})", t)
+    if pm:
+        try:
+            out["publishDate"] = _date_cls(int(pm.group(1)), int(pm.group(2)), int(pm.group(3))).isoformat()
+        except ValueError:
+            pass
+    # 肉鸡段自己的监测日期：'卓创资讯 2026年3月4日 全国肉鸡（活鸡）棚前收购价格…'
+    dm = re.search(r"(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(?:\*\*)?\s*全国肉鸡", t)
+    if dm:
+        try:
+            out["monitorDate"] = _date_cls(int(dm.group(1)), int(dm.group(2)), int(dm.group(3))).isoformat()
+        except ValueError:
+            pass
+    return out, None
+
+
+def pick_ndrc_monitor_date(week_label, body_date, publish_date):
+    """监测日期(周三)。正文里的日期偶有年份笔误(2023年9月第3周那篇正文写成了2024年9月18日)，所以要核对：
+    年份必须与标题一致，且不晚于发布日、不早于发布日前14天；对不上就退到'发布日当天或之前最近的周三'。返回 (日期, 是否退回了)。"""
+    ty = None
+    mt = re.match(r"(20\d{2})", week_label or "")
+    if mt:
+        ty = int(mt.group(1))
+    def last_wed(d):
+        return d - timedelta(days=(d.weekday() - 2) % 7)
+    if body_date is not None and (ty is None or body_date.year == ty):
+        if publish_date is None or (body_date <= publish_date and (publish_date - body_date).days <= 14):
+            return body_date, False
+    if publish_date is not None:
+        return last_wed(publish_date), True
+    return None, True
+
+
+def _ndrc_abs(base, href):
+    href = html.unescape(href or "").strip()
+    if href.startswith("//"):
+        return "https:" + href
+    if href.startswith("http"):
+        return href
+    return urllib.parse.urljoin(base, href)
+
+
+def find_ndrc_feed_ratio_list_url(page_html, base=NDRC_ENTRY_LIST):
+    """从(父栏目)列表页的导航里找'猪料、鸡料、蛋料比价信息'子栏目的链接。找不到返回 None。"""
+    for m in re.finditer(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\']+)["\'][^>]*>(.*?)</a>', page_html or ""):
+        label = re.sub(r"(?s)<[^>]+>", "", m.group(2)).strip()
+        if NDRC_TITLE_KEY in label and "比价信息" in label:
+            return _ndrc_abs(base, m.group(1))
+    return None
+
+
+def extract_ndrc_article_links(page_html, base=NDRC_ENTRY_LIST):
+    """列表页里所有标题含'猪料、鸡料、蛋料比价'的详情链接，按页面顺序。每项 {url,title,week,pageDate}。
+    ★先找出所有 <a>，每个条目页面上的日期只在'这个 </a> 到下一个 <a>'之间的片段里找——不能用'</a>后面贪婪吞N个字符'的写法：
+      那样第一个条目吞掉的字符会把下一个 <a> 整个吃掉，列表里就悄悄少了文章(测试发现：3篇只取到2篇)。"""
+    h = page_html or ""
+    anchors = list(re.finditer(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\']*)["\'][^>]*>(.*?)</a>', h))
+    out = []
+    for k, m in enumerate(anchors):
+        if "detail" not in m.group(1):
+            continue
+        title = re.sub(r"(?s)<[^>]+>", "", m.group(2)).strip()
+        if NDRC_TITLE_KEY not in title:
+            continue
+        tail = h[m.end(): (anchors[k + 1].start() if k + 1 < len(anchors) else len(h))]
+        w = re.search(r"(20\d{2})\s*年\s*(\d{1,2})\s*月\s*第\s*(\d)\s*周", title)
+        d = re.search(r"(20\d{2})-(\d{2})-(\d{2})", re.sub(r"(?s)<[^>]+>", " ", tail[:200]))
+        out.append({"url": _ndrc_abs(base, m.group(1)), "title": title, "week": (f"{w.group(1)}年{int(w.group(2))}月第{w.group(3)}周" if w else None),
+                    "pageDate": (d.group(0) if d else None)})
+    return out
+
+
+def find_ndrc_next_page(page_html, base):
+    """列表页里文字为'下一页'的链接。没有返回 None。"""
+    for m in re.finditer(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\']+)["\'][^>]*>(.*?)</a>', page_html or ""):
+        if re.sub(r"(?s)<[^>]+>", "", m.group(2)).strip() == "下一页":
+            return _ndrc_abs(base, m.group(1))
+    return None
+
+
+NDRC_STALE_DAYS = 21           # 周频数据：监测日距今超过这么多天标 stale(正常≤7~9天，节假日可能晚一周)
+NDRC_LIVE_MAX_ARTICLES = 2     # 最新一篇解析不出时，最多退到前几篇
+
+
+def _ndrc_get(fetch, url):
+    """取一个页面。返回 (文本, 错误)；绝不抛异常。重试≤2次、超时≤15秒(每小时的线上抓取不能被拖慢)。"""
+    try:
+        raw, dbg = fetch(url, headers={"Referer": NDRC_BASE + "/"}, retries=2, timeout=15)
+    except Exception as e:  # noqa: BLE001
+        return None, f"请求异常: {type(e).__name__}: {e}"
+    if not raw:
+        return None, f"请求失败({(dbg or {}).get('error') or (dbg or {}).get('httpStatus') or '无返回'})"
+    return raw, None
+
+
+def fetch_ndrc_poultry(now_bj=None, fetch=None, max_articles=NDRC_LIVE_MAX_ARTICLES):
+    """肉鸡养殖预期盈利(元/只)：国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报。不用 Selenium：文章页和列表页都是服务器端渲染(已验证)。
+    流程：父栏目页 → 找'猪料、鸡料、蛋料比价信息'子栏目链接 → 子栏目列表 → 最新一篇(解析不出就退到前一篇) → 解析。每一环失败都写明是哪一环，绝不抛异常。
+    ★与 Mysteel 的'白羽肉鸡养殖利润'不是同一个定义：这是发改委按成本模型推算的'未来肉鸡养殖预期盈利'(=2.75×(鸡料比价-平衡点)×饲料价格)，取公布的数字。"""
+    if now_bj is None:
+        now_bj = (datetime.now(timezone.utc) + timedelta(hours=8)).replace(tzinfo=None)
+    fetch = fetch or fetch_text_debug
+    raw, err = _ndrc_get(fetch, NDRC_ENTRY_LIST)
+    if err:
+        return {"available": False, "reason": f"发改委价格监测中心父栏目页取不到: {err}", "debug": {"url": NDRC_ENTRY_LIST}}
+    sub = find_ndrc_feed_ratio_list_url(raw, NDRC_ENTRY_LIST)
+    if not sub:
+        return {"available": False, "reason": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接(页面可能改版)", "debug": {"url": NDRC_ENTRY_LIST, "htmlHead": raw[:300]}}
+    raw2, err = _ndrc_get(fetch, sub)
+    if err:
+        return {"available": False, "reason": f"子栏目列表页取不到: {err}", "debug": {"url": sub}}
+    links = extract_ndrc_article_links(raw2, sub)
+    if not links:
+        return {"available": False, "reason": "子栏目列表里没有文章链接(标题含'猪料、鸡料、蛋料比价')，页面可能改版或列表改成了前端渲染", "debug": {"url": sub, "htmlHead": raw2[:300]}}
+    attempted = []
+    for k, ln in enumerate(links[:max_articles]):
+        raw3, err = _ndrc_get(fetch, ln["url"])
+        if err:
+            attempted.append(f"{ln['title']}: 详情页取不到: {err}")
+            continue
+        parsed, why = parse_ndrc_poultry(_html_to_text(raw3))
+        if parsed is None:
+            attempted.append(f"{ln['title']}: {why}")
+            continue
+        pub = None
+        if parsed.get("publishDate"):
+            pub = _date_cls.fromisoformat(parsed["publishDate"])
+        elif ln.get("pageDate"):
+            pub = _date_cls.fromisoformat(ln["pageDate"])
+        body = _date_cls.fromisoformat(parsed["monitorDate"]) if parsed.get("monitorDate") else None
+        d, fb = pick_ndrc_monitor_date(parsed.get("weekLabel") or ln.get("week"), body, pub)
+        if d is None:
+            attempted.append(f"{ln['title']}: 正文和页面都没有可用的日期")
+            continue
+        age = (now_bj.date() - d).days
+        return {"available": True, "value": parsed["value"], "date": d.isoformat(), "ratio": parsed["ratio"], "ratioChangePct": parsed["ratioChangePct"], "balance": parsed["balance"],
+                "chickenPrice": parsed["chickenPrice"], "feedPrice": parsed["feedPrice"], "weekLabel": parsed["weekLabel"] or ln.get("week"), "publishDate": parsed.get("publishDate"),
+                "formulaCheckOk": parsed["formulaCheckOk"], "formulaCheckValue": parsed["formulaCheckValue"], "dateFallback": fb, "usedFallback": k > 0, "fallbackWeeks": k,
+                "ageDays": age, "stale": age > NDRC_STALE_DAYS, "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)", "sourceUrl": ln["url"],
+                "definition": "发改委按成本模型推算的未来肉鸡养殖预期盈利=2.75×(鸡料比价-平衡点)×饲料价格，不是Mysteel的白羽肉鸡养殖利润"}
+    last = attempted[-1].split(": ", 1)[-1] if attempted else ""
+    return {"available": False, "reason": f"最新{min(len(links), max_articles)}篇周报都没取到肉鸡预期盈利(最后一篇：{last})", "debug": {"attempted": attempted, "listUrl": sub}}
 
 
 def fetch_mysteel_poultry_profit():
@@ -2697,7 +2911,183 @@ def basis_from_table(text):
     return None, None, None
 
 
-def fetch_mysteel_basis(today=None):
+SPOT_BASIS_SYMBOL = "M"
+SPOT_BASIS_DEADLINE_S = 45          # 单次抓取的硬性时限(秒)
+SPOT_BASIS_TOLERANCE = 1.5          # 自算基差与站点基差相差小于这个数才算一致(四舍五入级别)
+SPOT_BASIS_PUBLISH_AFTER = (18, 30)  # 生意社当天的数据收盘后才有；这之前不试当天(白等会拖慢每小时的抓取)。★这个时间是我的假设，没有核实站点的实际更新时间
+
+
+def _run_with_deadline(fn, seconds):
+    """在守护线程里执行 fn，最多等 seconds 秒。返回 (True, 结果) 或 (False, 原因)。
+    ★为什么需要：akshare 的 futures_spot_price 内部是 while True 循环——页面加载成功但日期对不上时只 sleep(3) 就继续、不累计失败次数，
+    可能长时间不返回；线上每小时抓取一旦卡在这里会拖垮整批数据源。守护线程超时就放弃这次调用(不会阻塞进程退出)。"""
+    box = {}
+
+    def target():
+        try:
+            box["v"] = fn()
+        except Exception as e:  # noqa: BLE001
+            box["e"] = e
+
+    th = threading.Thread(target=target, daemon=True)
+    th.start()
+    th.join(seconds)
+    if th.is_alive():
+        return False, f"超时(>{seconds}秒)，已放弃这次调用"
+    if "e" in box:
+        return False, f"{type(box['e']).__name__}: {box['e']}"
+    return True, box.get("v")
+
+
+def _spot_num(x):
+    try:
+        if x is None:
+            return None
+        if isinstance(x, str):
+            x = x.replace(",", "").strip()
+        v = float(x)
+        return v if v == v and abs(v) != float("inf") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _spot_col(df, names):
+    for n in names:
+        if n in df.columns:
+            return n
+    return None
+
+
+def parse_spot_basis(df, var=SPOT_BASIS_SYMBOL):
+    """解析 ak.futures_spot_price(date, vars_list=['M']) 的返回(生意社 100ppi.com/sf/)。返回 (结果, 原因)：成功 (dict, None)，失败 (None, 原因)。
+    ★基差自己算：基差 = 现货价 - 主力合约结算价，现货高于期货为正(与页面'正基差偏多/负基差偏空'的符号一致)；
+    站点自己给的 dom_basis 只用来核对(**符号相反，取反后**差距≥1.5 标 consistent=False)，不当数据用。
+    ★真实列名(读 akshare 1.19.1 源码确认)：symbol/spot_price/dominant_contract/dominant_contract_price/near_contract/near_contract_price/dom_basis…；函数 docstring 写的
+    var/sp/dom_price/dom_symbol 是过时的——两套都兼容。主力合约代码是 akshare 处理后的小写带品种前缀(m2701)。
+    sp 的口径文档只写'现货价格'(生意社的商品现货价，通常是它自己的基准价，是否全国综合没有明确说明)。"""
+    if df is None or len(df) == 0:
+        return None, "没有返回数据(非交易日、数据还没发布或被站点限流)"
+    vc = _spot_col(df, ("var", "symbol"))
+    if vc is None:
+        return None, "返回的表里没有品种列(var/symbol)，接口可能改了字段"
+    sub = df[df[vc].astype(str).str.upper().str.strip() == var]
+    if len(sub) == 0:
+        return None, f"返回的表里没有{var}(豆粕)这一行"
+    r = sub.iloc[0]
+
+    def g(*names):
+        c = _spot_col(df, names)
+        return r[c] if c is not None else None
+
+    sp, dp = _spot_num(g("sp", "spot_price")), _spot_num(g("dom_price", "dominant_contract_price"))
+    if sp is None or sp <= 0:
+        return None, f"现货价缺失或不是正数({g('sp', 'spot_price')!r})"
+    if dp is None or dp <= 0:
+        return None, f"主力合约结算价缺失或不是正数({g('dom_price', 'dominant_contract_price')!r})"
+    for label, v in (("现货价", sp), ("主力合约结算价", dp)):
+        problem = _plausibility_problem("spotMealPrice", v)
+        if problem:
+            return None, f"{label}{problem}"
+    value = round(sp - dp, 2)
+    problem = _plausibility_problem("spotBasis", value)
+    if problem:
+        return None, f"自算基差{problem}(现货{sp}-主力{dp})"
+    # ★符号：akshare 的 dom_basis = dominant_contract_price − spot_price(期货−现货，'期现价差')，与本页面的约定(基差=现货−期货，现货升水为正)**相反**
+    #   (读 akshare 1.19.1 源码 _check_information 确认)。所以取反后才能和自算的核对，并且带出去的 siteBasis 也是取反后的(页面约定的符号)——
+    #   否则用真实数据时每一天都会报'站点基差与自算不一致'(自算-72，站点+72)，页面天天一条假警告。
+    site_raw = _spot_num(g("dom_basis", "dominant_basis"))
+    site = (-site_raw if site_raw is not None else None)
+    if site is not None and site == 0:
+        site = 0.0      # 避免 -0.0
+    diff = round(value - site, 2) if site is not None else None
+    dom_sym, near_sym = g("dom_symbol", "dominant_contract"), g("near_symbol", "near_contract")
+    return {"value": value, "spot": sp, "domPrice": dp, "domSymbol": (str(dom_sym) if dom_sym is not None and dom_sym == dom_sym else None),
+            "nearSymbol": (str(near_sym) if near_sym is not None and near_sym == near_sym else None), "nearPrice": _spot_num(g("near_price", "near_contract_price")),
+            "siteBasis": site, "siteDiff": diff, "consistent": (None if diff is None else abs(diff) < SPOT_BASIS_TOLERANCE)}, None
+
+
+def _spot_candidate_dates(now_bj, n=4):
+    """要尝试的交易日(从新到旧)，休市日跳过。北京时间 18:30 之前不试当天(站点收盘后才有)。"""
+    import cn_calendar
+    d = now_bj.date()
+    if (now_bj.hour, now_bj.minute) < SPOT_BASIS_PUBLISH_AFTER:
+        d -= timedelta(days=1)
+    out, steps = [], 0
+    while len(out) < n and steps < 40:
+        if cn_calendar.dce_is_trading_day(d):
+            out.append(d)
+        d -= timedelta(days=1)
+        steps += 1
+    return out
+
+
+def _akshare_spot_price(d_iso):
+    """调用 ak.futures_spot_price(日期, vars_list=['M'])。akshare 没有超时参数，用 socket 默认超时间接限制(用完恢复，这是进程级设置)。
+    返回 DataFrame(可能为空)；akshare 未安装/调用抛异常会向上抛，由调用方(_run_with_deadline)接住。"""
+    import akshare as ak
+    old = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(15)
+    try:
+        return ak.futures_spot_price(d_iso, vars_list=[SPOT_BASIS_SYMBOL])
+    finally:
+        socket.setdefaulttimeout(old)
+
+
+def fetch_spot_basis(now_bj=None, fetch=None, deadline_s=SPOT_BASIS_DEADLINE_S, max_attempts=4):
+    """现货基差(生意社现货价 - 主力合约结算价，自己算)。从最近的交易日往前最多试 max_attempts 个，第一个取到的就用；
+    每次抓取有硬性时限；任何异常/空表/没有豆粕行都不崩，诊断里逐日写明原因。fetch(日期iso) -> DataFrame，默认走 akshare，测试可注入。"""
+    if now_bj is None:
+        now_bj = (datetime.now(timezone.utc) + timedelta(hours=8)).replace(tzinfo=None)
+    fetch = fetch or _akshare_spot_price
+    cands = _spot_candidate_dates(now_bj, max_attempts)
+    attempted = []
+    for d in cands:
+        ok_, res = _run_with_deadline(lambda d=d: fetch(d.isoformat()), deadline_s)
+        if not ok_:
+            attempted.append(f"{d.isoformat()}: {res}")
+            continue
+        parsed, why = parse_spot_basis(res)
+        if parsed is None:
+            attempted.append(f"{d.isoformat()}: {why}")
+            continue
+        return {"available": True, "value": parsed["value"], "date": d.isoformat(), "spot": parsed["spot"], "domSymbol": parsed["domSymbol"], "domPrice": parsed["domPrice"],
+                "nearSymbol": parsed["nearSymbol"], "nearPrice": parsed["nearPrice"], "siteBasis": parsed["siteBasis"], "siteDiff": parsed["siteDiff"], "consistent": parsed["consistent"],
+                "usedFallback": d != cands[0], "fallbackDays": (cands[0] - d).days, "ageDays": (now_bj.date() - d).days,
+                "source": "生意社(100ppi.com)豆粕现货价 − 主力合约结算价，自行计算(AKShare futures_spot_price)",
+                "sourceUrl": f"https://www.100ppi.com/sf/day-{d.isoformat()}.html",
+                "spotDefinition": "生意社现货价(口径文档未明确，疑为多地综合的基准价)；主力合约是生意社认定的，可能与页面选的合约月份不同，主力换月处基差会有断层"}
+    return {"available": False, "reason": f"最近{len(cands)}个交易日都没取到豆粕现货基差(生意社)", "debug": {"attempted": attempted}}
+
+
+BASIS_LIVE_MAX_BODY_FETCHES = 2      # 线上每次运行最多请求几篇正文(每小时一次，不能拖慢整批抓取)
+
+
+def fetch_basis_page(url, title, fetch=None):
+    """抓一篇《全国主要市场豆粕基差价格汇总》并读出数据表所在的文字。线上抓取和回填共用，两处口径不会分叉。
+    返回 {ok, err, text, where, diag}：where='region'(表在正文区域里)/'page'(只有整页文字里才有)/None(没读到表)；text 是 basis_from_table 该读的那段文字。
+    ★为什么要整页兜底：正文区域取"标题最后一次出现"到"第一个免责声明"之间，页面里推荐区重复了同一个标题、或表在免责声明之后，区域里就没有表了
+    (2026-10-08 回填：735个日期里只有24个读到表。这是对原因的推测，没有原始网页可验证)。表行的格式很严(城市 两位合约 整数 整数)，整页文字里不会误中。
+    没读到表时 diag 给出定位原因所需的信息(table标签数、图片数、有没有'现货基差'表头及其后300字、标题出现次数、免责声明位置、各段长度)。绝不抛异常。"""
+    fetch = fetch or fetch_text_debug
+    try:
+        raw, dbg = fetch(url, headers={"Referer": "https://ncp.mysteel.com/"}, retries=2, timeout=12)
+    except Exception as e:  # noqa: BLE001 - 线上抓取不能被这一步拖垮
+        return {"ok": False, "err": f"正文请求异常: {type(e).__name__}: {e}", "text": "", "where": None, "diag": {}}
+    if not raw:
+        return {"ok": False, "err": f"正文请求失败({(dbg or {}).get('error') or (dbg or {}).get('httpStatus') or '无返回'})", "text": "", "where": None, "diag": {}}
+    full = _html_to_text(raw)
+    region = _extract_article_region(full, title)
+    for where, text in (("region", region), ("page", full)):
+        if parse_basis_table(text):
+            return {"ok": True, "err": None, "text": text, "where": where, "diag": {}}
+    hi = full.find("现货基差")
+    diag = {"rawLen": len(raw), "fullLen": len(full), "regionLen": len(region), "tableTags": len(re.findall(r"(?i)<table", raw)), "imgTags": len(re.findall(r"(?i)<img", raw)),
+            "titleCount": full.count(title) if title else 0, "disclaimerAt": full.find("免责声明"), "headerSeen": hi >= 0, "afterHeader": full[hi:hi + 300] if hi >= 0 else "",
+            "regionHead": region[:400]}
+    return {"ok": True, "err": None, "text": region, "where": None, "diag": diag}
+
+
+def fetch_mysteel_basis(today=None, fetch_page=None):
     """通过Mysteel文章搜索"全国主要市场豆粕基差价格汇总"(每日一篇)，从最新几篇里找第一篇能
     解析出沿海代表城市确切基差的，作为全国基差的代理值。today参数只给测试用。"""
     if today is None:
@@ -2764,9 +3154,25 @@ def fetch_mysteel_basis(today=None):
     all_items.sort(key=lambda x: x[0], reverse=True)
     latest_date = all_items[0][0]
     attempted = []
+    fetch_page = fetch_page or fetch_basis_page
+    bodies_used = 0
     for pub_date, item in all_items[:BASIS_FALLBACK_LOOKBACK]:
         content = str(item.get("content") or "")
         city, value = _extract_basis_from_article(content)
+        src, contract = "summary", None
+        # ★表优先：正文底下的数据表是权威数据(表里每天都有日照，城市固定)，页面顶部的AI智能摘要只是概括。
+        #   读不到表(请求失败/没有表/抛异常)就退回摘要，行为与以前一致；每次运行最多请求 BASIS_LIVE_MAX_BODY_FETCHES 篇正文。
+        url = str(item.get("url") or "")
+        if bodies_used < BASIS_LIVE_MAX_BODY_FETCHES and url and is_trusted_article_url(url):
+            bodies_used += 1
+            try:
+                page = fetch_page(url, str(item.get("title") or ""))
+                if page and page.get("ok"):
+                    t_city, t_val, t_contract = basis_from_table(page.get("text") or "")
+                    if t_val is not None:
+                        city, value, src, contract = t_city, t_val, "table", t_contract
+            except Exception:  # noqa: BLE001 - 读表只是增强，失败就用摘要
+                pass
         if value is None:
             attempted.append(pub_date.isoformat())
             continue
@@ -2787,7 +3193,9 @@ def fetch_mysteel_basis(today=None):
             "usedFallback": pub_date != latest_date,
             "fallbackDays": (latest_date - pub_date).days,
             "articleTitle": item.get("title"),
-            "source": f"Mysteel文章(全国主要市场豆粕基差价格汇总，{city}代表沿海)",
+            "src": src,
+            "contract": contract,
+            "source": f"Mysteel文章(全国主要市场豆粕基差价格汇总，{city}代表沿海" + ("，读正文数据表)" if src == "table" else "，AI摘要)"),
             "sourceUrl": item.get("url") or "https://search.mysteel.com/fastcomment.html",
         }
 
@@ -4521,7 +4929,7 @@ def main():
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "mysteelCrushRate": fetch_mysteel_crush_rate(),
-        "mysteelPoultryProfit": fetch_mysteel_poultry_profit(),
+        "ndrcPoultryProfit": fetch_ndrc_poultry(),      # v101.8：肉鸡养殖利润改用发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报(未来肉鸡养殖预期盈利)，不再取 Mysteel
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": _meal_stock_result,
@@ -4529,7 +4937,7 @@ def main():
         "mysteelFeedDays": fetch_mysteel_feed_days(),
         "mysteelSoyImport": fetch_mysteel_soy_import(),
         "mysteelReserveAuction": fetch_mysteel_reserve_auction(),
-        "mysteelBasis": fetch_mysteel_basis(),
+        "spotBasis": fetch_spot_basis(),      # v101.7：现货基差改用 AKShare(生意社现货价 - 主力合约结算价，自己算)，不再取 Mysteel
         "hogRatio": fetch_hog_ratio(),
         "sowInventory": fetch_mysteel_sow_inventory(),
         "cftcManagedMoney": fetch_cftc_managed_money(),

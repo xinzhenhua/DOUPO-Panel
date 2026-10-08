@@ -643,7 +643,7 @@ async function loadSyncedData(){
 //   ④ 数据过期(按各指标更新频率判断)时照样显示，但标注⚠️并且不参与综合评分。
 // 输入框(m_xxx)保留：综合评分从它们读值，手动修正也走它们。
 
-const SANITY_RANGES = {"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"feedDays":[1,30,"天"],"mealStu":[1,40,"%"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"]};
+const SANITY_RANGES = {"chickenFeedRatio":[0.5,6,""],"spotMealPrice":[1500,6000,"元/吨"],"spotBasis":[-1000,1000,"元/吨"],"crushRate":[10,100,"%"],"poultryProfit":[-20,20,"元/只"],"rmSpread":[100,3000,"元/吨"],"arrivalForecast":[200,2000,"万吨"],"mealStock":[10,600,"万吨"],"feedDays":[1,30,"天"],"mealStu":[1,40,"%"],"soyImport":[200,2000,"万吨"],"reserveAuction":[0.1,300,"万吨"],"soyAuctionPrice":[2000,8000,"元/吨"],"meaBasis":[-500,500,"元/吨"],"hogRatio":[1,20,""],"pigPrice":[3,40,"元/公斤"],"cornPricePerTon":[1000,6000,"元/吨"],"sowInventory":[1000,10000,"万头"]};
 function sanityProblem(key, value){
   const r = SANITY_RANGES[key];
   if(!r) return null;
@@ -769,12 +769,14 @@ const AUTO_INDICATORS = [
      return {value:d.value, valueText:`${d.monthLabel}${d.isForecast?'(预测)':''}库消比${d.value}%`, date:d.date,
              detail:lines.join('<br>'), warn:warns.join('<br>'), suppress, mild};
    }},
-  {key:'basis', group:'supply', inputId:'m_basis', title:'豆粕现货基差', unit:'元/吨', ph:'如-50', freq:'日度', sourceName:'Mysteel',
-   dataKey:'mysteelBasis', sanityKey:'meaBasis', cadence:'trading', maxAgeDays:30,
-   // 只取沿海代表城市(日照/南通/东莞/湛江/防城港/厦门/天津，按此优先级)的确切基差当全国代理指标；
-   // 最新一篇解析失败时可能用了前几天的数据，诚实标注实际用的是哪天。
-   extract:d=>({value:d.value, valueText:`${d.value}元/吨(${d.city}·沿海代表)`, date:d.date, detail:`数据日期：${d.date}`,
-     warn:d.usedFallback?`⚠️ 最新一篇(${d.latestArticleDate})没能解析出确切值，用的是${d.fallbackDays}天前的数据`:''})},
+  {key:'basis', group:'supply', inputId:'m_basis', title:'豆粕现货基差', unit:'元/吨', ph:'如-50', freq:'日度', sourceName:'生意社(AKShare自算)',
+   dataKey:'spotBasis', sanityKey:'spotBasis', cadence:'trading', maxAgeDays:30,
+   // v101.7起不再用 Mysteel：基差 = 生意社豆粕现货价 − 主力合约结算价，后端自己算(现货高于期货为正)。
+   // 现货价口径文档未明确(疑为多地综合基准价)；主力合约是生意社认定的，换月处基差会有断层；当天数据没出时用的是前一个交易日，诚实标注。
+   extract:d=>({value:d.value, valueText:`${d.value}元/吨(现货${d.spot} − 主力${(d.domSymbol||'合约').toUpperCase()}的${d.domPrice})`, date:d.date,
+     detail:`数据日期：${d.date}<br>现货价口径：${d.spotDefinition||'生意社现货价'}`,
+     warn:[d.usedFallback?`⚠️ 当天的数据还没出，用的是${d.fallbackDays}天前的交易日(${d.date})`:'',
+           d.consistent===false?`⚠️ 站点自己给的基差(${d.siteBasis})与现货−主力结算价自算的(${d.value})不一致，页面取自算值`:''].filter(Boolean).join('<br>')})},
   {key:'arrival', group:'supply', inputId:'m_arrival', title:'大豆到港预报', unit:'万吨', ph:'如1100', freq:'月度', sourceName:'Mysteel',
    dataKey:'mysteelArrivalForecast', sanityKey:'arrivalForecast', cadence:'monthly', maxAgeDays:90,
    // 到港预报一般月底发布、预测的是"下个月"，所以醒目标注是X年X月的预报，不假设是当月。
@@ -807,9 +809,15 @@ const AUTO_INDICATORS = [
      if(!d.quarterLabel) return {blocked:`收到的是旧版本后端生成的数据(${d.value}万头，${d.date}，没有季度末信息)，已忽略。请确认GitHub Actions已用最新的fetch_data.py重新运行。`};
      return {value:d.value, valueText:`${d.value}万头(${d.quarterLabel})`, date:d.date, detail:`季度末数据 · 文章发布日期：${d.date}`};
    }},
-  {key:'poultry', group:'demand', inputId:'m_poultry', title:'白羽肉鸡养殖利润', unit:'元/只', ph:'如0.71', freq:'周度', sourceName:'Mysteel',
-   dataKey:'mysteelPoultryProfit', sanityKey:'poultryProfit', cadence:'weekly', maxAgeDays:30,
-   extract:d=>({value:d.value, valueText:`${d.value>0?'+':''}${d.value}元/只`, date:d.date, detail:`数据日期：${d.date}`})},
+  {key:'poultry', group:'demand', inputId:'m_poultry', title:'肉鸡养殖预期盈利', unit:'元/只', ph:'如1.21', freq:'周度', sourceName:'发改委价格监测中心×卓创',
+   dataKey:'ndrcPoultryProfit', sanityKey:'poultryProfit', cadence:'weekly', maxAgeDays:30,
+   // v101.8起不再用 Mysteel：国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报，'未来肉鸡养殖预期盈利'(=2.75×(鸡料比价-平衡点)×饲料价格，取公布的数字)。
+   // 与原来 Mysteel 的白羽肉鸡养殖利润不是同一个定义，规则的符号语义不变(盈利越高越偏多)，固定阈值(>1.5偏多/<0偏空)暂沿用，分位要重新累积。
+   extract:d=>({value:d.value, valueText:`${d.value>0?'+':''}${d.value}元/只(鸡料比价${d.ratio}，平衡点${d.balance==null?'—':d.balance})`, date:d.date,
+     detail:`监测日期：${d.date}${d.weekLabel?`（${d.weekLabel}）`:''}<br>口径：${d.definition||'发改委价格监测中心×卓创资讯：未来肉鸡养殖预期盈利'}`,
+     warn:[d.usedFallback?`⚠️ 最新一期周报没解析出来，用的是${d.fallbackWeeks}期前的数据(${d.date})`:'',
+           d.dateFallback?'⚠️ 正文里的监测日期与标题/发布日对不上(源头偶有年份笔误)，日期取的是发布日之前最近的周三':'',
+           d.formulaCheckOk===false?`⚠️ 公布的预期盈利(${d.value})与公式验算(${d.formulaCheckValue})对不上，页面取公布值`:''].filter(Boolean).join('<br>')})},
   {key:'feed', group:'demand', inputId:'m_feed', title:'饲料企业豆粕库存天数', unit:'天', ph:'如8.5', freq:'周度', sourceName:'Mysteel',
    dataKey:'mysteelFeedDays', sanityKey:'feedDays', cadence:'weekly', maxAgeDays:30,
    // ★需求端最直接的信号：饲料厂手里的豆粕还能用几天。天数高=饲料厂有货、近期补库需求弱(偏空)；天数低=需要补库、采购需求强(偏多)。
@@ -3228,7 +3236,7 @@ function sourceEstimateReason(key, data, st){
     if(data.usedFallbackMonth) return `当月记录还没发布，用的是${data.monthLabel}的记录`;
     if(data.method && data.method !== 'stated') return data.method==='weekly' ? '库消比由周度库存÷当月预计消费推算，不是文章明示的数' : '库消比由库存÷消费推算，不是文章明示的数';
   }
-  if(key === 'basis' && data.usedFallback) return `最新一篇没解析出确切值，用的是${data.fallbackDays}天前的数据`;
+  if(key === 'basis' && data.usedFallback) return `当天的基差数据还没出，用的是${data.fallbackDays}天前的交易日`;
   return '';
 }
 /** 某个指标当前的质量乘数：晚了一期×0.5，来源是估算×0.5(可叠加，最低0.25) */
