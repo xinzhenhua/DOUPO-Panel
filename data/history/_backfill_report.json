@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T07:13:19.065153+00:00",
+  "generatedAt": "2026-10-08T08:40:54.579880+00:00",
   "series": [
     {
       "key": "soy_import",
@@ -1260,7 +1260,7 @@
         "2026-10-08"
       ],
       "ranAt": "2026-10-08T07:13:19.065153+00:00",
-      "fromPreviousRun": false
+      "fromPreviousRun": true
     },
     {
       "key": "missingBefore",
@@ -1285,6 +1285,15 @@
       "error": "未知的回填项",
       "ranAt": "2026-10-08T06:38:38.067791+00:00",
       "fromPreviousRun": true
+    },
+    {
+      "key": "poultry_ndrc",
+      "error": "父栏目页里没有找到'猪料、鸡料、蛋料比价信息'子栏目链接",
+      "debug": {
+        "htmlHead": "<!DOCTYPE html><html  lang=\"zh-cn\" data-capo=\"\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, height=device-height, initial-scale=0.3, minimum-scale=0.3, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover\">\n<title>中华人民共和国国家发展和改革委员会 - 监测信息-生猪出场价与玉米价格周报</title>\n"
+      },
+      "ranAt": "2026-10-08T08:40:54.579880+00:00",
+      "fromPreviousRun": false
     }
   ],
   "calibration": {
