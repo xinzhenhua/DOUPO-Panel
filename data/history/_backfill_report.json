@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T14:48:43.618064+00:00",
+  "generatedAt": "2026-10-08T03:02:35.809195+00:00",
   "series": [
     {
       "key": "soy_import",
@@ -72,7 +72,7 @@
         "指向其他时期(去年/对比): 长30.6%去年8月份中国大豆进口量为717万吨"
       ],
       "ranAt": "2026-10-07T14:48:43.618064+00:00",
-      "fromPreviousRun": false
+      "fromPreviousRun": true
     },
     {
       "key": "arrival_forecast",
@@ -129,7 +129,7 @@
         "2023-11: 同一篇出现2个口径(要地区111家油…783.25万吨, 要地区123家油…845万吨)，不可比，不采用"
       ],
       "ranAt": "2026-10-07T14:48:43.618064+00:00",
-      "fromPreviousRun": false
+      "fromPreviousRun": true
     },
     {
       "key": "crush_rate",
@@ -199,6 +199,12 @@
         "含'开机率'但不是'油厂开机率'(别的行业的快讯，如砂石矿山)"
       ],
       "ranAt": "2026-10-07T14:48:43.618064+00:00",
+      "fromPreviousRun": true
+    },
+    {
+      "key": "hog_ratio",
+      "error": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f3d985e2350>, 'Connection to xt.yangzhu.vip timed out. (connect timeout=None)'))",
+      "ranAt": "2026-10-08T03:02:35.809195+00:00",
       "fromPreviousRun": false
     }
   ],
