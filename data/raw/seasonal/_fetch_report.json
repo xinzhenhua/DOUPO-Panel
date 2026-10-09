@@ -1,5 +1,5 @@
 {
- "runAt": "2026-10-09 13:19 UTC",
+ "runAt": "2026-10-09 14:11 UTC",
  "main": {
   "ok": true,
   "rows": 5295,
@@ -218,5 +218,27 @@
   "errors": 44,
   "stoppedByBudget": false,
   "stoppedByFailures": true
+ },
+ "probe": {
+  "https://dp.100ppi.com/get_ptable.php?pid=83&ds=2026-09-25&de=2026-10-09": {
+   "status": 200,
+   "contentType": "text/html; charset=utf-8",
+   "bytes": 660,
+   "head": " <html> <head><meta name=\"robots\" content=\"noindex,noarchive\"></head> <body> <script> (function(_0x1){ var _0x2 = \"e6f27fc6c1b4eaf07ea0d090988dc91a\"; var _0x3 = new Date(); _0x3.setTime(_0x3.getTime() + 600000); document.cookie = \"HW_CHECK\" + \"=\" + _0x2 + \"; expires=\" + _0x3.toGMTString() + \"; path=/\"; setTimeout(function(){ location.href = location.href; }, 300 + Math.random() * 500); })(\"v_f0fd7401\"); </script> <p>正在进行安全检查，请稍候...</p> </body> </html> ",
+   "tables": 0,
+   "headers": [],
+   "rows": [],
+   "hasJiangsu": false
+  },
+  "https://dp.100ppi.com/": {
+   "status": 200,
+   "contentType": "text/html; charset=utf-8",
+   "bytes": 660,
+   "head": " <html> <head><meta name=\"robots\" content=\"noindex,noarchive\"></head> <body> <script> (function(_0x1){ var _0x2 = \"e6f27fc6c1b4eaf07ea0d090988dc91a\"; var _0x3 = new Date(); _0x3.setTime(_0x3.getTime() + 600000); document.cookie = \"HW_CHECK\" + \"=\" + _0x2 + \"; expires=\" + _0x3.toGMTString() + \"; path=/\"; setTimeout(function(){ location.href = location.href; }, 300 + Math.random() * 500); })(\"v_8c2e1a63\"); </script> <p>正在进行安全检查，请稍候...</p> </body> </html> ",
+   "tables": 0,
+   "headers": [],
+   "rows": [],
+   "hasJiangsu": false
+  }
  }
 }
