@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-09T04:32:22.697406+00:00",
+  "generatedAt": "2026-10-09T07:19:59.597084+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.9,
-    "change": 0.2,
-    "changePct": 0.06,
+    "price": 360.3,
+    "change": -0.4,
+    "changePct": -0.11,
     "asOf": "2026-10-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -152,23 +152,23 @@
   },
   "mysteelRmSpread": {
     "available": true,
-    "value": 846.7,
-    "date": "2026-10-08",
-    "matchedText": "2026年10月8日，国内主要市场豆菜粕价差统计显示：广东豆粕3330元/吨，菜粕2510元/吨，价差820元/吨；广西豆粕3330元/吨，菜粕2520元/吨，价差810元/吨；南通豆粕3330元/吨，菜粕2420元/吨，价差910元/吨。数据来源于钢联数据。",
+    "value": 820.0,
+    "date": "2026-10-09",
+    "matchedText": "2026年10月9日，国内主要市场豆菜粕价差如下：广东豆粕3330元/吨，菜粕2540元/吨，价差790元/吨；广西豆粕3330元/吨，菜粕2560元/吨，价差770元/吨；南通豆粕3330元/吨，菜粕2430元/吨，价差900元/吨。数据来源于钢联数据。",
     "source": "Mysteel文章(豆菜粕价差)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
     "citySamples": [
-      820.0,
-      810.0,
-      910.0
+      790.0,
+      770.0,
+      900.0
     ],
     "formatUsed": "多城市单值平均",
     "history": {
-      "n": 623,
+      "n": 624,
       "minPoints": 12,
-      "asOf": "2026-10-08",
+      "asOf": "2026-10-09",
       "since": "2024-01-08",
-      "percentile": 90.9,
+      "percentile": 86.5,
       "min": 280.0,
       "max": 1215.0,
       "median": 665.0,
@@ -3020,7 +3020,7 @@
   "dceM09Hourly": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 73,
+    "totalBarsReturned": 74,
     "bars": [
       {
         "datetime": "2026-09-14 22:00:00",
@@ -3673,11 +3673,20 @@
       {
         "datetime": "2026-10-09 14:15:00",
         "open": 3088.0,
-        "high": 3094.0,
+        "high": 3105.0,
         "low": 3088.0,
-        "close": 3094.0,
-        "volume": 352.0,
-        "hold": 33159.0
+        "close": 3105.0,
+        "volume": 2292.0,
+        "hold": 33976.0
+      },
+      {
+        "datetime": "2026-10-09 15:00:00",
+        "open": 3101.0,
+        "high": 3105.0,
+        "low": 3101.0,
+        "close": 3103.0,
+        "volume": 2.0,
+        "hold": 34513.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4645,15 +4654,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-19 23:00:00",
-        "open": 2914.0,
-        "high": 2935.0,
-        "low": 2913.0,
-        "close": 2934.0,
-        "volume": 30249.0,
-        "hold": 720568.0
-      },
       {
         "datetime": "2026-08-20 10:00:00",
         "open": 2938.0,
@@ -6259,11 +6259,20 @@
       {
         "datetime": "2026-10-09 14:15:00",
         "open": 3003.0,
-        "high": 3007.0,
+        "high": 3016.0,
         "low": 3003.0,
-        "close": 3007.0,
-        "volume": 919.0,
-        "hold": 844380.0
+        "close": 3016.0,
+        "volume": 4248.0,
+        "hold": 845133.0
+      },
+      {
+        "datetime": "2026-10-09 15:00:00",
+        "open": 3013.0,
+        "high": 3016.0,
+        "low": 3011.0,
+        "close": 3012.0,
+        "volume": 243.0,
+        "hold": 844696.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -8002,15 +8011,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-19 23:00:00",
-        "open": 3247.0,
-        "high": 3277.0,
-        "low": 3247.0,
-        "close": 3274.0,
-        "volume": 881.0,
-        "hold": 2535133.0
-      },
-      {
         "datetime": "2026-08-20 10:00:00",
         "open": 3278.0,
         "high": 3288.0,
@@ -9615,11 +9615,20 @@
       {
         "datetime": "2026-10-09 14:15:00",
         "open": 3389.0,
-        "high": 3393.0,
+        "high": 3405.0,
         "low": 3389.0,
-        "close": 3392.0,
-        "volume": 10458.0,
-        "hold": 2471062.0
+        "close": 3405.0,
+        "volume": 15578.0,
+        "hold": 2486860.0
+      },
+      {
+        "datetime": "2026-10-09 15:00:00",
+        "open": 3401.0,
+        "high": 3404.0,
+        "low": 3400.0,
+        "close": 3402.0,
+        "volume": 450.0,
+        "hold": 2487515.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11443,8 +11452,8 @@
         "rank": 1,
         "foreign": true,
         "history": {
-          "n": 2,
-          "since": "2026-09-30",
+          "n": 22,
+          "since": "2026-09-01",
           "run": {
             "direction": "down",
             "days": 1,
@@ -11463,8 +11472,8 @@
         "rank": 8,
         "foreign": true,
         "history": {
-          "n": 2,
-          "since": "2026-09-30",
+          "n": 22,
+          "since": "2026-09-01",
           "run": {
             "direction": "up",
             "days": 1,
@@ -11483,13 +11492,13 @@
         "rank": 11,
         "foreign": true,
         "history": {
-          "n": 2,
-          "since": "2026-09-30",
+          "n": 13,
+          "since": "2026-09-01",
           "run": {
             "direction": "up",
-            "days": 1,
-            "total": 492,
-            "since": "2026-10-08",
+            "days": 3,
+            "total": 3792,
+            "since": "2026-09-29",
             "contract": "M2701"
           },
           "change5": null,
@@ -11503,13 +11512,13 @@
         "rank": 1,
         "foreign": false,
         "history": {
-          "n": 2,
-          "since": "2026-09-30",
+          "n": 22,
+          "since": "2026-09-01",
           "run": {
             "direction": "up",
-            "days": 1,
-            "total": 6611,
-            "since": "2026-10-08",
+            "days": 2,
+            "total": 11845,
+            "since": "2026-09-30",
             "contract": "M2701"
           },
           "change5": null,
@@ -11523,8 +11532,8 @@
         "rank": 2,
         "foreign": false,
         "history": {
-          "n": 2,
-          "since": "2026-09-30",
+          "n": 22,
+          "since": "2026-09-01",
           "run": {
             "direction": "up",
             "days": 1,
