@@ -156,7 +156,8 @@ def test_grades_on_real_data_say_futures_are_weak_and_spot_is_steadier():
 def test_cli_builds_from_a_raw_dir_and_prefers_contract_files_when_present():
     d = tempfile.mkdtemp()
     try:
-        shutil.copytree(RAW, os.path.join(d, "raw"))
+        os.makedirs(os.path.join(d, "raw"))      # 只拷基线CSV(线上 data/raw/seasonal 现在已有真实 contracts/ 目录，整个拷会干扰"合约文件太少"这一步)
+        shutil.copy(os.path.join(RAW, "meal_spot_futures_10y.csv"), os.path.join(d, "raw", "meal_spot_futures_10y.csv"))
         out = os.path.join(d, "seasonal.json")
         r = ss.main(["--raw", os.path.join(d, "raw"), "--out", out])
         assert r["source"] == "baseline_csv" and os.path.exists(out)

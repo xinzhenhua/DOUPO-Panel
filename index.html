@@ -23,12 +23,8 @@ body{background:#080808;color:#d4d4d4;font-family:-apple-system,'PingFang SC',sa
 .main{max-width:720px;margin:0 auto;padding:14px}
 .stitle{font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1px;text-transform:uppercase;padding:14px 0 8px;border-bottom:1px solid var(--bdr);margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .stitle::after{content:'';flex:1;height:1px;background:var(--bdr)}
-.ssq{display:inline-block;width:15px;height:15px;border-radius:3px;margin-right:2px;vertical-align:middle}
-.ssq.pos{background:var(--r)}.ssq.neg{background:var(--g)}.ssq.nil{background:var(--bg3)}
-.sp-band90{fill:rgba(74,158,255,.10)}.sp-band50{fill:rgba(74,158,255,.22)}.sp-med{fill:none;stroke:#4a9eff;stroke-width:1;stroke-dasharray:3 2}
+.sp-past{fill:none;stroke:#999;stroke-width:.8;opacity:.5}.sp-med{fill:none;stroke:#4a9eff;stroke-width:1;stroke-dasharray:3 2}
 .sp-cur{fill:none;stroke:var(--gold);stroke-width:2}.sp-zero{stroke:#444;stroke-width:.6}.sp-ax{fill:var(--t3);font-size:8px}
-.sgrade{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;background:var(--bg3);color:var(--t2)}
-.sgrade.ok{background:var(--goldd);color:var(--gold);border:1px solid #3d2d00}
 .card{background:var(--bg1);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:10px}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .card-title{font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px}
@@ -199,11 +195,17 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
 <div class="stitle">📅 季节性<span style="font-size:9px;color:var(--t3);font-weight:400;text-transform:none;letter-spacing:0">只展示，不计分</span></div>
 <div class="card" id="seasonalCard">
   <div class="card-head">
-    <div class="card-title">本月的历史规律<span style="font-size:9px;color:var(--t3);font-weight:400">· 换月修正后 · 约10个年份</span></div>
+    <div class="card-title">本月的历史规律<span style="font-size:9px;color:var(--t3);font-weight:400">· 过去约10年</span></div>
     <span class="badge" id="seasonalBadge">读取中...</span>
   </div>
   <div id="seasonalContent" class="loading" style="text-align:left">正在读取季节性数据...</div>
   <div id="seasonalPath" style="margin-top:10px"></div>
+  <details style="margin-top:8px;font-size:11px;color:var(--t2)"><summary style="cursor:pointer;color:var(--t1)">这张卡怎么看？</summary>
+    <div style="line-height:1.7;margin-top:4px">① 最上面一句话告诉你：这个月过去约10年涨跌有没有规律。<b>多数月份期货没有可靠规律</b>，现货稍好(7/8/9月偏涨、11月偏跌)。<br>
+    ② "本月价位范围"：按上个月最后一天的收盘价，加上往年这个月通常的最高/最低涨跌幅，推出今年本月的参考价位。<br>
+    ③ 柱图：每个月的平均涨跌，红涨绿跌；★=方向比较一致的月份。<br>
+    ④ 折线：往年每一年从1月1日起累计涨跌(灰线)，和今年(金线)比。今年远超灰线范围，说明是资金/事件行情，季节性不适用。<br>
+    ⑤ 整张卡只做参考，<b>不参与评分</b>。期货数据已扣除换月造成的假涨跌，所以和同花顺"主连"表里的11/12月数字不一样。</div></details>
 </div>
 
 <!-- ============ 天气板块（真自动，浏览器实时抓取） ============ -->
@@ -3111,66 +3113,127 @@ function seasonalRange(bars, ms, exc){
     last, lastPct: last == null ? null : (last/p - 1)*100,
     monthHiPct: cur.length ? (Math.max(...cur)/p - 1)*100 : null, monthLoPct: cur.length ? (Math.min(...cur)/p - 1)*100 : null};
 }
-function _sGradeHtml(g){ return g ? `<span class="sgrade ${g.label === '较稳' ? 'ok' : ''}" title="${esc(g.why || '')}">${esc(g.label)}</span>` : ''; }
-function _sSquares(table, month){
-  const yrs = Object.keys(table || {}).map(Number).sort((a,b)=>a-b);
-  return yrs.map(y => { const v = (table[y] || {})[month]; if(v === null || v === undefined) return ''; return `<i class="ssq ${v > 0 ? 'pos' : v < 0 ? 'neg' : 'nil'}" title="${y}年 ${_sPct(v)}"></i>`; }).join('');
-}
 const SEASONAL_BG = {1:'春节前后备货；南美大豆生长期天气', 2:'春节后补库；南美天气、巴西收割开始', 3:'南美收割；3月底美国农业部种植意向报告', 4:'巴西大豆集中到港、油厂压榨高位', 5:'巴西大豆到港高峰，豆粕供应宽松', 6:'美豆进入天气敏感期；国内水产养殖旺季开始', 7:'美豆结荚关键期(天气炒作窗口)', 8:'美豆灌浆关键期；国内饲料需求旺季', 9:'美豆收获开始；国内双节备货', 10:'美豆集中收获；国内国庆后备货结束', 11:'北美收获尾声、南美播种；国内进入需求淡季', 12:'南美天气；元旦春节前备货预期'};
-function renderSeasonalCardHtml(S, month, rg){
+/** 一句话：某个口径(期货/现货)这个月历史上怎么样。ups/downs 由上涨占比×年数还原。 */
+function seasonalVerdict(st, g){
+  if(!st || st.n == null || st.upPct == null) return null;
+  const ups = Math.round(st.upPct * st.n / 100), downs = st.n - ups, stable = !!(g && g.label === '较稳');
+  const dir = stable ? (st.upPct >= 50 ? '偏涨' : '偏跌') : '没有明显方向';
+  return {n:st.n, ups, downs, mean:st.mean, stable, dir};
+}
+function _sVerdictLine(name, v){
+  if(!v) return '';
+  const col = v.stable ? (v.dir === '偏涨' ? 'var(--r)' : 'var(--g)') : 'var(--t3)';
+  return `<div style="margin:2px 0">${name}：近${v.n}年里<b>涨${v.ups}年、跌${v.downs}年</b>，平均${_sPct(v.mean)} → <b style="color:${col}">${v.stable ? '比较有规律：' : ''}${v.dir}</b></div>`;
+}
+function seasonalHeadline(fv, sv){
+  if(!fv && !sv) return '';
+  if(fv && fv.stable) return `期货在这个月历史上比较有规律（${fv.dir}），但仍不是买卖信号。`;
+  if(sv && sv.stable) return `现货在这个月历史上比较有规律（${sv.dir}），期货不一定跟着走。`;
+  return '这个月历史上涨跌没有可靠的规律，季节性帮不上忙，主要看基本面和资金。';
+}
+/** 价位范围条：深色=往年本月"典型最低点~典型最高点"，浅色=偏强/偏弱年份到过的位置，▲=现价。 */
+function renderSeasonalRangeBar(rg, m){
+  if(!rg) return `<div style="margin:8px 0;color:var(--t3)">缺上月末收盘(当前合约的K线里没有上个月的数据)，不换算价位。</div>`;
+  const vals = [rg.lo10, rg.loMid, rg.hiMid, rg.hi90, rg.prevClose, rg.last].filter(v => v != null);
+  let mn = Math.min(...vals), mx = Math.max(...vals); const pad = (mx - mn) * 0.04 || 1; mn -= pad; mx += pad;
+  const pos = v => ((v - mn) / (mx - mn) * 100).toFixed(1);
+  const seg = (a, b, bg) => a == null || b == null ? '' : `<div style="position:absolute;top:15px;height:8px;left:${pos(a)}%;width:${(pos(b) - pos(a)).toFixed(1)}%;background:${bg};border-radius:4px"></div>`;
+  const lab = (v, txt) => v == null ? '' : `<div style="position:absolute;top:27px;left:${pos(v)}%;transform:translateX(-50%);font-size:10px;color:var(--t2);white-space:nowrap">${txt}</div>`;
+  const cur = rg.last == null ? '' : `<div style="position:absolute;top:0;left:${pos(rg.last)}%;transform:translateX(-50%);font-size:10px;color:var(--gold);white-space:nowrap;font-weight:700">现价 ${_sFmt(rg.last)}</div><div style="position:absolute;top:11px;left:${pos(rg.last)}%;transform:translateX(-50%);width:3px;height:16px;background:var(--gold);border-radius:1px"></div>`;
+  let where = '';
+  if(rg.last != null && rg.hiMid > rg.loMid){
+    const f = (rg.last - rg.loMid) / (rg.hiMid - rg.loMid);
+    where = f < 0 ? '已经跌破往年本月的典型最低点' : f > 1 ? '已经涨过往年本月的典型最高点' : f < 1/3 ? '在典型范围里偏低(靠近典型最低点)' : f > 2/3 ? '在典型范围里偏高(靠近典型最高点)' : '在典型范围的中间';
+  }
+  return `<div style="margin:8px 0 2px"><b>本月价位范围</b><span style="color:var(--t3)">（按上月末收盘 ${_sFmt(rg.prevClose)} 推算）</span></div>
+  <div style="position:relative;height:44px;margin:4px 10px 0"><div style="position:absolute;top:18px;left:0;right:0;height:2px;background:var(--bg3)"></div>
+  ${seg(rg.lo10, rg.hi90, 'rgba(74,158,255,.18)')}${seg(rg.loMid, rg.hiMid, 'rgba(74,158,255,.5)')}
+  <div style="position:absolute;top:13px;left:${pos(rg.prevClose)}%;width:1px;height:12px;background:var(--t3)"></div>
+  ${lab(rg.lo10, _sFmt(rg.lo10))}${lab(rg.loMid, _sFmt(rg.loMid))}${lab(rg.hiMid, _sFmt(rg.hiMid))}${lab(rg.hi90, _sFmt(rg.hi90))}${cur}</div>
+  <div style="color:var(--t2);font-size:11px;line-height:1.6">往年这个月：最高点通常涨到 <b style="color:var(--r)">${_sFmt(rg.hiMid)}</b>（${_sPct(m.excursion.upMedian)}），最低点通常跌到 <b style="color:var(--g)">${_sFmt(rg.loMid)}</b>（${_sPct(m.excursion.dnMedian)}）；最强的年份到过 ${rg.hi90 == null ? '—' : _sFmt(rg.hi90)}，最弱的到过 ${rg.lo10 == null ? '—' : _sFmt(rg.lo10)}。${rg.last == null ? '' : `<br>现价 ${_sFmt(rg.last)}，${where}。`}<br><span style="color:var(--t3)">深蓝=典型范围，浅蓝=偏强/偏弱年份到过的位置，灰竖线=上月末收盘。这是历史统计，不是预测。</span></div>`;
+}
+/** 12个月柱图(同花顺那种)：柱=该月平均涨跌幅(红涨绿跌)，下面=上涨年份占比，★=方向比较一致，金框=本月。 */
+function renderSeasonalMonthBars(S, month, kind){
+  const key = kind === 'spot' ? 'spot' : 'futures', gk = key === 'spot' ? 'gradeSpot' : 'gradeFutures';
+  const W = 320, H = 128, zy = 46, half = 36, colW = W / 12;
+  const mx = Math.max(3, ...S.months.map(m => Math.abs((m[key] || {}).mean || 0))) * 1.1;
+  let out = '';
+  S.months.forEach((m, i) => {
+    const st = m[key] || {}, g = m[gk], cx = colW * i + colW / 2, v = st.mean == null ? 0 : st.mean, h = Math.abs(v) / mx * half;
+    const stable = g && g.label === '较稳';
+    if(m.month === month) out += `<rect x="${(colW * i + 1).toFixed(1)}" y="2" width="${(colW - 2).toFixed(1)}" height="${H - 4}" rx="4" style="fill:none;stroke:var(--gold);stroke-width:1"/>`;
+    out += `<rect x="${(cx - 7).toFixed(1)}" y="${(v >= 0 ? zy - h : zy).toFixed(1)}" width="14" height="${Math.max(h, 0.5).toFixed(1)}" style="fill:${v >= 0 ? 'var(--r)' : 'var(--g)'}"/>`;
+    out += `<text class="sp-ax" x="${cx.toFixed(1)}" y="${(v >= 0 ? zy - h - 2 : zy + h + 9).toFixed(1)}" text-anchor="middle">${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}</text>`;
+    out += `<text class="sp-ax" x="${cx.toFixed(1)}" y="96" text-anchor="middle" style="fill:var(--t1)">${m.month}月</text>`;
+    out += `<text class="sp-ax" x="${cx.toFixed(1)}" y="107" text-anchor="middle">${st.upPct == null ? '—' : Math.round(st.upPct) + '%'}</text>`;
+    if(stable) out += `<text x="${cx.toFixed(1)}" y="120" text-anchor="middle" style="fill:var(--gold);font-size:10px">★</text>`;
+  });
+  out += `<line class="sp-zero" x1="0" x2="${W}" y1="${zy}" y2="${zy}"/>`;
+  const tab = (k, t) => `<button type="button" onclick="setSeasonalKind('${k}')" style="padding:2px 10px;border-radius:10px;border:1px solid ${key === k ? 'var(--gold)' : 'var(--bg3)'};background:${key === k ? 'var(--goldd)' : 'transparent'};color:${key === k ? 'var(--gold)' : 'var(--t2)'};font-size:11px;cursor:pointer">${t}</button>`;
+  return `<div style="margin:10px 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b>每个月历史平均涨跌</b>${tab('futures', '期货')}${tab('spot', '现货')}</div>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" class="sp-months">${out}</svg>
+  <div style="font-size:10.5px;color:var(--t3);line-height:1.6">柱=该月过去约10年的平均涨跌幅(%)，红涨绿跌；柱下百分数=这个月有多少比例的年份是上涨的；<span style="color:var(--gold)">★</span>=这个月方向比较一致；金框=本月。${key === 'futures' ? '期货柱已扣掉换月造成的假涨跌。' : ''}</div>`;
+}
+function renderSeasonalCardHtml(S, month, rg, kind){
   const m = S && S.months && S.months.find(x => x.month === month);
   if(!m) return `<div class="alert-box neutral"><span class="at">没有该月数据</span>季节性数据里找不到${month}月。</div>`;
-  const f = m.futures, sp = m.spot, line = (name, st, g) => `<div style="margin:3px 0"><b>${name}</b> ${_sGradeHtml(g)} 均值${_sPct(st.mean)} · ${st.upPct == null ? '—' : Math.round(st.upPct) + '%'}的年份上涨 · 样本${st.n}年</div>`;
-  let range;
-  if(rg){
-    range = `<div style="margin:6px 0 3px"><b>月内典型区间</b><span style="color:var(--t3)">（相对上月末收盘 ${_sFmt(rg.prevClose)}，${esc(rg.prevDate)}）</span></div>
-      <div style="color:var(--t2)">典型高点 ≈ <b style="color:var(--r)">${_sFmt(rg.hiMid)}</b>（中位 ${_sPct(m.excursion.upMedian)}）；偏强时到 ${rg.hi90 == null ? '—' : _sFmt(rg.hi90)}（p90 ${_sPct(m.excursion.upP90)}）<br>
-      典型低点 ≈ <b style="color:var(--g)">${_sFmt(rg.loMid)}</b>（中位 ${_sPct(m.excursion.dnMedian)}）；偏弱时到 ${rg.lo10 == null ? '—' : _sFmt(rg.lo10)}（p10 ${_sPct(m.excursion.dnP10)}）<br>
-      ${rg.last == null ? '' : `现价 ${_sFmt(rg.last)}（较上月末 ${_sPct(rg.lastPct)}）；本月至今最高 ${_sPct(rg.monthHiPct)}、最低 ${_sPct(rg.monthLoPct)}（收盘价）`}</div>`;
-  } else {
-    range = `<div style="margin:6px 0 3px;color:var(--t3)">缺上月末收盘(当前合约的K线里没有上个月的数据)，不换算价位。</div>`;
-  }
+  const fv = seasonalVerdict(m.futures, m.gradeFutures), sv = seasonalVerdict(m.spot, m.gradeSpot);
   return `<div style="font-size:12px;line-height:1.7">
-    <div style="font-weight:700;color:var(--t1);margin-bottom:4px">${month}月 <span style="font-weight:400;color:var(--t3)">· 只展示，不计分</span></div>
-    ${line('期货(换月修正)', f, m.gradeFutures)}
-    <div style="margin:2px 0 6px">${_sSquares(S.monthlyTable && S.monthlyTable.futures, month)}<span style="color:var(--t3);font-size:10px"> 历年(红涨绿跌)</span></div>
-    ${line('现货', sp, m.gradeSpot)}
-    <div style="margin:2px 0 6px">${_sSquares(S.monthlyTable && S.monthlyTable.spot, month)}<span style="color:var(--t3);font-size:10px"> 历年(红涨绿跌)</span></div>
-    ${range}
+    <div style="font-weight:700;color:var(--t1);margin-bottom:4px">${month}月的历史规律 <span style="font-weight:400;color:var(--t3)">· 只展示，不计分</span></div>
+    <div style="padding:6px 8px;border-radius:6px;background:var(--bg3);margin-bottom:6px"><b>${esc(seasonalHeadline(fv, sv))}</b></div>
+    ${_sVerdictLine('期货', fv)}${_sVerdictLine('现货', sv)}
+    ${renderSeasonalRangeBar(rg, m)}
+    ${renderSeasonalMonthBars(S, month, kind)}
     <div style="margin-top:6px;color:var(--t3);font-size:10.5px">产业背景(常识，非统计结论)：${esc(SEASONAL_BG[month] || '')}<br>
-    ⚠️ 每月只有约10个年份，期货月度方向基本不稳，这不是买卖信号；今年若长期偏离历史带，更可能是资金或事件在主导。</div></div>`;
+    ⚠️ 每个月只有约10个年份，这不是买卖信号；季节性只说"往年通常怎样"，不预测今年。</div></div>`;
+}
+/** 今年 vs 往年：往年每一年的累计涨跌(灰线) + 往年中间水平(蓝虚线) + 今年(金线)，并说明今年排第几。 */
+function seasonalPathRank(P){
+  const c = P && P.current; if(!c || c.lastWeek == null || !P.years) return null;
+  const lw = c.lastWeek, vals = Object.keys(P.years).map(y => ({y, v: (P.years[y] || [])[lw]})).filter(x => x.v !== null && x.v !== undefined);
+  if(!vals.length) return null;
+  vals.sort((a, b) => b.v - a.v);
+  const rank = 1 + vals.filter(x => x.v > c.value).length;
+  return {hi:vals[0], lo:vals[vals.length - 1], rank, total:vals.length + 1};
 }
 function renderSeasonalPathNote(S){
-  const c = S && S.path && S.path.current; if(!c) return '';
-  const pos = c.position || {}, wk = c.lastWeek + 1;
-  const where = pos.flag === '样本不足' ? '历史样本不足，不判断位置' : `处于历史同周约${Math.round(pos.percentile)}分位（${pos.flag}）`;
-  const warn = pos.flag === '高于历史带' || pos.flag === '低于历史带' ? '——明显偏离季节规律，更可能是资金或事件在主导，季节性参考价值下降。' : '。';
-  return `今年截至${esc(c.asOf)}（第${wk}周）累计 ${_sPct(c.value)}（相对去年最后一个交易日），${where}${warn}`;
+  const P = S && S.path, c = P && P.current; if(!c) return '';
+  const r = seasonalPathRank(P), pos = c.position || {};
+  if(!r) return `今年截至${esc(c.asOf)}累计 ${_sPct(c.value)}（相对去年最后一个交易日）。往年样本不足，不做比较。`;
+  const q = r.rank / r.total, how = q <= 0.34 ? '涨得比大多数年份都多' : q >= 0.67 ? '比大多数年份都弱' : '和往年差不多';
+  const warn = pos.flag === '高于历史带' || pos.flag === '低于历史带' ? '<br>今年已经明显超出往年范围，说明这轮行情主要不是季节规律在推动（多半是资金或突发事件），这时别拿季节性当依据。' : '';
+  return `今年截至${esc(c.asOf)}累计 <b>${_sPct(c.value)}</b>（相对去年最后一个交易日）。往年同一时间：最高 ${_sPct(r.hi.v)}（${esc(r.hi.y)}年），最低 ${_sPct(r.lo.v)}（${esc(r.lo.y)}年）；今年在 ${r.total} 个年份里排第 <b>${r.rank}</b>，${how}。${warn}`;
 }
 function renderSeasonalPathSvg(S){
   const P = S && S.path; if(!P || !P.bands) return '';
-  const W = 320, H = 150, L = 28, R = 6, T = 8, B = 18, n = P.weeks || 52;
-  const all = [].concat(P.bands.p10, P.bands.p90, (P.current && P.current.path) || []).filter(v => v !== null && v !== undefined);
-  let lo = Math.min(0, ...all), hi = Math.max(0, ...all); const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  const W = 320, H = 160, L = 30, R = 24, T = 8, B = 18, n = P.weeks || 52, ys = P.years || {};
+  const lines = Object.keys(ys).sort().map(y => ({y, a: ys[y]}));
+  const all = [].concat(P.bands.median, (P.current && P.current.path) || [], ...lines.map(l => l.a)).filter(v => v !== null && v !== undefined);
+  let lo = Math.min(0, ...all), hi = Math.max(0, ...all); const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
   const X = i => L + (W - L - R) * i / (n - 1), Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
   const poly = arr => arr.map((v, i) => v === null || v === undefined ? null : X(i).toFixed(1) + ',' + Y(v).toFixed(1)).filter(Boolean).join(' ');
-  const bandPoly = (u, d) => { const up = u.map((v,i)=>[i,v]).filter(x=>x[1]!==null), dn = d.map((v,i)=>[i,v]).filter(x=>x[1]!==null).reverse(); return up.concat(dn).map(x => X(x[0]).toFixed(1) + ',' + Y(x[1]).toFixed(1)).join(' '); };
   const ticks = []; for(let m = 1; m <= 12; m++){ const w = Math.round((m - 1) * (n - 1) / 12); ticks.push(`<text class="sp-ax" x="${X(w).toFixed(1)}" y="${H - 5}" text-anchor="middle">${m}月</text>`); }
-  const yt = [Math.ceil(lo/5)*5, 0, Math.floor(hi/5)*5].filter((v, i, a) => a.indexOf(v) === i && v >= lo && v <= hi).map(v => `<text class="sp-ax" x="${L - 3}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end">${v}%</text>`).join('');
+  const step = (hi - lo) > 60 ? 20 : 10;
+  const yt = []; for(let v = Math.ceil(lo / step) * step; v <= hi; v += step) yt.push(`<text class="sp-ax" x="${L - 3}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end">${v}%</text>`);
+  const past = lines.map(l => `<polyline class="sp-past" points="${poly(l.a)}"/>`).join('');
+  const endv = lines.map(l => ({y:l.y, v:l.a[l.a.length - 1]})).filter(x => x.v != null).sort((a, b) => b.v - a.v), keep = endv.length ? [endv[0].y, endv[endv.length - 1].y] : [];
+  const ends = lines.map(l => { const last = l.a.length - 1, v = l.a[last]; return v == null || keep.indexOf(l.y) < 0 ? '' : `<text class="sp-ax" x="${(X(last) + 2).toFixed(1)}" y="${(Y(v) + 3).toFixed(1)}">${esc(String(l.y).slice(2))}</text>`; }).join('');
   const cur = P.current && P.current.path ? poly(P.current.path.slice(0, P.current.lastWeek + 1)) : '';
-  const dot = cur ? (() => { const lw = P.current.lastWeek; return `<circle cx="${X(lw).toFixed(1)}" cy="${Y(P.current.path[lw]).toFixed(1)}" r="2.5" fill="var(--gold)"/>`; })() : '';
-  return `<div style="font-size:11px;color:var(--t2);margin-bottom:2px"><b>年内路径</b>：历史各年同周累计涨跌的分布（浅=10~90%，深=25~75%，虚线=中位）<span style="color:var(--gold)"> ━ 今年</span></div>
-  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"><polygon class="sp-band90" points="${bandPoly(P.bands.p90, P.bands.p10)}"/><polygon class="sp-band50" points="${bandPoly(P.bands.p75, P.bands.p25)}"/>
-  <line class="sp-zero" x1="${L}" x2="${W - R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/><polyline class="sp-med" points="${poly(P.bands.median)}"/>
-  ${cur ? `<polyline class="sp-cur" points="${cur}"/>` : ''}${dot}${yt}${ticks.join('')}</svg>
-  <div style="font-size:11px;color:var(--t2);line-height:1.6;margin-top:2px">${renderSeasonalPathNote(S)}</div>`;
+  const dot = cur ? `<circle cx="${X(P.current.lastWeek).toFixed(1)}" cy="${Y(P.current.path[P.current.lastWeek]).toFixed(1)}" r="2.8" fill="var(--gold)"/>` : '';
+  return `<div style="font-size:12px;margin-bottom:2px"><b>今年和往年比</b><span style="color:var(--t3);font-size:10.5px">（从1月1日起累计涨跌）</span></div>
+  <div style="font-size:10.5px;color:var(--t2);margin-bottom:2px"><span style="color:#999">━ 灰线=往年每一年(右端数字=年份，只标最高和最低的)</span>　<span style="color:#4a9eff">┅ 蓝虚线=往年的中间水平</span>　<span style="color:var(--gold)">━ 金线=今年</span></div>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" class="sp-path"><line class="sp-zero" x1="${L}" x2="${W - R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>${past}<polyline class="sp-med" points="${poly(P.bands.median)}"/>
+  ${cur ? `<polyline class="sp-cur" points="${cur}"/>` : ''}${dot}${yt.join('')}${ticks.join('')}${ends}</svg>
+  <div style="font-size:11.5px;color:var(--t2);line-height:1.7;margin-top:3px">${renderSeasonalPathNote(S)}</div>`;
 }
+function setSeasonalKind(k){ window._seasonalKind = k === 'spot' ? 'spot' : 'futures'; renderSeasonal(); }
 function renderSeasonal(){
   const badge = document.getElementById('seasonalBadge'), el = document.getElementById('seasonalContent'), pe = document.getElementById('seasonalPath');
   const S = window._seasonal;
   if(!S || !S.months){
     badge.textContent = '⚪ 尚未生成'; badge.className = 'badge badge-offline';
-    el.innerHTML = '<div class="alert-box neutral"><span class="at">季节性数据尚未生成</span>data/seasonal.json 不存在或读取失败。在 GitHub Actions 里运行"抓取季节性历史数据"后会出现。</div>';
+    el.innerHTML = '<div class="alert-box neutral"><span class="at">季节性数据尚未生成</span>data/seasonal.json 不存在或读取失败。在 GitHub Actions 里运行"抓取季节性原始数据"后会出现。</div>';
     if(pe) pe.innerHTML = '';
     return;
   }
@@ -3179,7 +3242,7 @@ function renderSeasonal(){
   const m = S.months.find(x => x.month === month);
   const rg = data && data.available ? seasonalRange(data.bars, now, m && m.excursion) : null;
   badge.textContent = '🟢 数据到 ' + ((S.meta && S.meta.lastDate) || '—'); badge.className = 'badge badge-auto';
-  el.innerHTML = renderSeasonalCardHtml(S, month, rg) + (rg && data ? `<div style="font-size:10px;color:var(--t3);margin-top:3px">区间按当前选中的合约 ${esc(data.symbol || '')} 换算</div>` : '');
+  el.innerHTML = renderSeasonalCardHtml(S, month, rg, window._seasonalKind) + (rg && data ? `<div style="font-size:10px;color:var(--t3);margin-top:3px">价位范围按当前选中的合约 ${esc(data.symbol || '')} 换算</div>` : '');
   if(pe) pe.innerHTML = renderSeasonalPathSvg(S);
 }
 async function loadSeasonal(){

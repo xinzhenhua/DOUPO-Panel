@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe。默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区(江苏)报价接口是否存在(只读，结果写进报告)"
+        description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe,jiangsu。默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区报价接口(已确认有安全检查，拿不到)；jiangsu=Mysteel全国豆粕价格日报→江苏等地43%豆粕现货价和Mysteel基差(2020年起，建议单独跑一次 only=jiangsu)"
         default: "main,contracts,cbot,fx"
       rank_list:
         description: "只有 only 含 dce_rank 时才填：月份:合约，逗号分隔，例如 2023-06:m2309,2023-07:m2309,2023-08:m2401"

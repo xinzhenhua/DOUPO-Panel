@@ -7,6 +7,7 @@
   contracts  各具体合约(M1701…M2709 的 1/3/4/5/6/7/8/9/11/12月)日K → <out>/contracts/M{yymm}.csv；已有的不重抓，有时间预算，可重复运行接着补
   cbot       CBOT 豆粕(ZM)、大豆(ZS)10年日收盘 → <out>/cbot_ZM.csv、cbot_ZS.csv；先 Yahoo，失败换 akshare 备选代码；报告里列出 akshare 的海外品种代码
   fx         美元兑人民币(USD/CNY)10年 → <out>/usdcny.csv；先 Yahoo(CNY=X)，失败换 akshare
+  jiangsu    Mysteel《全国豆粕价格日报》(search.mysteel.com 文章搜索接口，按年分窗口翻页) → <out>/jiangsu_daily_raw.jsonl(原文，以后改解析不用重新联网) 和 <out>/jiangsu_spot_daily.csv(解析出的江苏/辽宁/天津/山东/广东 43%豆粕价与Mysteel公布的基差；读不出的留空)
   probe      探测生意社分地区(江苏)报价接口 dp.100ppi.com 是否真的存在、返回什么(把状态/表头/前几行写进报告；不写数据文件)
   dce_rank   大商所"日成交持仓排名"：按'月份:合约'清单，每个工作日请求一次(akshare 实际调的就是大商所下载页)，
              转成与手动下载同格式的 txt → 单独目录 data/raw/dce_rank_hist/(★不写进 data/raw/dce_rank/，免得干扰 v101.13 的龙虎榜回填)；已有文件跳过
@@ -14,7 +15,7 @@
 ★Yahoo 的 ZM=F/ZS=F 是连续合约，换月处同样有缺口(与豆粕主连同理)，用它算涨跌幅时需要像 seasonal_stats 那样处理。"""
 import argparse, csv, datetime, json, os, re, sys, time
 
-JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe"]
+JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu"]
 CONTRACT_MONTHS = (1, 3, 4, 5, 6, 7, 8, 9, 11, 12)
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=10y"
 CBOT_YAHOO = {"ZM": "ZM=F", "ZS": "ZS=F"}
@@ -235,8 +236,9 @@ def job_rank(out, ak, spec, days=None, sleep=time.sleep, clock=time.time, budget
         try:
             got = ak.futures_dce_position_rank(date=ds)
             fails = 0
-        except Exception:
+        except Exception as e:
             rep["errors"] += 1
+            rep.setdefault("firstError", f"{type(e).__name__}: {e}"[:300])   # 上次全部失败却看不到原因，这次记下第一个
             fails += 1
             rep["noData"] += [f"{c.upper()}:{day}" for c in need]
             if fails >= 25:
@@ -254,6 +256,50 @@ def job_rank(out, ak, spec, days=None, sleep=time.sleep, clock=time.time, budget
                 rep["written"] += 1
         sleep(pause)
     return rep
+
+
+# ---------- 江苏(华东)现货：Mysteel 全国豆粕价格日报 ----------
+def _default_search(query, start, end):
+    import backfill_history
+    return backfill_history._search_articles(query, start, end)
+
+
+def job_jiangsu(out, search=None, today=None, start_year=2020):
+    import mysteel_meal_daily as mm
+    search = search or _default_search
+    today = today or datetime.date.today()
+    raw_path = os.path.join(out, "jiangsu_daily_raw.jsonl")
+    by_url = {}
+    if os.path.exists(raw_path):                       # 先读已有的原文(接口这次挂了也不丢)
+        for l in open(raw_path, encoding="utf-8"):
+            try:
+                it = json.loads(l)
+                by_url[it.get("url") or it.get("title")] = it
+            except ValueError:
+                pass
+    wins = []
+    for y in range(start_year, today.year + 1):
+        a = datetime.datetime(y, 1, 1)
+        b = datetime.datetime(y, 12, 31) if y < today.year else datetime.datetime(today.year, today.month, today.day)
+        try:
+            items, total, note = search("全国豆粕价格日报", a, b)
+        except Exception as e:
+            items, total, note = [], 0, f"{type(e).__name__}: {e}"[:200]
+        got = 0
+        for it in items:
+            if mm.is_daily_report(it):
+                got += 1
+                by_url[it.get("url") or it.get("title")] = {k: it.get(k) for k in ("title", "publishTime", "url", "content")}
+        wins.append({"year": y, "total": total, "fetched": len(items), "dailyReports": got, "note": note})
+    rows, rep = mm.build_rows(list(by_url.values()))
+    if rows:
+        os.makedirs(out, exist_ok=True)
+        with open(raw_path, "w", encoding="utf-8") as f:
+            for it in sorted(by_url.values(), key=lambda x: str(x.get("publishTime"))):
+                f.write(json.dumps(it, ensure_ascii=False) + "\n")
+        cols = ["date"] + [f"{p}_{k}" for p in ("js", "ln", "tj", "sd", "gd") for k in ("price", "basis")] + ["publishTime", "url"]
+        _write_csv(os.path.join(out, "jiangsu_spot_daily.csv"), cols, [[("" if r[c] is None else r[c]) for c in cols] for r in rows])
+    return {"ok": bool(rows), "windows": wins, **rep}
 
 
 # ---------- 探测：生意社分地区(江苏)报价接口是否真的存在 ----------
@@ -352,6 +398,8 @@ def main(argv=None, ak=None, get_json=None, kline=None):
                 rep[j] = job_cbot(a.out, get_json, ak)
             elif j == "fx":
                 rep[j] = job_fx(a.out, get_json, ak)
+            elif j == "jiangsu":
+                rep[j] = job_jiangsu(a.out)
             elif j == "probe":
                 rep[j] = job_probe(_http_get_raw)
             else:

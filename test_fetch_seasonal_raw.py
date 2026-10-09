@@ -199,6 +199,7 @@ def test_job_rank_writes_to_separate_dir_and_resumes():
     assert os.path.exists(f3) and os.path.exists(os.path.join(out, "M2309_20230705.txt")) and not os.path.exists(os.path.join(out, "M2309_20230704.txt"))
     assert drf.parse_rank_text(open(f3, encoding="utf-8").read())["date"] == "2023-07-03"
     assert rep["written"] == 2 and rep["noData"] == ["M2309:2023-07-04"], rep
+    assert rep["firstError"].startswith("RuntimeError") and "休市" in rep["firstError"] and rep["errors"] == 1, rep
     calls.clear()
     rep2 = fr.job_rank(out, AK(), spec, days=["2023-07-03", "2023-07-05"], sleep=lambda s: None, clock=lambda: 0, budget_s=1000)
     assert calls == [] and rep2["written"] == 0 and rep2["skippedExisting"] == 2, (calls, rep2)
@@ -255,6 +256,38 @@ def test_job_probe_reports_each_url_even_when_some_fail():
     assert "403" in rep["https://x/bad"]["error"], rep
     assert "江苏省" in rep["https://x/ok"]["head"]
     ok("探测：每个网址单独记状态/表头/开头文字(GBK 也能解码)，失败的只记原因")
+
+
+
+def test_job_jiangsu_windows_merge_and_write():
+    import datetime as dt
+    sample = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw", "mysteel_meal_daily", "sample_20260908_20261009.json"), encoding="utf-8"))
+    calls = []
+    def search(query, start, end):
+        calls.append((query, start.year, end.year))
+        if start.year == 2025:
+            return [], 0, "搜索接口无返回/返回异常"
+        return [dict(x) for x in sample], 20, None
+    out = tmp()
+    rep = fr.job_jiangsu(out, search, today=dt.date(2026, 10, 9), start_year=2025)
+    assert [c[1] for c in calls] == [2025, 2026] and all(c[0] == "全国豆粕价格日报" for c in calls), calls
+    rows = read_csv(os.path.join(out, "jiangsu_spot_daily.csv"))
+    assert len(rows) == 19 and rows[-1]["date"] == "2026-10-09" and rows[-1]["js_price"] == "3340" and rows[-1]["js_basis"] == "-62" and rows[0]["js_price"] == "", rows[-1]
+    raw = [json.loads(l) for l in open(os.path.join(out, "jiangsu_daily_raw.jsonl"), encoding="utf-8")]
+    assert len(raw) == 19 and "content" in raw[0] and "url" in raw[0], len(raw)       # 原文留着，以后改解析不用重新联网
+    assert rep["ok"] and rep["days"] == 19 and rep["jsPriceDays"] == 11 and rep["windows"][0]["note"] and rep["windows"][1]["fetched"] == 20, rep
+    # 再跑一次且这次接口全挂：已有的原文不丢
+    rep2 = fr.job_jiangsu(out, lambda q, a, b: ([], 0, "挂了"), today=dt.date(2026, 10, 9), start_year=2025)
+    assert rep2["days"] == 19 and len(read_csv(os.path.join(out, "jiangsu_spot_daily.csv"))) == 19, rep2
+    shutil.rmtree(out)
+    ok("江苏现货：按年分窗口搜索 → 解析 → 写原文jsonl和解析csv；接口失败时已有数据不丢，报告写明每个窗口的结果")
+
+
+def test_job_jiangsu_nothing_found():
+    import datetime as dt
+    rep = fr.job_jiangsu(tmp(), lambda q, a, b: ([], 0, "无返回"), today=dt.date(2026, 10, 9), start_year=2026)
+    assert rep["ok"] is False and rep["days"] == 0 and "无返回" in json.dumps(rep, ensure_ascii=False)
+    ok("一篇都没搜到 → ok=False 并带原因")
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
