@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T03:33:57.687920+00:00",
+  "generatedAt": "2026-10-09T06:20:05.066611+00:00",
   "series": [
     {
       "key": "soy_import",
@@ -1418,7 +1418,7 @@
       ],
       "stoppedEarly": false,
       "ranAt": "2026-10-09T03:33:57.687920+00:00",
-      "fromPreviousRun": false
+      "fromPreviousRun": true
     },
     {
       "key": "spot_basis",
@@ -1581,6 +1581,74 @@
       ],
       "ranAt": "2026-10-08T08:57:30.145786+00:00",
       "fromPreviousRun": true
+    },
+    {
+      "key": "capital_rank",
+      "added": 91,
+      "files": 21,
+      "firstDay": "2026-09-01",
+      "lastDay": "2026-09-30",
+      "coverage": {
+        "高盛期货": {
+          "exact": 0,
+          "estimated": 21,
+          "absent": 0
+        },
+        "摩根大通": {
+          "exact": 21,
+          "estimated": 0,
+          "absent": 0
+        },
+        "瑞银期货": {
+          "exact": 0,
+          "estimated": 12,
+          "absent": 9
+        },
+        "中粮期货": {
+          "exact": 21,
+          "estimated": 0,
+          "absent": 0
+        },
+        "国投期货": {
+          "exact": 21,
+          "estimated": 0,
+          "absent": 0
+        }
+      },
+      "perSeries": {
+        "capital_gs_net": {
+          "added": 20,
+          "total": 22,
+          "conflicts": 0
+        },
+        "capital_jpm_net": {
+          "added": 20,
+          "total": 22,
+          "conflicts": 0
+        },
+        "capital_ubs_net": {
+          "added": 11,
+          "total": 13,
+          "conflicts": 0
+        },
+        "capital_zl_net": {
+          "added": 20,
+          "total": 22,
+          "conflicts": 0
+        },
+        "capital_gt_net": {
+          "added": 20,
+          "total": 22,
+          "conflicts": 0
+        }
+      },
+      "conflicts": [],
+      "skippedFiles": [],
+      "notes": [
+        "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
+      ],
+      "ranAt": "2026-10-09T06:20:05.066611+00:00",
+      "fromPreviousRun": false
     }
   ],
   "calibration": {
