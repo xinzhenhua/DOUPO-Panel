@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-09T03:19:03.508923+00:00",
+  "generatedAt": "2026-10-09T04:10:32.133201+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.4,
-    "change": -0.3,
-    "changePct": -0.08,
-    "asOf": "2026-10-09T03:08:59+00:00",
+    "price": 360.8,
+    "change": 0.1,
+    "changePct": 0.03,
+    "asOf": "2026-10-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
@@ -105,32 +105,44 @@
     }
   },
   "ndrcPoultryProfit": {
-    "available": false,
-    "reason": "发改委文章列表取不到: 找到10个文章条目，但取不到任何详情页地址(条目没有链接、点击也没跳转)；诊断见 debug.sampleOuter",
-    "debug": {
-      "entry": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593",
-      "steps": [
-        {
-          "page": 1,
-          "items": 10,
-          "withHref": 0
-        }
-      ],
-      "attempts": [
-        {
-          "how": "native",
-          "result": "CLICKED",
-          "items": 10
-        }
-      ],
-      "bodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n202",
-      "navClick": "CLICKED",
-      "opened": "native",
-      "resolveTried": 3,
-      "items": 10,
-      "itemsWithHref": 0,
-      "sampleOuter": "<a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a>",
-      "sampleParent": "<span data-v-8593fa2e=\"\" class=\"w-full flex items-center\"><div data-v-8593fa2e=\"\" class=\"w-[11px] h-[9px] mr-[9px] titIcon\"></div><a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a><!----></span>"
+    "available": true,
+    "value": -4.1,
+    "date": "2026-09-23",
+    "ratio": 1.79,
+    "ratioChangePct": -2.19,
+    "balance": null,
+    "chickenPrice": null,
+    "feedPrice": null,
+    "weekLabel": "2026年9月第4周",
+    "publishDate": "2026-09-29",
+    "formulaCheckOk": null,
+    "formulaCheckValue": null,
+    "dateFallback": false,
+    "usedFallback": false,
+    "fallbackWeeks": 0,
+    "ageDays": 16,
+    "stale": false,
+    "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
+    "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
+    "definition": "发改委按成本模型推算的未来肉鸡养殖预期盈利=2.75×(鸡料比价-平衡点)×饲料价格，不是Mysteel的白羽肉鸡养殖利润",
+    "history": {
+      "n": 86,
+      "minPoints": 12,
+      "asOf": "2026-09-23",
+      "since": "2024-06-19",
+      "percentile": 0.0,
+      "min": -3.31,
+      "max": 2.37,
+      "median": -0.12,
+      "seasonal": {
+        "month": 9,
+        "n": 8,
+        "percentile": 0.0,
+        "median": -1.42
+      },
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "mysteelRmSpread": {
@@ -884,34 +896,8 @@
   },
   "crushMargins": {
     "sep": {
-      "available": true,
-      "contractMonth": 9,
-      "date": "2026-10-08",
-      "datesAligned": true,
-      "mealSymbol": "M2709",
-      "mealPrice": 3070.0,
-      "oilSymbol": "Y2709",
-      "oilPrice": 8631.0,
-      "beanSymbol": "B2709",
-      "beanPrice": 3841.0,
-      "grossMargin": 165.7,
-      "yieldMeal": 0.785,
-      "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
-      "history": {
-        "n": 654,
-        "minPoints": 12,
-        "asOf": "2026-10-08",
-        "since": "2019-04-01",
-        "percentile": 65.2,
-        "min": 22.0,
-        "max": 229.4,
-        "median": 138.45,
-        "seasonal": null,
-        "cohort": null,
-        "sparse": null,
-        "window": null
-      }
+      "available": false,
+      "reason": "以下合约价格缺失，无法计算压榨利润: 豆油Y2709(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
     },
     "may": {
       "available": true,
@@ -3003,7 +2989,7 @@
   "dceM09Hourly": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 72,
+    "totalBarsReturned": 73,
     "bars": [
       {
         "datetime": "2026-09-14 22:00:00",
@@ -3652,6 +3638,15 @@
         "close": 3095.0,
         "volume": 98.0,
         "hold": 32923.0
+      },
+      {
+        "datetime": "2026-10-09 14:15:00",
+        "open": 3088.0,
+        "high": 3094.0,
+        "low": 3088.0,
+        "close": 3094.0,
+        "volume": 352.0,
+        "hold": 33159.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4619,15 +4614,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-19 22:00:00",
-        "open": 2913.0,
-        "high": 2923.0,
-        "low": 2912.0,
-        "close": 2914.0,
-        "volume": 33121.0,
-        "hold": 714285.0
-      },
       {
         "datetime": "2026-08-19 23:00:00",
         "open": 2914.0,
@@ -6238,6 +6224,15 @@
         "close": 3002.0,
         "volume": 15227.0,
         "hold": 844170.0
+      },
+      {
+        "datetime": "2026-10-09 14:15:00",
+        "open": 3003.0,
+        "high": 3007.0,
+        "low": 3003.0,
+        "close": 3007.0,
+        "volume": 919.0,
+        "hold": 844380.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -7976,15 +7971,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-19 22:00:00",
-        "open": 3249.0,
-        "high": 3260.0,
-        "low": 3246.0,
-        "close": 3247.0,
-        "volume": 1554.0,
-        "hold": 2518105.0
-      },
-      {
         "datetime": "2026-08-19 23:00:00",
         "open": 3247.0,
         "high": 3277.0,
@@ -9594,6 +9580,15 @@
         "close": 3389.0,
         "volume": 105151.0,
         "hold": 2473097.0
+      },
+      {
+        "datetime": "2026-10-09 14:15:00",
+        "open": 3389.0,
+        "high": 3393.0,
+        "low": 3389.0,
+        "close": 3392.0,
+        "volume": 10458.0,
+        "hold": 2471062.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
