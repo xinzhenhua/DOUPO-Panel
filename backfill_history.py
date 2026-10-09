@@ -40,6 +40,7 @@ from datetime import date, datetime, timedelta, timezone
 import fetch_data as fd
 import history_store as hs
 import mysteel_parsers as mp
+import dce_rank_files as dr
 
 
 
@@ -1364,8 +1365,67 @@ def backfill_hog_ratio(base_dir=None, start=None, today=None):
     return _report_entry("hog_ratio", base_dir, len(pts), notes=notes, extra={"droppedDates": dropped[:20]})
 
 
+def backfill_capital_rank(base_dir=None, raw_dir=None):
+    """龙虎榜历史回填(v101.13)：读 data/raw/dce_rank/M<合约>_YYYYMMDD.txt(大商所日成交持仓排名文件)，按线上同一口径补五个席位的净持仓序列。
+    不联网。已有的日期绝不覆盖(线上点是精确的/按同一口径的；数值不同只记 conflicts)；幂等；估计值(只进一边前20)在 x 里标 approx=1。"""
+    raw_dir = raw_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw", "dce_rank")
+    if not os.path.isdir(raw_dir):
+        return {"key": "capital_rank", "error": f"没有找到排名文件目录 {raw_dir}"}
+    fname_re = re.compile(r"^([A-Za-z]+\d{3,4})_(\d{8})\.txt$")
+    skipped, days = [], []
+    for fn in sorted(os.listdir(raw_dir)):
+        if not fn.lower().endswith(".txt"):
+            continue
+        m = fname_re.match(fn)
+        if not m:
+            skipped.append({"file": fn, "why": "文件名不合规(应为 M2701_YYYYMMDD.txt)"})
+            continue
+        try:
+            with open(os.path.join(raw_dir, fn), encoding="utf-8") as f:
+                parsed = dr.parse_rank_text(f.read())
+        except Exception as e:  # noqa: BLE001
+            skipped.append({"file": fn, "why": f"解析失败：{e}"})
+            continue
+        want = f"{m.group(2)[:4]}-{m.group(2)[4:6]}-{m.group(2)[6:]}"
+        if parsed["date"] != want:
+            skipped.append({"file": fn, "why": f"文件名日期{want}和内容日期{parsed['date']}对不上"})
+            continue
+        days.append((m.group(1), parsed))
+    coverage = {n: {"exact": 0, "estimated": 0, "absent": 0} for n in hs.CAPITAL_MEMBER_SERIES}
+    new_pts = {k: [] for k in hs.CAPITAL_MEMBER_SERIES.values()}
+    for contract, parsed in days:
+        for name, key in hs.CAPITAL_MEMBER_SERIES.items():
+            r = dr.member_net(parsed, name)
+            if r is None:
+                coverage[name]["absent"] += 1
+                continue
+            coverage[name]["estimated" if r["approx"] else "exact"] += 1
+            x = {"contract": contract, "change": r["change"]}
+            if r["approx"]:
+                x["approx"] = 1
+            new_pts[key].append({"d": parsed["date"], "v": r["net"], "x": x})
+    conflicts, added, per = [], 0, {}
+    for key, pts in new_pts.items():
+        have = {p["d"]: p for p in hs.load_series(key, base_dir)["points"]}
+        todo = []
+        for p in pts:
+            old = have.get(p["d"])
+            if old is None:
+                todo.append(p)
+            elif old.get("v") != p["v"]:
+                conflicts.append({"series": key, "d": p["d"], "existing": old.get("v"), "fromFile": p["v"]})
+        if todo:
+            hs.record_points(key, todo, base_dir)
+        added += len(todo)
+        per[key] = {"added": len(todo), "total": len(hs.load_series(key, base_dir)["points"]), "conflicts": sum(1 for c in conflicts if c["series"] == key)}
+    ds = sorted(p["date"] for _, p in days)
+    return {"key": "capital_rank", "added": added, "files": len(days), "firstDay": ds[0] if ds else None, "lastDay": ds[-1] if ds else None,
+            "coverage": coverage, "perSeries": per, "conflicts": conflicts, "skippedFiles": skipped,
+            "notes": ["estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"]}
+
+
 # ---------------------------------------------------------------------------
-JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio, "rm_spread": backfill_rm_spread, "poultry_ndrc": backfill_poultry_ndrc, "spot_basis": backfill_spot_basis}
+JOBS = {"us_stu": backfill_us_stocks_to_use, "esr": backfill_esr_weekly, "meal_stu": backfill_meal_stu, "margin": backfill_crush_margin, "spread": backfill_term_spread, "feed_days": backfill_feed_days, "soy_import": backfill_soy_import, "arrival": backfill_arrival_forecast, "crush_rate": backfill_crush_rate, "hog_ratio": backfill_hog_ratio, "rm_spread": backfill_rm_spread, "poultry_ndrc": backfill_poultry_ndrc, "spot_basis": backfill_spot_basis, "capital_rank": backfill_capital_rank}
 DEFAULT_JOBS = ["us_stu", "esr", "meal_stu", "margin", "spread", "feed_days", "soy_import", "arrival", "crush_rate", "hog_ratio", "rm_spread"]      # Mysteel周度库存回填不进默认：第二次报告证明补不全(摘要没数字、2026年6月起正文改版)，改成靠每次抓取累积
 LOCAL_ONLY = ("calibrate",)     # 不联网，只基于data/history里已有的序列重新生成校准摘要
 

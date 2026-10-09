@@ -103,4 +103,4 @@
 - [ ] 另外两个未验证项：GitHub Actions 的出口能否访问 jgjcndrc.org.cn；`requirements-selenium.lock.txt` 是我在沙盒解析的，不是 Actions 的安装日志，装完后对照"Successfully installed"。
 - [ ] 前端 `tests/test_snapshot.js` 在我的沙盒里崩在 `loadFxRate → updateOverallAlert`(document 未定义)，v101.8 原包同样崩，和本次改动无关；它在真实 Actions 里是否通过没验证，别把它当成绿的。
 - [ ] 解压 zip 后总数多/少 1 的原因已查明：`test_sync_watchdog.py` 没装 jsdom 时跳过 1 项(显示"15项通过，1项被跳过")，装了 jsdom 才是 16 项。汇总总数时要把"被跳过"一起列出。
-
+- [ ] 龙虎榜回填(v101.13)：部署后跑 only=capital_rank，核对 `_backfill_report.json` 的 coverage(高盛/摩根/中粮/国投 21 天，瑞银 12 天)、conflicts(应为空)、skippedFiles(应为空)。高盛/瑞银是下限估计，页面上若展示'连续N日净增仓'要意识到这点；后续可考虑线上抓取时给这类点也标 approx。
