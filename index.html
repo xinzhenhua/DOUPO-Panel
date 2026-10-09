@@ -818,7 +818,12 @@ const AUTO_INDICATORS = [
      detail:`监测日期：${d.date}${d.weekLabel?`（${d.weekLabel}）`:''}<br>口径：${d.definition||'发改委价格监测中心×卓创资讯：未来肉鸡养殖预期盈利'}`,
      warn:[d.usedFallback?`⚠️ 最新一期周报没解析出来，用的是${d.fallbackWeeks}期前的数据(${d.date})`:'',
            d.dateFallback?'⚠️ 正文里的监测日期与标题/发布日对不上(源头偶有年份笔误)，日期取的是发布日之前最近的周三':'',
-           d.formulaCheckOk===false?`⚠️ 公布的预期盈利(${d.value})与公式验算(${d.formulaCheckValue})对不上，页面取公布值`:''].filter(Boolean).join('<br>')})},
+           d.formulaCheckOk===false?`⚠️ 公布的预期盈利(${d.value})与公式验算(${d.formulaCheckValue})对不上，页面取公布值`:''].filter(Boolean).join('<br>')}),
+   // ★v101.12 兜底：发改委这一期缺失/抓取失败/数据过期(freshnessOf=stale)/数值不合理时，同一个票位改用 Mysteel 白羽肉鸡养殖利润(口径不同，原来 v101.8 之前就用它，规则阈值最初就是按它定的)。
+   //   只顶替、不叠加：永远只有一票；用了兜底票权×0.5(这个来源近期没在线上跑过，正则没有新近验证)。发改委正常时后端根本不去抓 Mysteel。
+   fallback:{dataKey:'mysteelPoultryProfit', sourceName:'Mysteel白羽肉鸡养殖利润（兜底）',
+     extract:d=>({value:d.value, valueText:`${d.value>0?'+':''}${d.value}元/只`, date:d.date,
+       detail:`文章发布日期：${d.date}<br>口径：Mysteel 白羽肉鸡养殖利润（与发改委预期盈利定义不同，仅在发改委数据缺失/过期时顶替同一票位）`})}},
   {key:'feed', group:'demand', inputId:'m_feed', title:'饲料企业豆粕库存天数', unit:'天', ph:'如8.5', freq:'周度', sourceName:'Mysteel',
    dataKey:'mysteelFeedDays', sanityKey:'feedDays', cadence:'weekly', maxAgeDays:30,
    // ★需求端最直接的信号：饲料厂手里的豆粕还能用几天。天数高=饲料厂有货、近期补库需求弱(偏空)；天数低=需要补库、采购需求强(偏多)。
@@ -932,15 +937,41 @@ function writeManualStore(obj){
 }
 
 /** 自动抓取一个指标：成功→直接覆盖输入框+清掉旧的手动修正；失败/过期/数值不合理→不覆盖，如实说明原因。*/
+/** 兜底票：主来源缺失/失败/过期/数值不合理，且 cfg.fallback 的来源可用(也不过期、数值合理)时，返回 {cfg:换了来源的配置, src:兜底数据, why:主来源为什么不用}；否则返回 null。 */
+function pickFallback(cfg, data, key){
+  if(!cfg.fallback) return null;
+  const fb = data[cfg.fallback.dataKey];
+  if(!fb || !fb.available) return null;
+  let why = '';
+  const src = data[cfg.dataKey];
+  if(!src || !src.available) why = `抓取失败：${src && src.reason ? src.reason : '无数据'}`;
+  else {
+    const ex = cfg.extract(src);
+    if(ex.blocked) why = ex.blocked;
+    else if(freshnessOf(cfg, ex.date, clockNow()).state === 'stale') why = `数据已过期（${String(ex.date).slice(0,10)}）`;
+    else if(SANITY_RANGES[cfg.sanityKey] && (ex.value < SANITY_RANGES[cfg.sanityKey][0] || ex.value > SANITY_RANGES[cfg.sanityKey][1])) why = `数值不合理（${ex.value}）`;
+  }
+  if(!why) return null;
+  const ex2 = cfg.fallback.extract(fb);
+  const r = SANITY_RANGES[cfg.sanityKey];
+  if(r && (ex2.value < r[0] || ex2.value > r[1])) return null;
+  const fcfg = Object.assign({}, cfg, {extract:cfg.fallback.extract, sourceName:cfg.fallback.sourceName});
+  if(freshnessOf(fcfg, ex2.date, clockNow()).state === 'stale') return null;
+  return {cfg:fcfg, src:fb, why};
+}
+
 function refreshAutoIndicator(key){
-  const cfg = AUTO_BY_KEY[key];
+  let cfg = AUTO_BY_KEY[key];
   const data = window._syncedData;
   const ai = document.getElementById('ai_'+key);
   const input = document.getElementById(cfg.inputId);
   if(!data || !ai || !input) return;
   const st = window._indState[key] = window._indState[key] || {};
   st.stale = false; st.autoValue = null; st.failReason = ''; st.suppressed = ''; st.mild = ''; st.pendingReason = ''; st.holidayDiscount = ''; st.history = null;
-  const src = data[cfg.dataKey];
+  let src = data[cfg.dataKey];
+  const fbPick = pickFallback(cfg, data, key);
+  st.fallbackWhy = '';
+  if(fbPick){ st.fallbackWhy = fbPick.why; cfg = fbPick.cfg; src = fbPick.src; }
 
   const fail = (reasonHtml, badgeText)=>{
     const hasSaved = input.value !== '';
@@ -981,11 +1012,13 @@ function refreshAutoIndicator(key){
   st.history = src.history || null;              // 分位类指标(饲料库存天数)的规则要读它
   st.holidayDiscount = ex.holidayDiscount || '';  // 长假备货窗口：读数被提前备货抬高，票权×0.5
   st.estimated = sourceEstimateReason(key, src, st);
+  if(st.fallbackWhy && !st.estimated) st.estimated = `主来源${st.fallbackWhy}，改用口径不同的兜底来源`;
   st.suppressed = ex.suppress || '';
   st.caliber = ex.caliber || '';                  // 豆菜粕价差的口径('cities'=新口径三城市单值平均，'range'=旧口径区间中点)
   st.mild = ex.mild || '';
   const shortDate = String(ex.date||'').slice(0,10);
-  if(st.stale) setBadge(key, `⚠️ 数据过期 · 不计分`, 'badge-offline');
+  if(st.fallbackWhy) setBadge(key, `🔁 兜底：${cfg.sourceName.replace(/（兜底）/,'')} · ${shortDate}`, 'badge-manual');
+  else if(st.stale) setBadge(key, `⚠️ 数据过期 · 不计分`, 'badge-offline');
   else if(st.suppressed) setBadge(key, `🧧 ${st.suppressed.slice(0,2)}扰动期 · 不计分`, 'badge-manual');
   else if(st.late) setBadge(key, `🟡 晚了一期 · 降权 · ${shortDate}`, 'badge-manual');
   else if(st.estimated) setBadge(key, `🟡 估算值 · 降权 · ${shortDate}`, 'badge-manual');
@@ -998,6 +1031,7 @@ function refreshAutoIndicator(key){
     + (st.stale ? `<br>⚠️ 数据已过期(${fr.detail})：错过了两个以上应有的发布，仍显示但<b>不参与综合评分</b>` : '')
     + (st.late ? `<br>⏱ 数据晚了一期(${fr.detail})：错过了一个应有的发布，仍参与评分，<b>票权×${QUALITY_DISCOUNT}</b>` : '')
     + (st.estimated ? `<br>🔎 来源可靠性：${st.estimated}，<b>票权×${QUALITY_DISCOUNT}</b>` : '')
+    + (st.fallbackWhy ? `<br>🔁 <b>兜底来源</b>：主来源（发改委价格监测中心×卓创）${st.fallbackWhy}，本票临时改用 Mysteel 白羽肉鸡养殖利润——同一个票位顶替、不叠加；口径不同，<b>票权×${QUALITY_DISCOUNT}</b>` : '')
     + (ex.warn ? `<br>${ex.warn}` : '')
     + (cfg.noVote ? `<br>📣 <b>${cfg.noVote}</b>：${cfg.noVoteNote}` : '')
     + (src.history ? '<br>' + historyBlock(src.history, {unit:cfg.unit, pol:HISTORY_POLARITY[key], dir:cfg.noVote ? null : MANUAL_RULES[key](ex.value)[0]}) : '');

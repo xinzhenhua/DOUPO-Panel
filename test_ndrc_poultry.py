@@ -566,7 +566,7 @@ def test_end_to_end_main_run_writes_ndrc_poultry_into_latest_json_and_the_histor
     没有 mysteelPoultryProfit。——上一轮基差就是'每个零件都绿、主流程没接上'，这一条把整条链连起来。"""
     import json, io, contextlib
     d = tempfile.mkdtemp()
-    keep = ("fetch_ndrc_poultry", "fetch_json_debug", "fetch_text_debug", "fetch_basis_page", "fetch_dce_position_rank_multi", "fetch_spot_basis")
+    keep = ("fetch_ndrc_poultry", "fetch_poultry_fallback", "fetch_json_debug", "fetch_text_debug", "fetch_basis_page", "fetch_dce_position_rank_multi", "fetch_spot_basis")
     names = [n for n in dir(fd) if n.startswith("fetch_") and callable(getattr(fd, n)) and n not in keep]
     saved = {n: getattr(fd, n) for n in names}
     saved["fetch_dce_position_rank_multi"] = fd.fetch_dce_position_rank_multi
@@ -592,7 +592,8 @@ def test_end_to_end_main_run_writes_ndrc_poultry_into_latest_json_and_the_histor
         out = json.load(open(fd.OUTPUT_PATH, encoding="utf-8"))
         pr = out.get("ndrcPoultryProfit")
         assert pr and pr["available"] is True and pr["value"] == -4.10 and pr["date"] == "2026-09-23" and pr["ratio"] == 1.79 and pr["balance"] == 2.25, pr
-        assert "mysteelPoultryProfit" not in out, "latest.json 里不应该再有 mysteelPoultryProfit"
+        mp = out.get("mysteelPoultryProfit")
+        assert mp and mp.get("skipped") is True and mp["available"] is False, ("发改委正常时 Mysteel 兜底应当被跳过(不发请求)", mp)
         assert "history" in pr, "history_store 没有给 ndrcPoultryProfit 挂摘要"
         pts = hs.load_series("poultry_ndrc", os.path.join(d, "history"))["points"]
         assert len(pts) == 1 and pts[0]["v"] == -4.1 and pts[0]["x"]["wk"] == "2026年9月第4周", pts
@@ -601,18 +602,41 @@ def test_end_to_end_main_run_writes_ndrc_poultry_into_latest_json_and_the_histor
             setattr(fd, n, f)
         fd.OUTPUT_PATH = saved_out
         shutil.rmtree(d, ignore_errors=True)
-    ok("★端到端：真跑 main()：latest.json 里有 ndrcPoultryProfit(-4.10，监测日09-23，鸡料比价1.79，平衡点2.25，带 history 摘要)、history/poultry_ndrc.json 有1个点(2026年9月第4周)、没有 mysteelPoultryProfit")
+    ok("★端到端：真跑 main()：latest.json 里有 ndrcPoultryProfit(-4.10，监测日09-23，鸡料比价1.79，平衡点2.25，带 history 摘要)、history/poultry_ndrc.json 有1个点(2026年9月第4周)、Mysteel 兜底被跳过(skipped)")
 
 
 def test_backfill_registration_and_main_routine_wiring():
     assert "poultry_ndrc" in bf.JOBS and bf.JOBS["poultry_ndrc"] is bf.backfill_poultry_ndrc and "poultry_ndrc" not in bf.DEFAULT_JOBS
     src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_data.py"), encoding="utf-8").read()
-    assert re.search(r'"ndrcPoultryProfit"\s*:\s*fetch_ndrc_poultry\(\)', src), "主流程里没有 ndrcPoultryProfit: fetch_ndrc_poultry()"
-    assert not re.search(r'"mysteelPoultryProfit"\s*:\s*fetch_mysteel_poultry_profit\(\)', src), "主流程里还在调用 Mysteel 肉鸡利润"
+    assert re.search(r'_ndrc_result\s*=\s*fetch_ndrc_poultry\(\)', src) and re.search(r'"ndrcPoultryProfit"\s*:\s*_ndrc_result', src), "主流程里没有 ndrcPoultryProfit ← fetch_ndrc_poultry()"
+    assert not re.search(r'"mysteelPoultryProfit"\s*:\s*fetch_mysteel_poultry_profit\(\)', src), "主流程不能无条件调用 Mysteel 肉鸡利润(只能经 fetch_poultry_fallback)"
+    assert re.search(r'"mysteelPoultryProfit"\s*:\s*fetch_poultry_fallback\(_ndrc_result\)', src), "主流程没有接上兜底"
     html_ = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html"), encoding="utf-8").read()
     m = re.search(r"key:'poultry'.*?dataKey:'(\w+)'", html_, re.S)
     assert m and m.group(1) == "ndrcPoultryProfit", f"前端肉鸡卡读的键是 {m.group(1) if m else None}"
     ok("★poultry_ndrc 已登记且不在默认里；主流程调用 fetch_ndrc_poultry(键 ndrcPoultryProfit)、不再调用 Mysteel；前端肉鸡卡读的键与主流程一致(上一轮基差就漏过这一环)")
+
+
+def test_poultry_fallback_runs_mysteel_only_when_ndrc_is_missing_or_old():
+    calls = []
+    def fake():
+        calls.append(1)
+        return {"available": True, "value": -4.18, "date": "2026-09-24"}
+    good = {"available": True, "ageDays": 5, "stale": False}
+    r = fd.fetch_poultry_fallback(good, fetch=fake)
+    assert r["skipped"] is True and r["available"] is False and calls == [], (r, calls)
+    for ndrc in ({"available": False, "reason": "x"}, None, {"available": True, "ageDays": 17, "stale": False}, {"available": True, "ageDays": 3, "stale": True}, {"available": True}):
+        calls.clear()
+        r = fd.fetch_poultry_fallback(ndrc, fetch=fake)
+        assert r["available"] is True and r["value"] == -4.18 and r["fallbackFor"] == "ndrcPoultryProfit" and calls == [1], (ndrc, r)
+    edge = {"available": True, "ageDays": 16, "stale": False}
+    calls.clear(); assert fd.fetch_poultry_fallback(edge, fetch=fake).get("skipped") is True and calls == []          # 恰好16天不抓，17天抓
+    def boom():
+        raise RuntimeError("网络炸了")
+    r = fd.fetch_poultry_fallback(None, fetch=boom)
+    assert r["available"] is False and "RuntimeError" in r["reason"], r
+    assert fd.fetch_poultry_fallback(None, fetch=lambda: None)["available"] is False
+    ok("★肉鸡兜底只在发改委缺失/失败/过期/超过16天时才去抓 Mysteel(恰好16天不抓、17天抓)；抓取出错/返回怪东西不抛异常")
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

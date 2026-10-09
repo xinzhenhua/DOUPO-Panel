@@ -1468,6 +1468,28 @@ def fetch_ndrc_poultry(now_bj=None, fetch=None, max_articles=NDRC_LIVE_MAX_ARTIC
             pass
 
 
+NDRC_FALLBACK_AFTER_DAYS = 16     # 发改委监测日距今超过这么多天(与前端周频'晚了一期'上限一致)就去抓兜底；前端据 freshnessOf 决定是否真的顶替(扣掉休市日)
+
+
+def fetch_poultry_fallback(ndrc, fetch=None):
+    """肉鸡兜底票(v101.12)：只在发改委 ndrcPoultryProfit 缺失/失败/数据偏旧时才去抓 Mysteel 白羽肉鸡养殖利润，正常时不发这个请求(少一次搜索、少一个失败点)。
+    返回值永远是 dict、不抛异常；跳过时 {"available": False, "skipped": True, ...}，前端看到 skipped 就不会拿它顶替。"""
+    fetch = fetch or fetch_mysteel_poultry_profit
+    ok = isinstance(ndrc, dict) and ndrc.get("available") is True
+    age = ndrc.get("ageDays") if ok else None
+    if ok and not ndrc.get("stale") and isinstance(age, (int, float)) and age <= NDRC_FALLBACK_AFTER_DAYS:
+        return {"available": False, "skipped": True, "reason": "发改委数据正常，未启用兜底"}
+    try:
+        r = fetch()
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "reason": f"Mysteel 兜底抓取出错: {type(e).__name__}: {str(e)[:100]}"}
+    if isinstance(r, dict):
+        r = dict(r)
+        r["fallbackFor"] = "ndrcPoultryProfit"
+        return r
+    return {"available": False, "reason": "Mysteel 兜底抓取返回了意外的结果"}
+
+
 def fetch_mysteel_poultry_profit():
     """通过Mysteel文章搜索"白羽肉鸡养殖利润"这个关键词，从最新一条能匹配
     "盈利/亏损...元/只"这个模式的文章里，提取数值(盈利为正、亏损为负)。"""
@@ -4987,11 +5009,14 @@ def main():
 
     _meal_stock_result = fetch_mysteel_meal_stock()   # 周度库存：自己要展示，也给库消比的回退/交叉核对用
 
+    _ndrc_result = fetch_ndrc_poultry()
+
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "cbotPrice": fetch_cbot_price(),
         "mysteelCrushRate": fetch_mysteel_crush_rate(),
-        "ndrcPoultryProfit": fetch_ndrc_poultry(),      # v101.8：肉鸡养殖利润改用发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报(未来肉鸡养殖预期盈利)，不再取 Mysteel
+        "ndrcPoultryProfit": _ndrc_result,      # v101.8：肉鸡养殖利润改用发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》周报(未来肉鸡养殖预期盈利)，不再取 Mysteel
+        "mysteelPoultryProfit": fetch_poultry_fallback(_ndrc_result),      # v101.12：只在发改委缺失/过期时才真去抓，作同一票位的兜底
         "mysteelRmSpread": fetch_mysteel_rmspread(),
         "mysteelArrivalForecast": fetch_mysteel_arrival_forecast(),
         "mysteelMealStock": _meal_stock_result,
