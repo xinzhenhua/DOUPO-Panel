@@ -43,14 +43,33 @@ class FakeDriver:
     """pages: 列表页序列(每页是 item 列表)；nav_delay: 点击子栏目后要再轮询几次才出现条目；click_nav: 导航元素是否存在"""
 
     def __init__(self, pages, nav_delay=0, click_nav=True, has_next=True, next_changes=True, resolve=None, boom_on=None, clock=None, slow_get=0,
-                 works=("native", "js", "ancestor", "events"), hydrate_at=0.0, direct_ok=False):
+                 works=("native", "js", "ancestor", "events"), hydrate_at=0.0, direct_ok=False, new_tab=False, native_item=True, nuxt_ids=None):
         # works: 哪些点击办法真的能让列表加载；hydrate_at: 前端框架在这个(假)时刻之后才激活，之前的点击没有任何效果；direct_ok: 直接打开带子栏目 id 的地址就能加载
         self.works, self.hydrate_at, self.direct_ok, self.clicks = set(works), hydrate_at, direct_ok, []
+        self.new_tab, self.native_item, self.nuxt_ids = new_tab, native_item, nuxt_ids or []     # new_tab: 点标题在新标签页打开详情页(真实站点的行为)；native_item: 原生点击标题可用(否则只有JS点击)
+        self.handles, self.cur, self.tabs, self.closed_tabs = ["main"], "main", {}, 0
+        self.switch_to = self
         self.pages, self.nav_delay, self.click_nav, self.has_next, self.next_changes = pages, nav_delay, click_nav, has_next, next_changes
         self.resolve = resolve or {}          # 条目文字 -> 点击后跳转到的详情页 URL
         self.boom_on, self.clock, self.slow_get = boom_on, clock, slow_get
-        self.current_url, self.page_source = "about:blank", "<html></html>"
+        self._url, self._src = "about:blank", "<html></html>"
         self.loaded, self.page_i, self.polls_after_nav, self.quit_called, self.calls, self.stack = False, 0, 0, False, [], []
+
+    @property
+    def current_url(self):
+        return self.tabs[self.cur] if self.cur in self.tabs else self._url
+
+    @current_url.setter
+    def current_url(self, v):
+        self._url = v
+
+    @property
+    def page_source(self):
+        return f"<html>详情 {self.tabs[self.cur]}</html>" if self.cur in self.tabs else self._src
+
+    @page_source.setter
+    def page_source(self, v):
+        self._src = v
 
     def get(self, url):
         self.calls.append(("get", url))
@@ -60,8 +79,41 @@ class FakeDriver:
         self.loaded = bool(self.direct_ok and "sclmId=1840280592963387394" in url or self.direct_ok and url.endswith("list?clmId=1840280592963387394"))
         self.polls_after_nav = 0
 
+    @property
+    def window_handles(self):
+        return list(self.handles)
+
+    @property
+    def current_window_handle(self):
+        return self.cur
+
+    def window(self, h):
+        self.cur = h
+
+    def close(self):
+        self.handles.remove(self.cur)
+        self.closed_tabs += 1
+
     def find_elements(self, by, expr):
-        return [_El(self)] if self.click_nav else []
+        if nb.NAV_TEXT in expr:
+            return [_El(self)] if self.click_nav else []
+        for it in self.pages[self.page_i]:
+            if it["text"] in expr and self.native_item:
+                return [_El(self, it["text"])]
+        return []
+
+    def _item_click(self, text):
+        url = self.resolve.get(text)
+        if not url or not any(it["text"] == text for it in self.pages[self.page_i]):
+            return False
+        if self.new_tab:
+            h = "tab%d" % (len(self.tabs) + 1)
+            self.tabs[h] = url
+            self.handles.append(h)
+            return True
+        self.stack.append(self.current_url)
+        self.current_url, self.page_source = url, f"<html>详情 {url}</html>"
+        return True
 
     def _nav_click(self, how):
         self.clicks.append(how)
@@ -101,12 +153,9 @@ class FakeDriver:
                     self.page_i += 1
                 return "CLICKED"
         if script == nb.JS_CLICK_ITEM:
-            url = self.resolve.get(args[0])
-            if not url or not any(it["text"] == args[0] for it in self.pages[self.page_i]):      # 只能点到当前页上还显示着的条目（真实浏览器验证时发现的问题）
-                return "NOT_FOUND"
-            self.stack.append(self.current_url)
-            self.current_url, self.page_source = url, f"<html>详情 {url}</html>"
-            return "CLICKED"
+            return "CLICKED" if self._item_click(args[0]) else "NOT_FOUND"      # 只能点到当前页上还显示着的条目（真实浏览器验证时发现的问题）
+        if script == nb.JS_NUXT_IDS:
+            return self.nuxt_ids
         if script == nb.JS_CLICK_ANCESTOR:
             return self._nav_click("ancestor")
         if script == nb.JS_CLICK_EVENTS:
@@ -123,14 +172,17 @@ class FakeDriver:
 
 
 class _El:
-    def __init__(self, drv):
-        self.drv = drv
+    def __init__(self, drv, item_text=None):
+        self.drv, self.item_text = drv, item_text
 
     def is_displayed(self):
         return True
 
     def click(self):
-        self.drv._nav_click("native")
+        if self.item_text is not None:
+            self.drv._item_click(self.item_text)
+        else:
+            self.drv._nav_click("native")
 
 
 def lister(drv, clk=None, **kw):
@@ -206,6 +258,38 @@ def test_all_strategies_failing_leaves_complete_diagnostics():
     assert "等不到" in r["error"] and len(dbg["attempts"]) == 6 and dbg["describe"]["readyState"] == "complete" and dbg["currentUrl"], dbg
     assert clk.t < 30, clk.t
     ok("全部失败：错误+6次尝试(4种点击+2个直接地址)+页面现场描述，且耗时有限")
+
+
+def test_item_click_opens_the_article_in_a_new_tab_and_the_lister_reads_it_and_comes_back():
+    """★真实站点(2026-10-09 诊断)：条目是 <a title target=_blank> 没有 href，点击在新标签页打开详情页，原标签页地址不变。"""
+    p = [item(W4, "", "2026-09-25"), item(W3, "", "2026-09-18")]
+    d = FakeDriver([p], resolve={W4: D + "4", W3: D + "3"}, new_tab=True)
+    L, _ = lister(d)
+    r = L.list_articles(resolve_limit=2)
+    assert [x["url"] for x in r["links"]] == [D + "4", D + "3"] and "详情" in r["links"][0]["html"], r
+    assert d.cur == "main" and d.handles == ["main"] and d.closed_tabs == 2, (d.cur, d.handles, d.closed_tabs)
+    assert [x["via"] for x in r["debug"]["resolve"]] == ["new-tab", "new-tab"], r["debug"]["resolve"]
+    ok("★点标题在新标签页打开：切过去读地址和源码、关掉、切回原标签页；两条都取到")
+
+
+def test_when_native_click_is_unavailable_the_js_click_is_used_for_the_new_tab_too():
+    d = FakeDriver([[item(W4, "", "2026-09-25")]], resolve={W4: D + "4"}, new_tab=True, native_item=False)
+    L, _ = lister(d)
+    r = L.list_articles(resolve_limit=1)
+    assert r["links"][0]["url"] == D + "4" and r["debug"]["resolve"][0]["click"] == "js", r["debug"]
+    ok("原生点击找不到元素时退到 JS 点击")
+
+
+def test_if_nothing_opens_the_article_id_is_taken_from_the_nuxt_page_data():
+    d = FakeDriver([[item(W4, "", "2026-09-25")]], resolve={}, nuxt_ids=[{"key": "tId", "val": "2104842012139241474"}, {"key": "other", "val": "1111111111111111111"}])
+    L, _ = lister(d)
+    r = L.list_articles(resolve_limit=1)
+    assert r["links"][0]["url"] == "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474", r
+    assert r["debug"]["resolve"][0]["via"] == "nuxt-id"
+    d2 = FakeDriver([[item(W4, "", "2026-09-25")]], resolve={}, nuxt_ids=[{"key": "a", "val": "1111111111111111111"}, {"key": "b", "val": "2222222222222222222"}])
+    r2 = lister(d2)[0].list_articles(resolve_limit=1)
+    assert r2["links"] == [] and "取不到任何详情页地址" in r2["error"], r2
+    ok("★点击没有任何效果时，从 Nuxt 页面数据取 tId 拼地址（优先 tId/id 这类键名）；有歧义(多个候选且键名不明)就不猜")
 
 
 def test_missing_navigation_element_is_reported():

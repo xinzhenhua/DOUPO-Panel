@@ -107,6 +107,25 @@ const res = (performance.getEntriesByType('resource') || []).filter(r => /xhr|fe
 return {xhr: res, readyState: document.readyState, nuxt: !!(window.__NUXT__ || document.querySelector('#__nuxt')), candidates: cands, anchors: anchors};
 """
 
+# 从 Nuxt 的页面数据(window.__NUXT__)里找"含该标题的对象"里的 19 位数字字符串 id(文章 tId)。返回 [{key, val}]。真实结构没验证过：只作为点击取不到地址时的后备，
+# 取到后会拿详情页的标题/监测日去核对(见 fetch_ndrc_poultry 的解析与日期校验)。
+JS_NUXT_IDS = r"""
+const title = arguments[0];
+const out = [];
+const seen = new Set();
+function walk(o, depth) {
+  if (!o || typeof o !== 'object' || depth > 8 || seen.has(o)) return;
+  seen.add(o);
+  const vals = Object.keys(o).map(k => [k, o[k]]);
+  if (vals.some(([k, v]) => typeof v === 'string' && v.indexOf(title) >= 0)) {
+    for (const [k, v] of vals) if (typeof v === 'string' && /^\d{19}$/.test(v)) out.push({key: k, val: v});
+  }
+  for (const [k, v] of vals) walk(v, depth + 1);
+}
+try { walk(window.__NUXT__ || window.__nuxt__ || null, 0); } catch (e) {}
+return out.slice(0, 12);
+"""
+
 JS_BODY_HEAD = "return (document.body && document.body.innerText || '').slice(0, 400);"
 
 
@@ -153,6 +172,7 @@ class SeleniumLister:
             fd.NDRC_BASE + "/list?clmId=1832298113994649601&sclmId=1840280592963387394",
             fd.NDRC_BASE + "/list?clmId=1840280592963387394"]
         self._t0 = None
+        self._dbg = {}
 
     # ---- 内部 ----
     def _left(self):
@@ -189,23 +209,103 @@ class SeleniumLister:
     def _signature(self, items):
         return tuple((i["title"], i["pageDate"]) for i in items)
 
-    def _resolve_by_click(self, it):
-        """条目没有链接时：点它，读地址栏里的详情页地址和页面源码，然后退回列表。成功返回 True。"""
-        before = self._drv.current_url
-        r = self._drv.execute_script(JS_CLICK_ITEM, it["text"])
-        if r != "CLICKED":
-            return False
-        moved = self._wait(lambda: "detail" in (self._drv.current_url or "") and self._drv.current_url != before, min(15, max(1, self._left())))
-        if not moved:
-            return False
-        it["url"] = self._drv.current_url
-        it["html"] = self._drv.page_source
+    def _handles(self):
         try:
-            self._drv.back()
-            self._wait(lambda: bool(self._collect()), min(15, max(1, self._left())))
+            return list(self._drv.window_handles)
+        except Exception:  # noqa: BLE001
+            return []
+
+    def _native_click_item(self, text):
+        """Selenium 原生点击标题元素(真实用户手势，才能让 target=_blank 的新标签页不被弹窗拦截)；找不到返回 False。"""
+        try:
+            els = self._drv.find_elements("xpath", f"//a[normalize-space(@title)='{text}' or normalize-space(text())='{text}']")
+            if not els:
+                return False
+            pick = next((e for e in els if self._safe(lambda: e.is_displayed())), els[0])
+            pick.click()
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _resolve_by_click(self, it):
+        """条目没有 href 时取详情页地址。
+        ★v101.11：真实页面(2026-10-09 诊断)的条目是 `<a title=… target="_blank">` 没有 href——点击后在**新标签页**打开详情页，原标签页地址不变(v101.9/10 只看原标签页，所以以为"点击没跳转")。
+        办法：点击(先原生、再 JS)→ 若多出新窗口就切过去读地址和源码、关掉、切回；若原标签页地址变成 detail 就读后退回；都没有则从 Nuxt 页面数据里找 tId 拼地址。成功返回 True。"""
+        drv = self._drv
+        before, handles0 = drv.current_url, self._handles()
+        home = handles0[0] if handles0 else None
+        try:
+            home = drv.current_window_handle
         except Exception:  # noqa: BLE001
             pass
-        return True
+        dbg = self._dbg.setdefault("resolve", [])
+        rec = {"week": it["week"]}
+
+        def moved():
+            new = [h for h in self._handles() if h not in handles0]
+            if new:
+                return ("tab", new[0])
+            if "detail" in (drv.current_url or "") and drv.current_url != before:
+                return ("same", None)
+            return None
+
+        how = None
+        for name, act in (("native", lambda: self._native_click_item(it["text"])),
+                          ("js", lambda: drv.execute_script(JS_CLICK_ITEM, it["text"]) == "CLICKED")):
+            try:
+                clicked = act()
+            except Exception:  # noqa: BLE001
+                clicked = False
+            if not clicked:
+                continue
+            how = self._wait(moved, min(8, max(1, self._left())))
+            rec["click"] = name
+            if how:
+                break
+        if how and how[0] == "tab":
+            try:
+                drv.switch_to.window(how[1])
+                self._wait(lambda: "detail" in (drv.current_url or ""), min(15, max(1, self._left())))
+                url = drv.current_url
+                if "detail" in (url or ""):
+                    it["url"], it["html"] = url, drv.page_source
+                    rec["via"] = "new-tab"
+            finally:
+                try:
+                    drv.close()
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    drv.switch_to.window(home)
+                except Exception:  # noqa: BLE001
+                    pass
+            if it.get("url"):
+                self._dbg["resolve"].append(rec)
+                return True
+        elif how and how[0] == "same":
+            it["url"], it["html"] = drv.current_url, drv.page_source
+            rec["via"] = "same-tab"
+            try:
+                drv.back()
+                self._wait(lambda: bool(self._collect()), min(15, max(1, self._left())))
+            except Exception:  # noqa: BLE001
+                pass
+            self._dbg["resolve"].append(rec)
+            return True
+        # 后备：Nuxt 页面数据里的文章 id
+        try:
+            ids = drv.execute_script(JS_NUXT_IDS, it["title"]) or []
+        except Exception:  # noqa: BLE001
+            ids = []
+        rec["nuxtIds"] = ids[:4]
+        pref = [i["val"] for i in ids if (i.get("key") or "").lower() in ("tid", "id", "articleid", "contentid", "cid")]
+        pick = pref[0] if pref else (ids[0]["val"] if len(ids) == 1 else None)
+        self._dbg["resolve"].append(rec)
+        if pick:
+            it["url"] = f"{fd.NDRC_BASE}/detail?clmId=1840280592963387394&tId={pick}"
+            rec["via"] = "nuxt-id"
+            return True
+        return False
 
     # ---- 打开"猪料、鸡料、蛋料比价信息"列表 ----
     def _body_head(self, n=200):
@@ -307,6 +407,7 @@ class SeleniumLister:
         真实浏览器验证时发现：先翻完页再点，只能点到最后一页的条目)；最多点 resolve_limit 条(None=不限，只受总时限约束)，skip_weeks 里已有的周不点(省时间)。"""
         self._t0 = self._clock()
         dbg = {"entry": self.entry_url, "steps": []}
+        self._dbg = dbg
         out = {"links": [], "pages": 0, "noNext": False, "error": None, "debug": dbg}
         try:
             self._drv = self._factory()
