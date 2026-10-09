@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T14:13:05.623921+00:00",
+  "generatedAt": "2026-10-09T02:57:28.394482+00:00",
   "series": [
     {
       "key": "soy_import",
@@ -1288,21 +1288,63 @@
     },
     {
       "key": "poultry_ndrc",
-      "error": "点了子栏目后，等不到标题含'猪料、鸡料、蛋料比价'的文章条目(列表没加载出来，或被站点拦截)",
-      "listPages": 0,
+      "error": "找到60个文章条目，但取不到任何详情页地址(条目没有链接、点击也没跳转)；诊断见 debug.sampleOuter",
+      "listPages": 6,
       "noNextPageLink": false,
       "debug": {
         "entry": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593",
-        "steps": [],
+        "steps": [
+          {
+            "page": 1,
+            "items": 10,
+            "withHref": 0
+          },
+          {
+            "page": 2,
+            "items": 10,
+            "withHref": 0
+          },
+          {
+            "page": 3,
+            "items": 10,
+            "withHref": 0
+          },
+          {
+            "page": 4,
+            "items": 10,
+            "withHref": 0
+          },
+          {
+            "page": 5,
+            "items": 10,
+            "withHref": 0
+          },
+          {
+            "page": 6,
+            "items": 10,
+            "withHref": 0
+          }
+        ],
+        "attempts": [
+          {
+            "how": "native",
+            "result": "CLICKED",
+            "items": 10
+          }
+        ],
         "bodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n202",
         "navClick": "CLICKED",
-        "afterClickBodyHead": "搜索\n热搜词：指数粮食油价\n首页\n监测信息\n价格信息\n工作动态\n通知公告\n监测制度\n媒体聚焦\n关于我们\n返回主站首页\n当前位置：\n监测信息\n国内外市场价格监测情况周报\n生猪出场价与玉米价格周报\n猪料、鸡料、蛋料比价信息\n全国钢材批发市场价格周报\n分析预测\n社会机构价格动态\n2026年9月23日全国生猪出场价格及主要批发市场玉米价格\n2026年9月16日全国生猪出场价格及主要批发市场玉米价格\n2026年9月9日全国生猪出场价格及 主要批发市场玉米价格\n2026年9月2日全国生猪出场价格及主要批发市场玉米价格\n2026年8月26日全国生猪出场价格及主要批发市场玉米价格\n2026年8月19日全国生猪",
-        "currentUrl": "https://www.jgjcndrc.org.cn/list?clmId=1832298113994649601&sclmId=1836667772799598593"
+        "opened": "native",
+        "resolveTried": 59,
+        "items": 60,
+        "itemsWithHref": 0,
+        "sampleOuter": "<a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a>",
+        "sampleParent": "<span data-v-8593fa2e=\"\" class=\"w-full flex items-center\"><div data-v-8593fa2e=\"\" class=\"w-[11px] h-[9px] mr-[9px] titIcon\"></div><a data-v-8593fa2e=\"\" title=\"2026年9月第4周猪料、鸡料、蛋料比价\" target=\"_blank\" class=\"text-black_text block flex-1 text-[16px] hover:text-primary_text truncate overflow-ellipsis pr-[10px] hover:underline cursor-pointer\">2026年9月第4周猪料、鸡料、蛋料比价</a><!----></span>"
       },
       "notes": [
         "海外 IP 访问国内政府站点可能超时或被拒；GitHub Actions 的出口我无法验证。debug 里是浏览器看到的页面情况，发我据此调整"
       ],
-      "ranAt": "2026-10-08T14:13:05.623921+00:00",
+      "ranAt": "2026-10-09T02:57:28.394482+00:00",
       "fromPreviousRun": false
     },
     {
