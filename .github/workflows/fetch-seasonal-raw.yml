@@ -51,10 +51,13 @@ jobs:
         run: |
           python3 fetch_seasonal_raw.py --only "$ONLY" --rank-list "$RANK_LIST" --budget 2400
 
+      # 这一步失败(例如基线CSV被误删)不能拖累下一步：前面抓到的数据必须照样提交，否则白抓。失败原因会显示在这一步的日志里。
       - name: 重新生成季节性统计(data/seasonal.json；合约文件够多就用合约文件，否则用基线CSV)
+        continue-on-error: true
         run: python3 seasonal_stats.py --raw data/raw/seasonal --out data/seasonal.json
 
       - name: 提交
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
