@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-09T04:10:32.133201+00:00",
+  "generatedAt": "2026-10-09T04:32:22.697406+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.8,
-    "change": 0.1,
-    "changePct": 0.03,
+    "price": 360.9,
+    "change": 0.2,
+    "changePct": 0.06,
     "asOf": "2026-10-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -144,6 +144,11 @@
       "sparse": null,
       "window": null
     }
+  },
+  "mysteelPoultryProfit": {
+    "available": false,
+    "skipped": true,
+    "reason": "发改委数据正常，未启用兜底"
   },
   "mysteelRmSpread": {
     "available": true,
@@ -896,8 +901,34 @@
   },
   "crushMargins": {
     "sep": {
-      "available": false,
-      "reason": "以下合约价格缺失，无法计算压榨利润: 豆油Y2709(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
+      "available": true,
+      "contractMonth": 9,
+      "date": "2026-10-08",
+      "datesAligned": true,
+      "mealSymbol": "M2709",
+      "mealPrice": 3070.0,
+      "oilSymbol": "Y2709",
+      "oilPrice": 8631.0,
+      "beanSymbol": "B2709",
+      "beanPrice": 3841.0,
+      "grossMargin": 165.7,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 654,
+        "minPoints": 12,
+        "asOf": "2026-10-08",
+        "since": "2019-04-01",
+        "percentile": 65.2,
+        "min": 22.0,
+        "max": 229.4,
+        "median": 138.45,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     },
     "may": {
       "available": true,
