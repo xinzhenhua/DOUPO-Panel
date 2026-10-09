@@ -30,7 +30,13 @@ for (const old of ['eventCalendarCard','resonanceCard','alertCard','structureCar
   check(`★旧的顶层独立卡 ${old} 已经不存在(合并进决策卡了，不是在旁边多出一张)`, !BODY.includes(`id="${old}"`));
 }
 check('决策卡在合约选择/上下文之后、天气板块之前(DOM顺序)', dc0 > BODY.indexOf('id="contractContext"') && dc0 < BODY.indexOf('id="group-us-weather"'));
-check('★顶层只剩一张"决策卡"：从上下文卡到天气板块之间，没有别的 class="card" 顶层卡', (BODY.slice(BODY.indexOf('id="contractContext"') + 20, BODY.indexOf('id="group-us-weather"')).match(/<div class="card"/g) || []).length === 1);
+// v101.14：季节性卡(id=seasonalCard，只展示不计分)是有意加在决策卡后面的独立卡，不算"旧卡散落回来"——单独点名放行，其余顶层卡仍然不许有
+{
+  const seg = BODY.slice(BODY.indexOf('id="contractContext"') + 20, BODY.indexOf('id="group-us-weather"'));
+  const cards = (seg.match(/<div class="card"[^>]*>/g) || []).filter(t => !t.includes('id="seasonalCard"'));
+  check('★顶层只剩一张"决策卡"(季节性卡 seasonalCard 除外)：从上下文卡到天气板块之间，没有别的 class="card" 顶层卡', cards.length === 1);
+  check('季节性卡在决策卡之后、天气板块之前', BODY.indexOf('id="seasonalCard"') > dc0 && BODY.indexOf('id="seasonalCard"') < BODY.indexOf('id="group-us-weather"'));
+}
 check('摘要容器在五个区块之前(先看结论再看依据)', DC.indexOf('id="decisionSummary"') < DC.indexOf('<details class="dc-sec"'));
 
 // ===================== 辅助 =====================

@@ -1,0 +1,63 @@
+name: 抓取季节性原始数据
+
+# 一次性、手动触发(Actions标签页 → 抓取季节性原始数据 → Run workflow)。
+# 第一次：什么都不用改，直接点绿色 Run workflow(默认 only=main,contracts,cbot,fx)。
+#   main=豆粕主连10年日K(含持仓)，contracts=各具体合约日K(约100多个，有40分钟时间预算，没抓完就再点一次，已抓的不重抓)，
+#   cbot=CBOT豆粕和大豆10年，fx=美元兑人民币10年。
+# 第二次起：想补大商所龙虎榜历史，把 only 改成 dce_rank，并在 rank_list 里填 "月份:合约" 清单，例如 2023-06:m2309,2023-07:m2309,2023-08:m2401
+#   (文件存到 data/raw/dce_rank_hist/，不会混进 data/raw/dce_rank/)。
+# 跑完会提交 data/raw/seasonal/_fetch_report.json(每一项成功与否、点数、起止日期、失败原因)，并重新生成 data/seasonal.json。
+# 把 _fetch_report.json 的内容发给我即可。
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe。默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区(江苏)报价接口是否存在(只读，结果写进报告)"
+        default: "main,contracts,cbot,fx"
+      rank_list:
+        description: "只有 only 含 dce_rank 时才填：月份:合约，逗号分隔，例如 2023-06:m2309,2023-07:m2309,2023-08:m2401"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 语法检查(几秒内发现写错的地方)
+        run: python -m compileall -q -f .
+
+      - name: 安装依赖(akshare，精确版本见 requirements-akshare.lock.txt)
+        run: pip install -r requirements-akshare.lock.txt
+
+      - name: 抓取原始数据
+        env:
+          ONLY: ${{ github.event.inputs.only }}
+          RANK_LIST: ${{ github.event.inputs.rank_list }}
+        run: |
+          python3 fetch_seasonal_raw.py --only "$ONLY" --rank-list "$RANK_LIST" --budget 2400
+
+      - name: 重新生成季节性统计(data/seasonal.json；合约文件够多就用合约文件，否则用基线CSV)
+        run: python3 seasonal_stats.py --raw data/raw/seasonal --out data/seasonal.json
+
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/raw/ data/seasonal.json
+          git diff --staged --quiet || git commit -m "抓取季节性原始数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
