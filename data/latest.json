@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-09T15:30:55.707692+00:00",
+  "generatedAt": "2026-10-10T07:49:59.108260+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 363.3,
-    "change": 2.6,
-    "changePct": 0.72,
+    "price": 368.7,
+    "change": 8.0,
+    "changePct": 2.22,
     "asOf": "2026-10-09T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -69,7 +69,7 @@
     "dateFallback": false,
     "usedFallback": false,
     "fallbackWeeks": 0,
-    "ageDays": 16,
+    "ageDays": 17,
     "stale": false,
     "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
     "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
@@ -90,15 +90,33 @@
     }
   },
   "mysteelPoultryProfit": {
-    "available": false,
-    "skipped": true,
-    "reason": "发改委数据正常，未启用兜底"
+    "available": true,
+    "value": -4.18,
+    "date": "2026-09-24",
+    "matchedText": "本周白羽肉鸡平均理论养殖亏损4.18元/只。毛鸡价格维持年内最低点，但因对应前期高价苗阶段，平均鸡苗成本达3.15元/羽，且山东饲料价格上涨30.00元/吨，致平均养殖成本涨至3.68元/只。目前养殖端亏损严重，出栏亏损3.00-4.00元/只成为常态。",
+    "source": "Mysteel文章(白羽肉鸡养殖利润)",
+    "sourceUrl": "https://search.mysteel.com/fastcomment.html",
+    "fallbackFor": "ndrcPoultryProfit",
+    "history": {
+      "n": 0,
+      "minPoints": 12,
+      "asOf": "2026-09-24",
+      "since": null,
+      "percentile": null,
+      "min": null,
+      "max": null,
+      "median": null,
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
+    }
   },
   "mysteelRmSpread": {
     "available": true,
     "value": 820.0,
-    "date": "2026-10-09",
-    "matchedText": "2026年10月9日，国内主要市场豆菜粕价差如下：广东豆粕3330元/吨，菜粕2540元/吨，价差790元/吨；广西豆粕3330元/吨，菜粕2560元/吨，价差770元/吨；南通豆粕3330元/吨，菜粕2430元/吨，价差900元/吨。数据来源于钢联数据。",
+    "date": "2026-10-10",
+    "matchedText": "2026年10月10日，广东豆粕3330元/吨，菜粕2540元/吨，价差790元/吨；广西豆粕3330元/吨，菜粕2560元/吨，价差770元/吨；南通豆粕3330元/吨，菜粕2430元/吨，价差900元/吨。与前一交易日相比，广东、广西价差不变，南通价差扩大10元/吨。",
     "source": "Mysteel文章(豆菜粕价差)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
     "citySamples": [
@@ -108,14 +126,14 @@
     ],
     "formatUsed": "多城市单值平均",
     "history": {
-      "n": 0,
+      "n": 1,
       "minPoints": 12,
-      "asOf": "2026-10-09",
-      "since": null,
+      "asOf": "2026-10-10",
+      "since": "2026-10-09",
       "percentile": null,
-      "min": null,
-      "max": null,
-      "median": null,
+      "min": 820.0,
+      "max": 820.0,
+      "median": 820.0,
       "seasonal": null,
       "cohort": null,
       "sparse": null,
@@ -257,7 +275,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 39,
+    "articleAgeDays": 40,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -664,7 +682,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 11,
+    "ageDays": 12,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -713,7 +731,7 @@
     "consistent": true,
     "usedFallback": false,
     "fallbackDays": 0,
-    "ageDays": 0,
+    "ageDays": 1,
     "source": "生意社(100ppi.com)豆粕现货价 − 主力合约结算价，自行计算(AKShare futures_spot_price)",
     "sourceUrl": "https://www.100ppi.com/sf/day-2026-10-09.html",
     "spotDefinition": "生意社现货价(口径文档未明确，疑为多地综合的基准价)；主力合约是生意社认定的，可能与页面选的合约月份不同，主力换月处基差会有断层",
@@ -745,20 +763,20 @@
   },
   "hogRatio": {
     "available": true,
-    "value": 4.39,
-    "date": "2026-10-09",
-    "pigPrice": 10.25,
-    "cornPricePerTon": 2333.0,
-    "pigLatestDate": "2026-10-09",
-    "cornLatestDate": "2026-10-09",
+    "value": 4.41,
+    "date": "2026-10-10",
+    "pigPrice": 10.24,
+    "cornPricePerTon": 2324.0,
+    "pigLatestDate": "2026-10-10",
+    "cornLatestDate": "2026-10-10",
     "source": "玄田数据(中国养猪网)：外三元生猪价格÷玉米价格，自行计算",
     "sourceUrl": "https://zhujia.zhuwang.com.cn",
     "history": {
-      "n": 366,
+      "n": 367,
       "minPoints": 12,
-      "asOf": "2026-10-09",
+      "asOf": "2026-10-10",
       "since": "2025-10-08",
-      "percentile": 34.8,
+      "percentile": 37.3,
       "min": 3.65,
       "max": 5.68,
       "median": 4.6,
@@ -805,16 +823,16 @@
   "cftcManagedMoney": {
     "available": true,
     "marketName": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
-    "reportDate": "2026-09-29",
-    "longPositions": 215318.0,
-    "shortPositions": 7740.0,
-    "netPosition": 207578.0,
-    "longChange": 12596.0,
-    "shortChange": -3895.0,
-    "netChange": 16491.0,
-    "streakWeeks": 7,
-    "streakDirection": "up",
-    "historyPercentile": 100.0,
+    "reportDate": "2026-10-06",
+    "longPositions": 213268.0,
+    "shortPositions": 7967.0,
+    "netPosition": 205301.0,
+    "longChange": -2050.0,
+    "shortChange": 227.0,
+    "netChange": -2277.0,
+    "streakWeeks": 1,
+    "streakDirection": "down",
+    "historyPercentile": 99.4,
     "historyWeeksUsed": 156,
     "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
     "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"
@@ -971,6 +989,36 @@
       }
     }
   },
+  "costAnchor": {
+    "available": true,
+    "zsCents": 1292.0,
+    "fx": 6.6921,
+    "mealPrice": 3402.0,
+    "oilPrice": 9014.0,
+    "beanCost": 4356.9,
+    "mealCost": 3617.0,
+    "mealCostLow": 3441.1,
+    "mealCostHigh": 3792.8,
+    "gap": -215.0,
+    "gapPct": -5.9,
+    "position": "below",
+    "params": {
+      "asof": "2026-10-10",
+      "premium_cents": 250,
+      "premium_step": 50,
+      "tariff": 0.03,
+      "vat": 0.09,
+      "port_fee": 100,
+      "crush_fee": 150,
+      "source_note": "关税/压榨费来自Mysteel与标普公开报道；升贴水、港杂费、增值税为经验口径，请核对后修改本参数"
+    },
+    "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。",
+    "mealSymbol": "M2701",
+    "priceDate": "2026-10-09",
+    "zsDate": "2026-10-09",
+    "fxDate": "2026-10-09",
+    "source": "CBOT美豆连续合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
+  },
   "brazilPlantingProgress": {
     "available": false,
     "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"
@@ -1118,7 +1166,7 @@
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":55542.94,\"d0\":768.56,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":51520.52,\"d0\":4790.98,\"d1\":21.07,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IA\",\"none",
         "sampleRawRow": {
@@ -1137,7 +1185,7 @@
         "totalRowsReturned": 3
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":36769.91,\"d0\":19612.63,\"d1\":5407.29,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":36536.61,\"d0\":19845.94,\"d1\":5407.29,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"I",
         "sampleRawRow": {
@@ -1156,7 +1204,7 @@
         "totalRowsReturned": 3
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":16863.28,\"d0\":67517.90,\"d1\":52816.10,\"d2\":22817.53,\"d3\":2128.32,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":16550.06,\"d0\":67831.13,\"d1\":53657.68,\"d2\":22817.53,\"d3\":2146.74,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1175,7 +1223,7 @@
         "totalRowsReturned": 3
       },
       "IN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32145.07,\"d0\":4054.03,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32594.63,\"d0\":3604.48,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IN\",\"none",
         "sampleRawRow": {
@@ -1194,7 +1242,7 @@
         "totalRowsReturned": 3
       },
       "NE": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":25568.59,\"d0\":51731.41,\"d1\":34239.80,\"d2\":17765.64,\"d3\":4971.55,\"d4\":719.43,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":22158.61,\"d0\":55141.39,\"d1\":38471.78,\"d2\":17798.04,\"d3\":4971.55,\"d4\":719.43,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"s",
         "sampleRawRow": {
@@ -1213,7 +1261,7 @@
         "totalRowsReturned": 3
       },
       "OH": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39734.75,\"d0\":1574.80,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41100.05,\"d0\":209.50,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\"",
         "sampleRawRow": {
@@ -1232,7 +1280,7 @@
         "totalRowsReturned": 3
       },
       "MO": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":27378.77,\"d0\":42339.29,\"d1\":31218.96,\"d2\":17495.95,\"d3\":10648.16,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":26350.52,\"d0\":43367.54,\"d1\":31614.26,\"d2\":16399.50,\"d3\":9073.62,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stat",
         "sampleRawRow": {
@@ -1251,7 +1299,7 @@
         "totalRowsReturned": 3
       },
       "SD": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":11834.35,\"d0\":65292.71,\"d1\":47276.51,\"d2\":6901.73,\"d3\":251.34,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":11772.75,\"d0\":65354.32,\"d1\":48408.48,\"d2\":8150.94,\"d3\":251.34,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbr",
         "sampleRawRow": {
@@ -1270,7 +1318,7 @@
         "totalRowsReturned": 3
       },
       "ND": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":20355.48,\"d0\":50350.81,\"d1\":37682.79,\"d2\":23144.23,\"d3\":5315.46,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":20355.48,\"d0\":50350.81,\"d1\":41326.52,\"d2\":23686.96,\"d3\":5327.83,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1289,7 +1337,7 @@
         "totalRowsReturned": 3
       },
       "KS": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":42083.96,\"d0\":40203.45,\"d1\":25381.85,\"d2\":8560.41,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":24392.35,\"d0\":57895.05,\"d1\":38191.65,\"d2\":18678.47,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbrevi",
         "sampleRawRow": {
@@ -1308,7 +1356,7 @@
         "totalRowsReturned": 3
       },
       "MI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":21741.91,\"d0\":36415.62,\"d1\":14767.75,\"d2\":6371.12,\"d3\":992.65,\"d4\":71.73,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":21846.30,\"d0\":36311.23,\"d1\":12120.89,\"d2\":2252.56,\"d3\":687.20,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbb",
         "sampleRawRow": {
@@ -1327,7 +1375,7 @@
         "totalRowsReturned": 3
       },
       "WI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/25/2026&enddate=10/9/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/26/2026&enddate=10/10/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":25326.92,\"d0\":30721.53,\"d1\":28366.25,\"d2\":22697.70,\"d3\":11451.02,\"d4\":2507.15,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":25650.72,\"d0\":30397.73,\"d1\":29690.12,\"d2\":22817.44,\"d3\":11357.95,\"d4\":1712.63,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00",
         "sampleRawRow": {
@@ -11037,9 +11085,9 @@
     "byCountry": {
       "BR": {
         "available": true,
-        "marketYear": 2026,
-        "production": 186000.0,
-        "totalSupply": 224488.0,
+        "marketYear": 2025,
+        "production": 180500.0,
+        "totalSupply": 219241.0,
         "countryName": "巴西",
         "debug": {
           "matchedCommodity": {
@@ -11064,19 +11112,19 @@
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 4,
               "unitId": 4,
-              "value": 50000.0
+              "value": 48500.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 20,
               "unitId": 8,
               "value": 37688.0
@@ -11084,59 +11132,59 @@
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 28,
               "unitId": 8,
-              "value": 186000.0
+              "value": 180500.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 57,
               "unitId": 8,
-              "value": 800.0
+              "value": 1053.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 86,
               "unitId": 8,
-              "value": 224488.0
+              "value": 219241.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 88,
               "unitId": 8,
-              "value": 118000.0
+              "value": 114460.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 7,
               "unitId": 8,
-              "value": 65000.0
+              "value": 62500.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 149,
               "unitId": 8,
               "value": 0.0
@@ -11144,22 +11192,22 @@
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 161,
               "unitId": 8,
-              "value": 4600.0
+              "value": 4400.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "BR",
-              "marketYear": "2026",
+              "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 125,
               "unitId": 8,
-              "value": 69600.0
+              "value": 66900.0
             }
           ]
         }
@@ -11167,7 +11215,7 @@
       "AR": {
         "available": true,
         "marketYear": 2025,
-        "production": 49500.0,
+        "production": 49300.0,
         "totalSupply": 81471.0,
         "countryName": "阿根廷",
         "debug": {
@@ -11195,7 +11243,7 @@
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 4,
               "unitId": 4,
               "value": 16200.0
@@ -11205,7 +11253,7 @@
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 20,
               "unitId": 8,
               "value": 24671.0
@@ -11215,27 +11263,27 @@
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 28,
               "unitId": 8,
-              "value": 49500.0
+              "value": 49300.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 57,
               "unitId": 8,
-              "value": 7300.0
+              "value": 7500.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 86,
               "unitId": 8,
               "value": 81471.0
@@ -11245,27 +11293,27 @@
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 88,
               "unitId": 8,
-              "value": 9000.0
+              "value": 8900.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 7,
               "unitId": 8,
-              "value": 42000.0
+              "value": 43000.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 149,
               "unitId": 8,
               "value": 0.0
@@ -11275,20 +11323,20 @@
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 161,
               "unitId": 8,
-              "value": 6400.0
+              "value": 5900.0
             },
             {
               "commodityCode": "2222000",
               "countryCode": "AR",
               "marketYear": "2025",
               "calendarYear": "2026",
-              "month": "09",
+              "month": "10",
               "attributeId": 125,
               "unitId": 8,
-              "value": 48400.0
+              "value": 48900.0
             }
           ]
         }
@@ -11301,7 +11349,7 @@
     "commodity": "Soybeans(大豆)",
     "weekEnding": "2026-10-01T00:00:00",
     "marketYearUsed": 2027,
-    "dataAgeDays": 8,
+    "dataAgeDays": 9,
     "isStale": false,
     "netSalesMT": 549377,
     "prevNetSalesMT": 1033545,
@@ -11397,15 +11445,15 @@
     "commodity": "Oilseed, Soybean",
     "marketYear": 2026,
     "marketYearLabel": "2026/27",
-    "wasdeVintage": "2026年09月版",
-    "endingStocks": 8432.0,
-    "production": 123422.0,
-    "totalSupply": 132947.0,
-    "domesticConsumption": 78657.0,
-    "exports": 45858.0,
+    "wasdeVintage": "2026年10月版",
+    "endingStocks": 8572.0,
+    "production": 124147.0,
+    "totalSupply": 133404.0,
+    "domesticConsumption": 78702.0,
+    "exports": 46130.0,
     "crush": 75659.0,
-    "totalUse": 124515.0,
-    "stocksToUsePct": 6.8,
+    "totalUse": 124832.0,
+    "stocksToUsePct": 6.9,
     "unit": "千公吨(USDA PSD标准单位)",
     "source": "USDA-FAS PSD API (WASDE同源数据)",
     "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
@@ -11440,13 +11488,13 @@
         "rank": 2,
         "foreign": true,
         "history": {
-          "n": 1,
-          "since": "2026-10-09",
+          "n": 2,
+          "since": "2026-10-08",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
+            "direction": "down",
+            "days": 1,
+            "total": -8421,
+            "since": "2026-10-09",
             "contract": "M2701"
           },
           "change5": null,
@@ -11460,13 +11508,13 @@
         "rank": 12,
         "foreign": true,
         "history": {
-          "n": 1,
-          "since": "2026-10-09",
+          "n": 2,
+          "since": "2026-10-08",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
+            "direction": "up",
+            "days": 1,
+            "total": 9505,
+            "since": "2026-10-09",
             "contract": "M2701"
           },
           "change5": null,
@@ -11480,13 +11528,13 @@
         "rank": 10,
         "foreign": true,
         "history": {
-          "n": 1,
-          "since": "2026-10-09",
+          "n": 2,
+          "since": "2026-10-08",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
+            "direction": "down",
+            "days": 1,
+            "total": -194,
+            "since": "2026-10-09",
             "contract": "M2701"
           },
           "change5": null,
@@ -11500,13 +11548,13 @@
         "rank": 1,
         "foreign": false,
         "history": {
-          "n": 1,
-          "since": "2026-10-09",
+          "n": 2,
+          "since": "2026-10-08",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
+            "direction": "down",
+            "days": 1,
+            "total": -27174,
+            "since": "2026-10-09",
             "contract": "M2701"
           },
           "change5": null,
@@ -11520,13 +11568,13 @@
         "rank": 2,
         "foreign": false,
         "history": {
-          "n": 1,
-          "since": "2026-10-09",
+          "n": 2,
+          "since": "2026-10-08",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
+            "direction": "up",
+            "days": 1,
+            "total": 7773,
+            "since": "2026-10-09",
             "contract": "M2701"
           },
           "change5": null,
@@ -11544,13 +11592,13 @@
       ]
     },
     "cftc": {
-      "net": 207578.0,
-      "netChange": 16491.0,
-      "streakWeeks": 7,
-      "streakDirection": "up",
-      "percentile": 100.0,
+      "net": 205301.0,
+      "netChange": -2277.0,
+      "streakWeeks": 1,
+      "streakDirection": "down",
+      "percentile": 99.4,
       "weeksUsed": 156,
-      "reportDate": "2026-09-29"
+      "reportDate": "2026-10-06"
     },
     "state": {
       "note": "只能判断持仓拥挤度(高盛净多头水平+CFTC管理基金净多的历史分位)。文档里'资金市'还要求的价格突破、无视基本面利空、美豆不涨豆粕涨、高盛连续N日单边增仓，目前都未判断：价格/联动需要美豆数据，'连续N日'需要龙虎榜历史(v101起每天累积，但刚开始，要攒够才能判断，见TODO.md)。",
@@ -11559,6 +11607,50 @@
       "level": "red",
       "label": "外资多头拥挤"
     },
-    "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约"
+    "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约",
+    "trend": {
+      "高盛期货": {
+        "n": 2,
+        "contract": "M2701",
+        "high": 120000,
+        "code": "insufficient",
+        "last": {
+          "d": "2026-10-09",
+          "v": 129562
+        }
+      },
+      "摩根大通": {
+        "n": 2,
+        "contract": "M2701",
+        "high": null,
+        "code": "insufficient",
+        "last": {
+          "d": "2026-10-09",
+          "v": 1635
+        }
+      },
+      "瑞银期货": {
+        "n": 2,
+        "contract": "M2701",
+        "high": null,
+        "code": "insufficient",
+        "last": {
+          "d": "2026-10-09",
+          "v": 11787
+        }
+      }
+    },
+    "verdict": {
+      "code": "insufficient",
+      "level": "red",
+      "short": "外资多头拥挤(趋势暂不可判：同合约连续历史仅2个交易日，攒够3日才判断)",
+      "label": "外资多头拥挤(趋势暂不可判：同合约连续历史仅2个交易日，攒够3日才判断)",
+      "lines": [],
+      "evidence": [
+        "历史检验(龙虎榜文件2020-12~2026-08，9个合约；高盛只有2026年入榜，样本主要是摩根大通)：外资3日净加仓≥1万手后，同合约未来5个交易日平均约+1.2%(约12个独立事件，无条件基准约+0.8%)，方向偏涨但样本小；",
+        "外资3日净减仓≥1万手后，未来5个交易日平均约-0.2%(约17个独立事件)，和基准没有明显差别——减仓预示下跌没有证据，所以这里只描述'在撤退'，不写成看空信号；",
+        "2020年4月及以前的龙虎榜无法取得，阈值是文档经验值，只检验了方向、没有调优。"
+      ]
+    }
   }
 }
