@@ -11,6 +11,12 @@ import backfill_history as bf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(HERE, "data", "raw", "dce_rank")
+# 这批测试的期望值是按"2026年9月21个文件"手算的；v101.18 往同一目录加了 2026-08 的 21 个文件(另有专门测试)，所以回填类测试只看9月的子集
+import tempfile as _tf
+RAW9 = _tf.mkdtemp(prefix="raw9_")
+for _f in sorted(os.listdir(RAW)):
+    if _f.startswith("M2701_202609") and _f.endswith(".txt"):
+        shutil.copyfile(os.path.join(RAW, _f), os.path.join(RAW9, _f))
 _pass = 0
 
 
@@ -92,7 +98,7 @@ def test_job_backfills_five_series_with_the_live_point_shape_and_never_overwrite
     try:
         # 先放线上已有的 09-30 点(精确值)和一个故意不一致的 09-29 点(冲突)
         hs.record_points("capital_zl_net", [{"d": "2026-09-30", "v": -482209, "x": {"contract": "M2701", "change": 5234}}, {"d": "2026-09-29", "v": 1, "x": {"contract": "M2701", "change": 0}}], d)
-        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW)
+        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         assert "error" not in e, e
         n = {k: len(hs.load_series(k, d)["points"]) for k in ("capital_gs_net", "capital_jpm_net", "capital_ubs_net", "capital_zl_net", "capital_gt_net")}
         assert n == {"capital_gs_net": 21, "capital_jpm_net": 21, "capital_ubs_net": 12, "capital_zl_net": 21, "capital_gt_net": 21}, n
@@ -119,9 +125,9 @@ def test_incomplete_buy_table_gives_no_estimate_for_a_sell_only_member():
 def test_job_is_idempotent_and_reports_coverage_and_bounds():
     d = tempfile.mkdtemp()
     try:
-        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW)
+        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         before = {f: open(os.path.join(d, f), "rb").read() for f in os.listdir(d)}
-        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW)
+        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         after = {f: open(os.path.join(d, f), "rb").read() for f in os.listdir(d)}
         assert before == after and e["added"] == 0, e["added"]
         assert e["files"] == 21 and e["firstDay"] == "2026-09-01" and e["lastDay"] == "2026-09-30", e
@@ -164,13 +170,32 @@ def test_merged_with_live_points_the_series_runs_through_the_holiday_gap():
     d = tempfile.mkdtemp()
     try:
         hs.record_points("capital_gs_net", [{"d": "2026-09-30", "v": 152092, "x": {"contract": "M2701", "change": 2181}}, {"d": "2026-10-08", "v": 137983, "x": {"contract": "M2701", "change": -14109}}], d)
-        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW)
+        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         pts = hs.load_series("capital_gs_net", d)["points"]
         assert len(pts) == 22 and pts[0]["d"] == "2026-09-01" and pts[-1]["d"] == "2026-10-08", (len(pts), pts[0]["d"], pts[-1]["d"])
         assert pts[-2] == {"d": "2026-09-30", "v": 152092, "x": {"contract": "M2701", "change": 2181}}, "线上的精确点原样保留(没被加 approx)"
     finally:
         shutil.rmtree(d, ignore_errors=True)
     ok("和线上点合并：9月21天 + 10-08 = 22个点，线上的 09-30 原样保留")
+
+
+def test_august_files_extend_the_series_and_run_into_september():
+    """v101.18：2026-08 的 21 个文件(用户的 p1 外资时代包)。手算(从文件里读)：
+    08-03 摩根大通 持买57,647(+171)、持卖33,130(+8,104) → 净+24,517、变化171-8,104=-7,933，两边都在前20=精确；
+    08-31 高盛 持买152,795，持卖不在前20，第20名持卖=新湖期货25,002 → 净下限152,795-25,002=127,793，标approx；
+    08-31 → 09-01 是相邻交易日，序列在合并后连续。"""
+    d = tempfile.mkdtemp()
+    try:
+        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW)
+        assert e["files"] == 42 and e["firstDay"] == "2026-08-03" and e["lastDay"] == "2026-09-30" and e["conflicts"] == [] and e["skippedFiles"] == [], e
+        jpm = {p["d"]: p for p in hs.load_series("capital_jpm_net", d)["points"]}
+        assert jpm["2026-08-03"]["v"] == 24517 and jpm["2026-08-03"]["x"]["change"] == -7933 and "approx" not in jpm["2026-08-03"]["x"], jpm["2026-08-03"]
+        gs = {p["d"]: p for p in hs.load_series("capital_gs_net", d)["points"]}
+        assert gs["2026-08-31"]["v"] == 127793 and gs["2026-08-31"]["x"].get("approx") == 1 and gs["2026-08-31"]["x"]["contract"] == "M2701", gs["2026-08-31"]
+        assert len(gs) == 42 and hs.change_over(list(gs.values()), 21) is not None, "08-03→09-30 连续42个点，近21个交易日变化可算(跨08-31→09-01无缺口)"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("★8月21个文件 + 9月21个文件 = 42个连续点；摩根大通08-03(+24,517/-7,933)与高盛08-31(下限127,793, approx)手算一致")
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

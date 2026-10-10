@@ -25,7 +25,7 @@ const DC = BODY.slice(dc0, dcEnd);
 for (const id of ['decisionSummary','alertContent','structureContent','resonanceContent','eventCalendarContent','healthContent','healthBadge']){
   check(`★原容器 ${id} 在决策卡里(沿用原id，渲染函数和测试不用改)`, DC.includes(`id="${id}"`));
 }
-check('★五个区块都是折叠区(<details>)：基本面预警、市场结构、三方关系、近期事件、数据健康度', (DC.match(/<details class="dc-sec"/g) || []).length === 5);
+check('★六个区块都是折叠区(<details>)：基本面预警、市场结构、行情状态与成本锚(v101.19新增)、三方关系、近期事件、数据健康度', (DC.match(/<details class="dc-sec"/g) || []).length === 6);
 for (const old of ['eventCalendarCard','resonanceCard','alertCard','structureCard','healthCard']){
   check(`★旧的顶层独立卡 ${old} 已经不存在(合并进决策卡了，不是在旁边多出一张)`, !BODY.includes(`id="${old}"`));
 }

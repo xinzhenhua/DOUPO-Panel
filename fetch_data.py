@@ -4108,6 +4108,48 @@ CRUSH_YIELD_MEAL = 0.785  # 出粕率(进口大豆/豆二)
 CRUSH_YIELD_OIL = 0.185   # 出油率(进口大豆/豆二)
 
 
+def _yahoo_last_close(symbol):
+    """Yahoo chart接口取最新收盘(非官方接口)。返回(价格, 日期str)或(None, 原因)。"""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
+    data, debug = fetch_json_debug(url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        res = data["chart"]["result"][0]
+        pairs = [(t, c) for t, c in zip(res["timestamp"], res["indicators"]["quote"][0]["close"]) if c is not None]
+        t, c = pairs[-1]
+        return float(c), datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
+    except (TypeError, KeyError, IndexError, ValueError):
+        return None, "Yahoo无返回或格式变化"
+
+
+def build_cost_anchor_from_inputs(zs, fx, crush_margins):
+    """纯函数(便于测试)：用抓到的美豆价/汇率 + 榨利卡里已有的盘面豆粕/豆油价算成本锚。
+    盘面取jan>may>sep里第一个可用的(当前主力优先)。"""
+    import cost_anchor
+    mm = next((crush_margins[k] for k in ("jan", "may", "sep") if crush_margins.get(k, {}).get("available")), None)
+    if mm is None:
+        return {"available": False, "reason": "榨利卡没有可用的豆粕/豆油盘面价，成本锚不计算"}
+    r = cost_anchor.build(zs, fx, mm.get("mealPrice"), mm.get("oilPrice"))
+    if r.get("available"):
+        r["mealSymbol"] = mm.get("mealSymbol"); r["priceDate"] = mm.get("date")
+    return r
+
+
+def fetch_cost_anchor(crush_margins):
+    zs, zs_info = _yahoo_last_close("ZS=F")
+    if zs is None:
+        return {"available": False, "reason": f"CBOT美豆(ZS)缺失：{zs_info}"}
+    fx_data, _ = fetch_json_debug("https://api.frankfurter.dev/v1/latest?base=USD&symbols=CNY")
+    try:
+        fx = float(fx_data["rates"]["CNY"]); fx_date = fx_data.get("date")
+    except (TypeError, KeyError, ValueError):
+        return {"available": False, "reason": "美元兑人民币汇率缺失，成本锚不计算"}
+    r = build_cost_anchor_from_inputs(zs, fx, crush_margins)
+    if r.get("available"):
+        r["zsDate"] = zs_info; r["fxDate"] = fx_date
+        r["source"] = "CBOT美豆连续合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
+    return r
+
+
 def fetch_crush_margin(contract_month, now=None):
     """算指定合约月份(9/5/1)的盘面压榨毛利：分别抓豆粕(M)/豆油(Y)/豆二(B)三个
     同月份合约的最新收盘价，代入标准公式。三者只要有一个抓不到数据就整体标记不可用——
@@ -5030,6 +5072,7 @@ def main():
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "termSpreads": term_spreads,
+        "costAnchor": fetch_cost_anchor(crush_margins),     # v101.19：成本锚(参数见cost_anchor.py，带日期)
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),

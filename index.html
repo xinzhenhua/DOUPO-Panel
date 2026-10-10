@@ -178,6 +178,10 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
     <div id="structureContent" class="loading">等待数据...</div>
   </details>
   <details class="dc-sec">
+    <summary>📐 行情状态 · 价格位置 · 资金市清单 · 成本锚<span class="dc-sub">只描述状态；历史检验结论写在卡内</span></summary>
+    <div id="regimeContent" class="loading">等待日K线数据...</div>
+  </details>
+  <details class="dc-sec">
     <summary>🔀 技术面 × 基本面 × 外资动向<span class="dc-sub">三方关系</span></summary>
     <div id="resonanceContent" class="loading">等待技术面/基本面/外资数据加载...</div>
   </details>
@@ -1513,6 +1517,7 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
   window._technicalDirection = confluenceSummary.bullCount > confluenceSummary.bearCount ? '偏多'
     : confluenceSummary.bearCount > confluenceSummary.bullCount ? '偏空' : '中性';
 
+  window._dailyBars = bars; renderRegimeCard();
   let positionRankSummaryText, positionRankBodyHtml;
   if(!positionRankData || !positionRankData.available){
     positionRankSummaryText = '暂无数据';
@@ -3941,6 +3946,9 @@ function capitalHtml(){
     return head + `<div class="alert-box neutral"><span class="at">资金持仓暂无数据</span>龙虎榜或CFTC这次没抓到(或这份latest.json是旧版本，不含资金面)，不影响上面的结论。</div>`;
   }
   const mem = mc.members || {};
+  // v101.18：外资趋势摘要(后端capital_trend.py合成的verdict)放在小节最前；旧版latest.json没有verdict就不显示这块
+  const vd = mc.verdict;
+  const trendBox = (vd && vd.label) ? `<div class="alert-box neutral" style="margin-top:6px"><span class="at">外资趋势：${vd.short||vd.label}</span>${vd.label}${(vd.lines||[]).map(l=>`<div style="margin-top:3px">${l}</div>`).join('')}</div>` : '';
   // 历史趋势(v101起累积)：诚实——刚开始累积时写"历史累积中(已N个交易日)"，不编趋势；有了才写连续N日和近N个交易日变化。
   //   净持仓的方向含义按席位的净多/净空翻译：净多头席位up=净多增加；净空头席位(净持仓为负)up=净持仓上升=净空减少。**只描述，不下"趋势确认/资金市结束"这类结论。**
   const histCell = (m)=>{
@@ -3979,6 +3987,7 @@ function capitalHtml(){
     : c.weeksUsed ? `CFTC历史已回填近${c.weeksUsed}周(来源一次返回的周数)。` : 'CFTC历史已累积(周数未知)。';
   const main = mc.mainContract ? `${mc.mainContract.symbol}(主力合约，净空头榜持仓合计最大)` : '—';
   return head
+    + trendBox
     + `<div style="font-size:10px;color:var(--t3);margin-top:4px">${main} · 数据日期${mc.date||'—'}</div>`
     + `<table class="sd-table"><thead><tr><th>外资席位</th><th>净持仓</th><th>当日变化</th><th>历史趋势</th></tr></thead><tbody>${['高盛期货','摩根大通','瑞银期货'].map(line).join('')}</tbody></table>`
     + `<table class="sd-table"><thead><tr><th>产业席位</th><th>净持仓</th><th>当日变化</th><th>历史趋势</th></tr></thead><tbody>${['中粮期货','国投期货'].map(line).join('')}</tbody></table>`
@@ -4025,22 +4034,199 @@ function renderStructureCard(votes){
 /** 当前市场状态(v100)：决策卡最上边。两个**独立系统**的结论并排写，不混成一个数：资金面(外资多头拥挤度，龙虎榜+CFTC，来自后端marketCapital.state)
  *  + 基本面(已有的供需净倾向)。资金面不可用时写"资金面数据不足"(灯⚪)，绝不假装中性；基本面数据不足时资金面状态仍然显示(它们是独立的)。
  *  状态灯用🔴🟡🟢⚪(不用"红=偏多/绿=偏空"的涨跌色——这里红是"拥挤/风险"，含义不同，不能套用涨跌色)。**只描述状态，不写"参与/观望/休息"。** */
+/** 三信号对照(v101.18)：文档的顺序是 资金退潮 → 基本面确认 → 价格结构确认。code=后端verdict.code，fundDir=基本面方向('偏多'/'偏空'/'中性'/null)，techDir=技术面方向。
+ *  只描述几个信号是否同向/背离，不下操作建议；历史检验只支持"外资加仓后5日偏涨"的弱证据，不支持"减仓→下跌"，所以不把撤退写成看空信号。 */
+function capitalAlignment(code, fundDir, techDir){
+  const RET = ['retreat_from_high','retreat'], BLD = ['build','build_high'], FLAT = ['crowded_flat','elevated_flat','neutral_flat','unknown_flat'];
+  const tx = techDir || '未出结果';
+  if(RET.includes(code)){
+    if(fundDir === null || fundDir === undefined) return {title:'基本面数据不足，三项对照缺一项', detail:'资金面在撤退，但基本面没有结论，只能看到第一步。'};
+    if(fundDir === '偏空'){
+      if(techDir === '偏空') return {title:'三项同向偏空', detail:'资金退潮、基本面偏空、技术面偏空三项一致(文档顺序：资金退潮→基本面确认→价格结构确认，三步都到了)。这是状态描述，不是预测：历史检验里外资减仓之后价格并没有显著下跌。'};
+      return {title:'资金退潮与基本面偏空同向，价格结构尚未确认', detail:`文档的顺序是 资金退潮→基本面确认→价格结构确认，现在走到第二步；技术面${tx}，价格结构还没确认。`};
+    }
+    if(fundDir === '偏多') return {title:'背离：外资在撤退，基本面偏多', detail:`两个系统方向相反。文档的说法是外资主导期基本面信号参考价值低、外资退潮后基本面重新主导，但以谁为准没有验证过、也没有回测过；这里不替你选边，等价格结构(技术面${tx})给第三个答案。`};
+    return {title:'资金在撤退，基本面信号混合', detail:'基本面没有明确方向，缺少第二个方向可对照。'};
+  }
+  if(BLD.includes(code)){
+    const crowdNote = code === 'build_high' ? '高位继续加仓意味着拥挤在加剧，文档提示创高后回落有反转风险。' : '';
+    if(fundDir === '偏空') return {title:'背离：外资在加仓，基本面却偏空', detail:'这正是文档里"资金市"的特征之一(无视基本面利空)；文档提示外资主导时基本面和技术面信号的参考价值下降。"资金市"的其余条件(价格突破、美豆不涨豆粕涨)目前仍未判断。' + crowdNote};
+    if(fundDir === '偏多') return {title:'外资加仓与基本面偏多同向', detail:'两个系统方向一致，但这不算独立证据(外资加仓本身就可能抬高价格、影响基本面信号的读数)。' + crowdNote};
+    if(fundDir === null || fundDir === undefined) return {title:'基本面数据不足，三项对照缺一项', detail:'外资在加仓，但基本面没有结论。' + crowdNote};
+    return {title:'外资在加仓，基本面信号混合', detail:'基本面没有明确方向。' + crowdNote};
+  }
+  if(FLAT.includes(code)) return {title:'外资近期没有明显增减', detail:'资金面这几天不提供方向，以基本面为主。'};
+  return {title:'外资趋势不可判，不做三项对照', detail:'同合约的连续历史太短或高盛未进榜，攒够数据再看。'};
+}
+window._capitalAlignment = capitalAlignment;
+
+// ============================================================================
+// v101.19：行情状态(ADX+彩带) / 价格百分位带 / 资金市证据清单 / 休息灯(可选) / 成本锚展示
+//   定位：只描述状态。历史检验(2026-10)：ADX、彩带、RSI没有可证明的前向优势；百分位只有低位带有温和支持，高位带没有"会跌"的证据。
+// ============================================================================
+function computeADX(bars, period=14){
+  const n = bars.length, out = new Array(n).fill(null);
+  if(n < period*2) return out;
+  const tr = new Array(n).fill(0), pdm = new Array(n).fill(0), mdm = new Array(n).fill(0);
+  for(let i=1; i<n; i++){
+    const up = bars[i].high - bars[i-1].high, dn = bars[i-1].low - bars[i].low;
+    pdm[i] = (up > dn && up > 0) ? up : 0;
+    mdm[i] = (dn > up && dn > 0) ? dn : 0;
+    tr[i] = Math.max(bars[i].high - bars[i].low, Math.abs(bars[i].high - bars[i-1].close), Math.abs(bars[i].low - bars[i-1].close));
+  }
+  let sTR=0, sP=0, sM=0;
+  for(let i=1; i<=period; i++){ sTR+=tr[i]; sP+=pdm[i]; sM+=mdm[i]; }
+  const dx = new Array(n).fill(null);
+  const calcDx = ()=>{
+    if(sTR === 0) return 0;
+    const pdi = 100*sP/sTR, mdi = 100*sM/sTR, s = pdi + mdi;
+    return s === 0 ? 0 : 100*Math.abs(pdi - mdi)/s;
+  };
+  dx[period] = calcDx();
+  for(let i=period+1; i<n; i++){
+    sTR = sTR - sTR/period + tr[i]; sP = sP - sP/period + pdm[i]; sM = sM - sM/period + mdm[i];
+    dx[i] = calcDx();
+  }
+  let adx = 0;
+  for(let i=period; i<period*2; i++) adx += dx[i];
+  adx /= period; out[period*2-1] = adx;
+  for(let i=period*2; i<n; i++){ adx = (adx*(period-1) + dx[i])/period; out[i] = adx; }
+  return out;
+}
+function classifyRegime(adx, close, ma20, ma60){
+  if(adx == null || isNaN(adx)) return {code:'unknown', label:'数据不足'};
+  if(adx < 22) return {code:'range', label:'震荡'};
+  if(adx < 28) return {code:'transition', label:'趋势形成中(过渡)'};
+  if(close > ma20 && ma20 > ma60) return {code:'trend_up', label:'上升趋势'};
+  if(close < ma20 && ma20 < ma60) return {code:'trend_down', label:'下降趋势'};
+  return {code:'trend_mixed', label:'趋势强度高但彩带缠绕，方向不明'};
+}
+function pricePercentileBand(bars){
+  const cs = (bars||[]).map(b=>b.close).filter(c=>c!=null && !isNaN(c)).slice(-260);
+  if(cs.length < 200) return {band:'unknown', pct:null, n:cs.length};
+  const last = cs[cs.length-1];
+  const pct = Math.round(cs.filter(c=>c <= last).length / cs.length * 1000) / 10;
+  return {band: pct <= 20 ? 'low' : pct >= 80 ? 'high' : 'mid', pct, n:cs.length};
+}
+function capitalChecklist(bars, verdict, pb){
+  bars = bars || [];
+  const n = bars.length, last = bars[n-1], p5 = bars[n-6];
+  const items = [];
+  const oiUp = !!(last && p5 && last.hold != null && p5.hold != null && last.close > p5.close && last.hold > p5.hold);
+  items.push({id:'oi_up_price_up', hit:oiUp, evidence:'weak', text:'增仓上涨(5日价格涨且持仓增)', note:'历史检验里"增仓上涨"后的表现比"减仓上涨"略好，样本小，只算弱支持'});
+  let surge = false, surgePct = null;
+  if(last && last.hold != null && n >= 21){
+    const prev = bars.slice(n-21, n-1).map(b=>b.hold).filter(h=>h!=null);
+    if(prev.length >= 15){ const avg = prev.reduce((a,b)=>a+b,0)/prev.length; surgePct = (last.hold/avg - 1)*100; surge = surgePct >= 20; }
+  }
+  items.push({id:'oi_surge', hit:surge, evidence:'none', text:'持仓量暴增(较前20日均值≥+20%)'+(surgePct!=null?`，当前${surgePct>=0?'+':''}${surgePct.toFixed(1)}%`:''), note:'文档阈值(20~30%)，历史检验里没有找到它预示转折的证据'});
+  const vc = verdict && verdict.code;
+  items.push({id:'foreign_retreat', hit: vc==='retreat_from_high' || vc==='retreat', evidence:'none', text:'外资净多在撤退', note:'减仓后未来5日表现和基准没有明显差别，只描述，不当看空信号'});
+  items.push({id:'foreign_crowded', hit: vc==='crowded_flat' || vc==='build_high', evidence:'none', text:'外资多头拥挤/高位加仓', note:'阈值是文档经验值，未回测'});
+  items.push({id:'price_high', hit: !!pb && pb.band==='high', evidence:'none', text:'价格处近1年高位带(≥80%分位)', note:'高位带没有"之后会跌"的证据'});
+  const notWired = ['基差走弱(基差已在"市场结构"里，未并入计数)', '美豆不涨豆粕涨', '养殖利润恶化'];
+  return {items, count: items.filter(x=>x.hit).length, total: items.length, notWired};
+}
+function restLamp(cl, enabled){
+  if(!enabled) return {on:false, lit:false, text:''};
+  const lit = !!cl && cl.count >= 3;
+  return {on:true, lit, text: lit ? `🛑 纪律提示：资金市特征已命中${cl.count}项(≥3项)。这是文档的经验规则，没有回测过，只提醒你按自己的纪律降低操作频率，不是看空信号。` : ''};
+}
+function barFinal(nowMs, barDate){
+  const bj = new Date(nowMs + 8*3600000), today = bj.toISOString().slice(0,10);
+  if(!barDate || barDate < today) return true;
+  return bj.getUTCHours() >= 15;
+}
+function regimeSnapshot(){
+  const bars = window._dailyBars || [];
+  const n = bars.length;
+  const sma = (k)=> n >= k ? bars.slice(n-k).reduce((a,b)=>a+b.close,0)/k : null;
+  const adxArr = computeADX(bars, 14), adx = n ? adxArr[n-1] : null;
+  const ma20 = sma(20), ma60 = sma(60), close = n ? bars[n-1].close : null;
+  const reg = classifyRegime(adx, close, ma20, ma60);
+  const pb = pricePercentileBand(bars);
+  const mc = window._syncedData && window._syncedData.marketCapital;
+  const cl = capitalChecklist(bars, mc && mc.verdict, pb);
+  let enabled = false; try{ enabled = localStorage.getItem('doupo_rest_lamp') === '1'; }catch(e){}
+  if(window._restLampOverride != null) enabled = !!window._restLampOverride;
+  return {bars, adx, ma20, ma60, close, reg, pb, cl, lamp: restLamp(cl, enabled), enabled};
+}
+function setRestLamp(on){
+  try{ localStorage.setItem('doupo_rest_lamp', on ? '1' : '0'); }catch(e){}
+  window._restLampOverride = !!on;
+  renderRegimeCard();
+  if(typeof renderDecisionSummary === 'function') try{ renderDecisionSummary(); }catch(e){}
+}
+function costAnchorHtml(ca){
+  const f = n=>Math.round(n).toLocaleString('en-US');
+  if(!ca || !ca.available) return `<div style="font-size:11px;color:var(--t3)">💡 成本锚：${ca && ca.reason ? ca.reason : '后端暂无数据'}</div>`;
+  const p = ca.params || {};
+  const posTxt = ca.position==='below' ? '低于' : ca.position==='above' ? '高于' : '处在';
+  const posTail = ca.position==='within' ? '成本区间内' : '成本区间';
+  return `<div style="margin-top:8px;font-size:11px;line-height:1.6"><b>💰 成本锚（进口大豆理论成本）</b>
+    <div>${ca.mealSymbol||'盘面'}盘面 <b>${f(ca.mealPrice)}</b> ${posTxt}理论成本区间 ${f(ca.mealCostLow)}~${f(ca.mealCostHigh)}（中值 <b>${f(ca.mealCost)}</b>，差 ${ca.gap>0?'+':''}${f(ca.gap)}元/吨，${ca.gapPct>0?'+':''}${ca.gapPct}%）${ca.position==='within'?'':''}</div>
+    <div style="color:var(--t3)">算法：CBOT美豆${f(ca.zsCents)}美分 + 升贴水${p.premium_cents}美分(±${p.premium_step}) × 汇率${ca.fx} × (1+关税${(p.tariff*100).toFixed(0)}%) × (1+增值税${(p.vat*100).toFixed(0)}%) + 港杂${p.port_fee} = 豆成本${f(ca.beanCost)}；再 +压榨费${p.crush_fee} −豆油×0.185，÷0.785。</div>
+    <div style="color:var(--t3)">参数日期 ${p.asof}。升贴水没有历史数据、无法回测，所以给的是区间；港杂费/增值税为经验口径，请核对。${ca.note||''}</div></div>`;
+}
+function renderRegimeCard(){
+  const el = document.getElementById('regimeContent');
+  if(!el) return;
+  const s = regimeSnapshot();
+  if(!s.bars.length){ el.innerHTML = '<div style="font-size:11px;color:var(--t3)">等待日K线数据…</div>'; return; }
+  const fmt1 = v=> v==null ? '—' : v.toFixed(1);
+  const lastBar = s.bars[s.bars.length-1];
+  const final = barFinal(window._nowMs || Date.now(), lastBar.date);
+  const pbTxt = s.pb.band==='unknown' ? `数据不足(只有${s.pb.n}根，需≥200根)` :
+    `${s.pb.pct}%分位（近${s.pb.n}个交易日同合约，${s.pb.band==='low'?'低位带≤20%':s.pb.band==='high'?'高位带≥80%':'中间带'}）`;
+  const bandNote = s.pb.band==='low' ? '历史检验：低位带之后表现略好于基准，温和支持，样本有限。' :
+    s.pb.band==='high' ? '历史检验：高位带没有"之后会跌"的证据，只说明价格贵，不说明要跌。' : '';
+  const itemRow = x=>`<div style="margin:2px 0">${x.hit?'✅':'⬜'} ${x.text} <span style="color:var(--t3)">[证据：${x.evidence==='weak'?'弱支持':'无证据'}]</span>${x.hit?`<div style="color:var(--t3);margin-left:20px">${x.note}</div>`:''}</div>`;
+  el.innerHTML = `<div style="font-size:11px;line-height:1.65">
+    ${final ? '' : `<div style="color:var(--t3)">⏳ 今日K线尚未收盘，ADX/百分位/清单可能在收盘后变化。</div>`}
+    <div><b>📐 行情状态：${s.reg.label}</b>　ADX(14)=${fmt1(s.adx)}　MA20=${fmt1(s.ma20)}　MA60=${fmt1(s.ma60)}　收盘${s.close}</div>
+    <div style="color:var(--t3)">划分：ADX&lt;22震荡，22~28过渡，≥28趋势(文档阈值)。历史检验没有发现ADX/彩带对未来涨跌有前向预测力，没有可靠的"趋势里顺势赚更多"的证据——它只是帮你认清现在是什么行情，不是买卖信号。</div>
+    <div style="margin-top:6px"><b>📍 价格位置：</b>${pbTxt}</div>
+    ${bandNote ? `<div style="color:var(--t3)">${bandNote}</div>` : ''}
+    <div style="margin-top:8px"><b>📋 资金市证据清单：命中 ${s.cl.count}/${s.cl.total}</b></div>
+    ${s.cl.items.map(itemRow).join('')}
+    <div style="color:var(--t3)">未接入、不计数：${s.cl.notWired.join('；')}。"命中≥3项"的规则来自文档，没有回测。</div>
+    <div style="margin-top:6px"><label style="cursor:pointer"><input type="checkbox" id="restLampSwitch" ${s.enabled?'checked':''} onchange="setRestLamp(this.checked)"> 休息灯（纪律提示，默认关）</label>
+      ${s.lamp.on ? `<div style="margin-top:3px">${s.lamp.lit ? s.lamp.text : '⚪ 休息灯已开启，当前命中不足3项，不亮。'}</div>` : '<div style="color:var(--t3)">开启后，命中≥3项会亮灯提醒。文档规则未回测，仅作纪律提示。</div>'}</div>
+    ${costAnchorHtml(window._syncedData && window._syncedData.costAnchor)}
+  </div>`;
+}
+window._regime = {computeADX, classifyRegime, pricePercentileBand, capitalChecklist, restLamp, barFinal, render: renderRegimeCard, snapshot: regimeSnapshot};
+
 function marketStateHtml(ok, pure){
   const mc = window._syncedData && window._syncedData.marketCapital;
   const lampOf = lv => lv==='red' ? '🔴' : lv==='yellow' ? '🟡' : lv==='green' ? '🟢' : '⚪';
   const fmt = n => (n==null || isNaN(n)) ? '—' : Math.abs(Math.round(n)).toLocaleString('en-US');
   let capLine, capSub = '';
   if(mc && mc.available && mc.state){
-    const gs = mc.members && mc.members['高盛期货'], c = mc.cftc;
-    const evid = [gs && gs.net != null ? `高盛${gs.net>0?'净多':'净空'}${fmt(gs.net)}手` : '高盛未进榜', c && c.percentile != null ? `CFTC净多近${c.weeksUsed||'—'}周${Math.round(c.percentile)}%分位` : 'CFTC暂无'].join('、');
-    capLine = `${lampOf(mc.state.level)} 资金面：${mc.state.label}`;
-    capSub = `依据：${evid}(主力合约${mc.mainContract ? mc.mainContract.symbol : '—'}，${mc.date||'—'})。${mc.state.note || ''} 阈值：${mc.state.thresholdSource || '—'}。`;
+    const vd = mc.verdict;
+    if(vd && vd.label){
+      // v101.18：带方向的结论(后端capital_trend.py)。灯和文字用verdict；旧的"水平"说明放进折叠的"历史检验与局限"
+      const fundDir = ok ? pure.direction : null;
+      const al = capitalAlignment(vd.code, fundDir, window._technicalDirection);
+      capLine = `${lampOf(vd.level)} 资金面：${vd.short || vd.label}`;
+      const detail = (vd.label !== vd.short ? `<div><b>${vd.label}</b></div>` : '') + (vd.lines||[]).map(l=>`<div>${l}</div>`).join('');
+      const ev = (vd.evidence||[]).map(e=>`<div>· ${e}</div>`).join('');
+      capSub = `${detail}<div style="margin-top:3px">🧭 <b>三信号对照</b>(资金→基本面→价格结构)：${al.title}。${al.detail}</div>`
+        + `<details style="margin-top:3px"><summary style="cursor:pointer">历史检验与局限</summary>${ev}<div>· 阈值：${mc.state.thresholdSource || '—'}；水平判断(高盛≥12万手且CFTC≥90分位=拥挤)：${mc.state.label}。数据：主力合约${mc.mainContract ? mc.mainContract.symbol : '—'}，${mc.date||'—'}，龙虎榜T+1。</div><div>· ${mc.state.note || ''}</div></details>`;
+    } else {
+      const gs = mc.members && mc.members['高盛期货'], c = mc.cftc;
+      const evid = [gs && gs.net != null ? `高盛${gs.net>0?'净多':'净空'}${fmt(gs.net)}手` : '高盛未进榜', c && c.percentile != null ? `CFTC净多近${c.weeksUsed||'—'}周${Math.round(c.percentile)}%分位` : 'CFTC暂无'].join('、');
+      capLine = `${lampOf(mc.state.level)} 资金面：${mc.state.label}`;
+      capSub = `依据：${evid}(主力合约${mc.mainContract ? mc.mainContract.symbol : '—'}，${mc.date||'—'})。${mc.state.note || ''} 阈值：${mc.state.thresholdSource || '—'}。`;
+    }
   } else {
     capLine = `⚪ 资金面：数据不足`;
     capSub = '龙虎榜或CFTC这次没抓到(或latest.json是旧版本)，不下结论。';
   }
   const fundLine = ok ? `基本面：${pure.direction === '中性' ? '信号混合' : pure.direction}(净倾向${pure.ratio>0?'+':''}${Math.round(pure.ratio*100)}%)` : '基本面：数据不足';
-  return `<div class="dc-state"><div class="dc-st-title">当前市场状态</div><div class="dc-st-line">${capLine}　|　${fundLine}</div><div class="dc-st-sub">${capSub}</div></div>`;
+  let restLine = '';
+  try{ const rs = regimeSnapshot(); if(rs.lamp.lit) restLine = `<div class="dc-st-sub" style="margin-top:4px">${rs.lamp.text}</div>`; }catch(e){}
+  return `<div class="dc-state"><div class="dc-st-title">当前市场状态</div><div class="dc-st-line">${capLine}　|　${fundLine}</div><div class="dc-st-sub">${capSub}</div>${restLine}</div>`;
 }
 
 function renderDecisionSummary(){

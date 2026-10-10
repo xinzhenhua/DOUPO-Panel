@@ -159,6 +159,17 @@ DCE_CLOSURES = [
 ]
 
 
+# 休市表(DCE_CLOSURES)之外、已核实休市的单日(中秋2026-09-25周五：龙虎榜文件里确实没有这天，9-24→9-28相邻)。
+# 没直接放进DCE_CLOSURES，因为页面的事件日历/数据新鲜度有一批按日期手算的测试把09-25当交易日(要同步改页面和这些测试)，见TODO.md。
+# 只给"外资连续N日/峰值"这类逐交易日的计算用(dce_is_trading_day_ex)，避免把中秋当成缺失的交易日而断开连续区间。
+EXTRA_NON_TRADING_DAYS = {"2026-09-25": "中秋节"}
+
+
+def dce_is_trading_day_ex(d):
+    """dce_is_trading_day，再排除 EXTRA_NON_TRADING_DAYS。"""
+    return dce_is_trading_day(d) and d.isoformat() not in EXTRA_NON_TRADING_DAYS
+
+
 def dce_is_trading_day(d):
     """d是datetime.date。周末和DCE_CLOSURES里的休市区间不是交易日。逻辑与页面的dceIsTradingDay一致。"""
     if d.weekday() >= 5:

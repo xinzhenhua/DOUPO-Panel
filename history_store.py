@@ -324,7 +324,7 @@ def _trading_day_between(a, b):
     """a<b(date)之间是否还隔着至少一个大商所交易日(不含a、b)。"""
     d = a + _timedelta(days=1)
     while d < b:
-        if cn_calendar.dce_is_trading_day(d):
+        if cn_calendar.dce_is_trading_day_ex(d):
             return True
         d += _timedelta(days=1)
     return False
@@ -389,8 +389,22 @@ def change_over(points, n):
 CAPITAL_MEMBER_SERIES = {"高盛期货": "capital_gs_net", "摩根大通": "capital_jpm_net", "瑞银期货": "capital_ubs_net", "中粮期货": "capital_zl_net", "国投期货": "capital_gt_net"}
 
 
+def _prev_trading_day(day):
+    d = _to_date(day)
+    if d is None:
+        return None
+    d -= _timedelta(days=1)
+    for _ in range(15):
+        if cn_calendar.dce_is_trading_day_ex(d):
+            return d.isoformat()
+        d -= _timedelta(days=1)
+    return None
+
+
 def _record_capital(result, base_dir, touched, note):
-    """把marketCapital里各席位的净持仓记成日频序列(带合约代码)，再把连续N日/近N日变化挂回members[席位].history，页面直接展示。"""
+    """把marketCapital里各席位的净持仓记成日频序列(带合约代码)，再把连续N日/近N日变化挂回members[席位].history，页面直接展示。
+    v101.18：①线上只有当天快照时，用源数据给的"当日变化"推算出缺的前一个交易日(前一日净持仓=今日净持仓-当日变化；点上标x.derived=1，已有的点绝不覆盖)——
+    国庆后只有10-09一个点、却已知当日-8,421手，推算后立刻有10-08和10-09两个点，不用干等；②再算外资趋势trend和合成结论verdict(capital_trend.py)。"""
     mc = result.get("marketCapital")
     if not (isinstance(mc, dict) and mc.get("available") and mc.get("date") and isinstance(mc.get("mainContract"), dict) and mc["mainContract"].get("symbol")):
         return
@@ -398,11 +412,19 @@ def _record_capital(result, base_dir, touched, note):
     if not isinstance(members, dict):
         return
     contract, day = mc["mainContract"]["symbol"], str(mc["date"])[:10]
+    prev_day = _prev_trading_day(day)
+    series_points = {}
     for name, key in CAPITAL_MEMBER_SERIES.items():
         m = members.get(name)
         if not isinstance(m, dict) or not _is_num(m.get("net")):
             continue
         try:
+            if prev_day and _is_num(m.get("change")):
+                have = {p.get("d") for p in load_series(key, base_dir)["points"]}
+                if prev_day not in have:
+                    _, ch0 = record_points(key, [{"d": prev_day, "v": m["net"] - m["change"], "x": {"contract": contract, "derived": 1}}], base_dir)
+                    if ch0:
+                        touched.append(key)
             x = {"contract": contract}
             if _is_num(m.get("change")):
                 x["change"] = m["change"]
@@ -410,10 +432,16 @@ def _record_capital(result, base_dir, touched, note):
             if changed:
                 touched.append(key)
             pts_all = series["points"]
+            series_points[name] = pts_all
             m["history"] = {"n": len(pts_all), "since": pts_all[0]["d"] if pts_all else None, "run": consecutive_run(pts_all),
                             "change5": change_over(pts_all, 5), "change20": change_over(pts_all, 20)}
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花
             note(key, e)
+    try:
+        import capital_trend
+        capital_trend.attach(mc, series_points)
+    except Exception as e:  # noqa: BLE001
+        note("capital_trend", e)
 
 
 # ★滚动窗口分位(v98，油厂开机率用)：当前值在"最近window_days天"参照样本里的位置。

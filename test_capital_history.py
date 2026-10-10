@@ -144,9 +144,11 @@ def test_update_and_attach_records_one_point_per_member_with_the_contract_code()
         want = {"capital_gs_net": 152092, "capital_jpm_net": -9739, "capital_ubs_net": 11489, "capital_zl_net": -482209, "capital_gt_net": -226091}
         for k, v in want.items():
             p = hs.load_series(k, d)["points"]
-            assert len(p) == 1 and p[0]["d"] == "2026-09-30" and p[0]["v"] == v and p[0]["x"]["contract"] == "M2701", (k, p)
-        assert hs.load_series("capital_gs_net", d)["points"][0]["x"]["change"] == 2181, "源数据的当日变化也存(x.change)，用来和自己算的相邻差核对"
-        assert hs.load_series("capital_jpm_net", d)["points"][0]["x"]["change"] == -7014
+            # v101.18：有当日变化时同时推算出前一交易日(09-29=今日净持仓-当日变化，标derived)；当天的点是最后一个
+            assert p[-1]["d"] == "2026-09-30" and p[-1]["v"] == v and p[-1]["x"]["contract"] == "M2701" and len(p) == 2, (k, p)
+            assert p[0]["d"] == "2026-09-29" and p[0]["x"].get("derived") == 1 and p[0]["v"] == v - MC["members"][{"capital_gs_net": "高盛期货", "capital_jpm_net": "摩根大通", "capital_ubs_net": "瑞银期货", "capital_zl_net": "中粮期货", "capital_gt_net": "国投期货"}[k]]["change"], (k, p)
+        assert hs.load_series("capital_gs_net", d)["points"][-1]["x"]["change"] == 2181, "源数据的当日变化也存(x.change)，用来和自己算的相邻差核对"
+        assert hs.load_series("capital_jpm_net", d)["points"][-1]["x"]["change"] == -7014
     ok("★累积：5个席位各记1个点(日期=龙虎榜数据日期，值=净持仓，x.contract=M2701，x.change=源数据当日变化)；摩根大通净空记负数")
 
 
@@ -156,7 +158,7 @@ def test_member_not_in_the_ranking_records_nothing_not_zero():
     with Tmp() as d:
         hs.update_and_attach({"marketCapital": mc}, base_dir=d)
         assert hs.load_series("capital_ubs_net", d)["points"] == [], "未进榜：不记点"
-        assert len(hs.load_series("capital_gs_net", d)["points"]) == 1
+        assert len(hs.load_series("capital_gs_net", d)["points"]) == 2      # 当天+推算的前一交易日
     ok("席位未进榜(net=None)：不记点(记0会让连续N日误以为降到了0)；其余席位照常")
 
 
@@ -172,11 +174,11 @@ def test_same_day_rerun_is_idempotent_and_contract_change_adds_a_new_point_on_a_
     with Tmp() as d:
         hs.update_and_attach({"marketCapital": MC}, base_dir=d)
         hs.update_and_attach({"marketCapital": MC}, base_dir=d)
-        assert len(hs.load_series("capital_gs_net", d)["points"]) == 1, "同一天重复运行不重复"
+        assert len(hs.load_series("capital_gs_net", d)["points"]) == 2, "同一天重复运行不重复(当天+推算的前一交易日)"
         mc2 = {**MC, "date": "2026-10-08", "mainContract": {"key": "may", "symbol": "M2705", "gross": 100}, "members": {**MC["members"], "高盛期货": {**MC["members"]["高盛期货"], "net": 8000, "change": 100}}}
         hs.update_and_attach({"marketCapital": mc2}, base_dir=d)
         p = hs.load_series("capital_gs_net", d)["points"]
-        assert [(x["d"], x["v"], x["x"]["contract"]) for x in p] == [("2026-09-30", 152092, "M2701"), ("2026-10-08", 8000, "M2705")]
+        assert [(x["d"], x["v"], x["x"]["contract"]) for x in p] == [("2026-09-29", 149911, "M2701"), ("2026-09-30", 152092, "M2701"), ("2026-10-08", 8000, "M2705")]
     ok("同一天重复运行不重复；换主力合约后新的一天记新点并带新合约代码")
 
 
