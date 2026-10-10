@@ -27,5 +27,15 @@ class T(unittest.TestCase):
         self.assertEqual(fd.save_rank_snapshots(None, tempfile.mkdtemp()), 0)
 
 
+class TestWorkflowOrder(unittest.TestCase):
+    def test_capital_backfill_runs_before_fetch(self):
+        # 补齐必须在抓数据之前：抓数据那一步会读历史算外资趋势并写进latest.json，补晚了页面要晚一小时才看到
+        w = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".github", "workflows", "update-data.yml"), encoding="utf-8").read()
+        i_back = w.index("backfill_history.py --only capital_rank")
+        i_fetch = w.index("fetch_data.py")
+        i_commit = w.index("git add data/latest.json")
+        self.assertLess(i_back, i_fetch); self.assertLess(i_fetch, i_commit)
+
+
 if __name__ == "__main__":
     unittest.main()

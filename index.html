@@ -1562,6 +1562,7 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
       <span class="ov-toggle" id="klineOverlayToggle">
         <button class="active" onclick="setKlineOverlayMode('ma')">均线</button>
         <button onclick="setKlineOverlayMode('bollinger')">布林带</button>
+        <button onclick="setKlineOverlayMode('ribbon')">彩带·价格位置</button>
       </span>
     </div>
     <div id="klineChartContainer" style="height:320px"></div>
@@ -1738,6 +1739,26 @@ function renderCandlestickChart(containerId, bars, overlayMode){
         });
         series.setData(bars.map((b,i)=>cfg.data[i]!==null?{time:b.date, value:cfg.data[i]}:null).filter(v=>v!==null));
       });
+    }
+  } else if(overlayMode === 'ribbon'){
+    // 彩带：MA20/MA60 的颜色=这根K线收盘价的"价格位置"带(青=低位≤20%分位 / 黄=中间 / 橙=高位≥80% / 灰=窗口不足200根)；
+    //   铁底/铁顶水平线=近260日收盘价的20%/80%分位价。只描述价格贵不贵，不是买卖信号。
+    const ext = window._syncedData && window._syncedData.pricePosition && window._syncedData.pricePosition[window._selectedContract || 'jan'];
+    const bands = ribbonBands(bars, ext);
+    [{period:20, w:2, label:'彩带MA20'}, {period:60, w:1, label:'彩带MA60'}].forEach(cfg=>{
+      if(bars.length < cfg.period) return;
+      const ma = computeMASeriesData(bars, cfg.period);
+      const idxOf = {}; bars.forEach((b,i)=>{ idxOf[b.date] = i; });
+      const series = chart.addSeries(LightweightCharts.LineSeries, {
+        color: RIBBON_COLORS.mid, lineWidth: cfg.w, title: cfg.label, priceLineVisible: false, crosshairMarkerVisible: false,
+      });
+      series.setData(ma.map(p=>Object.assign({}, p, {color: RIBBON_COLORS[bands[idxOf[p.time]] || 'unknown']})));
+    });
+    const useExt = ext && ext.symbol === window._dailySymbol && Array.isArray(ext.closes) && ext.closes.length >= bars.length;
+    const lv = percentileLevels(useExt ? ext.closes : bars.map(b=>b.close));
+    if(lv && candleSeries.createPriceLine){
+      candleSeries.createPriceLine({price: lv.p20, color: RIBBON_COLORS.low, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '铁底(20%分位)'});
+      candleSeries.createPriceLine({price: lv.p80, color: RIBBON_COLORS.high, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '铁顶(80%分位)'});
     }
   } else {
     // MA5/10/20/40/60：只在数据量够长时才画(比如只有40根数据时，MA60就不画了，避免全是null的空线)
@@ -2438,7 +2459,7 @@ function setKlineOverlayMode(mode){
   const toggle = document.getElementById('klineOverlayToggle');
   if(toggle){
     Array.from(toggle.querySelectorAll('button')).forEach(btn=>{
-      btn.classList.toggle('active', btn.textContent === (mode==='ma'?'均线':'布林带'));
+      btn.classList.toggle('active', btn.textContent === (mode==='ma'?'均线':mode==='ribbon'?'彩带·价格位置':'布林带'));
     });
   }
   refreshKlineForContract(window._selectedContract || getDefaultContractByDate());
@@ -4065,6 +4086,27 @@ window._capitalAlignment = capitalAlignment;
 // v101.19：行情状态(ADX+彩带) / 价格百分位带 / 资金市证据清单 / 休息灯(可选) / 成本锚展示
 //   定位：只描述状态。历史检验(2026-10)：ADX、彩带、RSI没有可证明的前向优势；百分位只有低位带有温和支持，高位带没有"会跌"的证据。
 // ============================================================================
+// ---- 彩带：MA20/MA60 按"价格位置"着色；铁底/铁顶 = 近260日收盘价的20%/80%分位价 ----
+const RIBBON_COLORS = {low:'#22d3d3', mid:'#d4a017', high:'#ff9f40', unknown:'#6b6b6b'};
+function percentileLevels(closes){
+  const cs = (closes||[]).filter(c=>c!=null && !isNaN(c)).slice(-260);
+  if(cs.length < 200) return null;
+  const sorted = cs.slice().sort((a,b)=>a-b), n = sorted.length;
+  return {p20: sorted[Math.ceil(0.2*n)-1], p80: sorted[Math.ceil(0.8*n)-1], n};
+}
+function ribbonBands(bars, ext){
+  const n = bars.length;
+  let full = bars.map(b=>b.close), off = 0;
+  if(ext && Array.isArray(ext.closes) && ext.symbol && window._dailySymbol === ext.symbol && ext.closes.length >= n){
+    full = ext.closes.slice(); off = full.length - n;
+  }
+  return bars.map((b, i)=>{
+    const idx = off + i, win = full.slice(Math.max(0, idx-259), idx+1);
+    if(win.length < 200) return 'unknown';
+    const last = win[win.length-1], pct = win.filter(c=>c <= last).length / win.length * 100;
+    return pct <= 20 ? 'low' : pct >= 80 ? 'high' : 'mid';
+  });
+}
 function computeADX(bars, period=14){
   const n = bars.length, out = new Array(n).fill(null);
   if(n < period*2) return out;
