@@ -1,0 +1,501 @@
+{
+  "generatedAt": "2026-10-10T07:45:32.034051+00:00",
+  "series": [
+    {
+      "key": "capital_rank",
+      "error": "没有找到排名文件目录 /home/runner/work/DOUPO-Panel/DOUPO-Panel/data/raw/dce_rank",
+      "ranAt": "2026-10-10T07:45:32.034051+00:00",
+      "fromPreviousRun": false
+    }
+  ],
+  "calibration": {
+    "us_stocks_to_use": {
+      "n": 1,
+      "quantiles": {
+        "p5": 6.8,
+        "p10": 6.8,
+        "p20": 6.8,
+        "p25": 6.8,
+        "p50": 6.8,
+        "p75": 6.8,
+        "p80": 6.8,
+        "p90": 6.8,
+        "p95": 6.8
+      },
+      "latest": {
+        "d": "2026",
+        "v": 6.8
+      },
+      "latestPercentile": null,
+      "currentThresholds": {
+        "tight<5": {
+          "shareOfYears%": 0.0,
+          "years": []
+        },
+        "loose>10": {
+          "shareOfYears%": 0.0,
+          "years": []
+        }
+      },
+      "allValues": {
+        "2026": 6.8
+      }
+    },
+    "meal_stu": {
+      "n": 1,
+      "quantiles": {
+        "p5": 16.04,
+        "p10": 16.04,
+        "p20": 16.04,
+        "p25": 16.04,
+        "p50": 16.04,
+        "p75": 16.04,
+        "p80": 16.04,
+        "p90": 16.04,
+        "p95": 16.04
+      },
+      "currentThresholds(v84: 松阈值14→16)": {
+        "tight<=10": 0.0,
+        "loose>=14": 100.0,
+        "loose>=16": 100.0
+      },
+      "byFestivalCohort": {
+        "春节扰动月": {
+          "n": 0,
+          "values": []
+        },
+        "平常月": {
+          "n": 1,
+          "quantiles": {
+            "p5": 16.04,
+            "p10": 16.04,
+            "p20": 16.04,
+            "p25": 16.04,
+            "p50": 16.04,
+            "p75": 16.04,
+            "p80": 16.04,
+            "p90": 16.04,
+            "p95": 16.04
+          },
+          "share>=14%": 100.0,
+          "share>=16%": 100.0,
+          "share<=10%": 0.0
+        }
+      },
+      "allValues": {
+        "2026-09": 16.04
+      }
+    },
+    "crush_margin_jan": {
+      "n": 1,
+      "quantiles": {
+        "p5": 174.2,
+        "p10": 174.2,
+        "p20": 174.2,
+        "p25": 174.2,
+        "p50": 174.2,
+        "p75": 174.2,
+        "p80": 174.2,
+        "p90": 174.2,
+        "p95": 174.2
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth": {
+        "10": 174.2
+      },
+      "share<0": 0.0,
+      "share>300": 0.0
+    },
+    "feed_days": {
+      "n": 51,
+      "quantiles": {
+        "p5": 6.98,
+        "p10": 7.15,
+        "p20": 7.48,
+        "p25": 7.58,
+        "p50": 8.23,
+        "p75": 9.14,
+        "p80": 9.35,
+        "p90": 9.89,
+        "p95": 10.77
+      },
+      "coverage": "样本连续，可用",
+      "medianByMonth": {
+        "01": 9.94,
+        "02": 12.37,
+        "03": 8.98,
+        "04": 8.45,
+        "05": 6.88,
+        "06": 7.11,
+        "07": 7.57,
+        "08": 7.53,
+        "09": 8.3,
+        "10": 8.02,
+        "11": 8.07,
+        "12": 9.18
+      },
+      "momIndependentCheck": {
+        "comparable": 39,
+        "matched": 39,
+        "mismatched": 0,
+        "examples": []
+      }
+    },
+    "term_spread_jan": {
+      "n": 1,
+      "quantiles": {
+        "p5": 11.46,
+        "p10": 11.46,
+        "p20": 11.46,
+        "p25": 11.46,
+        "p50": 11.46,
+        "p75": 11.46,
+        "p80": 11.46,
+        "p90": 11.46,
+        "p95": 11.46
+      },
+      "pointsPerYear": {
+        "2026": 1
+      },
+      "medianByMonth(%)": {
+        "10": 11.46
+      },
+      "share<0(远月升水)": 0.0
+    },
+    "meal_stock": {
+      "n": 11,
+      "nTotalInFile": 11,
+      "nExcluded": 0,
+      "excludedReason": "0个点在2024-01-05之前：Mysteel 2024年1月5日起网页端只发一版动态全样本数据，之前的旧口径不可比",
+      "quantiles": {
+        "p5": 83.96,
+        "p10": 89.97,
+        "p20": 96.73,
+        "p25": 102.88,
+        "p50": 110.99,
+        "p75": 117.03,
+        "p80": 117.32,
+        "p90": 129.64,
+        "p95": 129.64
+      },
+      "currentThresholds": {
+        "tight<50": 0.0,
+        "loose>100": 72.7
+      },
+      "pointsPerYear": {
+        "2026": 11
+      },
+      "coverage": "样本只跨87天，不足180天",
+      "spotChecks(独立来源Mysteel英文站周报)": [
+        {
+          "week": "2026-W05",
+          "expected": 93.04,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W12",
+          "expected": 67.05,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W13",
+          "expected": 67.68,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W15",
+          "expected": 62.05,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W16",
+          "expected": 61.38,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W22",
+          "expected": 34.74,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W23",
+          "expected": 50.65,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W27",
+          "expected": 72.47,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W31",
+          "expected": 100.34,
+          "result": "缺失(没有这一周的点)"
+        },
+        {
+          "week": "2026-W35",
+          "expected": 116.73,
+          "result": "缺失(没有这一周的点)"
+        }
+      ]
+    },
+    "marginSpreadCalibration": {
+      "crush_margin_jan": {
+        "key": "crush_margin_jan",
+        "n": 1,
+        "from": "2026-10-09",
+        "to": "2026-10-09",
+        "contractYears": 1,
+        "levelDrift": [
+          {
+            "year": 2027,
+            "n": 1,
+            "median": 174.2,
+            "q1": 174.2,
+            "q3": 174.2
+          }
+        ],
+        "monthSufficiency": {
+          "10": {
+            "byYear": {
+              "2026": 1
+            },
+            "latestYear": "2026",
+            "refNForLatestYear": 0,
+            "ok": false
+          }
+        },
+        "ruleToday": {
+          "hi": 80,
+          "lo": 20,
+          "minN": 20,
+          "byYear": {
+            "2026": {
+              "n": 0,
+              "skipped": 1,
+              "high": null,
+              "low": null
+            }
+          }
+        },
+        "levelAdjusted": {
+          "byYear": {
+            "2026": {
+              "n": 0,
+              "skipped": 1,
+              "high": null,
+              "low": null
+            }
+          }
+        },
+        "agreement": {
+          "n": 0,
+          "agreeShare": null,
+          "opposite": 0
+        },
+        "thresholdSensitivity": {
+          "today(含年水平漂移)": [
+            {
+              "hi": 90,
+              "lo": 10,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 85,
+              "lo": 15,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 80,
+              "lo": 20,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 75,
+              "lo": 25,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            }
+          ],
+          "levelAdjusted": [
+            {
+              "hi": 90,
+              "lo": 10,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 85,
+              "lo": 15,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 80,
+              "lo": 20,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 75,
+              "lo": 25,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            }
+          ]
+        },
+        "autocorr": {
+          "rho": null,
+          "effectiveN": null,
+          "n": 1
+        },
+        "caveats": [
+          "这些序列的点只存了榨利值/月差百分比，没有价格——信号之后N日涨跌的前向检验做不了(要靠每天记录的两个系统方向，见analyze_systems.py)",
+          "'去掉年水平'用的是整个合约年窗口的中位数，是事后才知道的，只用来比较两种口径是否一致，不能直接用于线上",
+          "逐日点高度相关：有效样本数(effectiveN)远小于点数，80/20的触发率估计的误差比点数暗示的大得多",
+          "分位按'同日历月、不同日历年'算(与线上一致)，5月合约的12月和1~3月是不同日历年，会互为参照"
+        ]
+      },
+      "term_spread_jan": {
+        "key": "term_spread_jan",
+        "n": 1,
+        "from": "2026-10-09",
+        "to": "2026-10-09",
+        "contractYears": 1,
+        "levelDrift": [
+          {
+            "year": 2027,
+            "n": 1,
+            "median": 11.46,
+            "q1": 11.46,
+            "q3": 11.46
+          }
+        ],
+        "monthSufficiency": {
+          "10": {
+            "byYear": {
+              "2026": 1
+            },
+            "latestYear": "2026",
+            "refNForLatestYear": 0,
+            "ok": false
+          }
+        },
+        "ruleToday": {
+          "hi": 80,
+          "lo": 20,
+          "minN": 20,
+          "byYear": {
+            "2026": {
+              "n": 0,
+              "skipped": 1,
+              "high": null,
+              "low": null
+            }
+          }
+        },
+        "levelAdjusted": {
+          "byYear": {
+            "2026": {
+              "n": 0,
+              "skipped": 1,
+              "high": null,
+              "low": null
+            }
+          }
+        },
+        "agreement": {
+          "n": 0,
+          "agreeShare": null,
+          "opposite": 0
+        },
+        "thresholdSensitivity": {
+          "today(含年水平漂移)": [
+            {
+              "hi": 90,
+              "lo": 10,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 85,
+              "lo": 15,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 80,
+              "lo": 20,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 75,
+              "lo": 25,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            }
+          ],
+          "levelAdjusted": [
+            {
+              "hi": 90,
+              "lo": 10,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 85,
+              "lo": 15,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 80,
+              "lo": 20,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            },
+            {
+              "hi": 75,
+              "lo": 25,
+              "n": 0,
+              "highShare": null,
+              "lowShare": null
+            }
+          ]
+        },
+        "autocorr": {
+          "rho": null,
+          "effectiveN": null,
+          "n": 1
+        },
+        "caveats": [
+          "这些序列的点只存了榨利值/月差百分比，没有价格——信号之后N日涨跌的前向检验做不了(要靠每天记录的两个系统方向，见analyze_systems.py)",
+          "'去掉年水平'用的是整个合约年窗口的中位数，是事后才知道的，只用来比较两种口径是否一致，不能直接用于线上",
+          "逐日点高度相关：有效样本数(effectiveN)远小于点数，80/20的触发率估计的误差比点数暗示的大得多",
+          "分位按'同日历月、不同日历年'算(与线上一致)，5月合约的12月和1~3月是不同日历年，会互为参照"
+        ]
+      }
+    }
+  }
+}
