@@ -69,20 +69,76 @@ class TestBuild(unittest.TestCase):
         self.assertIn('不是回测过的信号', r['note'])
 
 
-if __name__ == '__main__':
+
+
+class TestPlan(unittest.TestCase):
+    def test_cbot_symbol_follows_shipping_month(self):
+        # 1月豆粕合约：10~11月船期 → CBOT 11月(X)，年份比合约年份早1年；5月合约：2~3月船期 → 3月(H)；9月合约：6~7月船期 → 7月(N)
+        self.assertEqual(ca.cbot_symbol(1, "M2701"), "ZSX26.CBT")
+        self.assertEqual(ca.cbot_symbol(5, "M2705"), "ZSH27.CBT")
+        self.assertEqual(ca.cbot_symbol(9, "M2709"), "ZSN27.CBT")
+
+    def test_primary_origin_per_contract(self):
+        self.assertEqual(ca.PLAN[1]["primary"], "us")        # 1月以美豆为主
+        self.assertEqual(ca.PLAN[5]["primary"], "brazil")    # 5月以南美(巴西)为主
+        self.assertIsNone(ca.PLAN[9]["primary"])             # 9月两者并列
+
+    def test_premiums_from_user_table_midpoints(self):
+        # 用户给的Mysteel 2026-04-22快照，取区间中值：
+        #  美豆 10月277~281、11月282~283 → 约280；巴西 无10~11月，借9月X 240
+        #  巴西 2月130~135(132.5)、3月100~112(106) → 119；巴西 6月155、7月175 → 165；美豆 7月N 265~272 → 268
+        self.assertEqual(ca.PLAN[1]["origins"]["us"]["premium_cents"], 280)
+        self.assertEqual(ca.PLAN[1]["origins"]["brazil"]["premium_cents"], 240)
+        self.assertEqual(ca.PLAN[5]["origins"]["brazil"]["premium_cents"], 119)
+        self.assertIsNone(ca.PLAN[5]["origins"]["us"])       # 5月对应船期没有美豆报价，不编
+        self.assertEqual(ca.PLAN[9]["origins"]["brazil"]["premium_cents"], 165)
+        self.assertEqual(ca.PLAN[9]["origins"]["us"]["premium_cents"], 268)
+
+    def test_tariffs(self):
+        self.assertEqual(ca.ORIGINS["brazil"]["tariff"], 0.03)
+        self.assertEqual(ca.ORIGINS["us"]["tariff"], 0.13)
+
+    def test_us_cost_hand_calc(self):
+        # 美豆: (1295+230)=1525 ×0.367437=560.3415；×6.8=3810.32；×1.13=4305.66；×1.09=4693.15；+100=4793.15
+        self.assertAlmostEqual(ca.bean_landed_cost(1295, 230, 6.8, 0.13, 0.09, 100), 4793.15, delta=0.1)
+
+    def test_params_for_merges_origin_and_plan(self):
+        p = ca.params_for(1, "us")
+        self.assertEqual((p["tariff"], p["premium_cents"], p["premium_confirmed"]), (0.13, 280, False))
+        self.assertIn("2026", p["ship"])
+        self.assertIsNone(ca.params_for(5, "us"))
+
+
+class TestMulti(unittest.TestCase):
+    CM = {"sep": {"available": False},
+          "may": {"available": True, "mealPrice": 3300, "oilPrice": 8000, "mealSymbol": "M2705", "date": "2026-10-09"},
+          "jan": {"available": True, "mealPrice": 3400, "oilPrice": 8000, "mealSymbol": "M2701", "date": "2026-10-09"}}
+
+    def test_each_contract_uses_its_own_cbot_and_premium(self):
+        import fetch_data as fd
+        prices = {"ZSX26.CBT": (1300.0, "2026-10-09"), "ZSH27.CBT": (1330.0, "2026-10-09"), "ZS=F": (1295.0, "2026-10-09")}
+        r = fd.build_cost_anchor_multi(self.CM, 6.8, lambda sym: prices.get(sym, (None, "无")))
+        self.assertTrue(r["available"]); self.assertEqual(sorted(r["contracts"]), ["jan", "may"])
+        j = r["contracts"]["jan"]
+        self.assertEqual((j["cbotSymbol"], j["zsExact"], j["zsCents"], j["primary"]), ("ZSX26.CBT", True, 1300.0, "us"))
+        self.assertTrue(j["us"]["available"] and j["brazil"]["available"])
+        # 美豆 (1300+280)×0.367437×6.8×1.13×1.09+100 = 1580×0.367437=580.55；×6.8=3947.7；×1.13=4460.9；×1.09=4862.4；+100=4962.4
+        self.assertAlmostEqual(j["us"]["beanCost"], 4962.4, delta=0.5)
+        m = r["contracts"]["may"]
+        self.assertEqual((m["cbotSymbol"], m["zsCents"], m["primary"]), ("ZSH27.CBT", 1330.0, "brazil"))
+        self.assertFalse(m["us"]["available"]); self.assertIn("没有", m["us"]["reason"])
+
+    def test_fallback_to_front_month_is_flagged(self):
+        import fetch_data as fd
+        prices = {"ZS=F": (1295.0, "2026-10-09")}
+        r = fd.build_cost_anchor_multi(self.CM, 6.8, lambda sym: prices.get(sym, (None, "无")))
+        j = r["contracts"]["jan"]
+        self.assertFalse(j["zsExact"]); self.assertEqual(j["zsCents"], 1295.0); self.assertIn("近月连续", j["zsNote"])
+
+    def test_no_price_at_all_unavailable(self):
+        import fetch_data as fd
+        self.assertFalse(fd.build_cost_anchor_multi(self.CM, 6.8, lambda sym: (None, "无"))["available"])
+
+
+if __name__ == "__main__":
     unittest.main()
-
-
-class TestWiring(unittest.TestCase):
-    def test_build_from_inputs_picks_jan_first(self):
-        import fetch_data as fd
-        cm = {"sep": {"available": True, "mealPrice": 1, "oilPrice": 1, "mealSymbol": "M2609"},
-              "jan": {"available": True, "mealPrice": 3400, "oilPrice": 8000, "mealSymbol": "M2701", "date": "2026-10-09"},
-              "may": {"available": False}}
-        r = fd.build_cost_anchor_from_inputs(1295, 6.8, cm)
-        self.assertTrue(r["available"]); self.assertEqual(r["mealSymbol"], "M2701"); self.assertEqual(r["mealPrice"], 3400)
-
-    def test_no_margin_unavailable(self):
-        import fetch_data as fd
-        r = fd.build_cost_anchor_from_inputs(1295, 6.8, {"sep": {"available": False}})
-        self.assertFalse(r["available"])

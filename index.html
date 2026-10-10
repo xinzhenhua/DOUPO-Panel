@@ -178,7 +178,7 @@ details.big-collapse[open]>summary{border-bottom-left-radius:0;border-bottom-rig
     <div id="structureContent" class="loading">等待数据...</div>
   </details>
   <details class="dc-sec">
-    <summary>📐 行情状态 · 价格位置 · 资金市清单 · 成本锚<span class="dc-sub">只描述状态；历史检验结论写在卡内</span></summary>
+    <summary>📍 价格位置 · 行情判断 · 成本锚<span class="dc-sub">只描述状态；历史检验结论写在卡内</span></summary>
     <div id="regimeContent" class="loading">等待日K线数据...</div>
   </details>
   <details class="dc-sec">
@@ -1517,7 +1517,7 @@ function renderKline(dailyData, hourlyData, genAt, positionRankData){
   window._technicalDirection = confluenceSummary.bullCount > confluenceSummary.bearCount ? '偏多'
     : confluenceSummary.bearCount > confluenceSummary.bullCount ? '偏空' : '中性';
 
-  window._dailyBars = bars; renderRegimeCard();
+  window._dailyBars = bars; window._dailySymbol = dailyData.symbol; renderRegimeCard();
   let positionRankSummaryText, positionRankBodyHtml;
   if(!positionRankData || !positionRankData.available){
     positionRankSummaryText = '暂无数据';
@@ -2509,6 +2509,7 @@ function selectContract(month){
   refreshVolumePriceForContract(month); // 量价关系同理
   renderSeasonal(); // 季节性卡的价位换算用当前合约的K线(只展示，不计分)
   updateOverallAlert(); // 切换合约后，仪表盘要跟着用不同的天气类信号重新算一遍
+  try{ renderRegimeCard(); }catch(e){} // 成本锚/百分位跟着所选合约
 }
 
 // ===================== 人民币汇率：Frankfurter API 实时抓取（真自动，浏览器CORS已确认支持）=====================
@@ -4101,36 +4102,17 @@ function classifyRegime(adx, close, ma20, ma60){
   if(close < ma20 && ma20 < ma60) return {code:'trend_down', label:'下降趋势'};
   return {code:'trend_mixed', label:'趋势强度高但彩带缠绕，方向不明'};
 }
-function pricePercentileBand(bars){
-  const cs = (bars||[]).map(b=>b.close).filter(c=>c!=null && !isNaN(c)).slice(-260);
-  if(cs.length < 200) return {band:'unknown', pct:null, n:cs.length};
+function pricePercentileBand(bars, ext){
+  // ext(后端pricePosition)：本合约上市不久时，用其他合约按比例换算补齐的收盘价序列；symbol对不上就不用
+  let cs = (bars||[]).map(b=>b.close).filter(c=>c!=null && !isNaN(c)).slice(-260), extN = 0, ownN = cs.length;
+  if(ext && Array.isArray(ext.closes) && ext.closes.length > cs.length && ext.symbol && window._dailySymbol === ext.symbol && cs.length){
+    cs = ext.closes.slice(); cs[cs.length-1] = bars[bars.length-1].close;   // 最后一个点永远用页面当前K线，保持一致
+    extN = ext.extendedCount || 0; ownN = cs.length - extN;
+  }
+  if(cs.length < 200) return {band:'unknown', pct:null, n:cs.length, ownN, extN};
   const last = cs[cs.length-1];
   const pct = Math.round(cs.filter(c=>c <= last).length / cs.length * 1000) / 10;
-  return {band: pct <= 20 ? 'low' : pct >= 80 ? 'high' : 'mid', pct, n:cs.length};
-}
-function capitalChecklist(bars, verdict, pb){
-  bars = bars || [];
-  const n = bars.length, last = bars[n-1], p5 = bars[n-6];
-  const items = [];
-  const oiUp = !!(last && p5 && last.hold != null && p5.hold != null && last.close > p5.close && last.hold > p5.hold);
-  items.push({id:'oi_up_price_up', hit:oiUp, evidence:'weak', text:'增仓上涨(5日价格涨且持仓增)', note:'历史检验里"增仓上涨"后的表现比"减仓上涨"略好，样本小，只算弱支持'});
-  let surge = false, surgePct = null;
-  if(last && last.hold != null && n >= 21){
-    const prev = bars.slice(n-21, n-1).map(b=>b.hold).filter(h=>h!=null);
-    if(prev.length >= 15){ const avg = prev.reduce((a,b)=>a+b,0)/prev.length; surgePct = (last.hold/avg - 1)*100; surge = surgePct >= 20; }
-  }
-  items.push({id:'oi_surge', hit:surge, evidence:'none', text:'持仓量暴增(较前20日均值≥+20%)'+(surgePct!=null?`，当前${surgePct>=0?'+':''}${surgePct.toFixed(1)}%`:''), note:'文档阈值(20~30%)，历史检验里没有找到它预示转折的证据'});
-  const vc = verdict && verdict.code;
-  items.push({id:'foreign_retreat', hit: vc==='retreat_from_high' || vc==='retreat', evidence:'none', text:'外资净多在撤退', note:'减仓后未来5日表现和基准没有明显差别，只描述，不当看空信号'});
-  items.push({id:'foreign_crowded', hit: vc==='crowded_flat' || vc==='build_high', evidence:'none', text:'外资多头拥挤/高位加仓', note:'阈值是文档经验值，未回测'});
-  items.push({id:'price_high', hit: !!pb && pb.band==='high', evidence:'none', text:'价格处近1年高位带(≥80%分位)', note:'高位带没有"之后会跌"的证据'});
-  const notWired = ['基差走弱(基差已在"市场结构"里，未并入计数)', '美豆不涨豆粕涨', '养殖利润恶化'];
-  return {items, count: items.filter(x=>x.hit).length, total: items.length, notWired};
-}
-function restLamp(cl, enabled){
-  if(!enabled) return {on:false, lit:false, text:''};
-  const lit = !!cl && cl.count >= 3;
-  return {on:true, lit, text: lit ? `🛑 纪律提示：资金市特征已命中${cl.count}项(≥3项)。这是文档的经验规则，没有回测过，只提醒你按自己的纪律降低操作频率，不是看空信号。` : ''};
+  return {band: pct <= 20 ? 'low' : pct >= 80 ? 'high' : 'mid', pct, n:cs.length, ownN, extN};
 }
 function barFinal(nowMs, barDate){
   const bj = new Date(nowMs + 8*3600000), today = bj.toISOString().slice(0,10);
@@ -4144,29 +4126,29 @@ function regimeSnapshot(){
   const adxArr = computeADX(bars, 14), adx = n ? adxArr[n-1] : null;
   const ma20 = sma(20), ma60 = sma(60), close = n ? bars[n-1].close : null;
   const reg = classifyRegime(adx, close, ma20, ma60);
-  const pb = pricePercentileBand(bars);
-  const mc = window._syncedData && window._syncedData.marketCapital;
-  const cl = capitalChecklist(bars, mc && mc.verdict, pb);
-  let enabled = false; try{ enabled = localStorage.getItem('doupo_rest_lamp') === '1'; }catch(e){}
-  if(window._restLampOverride != null) enabled = !!window._restLampOverride;
-  return {bars, adx, ma20, ma60, close, reg, pb, cl, lamp: restLamp(cl, enabled), enabled};
+  const ext = window._syncedData && window._syncedData.pricePosition && window._syncedData.pricePosition[window._selectedContract || 'jan'];
+  const pb = pricePercentileBand(bars, ext);
+  return {bars, adx, ma20, ma60, close, reg, pb};
 }
-function setRestLamp(on){
-  try{ localStorage.setItem('doupo_rest_lamp', on ? '1' : '0'); }catch(e){}
-  window._restLampOverride = !!on;
-  renderRegimeCard();
-  if(typeof renderDecisionSummary === 'function') try{ renderDecisionSummary(); }catch(e){}
-}
-function costAnchorHtml(ca){
+function costAnchorHtml(ca, month){
   const f = n=>Math.round(n).toLocaleString('en-US');
   if(!ca || !ca.available) return `<div style="font-size:11px;color:var(--t3)">💡 成本锚：${ca && ca.reason ? ca.reason : '后端暂无数据'}</div>`;
-  const p = ca.params || {};
-  const posTxt = ca.position==='below' ? '低于' : ca.position==='above' ? '高于' : '处在';
-  const posTail = ca.position==='within' ? '成本区间内' : '成本区间';
-  return `<div style="margin-top:8px;font-size:11px;line-height:1.6"><b>💰 成本锚（进口大豆理论成本）</b>
-    <div>${ca.mealSymbol||'盘面'}盘面 <b>${f(ca.mealPrice)}</b> ${posTxt}理论成本区间 ${f(ca.mealCostLow)}~${f(ca.mealCostHigh)}（中值 <b>${f(ca.mealCost)}</b>，差 ${ca.gap>0?'+':''}${f(ca.gap)}元/吨，${ca.gapPct>0?'+':''}${ca.gapPct}%）${ca.position==='within'?'':''}</div>
-    <div style="color:var(--t3)">算法：CBOT美豆${f(ca.zsCents)}美分 + 升贴水${p.premium_cents}美分(±${p.premium_step}) × 汇率${ca.fx} × (1+关税${(p.tariff*100).toFixed(0)}%) × (1+增值税${(p.vat*100).toFixed(0)}%) + 港杂${p.port_fee} = 豆成本${f(ca.beanCost)}；再 +压榨费${p.crush_fee} −豆油×0.185，÷0.785。</div>
-    <div style="color:var(--t3)">参数日期 ${p.asof}。升贴水没有历史数据、无法回测，所以给的是区间；港杂费/增值税为经验口径，请核对。${ca.note||''}</div></div>`;
+  const c = ca.contracts && ca.contracts[month];
+  if(!c) return `<div style="font-size:11px;color:var(--t3)">💡 成本锚：当前所选合约(${month})暂无数据(榨利卡盘面价或CBOT对应合约缺失)。</div>`;
+  const row = o=>{
+    const r = c[o]; const lab = o==='brazil' ? '巴西豆' : '美豆';
+    const tag = c.primary===o ? ' <span style="color:var(--t2)">【该合约主要来源】</span>' : (c.primary ? ' <span style="color:var(--t3)">【参考】</span>' : '');
+    if(!r || !r.available) return `<div style="margin-top:3px"><b>${lab}</b>${tag}：${r && r.reason ? r.reason : '不可用'}</div>`;
+    const p = r.params || {};
+    const posTxt = r.position==='below' ? '低于' : r.position==='above' ? '高于' : '处在';
+    return `<div style="margin-top:3px"><b>${lab}</b>${tag}：盘面 <b>${f(r.mealPrice)}</b> ${posTxt}理论成本区间 ${f(r.mealCostLow)}~${f(r.mealCostHigh)}（中值 <b>${f(r.mealCost)}</b>，差 ${r.gap>0?'+':''}${f(r.gap)}元/吨，${r.gapPct>0?'+':''}${r.gapPct}%）
+      <div style="color:var(--t3)">${p.ship||''}：豆完税成本${f(r.beanCost)}＝(CBOT ${f(r.zsCents)}＋升贴水${p.premium_cents}±${p.premium_step}美分)×0.367437×汇率${r.fx}×(1＋关税${(p.tariff*100).toFixed(0)}%)×(1＋增值税${(p.vat*100).toFixed(0)}%)＋港杂${p.port_fee}；粕成本＝(豆成本＋压榨费${p.crush_fee}−豆油×0.185)÷0.785。参数日期${p.asof}${p.premium_confirmed===false?'，<b>升贴水未经核实</b>':''}。</div>
+      <div style="color:var(--t3)">${p.note||''}</div></div>`;
+  };
+  return `<div style="margin-top:8px;font-size:11px;line-height:1.6"><b>💰 成本锚（进口大豆理论成本 · ${c.mealSymbol}）</b>
+    <div style="color:var(--t3)">CBOT基准合约：${c.cbotSymbol}${c.zsDate?`(${c.zsDate})`:''}${c.zsExact?'':`　⚠️${c.zsNote}`}</div>
+    ${row('us')}${row('brazil')}
+    <div style="color:var(--t3);margin-top:3px">升贴水没有历史数据、无法回测，所以给区间；港杂费、增值税为经验口径，请核对(改 cost_anchor.py)。成本参照，不是回测过的买卖信号：盘面低于理论成本不等于会涨。</div></div>`;
 }
 function renderRegimeCard(){
   const el = document.getElementById('regimeContent');
@@ -4176,26 +4158,22 @@ function renderRegimeCard(){
   const fmt1 = v=> v==null ? '—' : v.toFixed(1);
   const lastBar = s.bars[s.bars.length-1];
   const final = barFinal(window._nowMs || Date.now(), lastBar.date);
-  const pbTxt = s.pb.band==='unknown' ? `数据不足(只有${s.pb.n}根，需≥200根)` :
-    `${s.pb.pct}%分位（近${s.pb.n}个交易日同合约，${s.pb.band==='low'?'低位带≤20%':s.pb.band==='high'?'高位带≥80%':'中间带'}）`;
-  const bandNote = s.pb.band==='low' ? '历史检验：低位带之后表现略好于基准，温和支持，样本有限。' :
-    s.pb.band==='high' ? '历史检验：高位带没有"之后会跌"的证据，只说明价格贵，不说明要跌。' : '';
-  const itemRow = x=>`<div style="margin:2px 0">${x.hit?'✅':'⬜'} ${x.text} <span style="color:var(--t3)">[证据：${x.evidence==='weak'?'弱支持':'无证据'}]</span>${x.hit?`<div style="color:var(--t3);margin-left:20px">${x.note}</div>`:''}</div>`;
+  const pb = s.pb;
+  const bandName = pb.band==='low' ? '低位带(≤20%)' : pb.band==='high' ? '高位带(≥80%)' : '中间带';
+  const pbTxt = pb.band==='unknown' ? `数据不足(只有${pb.n}根，需≥200根)` :
+    `<b>${pb.pct}%分位</b>（${bandName}；近${pb.n}个交易日${pb.extN?`，其中前${pb.extN}日是用其他合约按重叠日比例换算的，不是本合约原始成交价`:'，本合约自己的价格'}）`;
+  const bandNote = pb.band==='low' ? '历史检验：低位带之后表现略好于基准，温和支持，样本有限。' :
+    pb.band==='high' ? '历史检验：高位带没有"之后会跌"的证据，只说明价格贵，不说明要跌。' : '';
   el.innerHTML = `<div style="font-size:11px;line-height:1.65">
-    ${final ? '' : `<div style="color:var(--t3)">⏳ 今日K线尚未收盘，ADX/百分位/清单可能在收盘后变化。</div>`}
-    <div><b>📐 行情状态：${s.reg.label}</b>　ADX(14)=${fmt1(s.adx)}　MA20=${fmt1(s.ma20)}　MA60=${fmt1(s.ma60)}　收盘${s.close}</div>
-    <div style="color:var(--t3)">划分：ADX&lt;22震荡，22~28过渡，≥28趋势(文档阈值)。历史检验没有发现ADX/彩带对未来涨跌有前向预测力，没有可靠的"趋势里顺势赚更多"的证据——它只是帮你认清现在是什么行情，不是买卖信号。</div>
-    <div style="margin-top:6px"><b>📍 价格位置：</b>${pbTxt}</div>
+    ${final ? '' : `<div style="color:var(--t3)">⏳ 今日K线尚未收盘，价格位置/ADX可能在收盘后变化。</div>`}
+    <div><b>📍 价格位置：</b>${pbTxt}</div>
     ${bandNote ? `<div style="color:var(--t3)">${bandNote}</div>` : ''}
-    <div style="margin-top:8px"><b>📋 资金市证据清单：命中 ${s.cl.count}/${s.cl.total}</b></div>
-    ${s.cl.items.map(itemRow).join('')}
-    <div style="color:var(--t3)">未接入、不计数：${s.cl.notWired.join('；')}。"命中≥3项"的规则来自文档，没有回测。</div>
-    <div style="margin-top:6px"><label style="cursor:pointer"><input type="checkbox" id="restLampSwitch" ${s.enabled?'checked':''} onchange="setRestLamp(this.checked)"> 休息灯（纪律提示，默认关）</label>
-      ${s.lamp.on ? `<div style="margin-top:3px">${s.lamp.lit ? s.lamp.text : '⚪ 休息灯已开启，当前命中不足3项，不亮。'}</div>` : '<div style="color:var(--t3)">开启后，命中≥3项会亮灯提醒。文档规则未回测，仅作纪律提示。</div>'}</div>
-    ${costAnchorHtml(window._syncedData && window._syncedData.costAnchor)}
+    <div style="margin-top:6px"><b>📐 行情判断：${s.reg.label}</b>　ADX(14)=${fmt1(s.adx)}　MA20=${fmt1(s.ma20)}　MA60=${fmt1(s.ma60)}　收盘${s.close}</div>
+    <div style="color:var(--t3)">ADX&lt;22震荡，22~28过渡，≥28趋势(文档阈值)。只用来判断现在是什么行情，不是买卖信号：历史检验没有发现ADX/彩带对未来涨跌有前向预测力。</div>
+    ${costAnchorHtml(window._syncedData && window._syncedData.costAnchor, window._selectedContract || 'jan')}
   </div>`;
 }
-window._regime = {computeADX, classifyRegime, pricePercentileBand, capitalChecklist, restLamp, barFinal, render: renderRegimeCard, snapshot: regimeSnapshot};
+window._regime = {computeADX, classifyRegime, pricePercentileBand, barFinal, render: renderRegimeCard, snapshot: regimeSnapshot};
 
 function marketStateHtml(ok, pure){
   const mc = window._syncedData && window._syncedData.marketCapital;
@@ -4224,9 +4202,7 @@ function marketStateHtml(ok, pure){
     capSub = '龙虎榜或CFTC这次没抓到(或latest.json是旧版本)，不下结论。';
   }
   const fundLine = ok ? `基本面：${pure.direction === '中性' ? '信号混合' : pure.direction}(净倾向${pure.ratio>0?'+':''}${Math.round(pure.ratio*100)}%)` : '基本面：数据不足';
-  let restLine = '';
-  try{ const rs = regimeSnapshot(); if(rs.lamp.lit) restLine = `<div class="dc-st-sub" style="margin-top:4px">${rs.lamp.text}</div>`; }catch(e){}
-  return `<div class="dc-state"><div class="dc-st-title">当前市场状态</div><div class="dc-st-line">${capLine}　|　${fundLine}</div><div class="dc-st-sub">${capSub}</div>${restLine}</div>`;
+  return `<div class="dc-state"><div class="dc-st-title">当前市场状态</div><div class="dc-st-line">${capLine}　|　${fundLine}</div><div class="dc-st-sub">${capSub}</div></div>`;
 }
 
 function renderDecisionSummary(){

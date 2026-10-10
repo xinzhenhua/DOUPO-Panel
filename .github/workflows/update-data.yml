@@ -91,6 +91,11 @@ jobs:
           node scripts/snapshot_systems.js --html index.html --latest data/latest.json --out /tmp/systems_snapshot.json
           python3 record_systems.py /tmp/systems_snapshot.json
 
+      - name: 龙虎榜历史自动补齐(v101.19，不联网、幂等、几秒)
+        run: |
+          # 读仓库 data/raw/dce_rank/ 下已有的排名文件补席位净持仓历史；线上已有的日期不覆盖。以后放新文件进去，下一小时自动生效，不用再手动点回填
+          python3 backfill_history.py --only capital_rank || echo "龙虎榜自动补齐失败(不影响主数据)"
+
       - name: 提交更新后的数据文件
         run: |
           git config user.name "github-actions[bot]"
@@ -98,6 +103,8 @@ jobs:
           git add data/latest.json
           # 历史序列(data/history/)：首次运行前目录可能不存在，所以单独add，失败不影响主数据的提交
           git add data/history/ 2>/dev/null || true
+          # 龙虎榜每日原始前20名留档(v101.19)
+          git add data/raw/dce_rank_live/ 2>/dev/null || true
           # 如果数据没变化就不产生空提交
           git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push

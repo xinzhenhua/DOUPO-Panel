@@ -8,6 +8,7 @@ const { makeEl, check } = H;
 eval(H.loadDashboardJs());
 const R = window._regime;
 check('导出了window._regime', !!R && typeof R.computeADX === 'function');
+check('★资金市清单/休息灯函数已移除', R.capitalChecklist === undefined && R.restLamp === undefined);
 
 const mk = (n, f)=>Array.from({length:n}, (_, i)=>f(i));
 // ---- 1. ADX ----
@@ -51,37 +52,18 @@ pb = R.pricePercentileBand(mk(249, i=>i+1).concat([124.5]).map(c=>({close:c})));
 check('50% → mid带', pb.pct === 50 && pb.band === 'mid');
 check('不足200根不下结论', R.pricePercentileBand(mk(150, i=>({close:i+1}))).band === 'unknown');
 
-// ---- 4. 资金市证据清单 ----
-// 5日: 价格 100→105(涨) 且 持仓 10000→10800(+8%,增) → 增仓上涨命中; 持仓相对前20日均值: 前20日均10000,最新10800=+8% <20% → 暴增不命中
-function bars(price0, price1, hold0, hold1){
-  return mk(30, i=>{ const base = i<24 ? price0 : price0 + (price1-price0)*(i-24)/5; const h = i<24 ? hold0 : hold0 + (hold1-hold0)*(i-24)/5;
-    return {close:base, high:base+1, low:base-1, hold:h}; });
-}
-let cl = R.capitalChecklist(bars(100,105,10000,10800), null, {band:'mid', pct:50});
-const hit = id=>cl.items.find(x=>x.id===id).hit;
-check('增仓上涨命中(5日价↑且持仓↑)', hit('oi_up_price_up') === true);
-check('持仓+8%不算暴增', hit('oi_surge') === false);
-cl = R.capitalChecklist(bars(100,105,10000,12500), null, {band:'mid', pct:50});   // +25%，≥20%暴增
-check('持仓+25%命中暴增(≥20%)', hit('oi_surge') === true);
-cl = R.capitalChecklist(bars(100,95,10000,10800), null, {band:'mid', pct:50});    // 价跌仓增 → 不是增仓上涨
-check('价格下跌+增仓不算增仓上涨', hit('oi_up_price_up') === false);
-cl = R.capitalChecklist(bars(100,105,10000,9000), null, {band:'mid', pct:50});    // 减仓上涨
-check('减仓上涨不算增仓上涨', hit('oi_up_price_up') === false);
-cl = R.capitalChecklist(bars(100,105,10000,10800), {code:'retreat_from_high'}, {band:'high', pct:90});
-check('外资高位撤退+价格高位+增仓上涨 = 3项命中', cl.count === 3 && hit('foreign_retreat') && hit('price_high'));
-check('每项都带证据强度标签', cl.items.every(x=>['weak','none'].includes(x.evidence)));
-check('未接入的项目被点名且不计数', cl.notWired.length >= 3 && cl.total === cl.items.length);
-cl = R.capitalChecklist(bars(100,105,10000,10800), {code:'neutral_flat'}, {band:'mid', pct:50});
-check('外资中性不命中', hit('foreign_retreat') === false && hit('foreign_crowded') === false);
-cl = R.capitalChecklist([], null, {band:'unknown'});
-check('没有K线不崩，计数0', cl.count === 0);
-
-// ---- 5. 休息灯：默认关；开启且≥3项才亮；开关状态不影响清单本身 ----
-check('默认关闭', R.restLamp({count:3}, false).on === false);
-check('开启且<3项 → 不亮', R.restLamp({count:2}, true).lit === false);
-check('开启且=3项 → 亮', R.restLamp({count:3}, true).lit === true && /纪律提示/.test(R.restLamp({count:3}, true).text));
-check('亮灯文字声明"未回测"', /未回测|没有回测/.test(R.restLamp({count:3}, true).text));
-check('关闭时即使5项也不亮', R.restLamp({count:5}, false).lit === false);
+// ---- 4. 用后端补齐的序列算百分位(新合约历史不够时) ----
+// 本合约只有150根(<200不下结论)；后端pricePosition给了260根(前110根是换算的)，最后一个点用页面当前K线
+window._dailySymbol = 'M2701';
+const own150 = mk(150, i=>({close:i+111}));                      // 111..260
+const extCloses = mk(260, i=>i+1);                                // 1..260
+let pe = R.pricePercentileBand(own150, {symbol:'M2701', closes:extCloses, ownCount:150, extendedCount:110});
+check('★补齐后能算：最新260在1..260里是100%分位, 其中110日为换算', pe.pct === 100 && pe.n === 260 && pe.extN === 110 && pe.band === 'high');
+pe = R.pricePercentileBand(own150, {symbol:'M2705', closes:extCloses, ownCount:150, extendedCount:110});
+check('★序列属于别的合约(symbol对不上)就不用，仍然"数据不足"', pe.band === 'unknown' && pe.n === 150);
+const own150b = own150.slice(0, 149).concat([{close:50.5}]);       // 页面最新收盘50.5：≤50.5的有1..50共50个+自己=51 → 51/260=19.6%
+pe = R.pricePercentileBand(own150b, {symbol:'M2701', closes:extCloses, ownCount:150, extendedCount:110});
+check('★最后一点用页面当前收盘(50.5)而不是序列里的260 → 19.6%分位, low带', pe.pct === 19.6 && pe.band === 'low');
 
 // ---- 6. 收盘定型标记 ----
 // 北京时间15:00收盘，日盘交易时段 09:00-15:00(含10:15-10:30休息) ; 夜盘21:00-23:00
@@ -94,26 +76,32 @@ check('周末(10-10周六)不判未定型', R.barFinal(E.bjToMs(2026,10,10,10,0)
 // ---- 7. 页面渲染 ----
 ['regimeContent'].forEach(makeEl);
 window._nowMs = E.bjToMs(2026,10,12,10,0);
+window._dailySymbol = 'M2701';
 window._dailyBars = mk(260, i=>({date:`d${i}`, open:3000+i, high:3010+i, low:2990+i, close:3000+i, hold:10000+i}));
-window._syncedData = {costAnchor:{available:true, beanCost:4434, mealCost:3954.1, mealCostLow:3775.4, mealCostHigh:4132.8, gap:-554.1, gapPct:-14, position:'below', mealSymbol:'M2701', mealPrice:3400, zsCents:1295, fx:6.8, params:{premium_cents:250, premium_step:50, tariff:0.03, vat:0.09, port_fee:100, crush_fee:150, asof:'2026-10-10', source_note:'x'}, note:'成本参照，不是回测过的信号'}};
+const mkB = (bean, cost, lo, hi, gap, pct, pos, tariff, prem)=>({available:true, beanCost:bean, mealCost:cost, mealCostLow:lo, mealCostHigh:hi, gap, gapPct:pct, position:pos, mealPrice:3400, zsCents:1300, fx:6.8, params:{premium_cents:prem, premium_step:50, tariff, vat:0.09, port_fee:100, crush_fee:150, asof:'2026-10-10', premium_confirmed:false, ship:'测试船期', note:'测试说明'}});
+window._selectedContract = 'jan';
+window._syncedData = {costAnchor:{available:true, fx:6.8, contracts:{
+  jan:{cbotSymbol:'ZSX26.CBT', zsCents:1300, zsDate:'2026-10-09', zsExact:true, zsNote:'', mealSymbol:'M2701', primary:'us', brazil:mkB(4434,3954.1,3775.4,4132.8,-554.1,-14,'below',0.03,240), us:mkB(4793,4410,4230,4590,-1010,-22.9,'below',0.13,280)},
+  may:{cbotSymbol:'ZS=F', zsCents:1295, zsDate:'2026-10-09', zsExact:false, zsNote:'取不到对应月份的CBOT合约，退回近月连续合约，基准合约可能和升贴水不一致', mealSymbol:'M2705', primary:'brazil', brazil:mkB(4400,3900,3720,4080,-600,-15,'below',0.03,119), us:{available:false, reason:'测试：美豆缺价'}},
+  sep:{cbotSymbol:'ZSN27.CBT', zsCents:1300, zsDate:'2026-10-09', zsExact:true, zsNote:'', mealSymbol:'M2709', primary:null, brazil:mkB(4300,3800,3700,3900,-400,-10,'below',0.03,165), us:mkB(4600,4100,4000,4200,-700,-17,'below',0.13,268)}}}};
 R.render();
 const html = makeEl('regimeContent').innerHTML, T = html.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
-check('渲染含行情状态与ADX数值', /行情状态/.test(T) && /ADX/.test(T));
-check('渲染含百分位', /百分位/.test(T));
+check('价格位置排在行情判断(ADX)前面', T.indexOf('价格位置') >= 0 && T.indexOf('价格位置') < T.indexOf('ADX'));
+check('渲染含行情判断与ADX数值', /行情判断/.test(T) && /ADX/.test(T));
 check('明说没有前向优势', /没有[^。]{0,30}(前向|预测)/.test(T));
 check('今日K线未收盘提示', /未收盘/.test(T));
-check('成本锚展示：理论成本3,954、盘面3,400、区间3,775~4,133', ['3,954','3,400','3,775','4,133'].every(s=>T.includes(s)));
-check('成本锚声明参数日期与升贴水不可回测', /2026-10-10/.test(T) && /升贴水/.test(T));
-check('渲染含休息灯开关(默认关)', /休息灯/.test(T) && !/🛑/.test(T));
-check('渲染含未接入项目', /未接入/.test(T));
-// ---- 8. 决策卡顶部：休息灯只在开启且亮时出现 ----
-window._restLampOverride = false;
-check('开关关：状态区没有🛑', !/🛑/.test(marketStateHtml(true, {direction:'中性', ratio:0})));
-window._restLampOverride = true;
-window._dailyBars = mk(260, i=>({date:`d${i}`, open:1, high:i+11, low:i+9, close:i+10, hold: i<255 ? 10000 : 10000 + (i-254)*600}));   // 价涨+持仓暴增+高位 = 3项
-window._syncedData = {marketCapital:{available:true, state:{level:'yellow', label:'x', thresholdSource:'y'}, verdict:{code:'retreat_from_high', level:'yellow', short:'外资高位撤退中', label:'外资高位撤退中', lines:[], evidence:[]}}};
-const sn = R.snapshot();
-check('构造的3项全中', sn.cl.count === 4 || sn.cl.count === 3);
-check('开关开+命中≥3：状态区出现🛑纪律提示', /🛑/.test(marketStateHtml(true, {direction:'中性', ratio:0})));
-window._restLampOverride = null;
+check('★资金市清单和休息灯已移除', !/资金市清单|休息灯|🛑/.test(T));
+check('成本锚(1月)：美豆为主要来源，展示4,410/4,230/4,590，关税13%；巴西豆标参考', ['4,410','4,230','4,590','关税13%','关税3%'].every(s=>T.includes(s)) && /美豆 【该合约主要来源】/.test(T) && /巴西豆 【参考】/.test(T));
+check('成本锚声明升贴水未经核实/无法回测', /升贴水未经核实/.test(T) && /无法回测/.test(T));
+check('展示CBOT基准合约ZSX26且精确取到时不报警', T.includes('ZSX26.CBT') && !/基准合约可能/.test(T));
+window._selectedContract = 'may'; R.render();
+const T2 = makeEl('regimeContent').innerHTML.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+check('★5月合约：巴西豆为主要来源，M2705数字3,900，不再显示1月的4,410；退回近月时有⚠️', T2.includes('M2705') && T2.includes('3,900') && !T2.includes('4,410') && /巴西豆 【该合约主要来源】/.test(T2) && /基准合约可能/.test(T2));
+check('某一豆源不可用时单独说明，不影响另一个', /美豆 【参考】 ：测试：美豆缺价/.test(T2));
+window._selectedContract = 'sep'; R.render();
+const T3 = makeEl('regimeContent').innerHTML.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+check('★9月合约：巴西豆和美豆都算，且都不标"主要"或"参考"', T3.includes('ZSN27.CBT') && T3.includes('4,100') && T3.includes('3,800') && !/【该合约主要来源】|【参考】/.test(T3));
+window._selectedContract = 'foo'; R.render();
+check('所选合约无数据 → 明说暂无，不拿别的合约凑', /当前所选合约\(foo\)暂无数据/.test(makeEl('regimeContent').innerHTML));
+window._selectedContract = 'jan';
 H.printSummary();

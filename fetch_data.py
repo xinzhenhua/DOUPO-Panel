@@ -4121,33 +4121,111 @@ def _yahoo_last_close(symbol):
         return None, "Yahoo无返回或格式变化"
 
 
-def build_cost_anchor_from_inputs(zs, fx, crush_margins):
-    """纯函数(便于测试)：用抓到的美豆价/汇率 + 榨利卡里已有的盘面豆粕/豆油价算成本锚。
-    盘面取jan>may>sep里第一个可用的(当前主力优先)。"""
+def build_cost_anchor_multi(crush_margins, fx, price_getter):
+    """纯函数(price_getter可注入，便于测试)：每个可用的合约月份(sep/may/jan)各算 巴西豆/美豆 两套成本。
+    CBOT基准合约按cost_anchor.cbot_symbol取；取不到就退回近月连续ZS=F，并标 zsExact=False 提示基准可能错位。"""
     import cost_anchor
-    mm = next((crush_margins[k] for k in ("jan", "may", "sep") if crush_margins.get(k, {}).get("available")), None)
-    if mm is None:
-        return {"available": False, "reason": "榨利卡没有可用的豆粕/豆油盘面价，成本锚不计算"}
-    r = cost_anchor.build(zs, fx, mm.get("mealPrice"), mm.get("oilPrice"))
-    if r.get("available"):
-        r["mealSymbol"] = mm.get("mealSymbol"); r["priceDate"] = mm.get("date")
-    return r
+    month_of = {"sep": 9, "may": 5, "jan": 1}
+    contracts = {}
+    for key, mm in crush_margins.items():
+        if key not in month_of or not mm.get("available") or not mm.get("mealSymbol"):
+            continue
+        sym = cost_anchor.cbot_symbol(month_of[key], mm["mealSymbol"])
+        zs, zdate = price_getter(sym)
+        exact = zs is not None
+        note = ""
+        if not exact:
+            zs, zdate = price_getter("ZS=F")
+            sym = "ZS=F"
+            note = "取不到对应月份的CBOT合约，退回近月连续合约，基准合约可能和升贴水不一致，成本可能有偏差"
+        if zs is None:
+            continue
+        entry = {"cbotSymbol": sym, "zsCents": zs, "zsDate": zdate, "zsExact": exact, "zsNote": note,
+                 "mealSymbol": mm["mealSymbol"], "mealPrice": mm.get("mealPrice"), "oilPrice": mm.get("oilPrice"), "priceDate": mm.get("date")}
+        entry["primary"] = cost_anchor.PLAN[month_of[key]]["primary"]
+        for origin in cost_anchor.ORIGINS:
+            params = cost_anchor.params_for(month_of[key], origin)
+            entry[origin] = (cost_anchor.build(zs, fx, mm.get("mealPrice"), mm.get("oilPrice"), params) if params
+                             else {"available": False, "reason": "该合约对应的船期没有这个豆源的报价(或不是主要来源)，不编数"})
+        contracts[key] = entry
+    if not contracts:
+        return {"available": False, "reason": "没有取到任何合约的CBOT美豆价或榨利卡盘面价，成本锚不计算"}
+    return {"available": True, "fx": fx, "contracts": contracts}
 
 
 def fetch_cost_anchor(crush_margins):
-    zs, zs_info = _yahoo_last_close("ZS=F")
-    if zs is None:
-        return {"available": False, "reason": f"CBOT美豆(ZS)缺失：{zs_info}"}
     fx_data, _ = fetch_json_debug("https://api.frankfurter.dev/v1/latest?base=USD&symbols=CNY")
     try:
         fx = float(fx_data["rates"]["CNY"]); fx_date = fx_data.get("date")
     except (TypeError, KeyError, ValueError):
         return {"available": False, "reason": "美元兑人民币汇率缺失，成本锚不计算"}
-    r = build_cost_anchor_from_inputs(zs, fx, crush_margins)
+    cache = {}
+    def getter(sym):
+        if sym not in cache:
+            cache[sym] = _yahoo_last_close(sym)
+        return cache[sym]
+    r = build_cost_anchor_multi(crush_margins, fx, getter)
     if r.get("available"):
-        r["zsDate"] = zs_info; r["fxDate"] = fx_date
-        r["source"] = "CBOT美豆连续合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
+        r["fxDate"] = fx_date
+        r["source"] = "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
     return r
+
+
+def save_rank_snapshots(position_ranks, out_dir):
+    """把线上抓到的龙虎榜前20名表格按 合约_YYYYMMDD.json 留档(幂等，已有不覆盖)。返回新写入的文件数。
+    目的：每天的原始排名都留着，口径以后要改(比如算总持仓、换下限估计法)时可以重算，不用靠下载。"""
+    n = 0
+    if not isinstance(position_ranks, dict):
+        return 0
+    for sym, pr in position_ranks.items():
+        try:
+            day = str((pr or {}).get("date") or "")[:10]
+            if not (isinstance(pr, dict) and pr.get("available") and len(day) == 10 and pr.get("tables")):
+                continue
+            os.makedirs(out_dir, exist_ok=True)
+            p = os.path.join(out_dir, f"{sym}_{day.replace('-', '')}.json")
+            if os.path.exists(p):
+                continue
+            with open(p, "w", encoding="utf-8") as fh:
+                json.dump({"symbol": sym, "date": day, "tables": pr["tables"], "source": pr.get("source")}, fh, ensure_ascii=False)
+            n += 1
+        except Exception as e:  # noqa: BLE001
+            print(f"[WARN] 龙虎榜留档失败({sym}): {type(e).__name__}: {e}", file=sys.stderr)
+    return n
+
+
+def build_price_position(daily_by_key, contracts_dir, target=260, min_overlap=3):
+    """价格位置用的收盘价序列：本合约不够target根时，用别的合约(仓库里 data/raw/seasonal/contracts/*.csv + 另外两个合约的实时日K)
+    按重叠日比例换算补前史(price_history.py)。返回 {sep/may/jan: {symbol, closes, ownCount, extendedCount, donor}}。任何单个合约失败只跳过。"""
+    import csv
+    import price_history
+    csv_donors = {}
+    if contracts_dir and os.path.isdir(contracts_dir):
+        for fn in sorted(os.listdir(contracts_dir)):
+            if fn.endswith(".csv") and fn.startswith("M"):
+                try:
+                    with open(os.path.join(contracts_dir, fn), encoding="utf-8") as fh:
+                        rows = [(r["date"][:10], float(r["close"])) for r in csv.DictReader(fh) if r.get("close") not in (None, "", "0", "0.0")]
+                    csv_donors[fn[:-4]] = rows
+                except Exception:  # noqa: BLE001
+                    continue
+    out = {}
+    for key, dd in daily_by_key.items():
+        try:
+            if not (isinstance(dd, dict) and dd.get("available") and dd.get("bars") and dd.get("symbol")):
+                continue
+            sym = dd["symbol"]
+            own = [(str(b["date"])[:10], b.get("close")) for b in dd["bars"]]
+            donors = {n: s for n, s in csv_donors.items() if n != sym}
+            for k2, d2 in daily_by_key.items():
+                if k2 != key and isinstance(d2, dict) and d2.get("available") and d2.get("symbol") and d2.get("symbol") != sym and d2.get("bars"):
+                    donors[d2["symbol"]] = [(str(b["date"])[:10], b.get("close")) for b in d2["bars"]]
+            r = price_history.extend_closes(own, donors, target=target, min_overlap=min_overlap)
+            r["symbol"] = sym
+            out[key] = r
+        except Exception as e:  # noqa: BLE001
+            print(f"[WARN] 价格位置补历史失败({key}): {type(e).__name__}: {e}", file=sys.stderr)
+    return out
 
 
 def fetch_crush_margin(contract_month, now=None):
@@ -5072,7 +5150,7 @@ def main():
         "cftcManagedMoney": fetch_cftc_managed_money(),
         "crushMargins": crush_margins,
         "termSpreads": term_spreads,
-        "costAnchor": fetch_cost_anchor(crush_margins),     # v101.19：成本锚(参数见cost_anchor.py，带日期)
+        "costAnchor": fetch_cost_anchor(crush_margins),     # v101.19：成本锚(每个合约×巴西豆/美豆；参数见cost_anchor.py)
         "brazilPlantingProgress": fetch_brazil_planting_progress(),
         "droughtMonitor": fetch_drought_monitor(),
         "noaaOutlook": fetch_noaa_drought_outlook(),
@@ -5095,6 +5173,20 @@ def main():
         "exportSales": fetch_esr_export_sales() if USDA_API_KEY else no_usda_key,
         "supplyDemand": fetch_psd_supply_demand() if USDA_API_KEY else no_usda_key,
     }
+
+    try:
+        save_rank_snapshots(position_ranks, os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw", "dce_rank_live"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] 龙虎榜留档失败(不影响其他数据): {type(e).__name__}: {e}", file=sys.stderr)
+
+    # ★价格位置(v101.19)：新合约历史不够260根时，用其他合约按比例换算补齐(只给页面算百分位用)
+    try:
+        result["pricePosition"] = build_price_position(
+            {"sep": result.get("dceM09Daily"), "may": result.get("dceM05Daily"), "jan": result.get("dceM01Daily")},
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw", "seasonal", "contracts"))
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠️ pricePosition生成失败(不影响其他数据): {type(e).__name__}: {e}")
+        result["pricePosition"] = {}
 
     # ★资金面(龙虎榜+CFTC)：从上面已经抓到的数据派生，不增加网络请求；任何错都不能影响latest.json
     try:

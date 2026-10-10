@@ -16,16 +16,46 @@ YIELD_MEAL = 0.785
 YIELD_OIL = 0.185
 
 # 参数(每次改动请同步改asof和source_note)。全部是"待使用者确认"的公开口径。
-PARAMS = {
-    "asof": "2026-10-10",
-    "premium_cents": 250,      # 巴西豆CNF升贴水(美分/蒲，对CBOT近月)。公开报价区间约220~310，取中间偏低；无历史、不可回测
-    "premium_step": 50,        # 敏感性区间 ±50美分
-    "tariff": 0.03,            # 巴西豆最惠国税率3%；美豆现行13%(3%+10%附加)，据2026-09标普报道
-    "vat": 0.09,               # 进口大豆增值税9%(公开口径，未逐条核实原文)
-    "port_fee": 100,           # 港杂费 元/吨(经验值，未核实)
-    "crush_fee": 150,          # 压榨费 元/吨(Mysteel压榨利润跟踪的口径)
-    "source_note": "关税/压榨费来自Mysteel与标普公开报道；升贴水、港杂费、增值税为经验口径，请核对后修改本参数",
+_COMMON = {"asof": "2026-10-10", "premium_step": 50, "vat": 0.09, "port_fee": 100, "crush_fee": 150}
+# 两个豆源。premium_confirmed=False：升贴水都是待你确认的值(没有历史、没有逐条核实的报价)，页面会照实标出。
+ORIGINS = {
+    "brazil": dict(_COMMON, label="巴西豆", tariff=0.03, premium_cents=250, premium_confirmed=False,
+                   source_note="关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径"),
+    "us": dict(_COMMON, label="美豆", tariff=0.13, premium_cents=230, premium_confirmed=False,
+               source_note="关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换"),
 }
+PARAMS = ORIGINS["brazil"]      # build()不传params时的默认
+
+# 每个豆粕合约对应的进口船期 → CBOT基准合约 → 升贴水(取用户提供的Mysteel 2026-04-22快照区间中值；未逐条核实)
+#   到港压榨时间 ≈ 船期 + 1~2个月：1月合约(12~1月压榨)←10~11月船期；5月合约(3~5月压榨)←2~3月船期；9月合约(7~8月压榨)←6~7月船期。
+#   cbot=(月份代码, 相对豆粕合约年份的偏移)。注意：Mysteel备注里的"05/09/01"是连盘豆粕合约，不是CBOT合约。
+_SNAP = "Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
+PLAN = {
+    1: {"cbot": ("X", -1), "primary": "us", "origins": {
+        "us": {"premium_cents": 280, "ship": "2026年10~11月船期", "note": f"美湾CNF：10月277~281、11月282~283，取中值约280。{_SNAP}"},
+        "brazil": {"premium_cents": 240, "ship": "2026年10~11月船期(无报价，借用9月船期)", "note": f"巴西10~11月船期没有报价，借用9月船期X合约240美分，仅作参考。{_SNAP}"}}},
+    5: {"cbot": ("H", 0), "primary": "brazil", "origins": {
+        "brazil": {"premium_cents": 119, "ship": "2027年2~3月船期", "note": f"巴西2月130~135(中值132.5)、3月100~112(中值106)，平均约119，对CBOT 3月(H)。阿根廷豆没有单独报价。{_SNAP}"},
+        "us": None}},
+    9: {"cbot": ("N", 0), "primary": None, "origins": {
+        "brazil": {"premium_cents": 165, "ship": "2027年6~7月船期(用2026年同月快照类推)", "note": f"巴西2026年6月155、7月175(对N合约)，平均165，拿去类推2027年同月，不确定性大。{_SNAP}"},
+        "us": {"premium_cents": 268, "ship": "2027年7月船期(用2026年同月快照类推)", "note": f"美湾2026年7月265~272(对N合约)，取中值268，拿去类推2027年同月，不确定性大。{_SNAP}"}}},
+}
+
+
+def cbot_symbol(contract_month, meal_symbol):
+    """豆粕合约 → 成本对应的CBOT美豆基准合约(Yahoo代码)，如 M2701 → ZSX26.CBT(11月合约)。"""
+    letter, off = PLAN[contract_month]["cbot"]
+    return f"ZS{letter}{int(meal_symbol[1:3]) + off:02d}.CBT"
+
+
+def params_for(contract_month, origin):
+    """合约×豆源的完整参数(ORIGINS里的关税/税费 + PLAN里的升贴水/船期/说明)；该合约这个豆源没有报价则返回None。"""
+    o = PLAN[contract_month]["origins"].get(origin)
+    if o is None:
+        return None
+    p = dict(ORIGINS[origin]); p.update(o)
+    return p
 
 
 def _need_pos(name, v):
