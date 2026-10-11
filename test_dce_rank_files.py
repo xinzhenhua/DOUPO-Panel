@@ -113,7 +113,7 @@ def test_job_backfills_five_series_with_the_live_point_shape_and_never_overwrite
         e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         assert "error" not in e, e
         n = {k: len(hs.load_series(k, d)["points"]) for k in ("capital_gs_net", "capital_jpm_net", "capital_ubs_net", "capital_zl_net", "capital_gt_net")}
-        assert n == {"capital_gs_net": 21, "capital_jpm_net": 21, "capital_ubs_net": 12, "capital_zl_net": 21, "capital_gt_net": 21}, n
+        assert n == {"capital_gs_net": 21, "capital_jpm_net": 22, "capital_ubs_net": 12, "capital_zl_net": 22, "capital_gt_net": 22}, n   # 精确的三个席位多1个：由首日增减推算出的前一交易日(derived)
         zl = {p["d"]: p for p in hs.load_series("capital_zl_net", d)["points"]}
         assert zl["2026-09-29"]["v"] == 1, "线上已有的点不被覆盖"
         assert e["conflicts"] and e["conflicts"][0]["series"] == "capital_zl_net" and e["conflicts"][0]["d"] == "2026-09-29", e["conflicts"]
@@ -151,6 +151,37 @@ def test_job_is_idempotent_and_reports_coverage_and_bounds():
     ok("重复运行幂等(文件字节不变、added=0)；报告列出每个席位'精确/估计/缺席'的天数")
 
 
+def test_derived_prev_day_only_from_exact_points():
+    d = tempfile.mkdtemp()
+    try:
+        e = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
+        jpm = {p["d"]: p for p in hs.load_series("capital_jpm_net", d)["points"]}
+        der = [p for p in jpm.values() if (p.get("x") or {}).get("derived")]
+        assert len(der) == 1 and e["derived"] >= 3, (len(der), e["derived"])
+        t = min(k for k, p in jpm.items() if not (p.get("x") or {}).get("derived"))
+        assert der[0]["v"] == jpm[t]["v"] - jpm[t]["x"]["change"] and der[0]["d"] < t, "前一日净持仓 = 今日净持仓 − 今日增减"
+        gs = hs.load_series("capital_gs_net", d)["points"]
+        assert not any((p.get("x") or {}).get("derived") for p in gs), "估算点(approx)不推算：第20名每天在变，对账只吻合约17%"
+        n0 = {k: len(hs.load_series(k, d)["points"]) for k in hs.CAPITAL_MEMBER_SERIES.values()}
+        e2 = bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
+        assert e2["added"] == 0 and n0 == {k: len(hs.load_series(k, d)["points"]) for k in n0}, "幂等"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("补齐：精确点推算前一交易日(标derived)，估算点不推算，重复运行幂等")
+
+
+def test_change5_bridges_gaps_between_endpoints_and_flags_approx():
+    pts = [{"d": x, "v": v, "x": {"contract": "M2701"}} for x, v in (("2026-09-24", 100), ("2026-09-28", 90), ("2026-10-09", 70))]
+    assert hs.change_over(pts, 5) is None, "严格口径：中间缺交易日 → None（不变）"
+    r = hs.change_over(pts, 5, bridge=True)
+    assert r and r["change"] == -30 and r["from"] == "2026-09-24" and r.get("bridged") == 1 and "approx" not in r, r
+    pts[0]["x"]["approx"] = 1
+    assert hs.change_over(pts, 5, bridge=True).get("approx") == 1, "端点是估算值 → 标approx"
+    pts[2]["x"]["contract"] = "M2705"
+    assert hs.change_over(pts, 5, bridge=True) is None, "端点不是同一合约 → None"
+    ok("5日变化：端点都有就能算(标bridged)，端点是估算值标approx，跨合约不算")
+
+
 def test_bad_files_are_reported_not_fatal():
     d, raw = tempfile.mkdtemp(), tempfile.mkdtemp()
     try:
@@ -163,7 +194,7 @@ def test_bad_files_are_reported_not_fatal():
         assert e["files"] == 2 and len(e["skippedFiles"]) == 3, e
         why = " ".join(x["why"] for x in e["skippedFiles"])
         assert "对不上" in why and "解析" in why and "文件名" in why, why
-        assert len(hs.load_series("capital_zl_net", d)["points"]) == 2
+        assert len(hs.load_series("capital_zl_net", d)["points"]) == 3, "2个文件日 + 由首日增减推算的前一交易日"
         e2 = bf.backfill_capital_rank(base_dir=d, raw_dir=os.path.join(raw, "不存在"))
         assert "error" in e2 and "没有" in e2["error"], e2
     finally:

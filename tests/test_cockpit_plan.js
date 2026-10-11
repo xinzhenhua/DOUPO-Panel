@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate,planDataLine};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -106,5 +106,14 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   g=P.planGate(['摩根大通'],'2026-10-05','2026-10-12'); eq('闸门 价格7天（国庆长假内）→ 仍通过',g.ok,true);
   g=P.planGate(['摩根大通'],'2026-10-07','2026-10-12'); eq('闸门 5天 → 通过但提示',[g.ok,g.warn.length],[true,1]);
   g=P.planGate(['摩根大通'],null,'2026-10-12'); eq('闸门 没有价格数据 → 不通过',g.ok,false);
-  g=P.planGate([],'2026-09-01','2026-10-12'); eq('闸门 两个问题都点名',g.reasons.length,2); }
+  g=P.planGate([],'2026-09-01','2026-10-12'); eq('闸门 两个问题都点名',g.reasons.length,2);
+  g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{missing:['瑞银期货'],fD:'2026-10-09'}); eq('分级 缺一个席位 → 部分(仍可用)',[g.ok,g.level],[true,'part']);
+  g=P.planGate(['摩根大通','高盛期货','瑞银期货'],'2026-10-09','2026-10-12',{missing:[],fD:'2026-10-09'}); eq('分级 齐全 → ok',[g.ok,g.level],[true,'ok']);
+  g=P.planGate(['摩根大通'],'2026-10-09','2026-10-20',{fD:'2026-10-09'}); eq('分级 外资数据11天没更新 → 不可用',[g.ok,g.level],[false,'bad']);
+  g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{fD:'2026-10-05'}); eq('分级 外资数据7天 → 提示',[g.ok,g.level,g.warn.length],[true,'part',1]);
+  g=P.planGate([],null,'2026-10-12',{}); eq('分级 全缺 → bad',g.level,'bad');
+  let l=P.planDataLine(P.planGate(['摩根大通','高盛期货'],'2026-10-09','2026-10-12',{missing:['瑞银期货'],fD:'2026-10-09'}),['摩根大通','高盛期货'],'2026-10-09','2026-10-09'); eq('数据行 部分缺失文案',[l.cls,/瑞银期货缺数据按0算/.test(l.t)],['part',true]);
+  g=P.planGate(['摩根大通','高盛期货'],'2026-10-09','2026-10-12',{missing:[],approx:['高盛期货'],fD:'2026-10-09'}); eq('分级 有估算席位 → 部分(仍可用)并点名',[g.ok,g.level,/高盛期货为估算值/.test(g.warn[0])],[true,'part',true]);
+  eq('planForeign 带出估算席位',P.planForeign({a:{foreign:1,history:{change5:{change:5,to:'2026-10-09',approx:1}}},b:{foreign:1,history:{change5:{change:-2,to:'2026-10-08'}}}}).approx,['a']);
+  l=P.planDataLine(P.planGate([],'2026-10-09','2026-10-12',{}),[],'2026-10-09',null); eq('数据行 不足',[l.cls,/数据不足/.test(l.t)],['bad',true]); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

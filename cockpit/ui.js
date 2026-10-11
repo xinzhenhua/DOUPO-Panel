@@ -154,10 +154,10 @@ function planMA(cs, n) { if (cs.length < n) return null; let s = 0; for (let i =
 function planConfirm(cs) { const n = cs.length; if (n < 11) return false; return cs[n - 1] > cs[n - 6] && cs[n - 1] > Math.min(...cs.slice(n - 11, n - 1)) * 1.01; }
 /* 外资5日净变化 = 摩根大通+高盛+瑞银 各自 change5.change 之和；缺的席位按0算并列出（回测里缺数据日也按0，偏保守） */
 function planForeign(members) {
-  const used = [], missing = []; let sum = 0;
+  const used = [], missing = [], approx = [], parts = []; let sum = 0, lastD = null;
   Object.keys(members || {}).forEach(k => { const m = members[k]; if (!m || !m.foreign) return;
-    const c5 = m.history && m.history.change5; if (c5 && typeof c5.change === 'number') { sum += c5.change; used.push(k); } else missing.push(k); });
-  return { sum, used, missing };
+    const c5 = m.history && m.history.change5; if (c5 && typeof c5.change === 'number') { sum += c5.change; used.push(k); parts.push({ k, v: c5.change, approx: !!c5.approx, bridged: !!c5.bridged }); if (c5.approx) approx.push(k); if (c5.to && (!lastD || c5.to > lastD)) lastD = c5.to; } else missing.push(k); });
+  return { sum, used, missing, approx, parts, lastD };
 }
 function planSignals(cs, fsum) {
   const n = cs.length, last = cs[n - 1], pct = planPct(cs), ma20 = planMA(cs, 20), ma60 = planMA(cs, 60), conf = planConfirm(cs), delev = fsum <= TPLAN.DELEV;
@@ -197,12 +197,24 @@ function planWhy(sg) {
   return '价格在低位，但还没出现反弹确认';
 }
 /* 信号数据闸门：外资5日数据一个席位都没有、或价格数据太久没更新时，信号不可信（外资缺数据在回测里按0算=去杠杆过滤失效） */
-function planGate(used, lastD, today) {
-  const reasons = [], warn = [];
+function planGate(used, lastD, today, opt) {
+  opt = opt || {};
+  const reasons = [], warn = [], gapOf = d => Math.round((Date.parse(today) - Date.parse(d)) / 86400000);
   if (!used || !used.length) reasons.push('外资席位5日数据缺失（去杠杆过滤失效）');
+  else if (opt.fD) { const g = gapOf(opt.fD); if (g > 7) reasons.push('外资席位数据已 ' + g + ' 天没更新（最新 ' + opt.fD + '）'); else if (g > 4) warn.push('外资席位数据最新 ' + opt.fD); }
   if (!lastD) reasons.push('没有价格数据');
-  else { const gap = Math.round((Date.parse(today) - Date.parse(lastD)) / 86400000); if (gap > 7) reasons.push('价格数据已 ' + gap + ' 天没更新（最新 ' + lastD + '）'); else if (gap > 4) warn.push('价格数据最新 ' + lastD); }
-  return { ok: !reasons.length, reasons, warn };
+  else { const gap = gapOf(lastD); if (gap > 7) reasons.push('价格数据已 ' + gap + ' 天没更新（最新 ' + lastD + '）'); else if (gap > 4) warn.push('价格数据最新 ' + lastD); }
+  const miss = opt.missing || [], ap = opt.approx || [];
+  if (ap.length) warn.push(ap.join('、') + '为估算值（只进了一边前20，混有第20名的变动）');
+  const level = reasons.length ? 'bad' : (miss.length || warn.length) ? 'part' : 'ok';
+  return { ok: !reasons.length, level, reasons, warn, missing: miss, approx: ap };
+}
+/* 信号旁的「数据状态」一句话：让人一眼看出数据够不够 */
+function planDataLine(g, used, lastD, fD) {
+  const seats = (used && used.length ? used.join('+') : '无') + (fD ? ' ' + fD.slice(5) : ''), px = lastD ? '价格 ' + lastD.slice(5) : '价格无数据';
+  if (g.level === 'bad') return { cls: 'bad', t: '✗ 数据不足 · ' + g.reasons.join('；') };
+  if (g.level === 'part') return { cls: 'part', t: '⚠ 数据基本够用 · ' + [g.missing.length ? g.missing.join('、') + '缺数据按0算' : '', g.warn.join('；')].filter(Boolean).join('；') + ' · 外资 ' + seats + ' · ' + px };
+  return { cls: 'ok', t: '✓ 数据齐全 · 外资 ' + seats + ' · ' + px };
 }
 function planNum(x) { return x != null && x !== '' && isFinite(+x); }
 /* 一笔交易的手续费：开仓一半 + 平仓一半（每手来回 perLot 元）；记录时填了实际金额（feeO/feeC）就用实际的 */
@@ -266,10 +278,10 @@ function planSnap() {
   const pos = planOpen(A.trades); let hold = null, mg = null;
   if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.sum }); }
   const E = planEquity(A, hold ? hold.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
-  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, gate = planGate(F.used, hl, todayBJ());
+  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD }), dl = planDataLine(gate, F.used, hl, F.lastD);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
-  return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate };
+  return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate, dl };
 }
 /* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
 function planSnapshotNow(s) {
@@ -284,7 +296,7 @@ function renderSig() {
   const blocked = !s.gate.ok, cls = blocked ? 'gate' : s.side > 0 ? 'long' : s.side < 0 ? 'short' : 'wait', head = blocked ? '数据不足，信号不可信' : s.side > 0 ? '做多信号' : s.side < 0 ? '做空信号' : '无入场信号';
   let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
   const left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 现价 ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
-    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? f2(F.sum) + ' 手' : '无数据'}</span></div></button>`;
+    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? f2(F.sum) + ' 手' : '无数据'}</span></div><div class="dsl ${s.dl.cls}" id="dataLine">${esc(s.dl.t)}</div></button>`;
   let right;
   if (!s.pos) right = `<button class="sg" data-goplan="1" aria-label="持仓：空仓。点击查看交易计划"><div class="cl">持仓管理</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? ' · 成交后在交易计划里记录开仓' : ''}</div></button>`;
   else { const m = s.mg, out = m.action !== '持有', fl = planPnl(s.pos, s.hold.last), noF = !s.F.used.length;
@@ -323,7 +335,7 @@ function planBodyHtml(s) {
    <tr><td>做空①外资去杠杆（5日净变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${f2(F.sum)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
    <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
   </tbody></table>
-  <div class="plh">外资 = ${F.used.length ? F.used.map(esc).join('+') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
+  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（估算 = 该席位只进了买或卖一边的前20，另一边用第20名顶替，变化里混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
   if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
   /* ② 持仓管理 */
   h += `<div class="plt">② 持仓管理</div>`;

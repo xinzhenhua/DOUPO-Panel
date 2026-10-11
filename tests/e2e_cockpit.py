@@ -83,6 +83,7 @@ def main():
     pg.evaluate("document.querySelector('#sigbar [data-goplan]').click()")
     ok('点首页信号条切到交易模式并看到交易计划', pg.evaluate("document.body.classList.contains('mode-trade') && document.getElementById('planBody') !== null"))
     ok('测试数据里外资5日数据缺失：信号格显示「数据不足，信号不可信」且不给建议手数', '数据不足' in pg.evaluate("document.getElementById('sigbar').innerText") and '建议' not in pg.evaluate("document.getElementById('sigbar').innerText"))
+    ok('信号格有明确的数据状态行（数据不足时红色并写原因）', pg.evaluate("(()=>{const e=document.getElementById('dataLine');return !!e&&e.classList.contains('bad')&&e.innerText.includes('数据不足')})()"))
     body = pg.evaluate("document.getElementById('planBody').innerText")
     ok('计划页：有今日信号、持仓管理、账户权益、交易记录四块', all(k in body for k in ('今日入场信号', '持仓管理', '账户权益', '交易记录')), body[:200])
     ok('计划页：仓位阶梯和回测摘要默认折叠', pg.evaluate("[...document.querySelectorAll('#planBody details')].every(d => !d.open)"))

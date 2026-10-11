@@ -1412,6 +1412,22 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
             if r["approx"]:
                 x["approx"] = 1
             new_pts[key].append({"d": parsed["date"], "v": r["net"], "x": x})
+    # v101.28：精确点(两边都进了前20)带「当日增减」，前一交易日的净持仓 = 今日净持仓 − 今日增减（对账：737/737 全部吻合）。前一天缺就补上，标 derived=1。
+    # 估算点(approx)不推算：对账只吻合 38/226，第20名每天都在变；换月当天也不推算（增减是同一合约的）。
+    derived_n = 0
+    for key, pts in list(new_pts.items()):
+        have_d = {p["d"] for p in hs.load_series(key, base_dir)["points"]} | {p["d"] for p in pts}
+        extra = []
+        for p in pts:
+            x = p["x"]
+            if x.get("approx") or not isinstance(x.get("change"), (int, float)):
+                continue
+            pd = hs._prev_trading_day(p["d"])
+            if pd and pd not in have_d:
+                extra.append({"d": pd, "v": p["v"] - x["change"], "x": {"contract": x["contract"], "derived": 1}})
+                have_d.add(pd)
+        new_pts[key] = pts + extra
+        derived_n += len(extra)
     conflicts, added, per = [], 0, {}
     for key, pts in new_pts.items():
         have = {p["d"]: p for p in hs.load_series(key, base_dir)["points"]}
@@ -1428,7 +1444,7 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
         per[key] = {"added": len(todo), "total": len(hs.load_series(key, base_dir)["points"]), "conflicts": sum(1 for c in conflicts if c["series"] == key)}
     ds = sorted(p["date"] for _, p in days)
     return {"key": "capital_rank", "added": added, "files": len(days), "firstDay": ds[0] if ds else None, "lastDay": ds[-1] if ds else None,
-            "coverage": coverage, "perSeries": per, "conflicts": conflicts, "skippedFiles": skipped,
+            "derived": derived_n, "coverage": coverage, "perSeries": per, "conflicts": conflicts, "skippedFiles": skipped,
             "notes": ["estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"]}
 
 

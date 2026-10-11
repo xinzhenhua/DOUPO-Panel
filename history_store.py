@@ -371,8 +371,39 @@ def consecutive_run(points):
     return {"direction": direction, "days": days, "total": pts[-1][1] - pts[start_idx][1], "since": pts[start_idx + 1][0].isoformat(), "contract": pts[-1][2]}
 
 
-def change_over(points, n):
-    """较n个交易日前(往前数第n个点)的变化。要求这n+1个点都在同一个合约内、相邻点之间没有缺交易日；否则返回None(不给跨合约/跨缺口的假变化)。"""
+def _nth_prev_trading_day(d, n):
+    """d(date)往前数第n个大商所交易日(d本身不算)；日历查不到返回None。"""
+    cnt, x = 0, d
+    for _ in range(n * 12 + 15):
+        x -= _timedelta(days=1)
+        if cn_calendar.dce_is_trading_day_ex(x):
+            cnt += 1
+            if cnt == n:
+                return x
+    return None
+
+
+def change_over(points, n, bridge=False):
+    """较n个交易日前(往前数第n个点)的变化。要求这n+1个点都在同一个合约内、相邻点之间没有缺交易日；否则返回None(不给跨合约/跨缺口的假变化)。
+    bridge=True(v101.28)：只要求「最新点」和「往前第n个交易日」两个端点都有、且同一合约——中间缺的日子不影响净持仓的差，返回里标 bridged=1。
+    任一端点是估算值(只进了买或卖一边的前20，x.approx)就标 approx=1：估算值里混着第20名的变动，5日变化只能当参考。"""
+    if bridge:
+        pts = _clean_contract_points(points)
+        if len(pts) < 2:
+            return None
+        d1, v1, c1 = pts[-1]
+        d0 = _nth_prev_trading_day(d1, n)
+        hit = [t for t in pts if t[0] == d0] if d0 else []
+        if not hit or hit[0][2] != c1:
+            return None
+        gap = any(_trading_day_between(a[0], b[0]) for a, b in zip(pts, pts[1:]) if d0 <= a[0] and b[0] <= d1)
+        ap = any((q.get("x") or {}).get("approx") for q in (points or []) if isinstance(q, dict) and _to_date(q.get("d")) in (d0, d1))
+        out = {"change": v1 - hit[0][1], "from": d0.isoformat(), "to": d1.isoformat(), "contract": c1, "n": n}
+        if gap:
+            out["bridged"] = 1
+        if ap:
+            out["approx"] = 1
+        return out
     pts = _clean_contract_points(points)
     if len(pts) < n + 1:
         return None
@@ -382,10 +413,13 @@ def change_over(points, n):
     for (d0, _, _), (d1, _, _) in zip(win, win[1:]):
         if _trading_day_between(d0, d1):
             return None
-    return {"change": win[-1][1] - win[0][1], "from": win[0][0].isoformat(), "to": win[-1][0].isoformat(), "contract": win[-1][2], "n": n}
+    out = {"change": win[-1][1] - win[0][1], "from": win[0][0].isoformat(), "to": win[-1][0].isoformat(), "contract": win[-1][2], "n": n}
+    ap = any((q.get("x") or {}).get("approx") for q in (points or []) if isinstance(q, dict) and _to_date(q.get("d")) in (win[0][0], win[-1][0]))
+    if ap:
+        out["approx"] = 1
+    return out
 
 
-# 龙虎榜席位 → 序列key(只在marketCapital里有净持仓时才记；未进榜=None=不记点，记0会让"连续N日"误以为降到了0)
 CAPITAL_MEMBER_SERIES = {"高盛期货": "capital_gs_net", "摩根大通": "capital_jpm_net", "瑞银期货": "capital_ubs_net", "中粮期货": "capital_zl_net", "国投期货": "capital_gt_net"}
 
 
@@ -434,7 +468,7 @@ def _record_capital(result, base_dir, touched, note):
             pts_all = series["points"]
             series_points[name] = pts_all
             m["history"] = {"n": len(pts_all), "since": pts_all[0]["d"] if pts_all else None, "run": consecutive_run(pts_all),
-                            "change5": change_over(pts_all, 5), "change20": change_over(pts_all, 20)}
+                            "change5": change_over(pts_all, 5, bridge=True), "change20": change_over(pts_all, 20)}
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花
             note(key, e)
     try:
