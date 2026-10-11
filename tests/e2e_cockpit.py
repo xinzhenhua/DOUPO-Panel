@@ -127,6 +127,22 @@ def main():
     ctx, pg, e5 = open_page(b, p4)
     ok('缺主连日线CSV：照常启动，交易计划页可打开', pg.evaluate("!document.getElementById('boot')") and not pg.evaluate("document.querySelector('[data-view=\"plan\"]').click(), document.getElementById('chart').innerText.length < 20"), e5)
     ctx.close(); s4.shutdown()
+    # ---- 7b. 席位覆盖表 ----
+    ctx, pg, _e = open_page(b, port)
+    pg.evaluate("document.querySelector('[data-tab=\"capital\"]').click()")
+    ok('没有 _backfill_report.json：资金页不出现覆盖表也不报错', '席位历史覆盖' not in pg.evaluate("document.getElementById('shB').innerText") and 'bootwarn' not in pg.evaluate("document.body.innerHTML.slice(0,0)+(document.querySelector('.bootwarn')?'bootwarn':'')"))
+    ctx.close()
+    rep = {'generatedAt': 'x', 'series': [{'key': 'capital_rank', 'firstDay': '2022-01-04', 'lastDay': '2026-10-09', 'files': 1073, 'coverage': {'高盛期货': {'exact': 10, 'estimated': 103, 'absent': 960}, '摩根大通': {'exact': 807, 'estimated': 218, 'absent': 48}, '瑞银期货': {'exact': 0, 'estimated': 240, 'absent': 833}, '中粮期货': {'exact': 1072, 'estimated': 0, 'absent': 1}, '国投期货': {'exact': 1061, 'estimated': 5, 'absent': 7}}}]}
+    d5 = make_site(lambda x: json.dump(rep, open(os.path.join(x, 'data', 'history', '_backfill_report.json'), 'w', encoding='utf-8'))); s5, p5 = serve(d5)
+    ctx, pg, e7 = open_page(b, p5)
+    pg.evaluate("document.querySelector('[data-tab=\"capital\"]').click()")
+    txt = pg.evaluate("document.getElementById('shB').innerText")
+    ok('资金页显示席位覆盖表和日期范围', '席位历史覆盖' in txt and '2022-01-04' in txt and '1073' in txt, txt[:200])
+    ok('覆盖表：高盛 精确10/估计103/没进榜960，有数据 11%', all(s in pg.evaluate("[...document.querySelectorAll('#shB .tbcv tbody tr')].map(r => r.innerText.replace(/\\s+/g,' ')).join('|')") for s in ('高盛 10 103 960 11%', '摩根大通 807 218 48 96%', '中粮 1072 0 1 100%')))
+    ok('覆盖弱的席位（高盛、瑞银）被点名提醒，覆盖好的没被点名', '高盛、瑞银' in txt and '摩根大通大部分' not in txt and '国投大部分' not in txt)
+    ok('有覆盖报告时不弹缺文件提示（可选文件）', pg.evaluate("!document.querySelector('.bootwarn')"))
+    ok('覆盖表：手机宽度不横向溢出', (lambda: (pg.set_viewport_size({'width': 390, 'height': 800}), pg.wait_for_timeout(300), pg.evaluate("(()=>{const b=document.getElementById('shB');return b.scrollWidth-b.clientWidth})()"))[2] <= 0)())
+    ok('覆盖表全程无 JS 错误', not e7, e7); ctx.close(); s5.shutdown(); shutil.rmtree(d5, ignore_errors=True)
     # ---- 8. file:// ----
     ctx = b.new_context(); pg = ctx.new_page(); pg.goto('file://' + os.path.join(d, 'index.html'))
     ok('file:// 打开：提示要用网址打开，不空白', '网址' in pg.evaluate("document.getElementById('boot').innerText"))

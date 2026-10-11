@@ -578,6 +578,17 @@ function voteRow(v) {
   const w = v.weight !== v.baseWeight ? `权重 ${Math.round(v.weight * 100) / 100}（基础 ${v.baseWeight} × 数据质量 ${v.q}${v.qwhy ? '，' + esc(v.qwhy) : ''}）` : `权重 ${v.weight}`;
   return `<div class="cd"><span></span><span><span class="chipx ${sig[1]}">${sig[0]}</span><b style="font-weight:500">${esc(short(v.label))}</b> <span class="dim" style="font-size:12px">${w}</span></span><span class="s">${esc(v.note || '没有记录理由')}</span></div>`;
 }
+function coverageHtml() {
+  const cv = D.capitalCoverage; if (!cv || !cv.seats) return '';
+  const names = ['高盛期货', '摩根大通', '瑞银期货', '中粮期货', '国投期货'].filter(n => cv.seats[n]);
+  const row = n => { const c = cv.seats[n], tot = c.exact + c.estimated + c.absent, use = tot ? (c.exact + c.estimated) / tot : 0, ex = tot ? c.exact / tot : 0, lv = ex >= .8 ? 'ok' : use >= .5 ? 'note' : 'warn';
+    return `<tr><td>${n.replace('期货', '')}</td><td class="n">${c.exact}</td><td class="n">${c.estimated}</td><td class="n">${c.absent}</td><td class="n ${lv === 'warn' ? 'no' : ''}">${Math.round(use * 100)}%</td></tr>`; };
+  const weak = names.filter(n => { const c = cv.seats[n], tot = c.exact + c.estimated + c.absent; return tot && c.exact / tot < .5; }).map(n => n.replace('期货', ''));
+  return `<h3>席位历史覆盖（${esc(cv.firstDay || '—')} ~ ${esc(cv.lastDay || '—')}，${cv.files || '—'} 个交易日）</h3>
+    <table class="tb3x tbcv"><thead><tr><th>席位</th><th>精确</th><th>下限估计</th><th>没进榜</th><th>有数据</th></tr></thead><tbody>${names.map(row).join('')}</tbody></table>
+    <p class="dim2" style="margin-top:8px"><b>精确</b>：买卖两边都进了前20，净持仓是真值。<b>下限估计</b>：只进了一边前20，另一边用第20名顶替，净持仓是下限。<b>没进榜</b>：两边都没进前20，不记0。</p>
+    ${weak.length ? `<p class="dim2">${esc(weak.join('、'))}大部分日子精确值缺失：趋势判断样本少、外资5日净变化里这几家常缺席（页面会写「按0算」），外资提示主要靠覆盖好的席位，别把这几家的历史曲线当完整序列读。</p>` : ''}`;
+}
 function tabBody(k) {
   const c = C();
   if (k === 'drivers') { const f = fundamentals(); return `<h3>基本面净倾向 ${f.ratio == null ? '—' : pc(f.ratio, 0)}，${esc(f.dir || '—')}，${f.n || '—'} 项有效</h3><p>下面是各个指标当前的投票（供给和需求计入净倾向；市场结构不计入）。<b>明细按手上的 latest.json 重算，可能和线上最新的净倾向有几个点的差别。</b></p>` + c.votes.map(voteRow).join(''); }
@@ -588,7 +599,8 @@ function tabBody(k) {
     return (vd ? `<h3>${esc(vd.label)}</h3>` + (vd.lines || []).map(l => `<p>${esc(l)}</p>`).join('') + `<h3>历史检验与局限</h3><ul>` + (vd.evidence || []).map(l => `<li>${esc(l)}</li>`).join('') + `<li>水平判断(高盛≥12万手且CFTC≥90分位=拥挤)：${esc(cap.state.label)}；阈值来自参考文档，未回测。</li></ul>` : `<h3>${esc(cap.state.label)}</h3><p>高盛净多 ≥ 12 万手算高位，CFTC 近 156 周分位 ≥ 90 算拥挤。阈值来自参考文档，暂定，未回测。</p>`) + `
       <h3>龙虎榜（${esc(D.capital ? D.capital.date : '—')}，主力合约 ${esc(D.capital && D.capital.mainContract ? D.capital.mainContract.symbol : '—')}）</h3>
       <table class="tb3x"><thead><tr><th>席位</th><th>净持仓（手）</th><th>当日净持仓变化</th></tr></thead><tbody>${rows.map(n => { const x = m[n]; if (!x || x.net == null) return `<tr><td>${n.replace('期货', '')}</td><td colspan="2" class="dim">未进榜（不等于0）</td></tr>`; const mean = x.change > 0 ? (x.net < 0 ? '净空减少' : '净多增加') : x.change < 0 ? (x.net < 0 ? '净空增加' : '净多减少') : ''; return `<tr><td>${n.replace('期货', '')}</td><td class="n">${x.net > 0 ? '净多 ' : '净空 '}${ab(x.net)}</td><td class="n">${sg(x.change)}${mean ? '（' + mean + '）' : ''}</td></tr>`; }).join('')}</tbody></table>
-      <h3>要小心</h3><ul><li>龙虎榜是收盘后才发布的前一日数据（T+1）；席位历史已按 2026-08-03~09-30 的龙虎榜文件回填（高盛/瑞银只进一边前20时是下限估计），10-08 是用当日变化推算的点，之后每天线上累积。</li><li>高盛席位是“代客”集合持仓，不是高盛自营。</li><li>CFTC 是 CBOT 豆粕（美国市场）的管理基金，不是大商所，与国内高盛是否共振没有验证过。</li></ul>`;
+      ${coverageHtml()}
+      <h3>要小心</h3><ul><li>龙虎榜是收盘后才发布的前一日数据（T+1）；席位历史按仓库里的龙虎榜文件回填（高盛/瑞银只进一边前20时是下限估计，两边都没进前20记「没进榜」而不是0），之后每天线上累积。</li><li>高盛席位是“代客”集合持仓，不是高盛自营。</li><li>CFTC 是 CBOT 豆粕（美国市场）的管理基金，不是大商所，与国内高盛是否共振没有验证过。</li></ul>`;
   }
   if (k === 'data') {
     const h = D.health, ico = { ok: 'ok', degraded: 'note', pending: 'na', event: 'na', nodata: 'warn' };

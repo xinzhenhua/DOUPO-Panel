@@ -69,6 +69,14 @@
     const dom = String(((sb[sb.length - 1].x || {}).dom) || '').toLowerCase(), last = sb[sb.length - 1].d;
     return { contract: dom, n: sb.filter(p => String((p.x || {}).dom || '').toLowerCase() === dom && p.d !== last).length, min: 20 };
   };
+  /* 龙虎榜席位历史覆盖：取自 data/history/_backfill_report.json 里 key=capital_rank 那一项（每小时补齐时写入）；没有就返回 null */
+  CL.coverageFrom = function (rep) {
+    const e = rep && Array.isArray(rep.series) ? rep.series.find(s => s && s.key === 'capital_rank' && s.coverage && !s.error) : null;
+    if (!e) return null;
+    const seats = {};
+    for (const n of Object.keys(e.coverage)) { const c = e.coverage[n] || {}; seats[n] = { exact: +c.exact || 0, estimated: +c.estimated || 0, absent: +c.absent || 0 }; }
+    return { firstDay: e.firstDay || null, lastDay: e.lastDay || null, files: e.files || null, runAt: e.runAt || rep.generatedAt || null, seats };
+  };
   CL.crushFrom = function (latest) {
     const out = {}, cm = (latest && latest.crushMargins) || {};
     for (const c of KEYS) { const x = cm[c]; out[c] = x ? { available: !!x.available, mealSymbol: x.mealSymbol, mealPrice: x.mealPrice, oilPrice: x.oilPrice, beanPrice: x.beanPrice, date: x.date } : { available: false }; }
@@ -141,6 +149,7 @@
     D.hist = inp.histCsv ? CL.histFromCsv(inp.histCsv, '2015-04-03') : { d: [], c: [] };
     D.sea = inp.seasonal || null;
     D.crush = CL.crushFrom(L);
+    D.capitalCoverage = CL.coverageFrom(inp.report);
     return D;
   };
   /* 把 src 的内容就地灌进 dst（界面代码里持有 D 和 D.series 的引用，刷新时不能换对象） */
@@ -168,11 +177,12 @@
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
-      let latest = null, seasonal = null, histCsv = '';
+      let latest = null, seasonal = null, histCsv = '', report = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
       try { histCsv = await tget('data/raw/seasonal/M0_daily.csv'); } catch (e) { fails.push('M0_daily.csv'); }
-      lastSide = { H, latest, seasonal, histCsv };
+      try { report = await jget('data/history/_backfill_report.json'); } catch (e) { /* 可选文件：没有就不显示覆盖表，不算缺文件 */ }
+      lastSide = { H, latest, seasonal, histCsv, report };
       return lastSide;
     }
     async function waitReady(w, maxMs) {
@@ -192,7 +202,7 @@
         if (!(await waitReady(w, 30000))) throw new Error('评分引擎没有拿到 data/latest.json（引擎页同步失败）');
         await new Promise(r => setTimeout(r, first ? 2500 : 1500));   // 让引擎里的异步指标（汇率/天气/龙虎榜）落定
         const { state, now } = await build();
-        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, now, STATIC });
+        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC });
         if (!D) { D = nd; window.__DATA__ = D; runUI(); }
         else { const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); }
         status('', fails);
@@ -201,7 +211,7 @@
     }
     /* 只重新读引擎（不重载 iframe）：用来吃进启动后才返回的汇率/天气等异步指标 */
     async function cycleLight() {
-      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
+      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
     }
     CL.manualEdit = async function (key, value) {
       const w = frame && frame.contentWindow; if (!w) return false;

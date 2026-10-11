@@ -79,4 +79,13 @@ eq('assemble：所有外部文件都缺失也不崩，给空值', [D2.capital, D
 const D3 = CL.assemble({ state: (() => { const s = mkState(); s.contracts.jan.health.level = 'JAN'; s.contracts.sep.health.level = 'SEP'; return s; })(), latest: {}, H: {}, seasonal: null, histCsv: '', now: Date.UTC(2026, 6, 31, 17), STATIC });
 eq('assemble：UTC还是7月、北京已是8月 → 用北京月份选 jan', D3.health.level, 'JAN');
 
+// ---- 席位覆盖 ----
+const REP = { generatedAt: 'G', series: [{ key: 'soy_import' }, { key: 'capital_rank', firstDay: '2022-01-04', lastDay: '2026-10-09', files: 1073, coverage: { 高盛期货: { exact: 10, estimated: 103, absent: 960 }, 摩根大通: { exact: '807', estimated: 218 } } }] };
+eq('coverageFrom：取 capital_rank 那项，数字规整，缺项补0', CL.coverageFrom(REP), { firstDay: '2022-01-04', lastDay: '2026-10-09', files: 1073, runAt: 'G', seats: { 高盛期货: { exact: 10, estimated: 103, absent: 960 }, 摩根大通: { exact: 807, estimated: 218, absent: 0 } } });
+eq('coverageFrom：没有 capital_rank → null', CL.coverageFrom({ series: [{ key: 'x' }] }), null);
+eq('coverageFrom：capital_rank 报错项 → null', CL.coverageFrom({ series: [{ key: 'capital_rank', error: 'boom', coverage: {} }] }), null);
+eq('coverageFrom：报告缺失/结构不对 → null', [CL.coverageFrom(null), CL.coverageFrom({}), CL.coverageFrom({ series: 'x' })], [null, null, null]);
+eq('assemble：把报告里的覆盖放进 D.capitalCoverage', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: REP, now: Date.UTC(2026, 9, 11, 13), STATIC }).capitalCoverage.seats['高盛期货'].absent, 960);
+eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null);
+
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
