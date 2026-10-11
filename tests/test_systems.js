@@ -97,7 +97,7 @@ check('★同一场景下市场结构(基差-100、月差-1、量价-1共3项)�
 // 演变：v94前叫"综合基本面预警"(名不副实：总分混着基差/月差/量价) → v94改叫"综合预警" → v97彻底拆开：顶部只含供需，叫"基本面预警"，
 //   市场结构(基差/月差/量价)独立成下面一张卡。这一节守卫的就是这个命名约定，防止以后又把两者混回去。
 const fs = require('fs'), path = require('path');
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'engine.html'), 'utf8');
 // ★v99：原来独立的"基本面预警"卡和"市场结构"卡合并进了决策卡，各自是里面的一个折叠区块(<details class="dc-sec">)。
 //   这几条守卫的意图不变——基本面预警不能叫"综合"、市场结构必须是**独立的区块**、两者的性质说明要写清楚——只是指向新结构。
 const secOf = (marker)=>{ const i = SRC.indexOf(marker); const a = SRC.lastIndexOf('<details class="dc-sec"', i); return SRC.slice(a, SRC.indexOf('</details>', i) + 10); };

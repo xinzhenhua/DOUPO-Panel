@@ -92,6 +92,6 @@ window._seasonal = null; renderSeasonal();
 check('没有 seasonal.json 时给明确提示，不报错', makeEl('seasonalContent').innerHTML.includes('尚未生成'));
 
 // ---- 不参与计分(源码层面) ----
-const src = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', 'engine.html'), 'utf8');
 check('★季节性不进投票：addVote 里没有任何"季节"票', !/addVote\(\s*['"`][^'"`]*季节/.test(src));
 H.printSummary();

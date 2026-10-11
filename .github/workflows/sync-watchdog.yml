@@ -11,7 +11,7 @@ name: 同步看门狗(数据同步停了就主动通知)
 #   不能被排队、更不能被取消。只用标准库，不装依赖(依赖装不上本身就不该让看门狗失效)。最小权限：只读代码 + 写issue，不碰密钥。
 # ★注意：GitHub Actions的失败邮件要在 Settings → Notifications → Actions 里是开着的(默认开)；Issue通知取决于你对这个仓库的Watch设置。
 #   如果你的仓库连续60天没有任何活动，GitHub会自动停用定时工作流——数据同步每小时提交一次，正常时有活动；万一同步停了，看门狗会先报警。
-# ★年底更新日历时，cn_calendar.py里的DCE_CLOSURES和index.html里的必须一起改(test_sync_watchdog.py有防漂移测试，只改一边会失败)。
+# ★年底更新日历时，cn_calendar.py里的DCE_CLOSURES和engine.html里的必须一起改(test_sync_watchdog.py有防漂移测试，只改一边会失败)。
 
 on:
   schedule:

@@ -1,0 +1,264 @@
+{
+ "polarity": {
+  "crush": -1,
+  "stock": -1,
+  "stu": -1,
+  "basis": 1,
+  "arrival": -1,
+  "import": -1,
+  "hogratio": 1,
+  "poultry": 1,
+  "rmspread": -1,
+  "sows": -1,
+  "reserve": null,
+  "feed": -1
+ },
+ "ctx": {
+  "sep": {
+   "recommendedMonths": [
+    4,
+    5,
+    6,
+    7
+   ]
+  },
+  "may": {
+   "recommendedMonths": [
+    12,
+    1,
+    2,
+    3
+   ]
+  },
+  "jan": {
+   "recommendedMonths": [
+    8,
+    9,
+    10,
+    11
+   ]
+  }
+ },
+ "series": {
+  "stock": {
+   "name": "国内豆粕库存",
+   "g": "供给",
+   "unit": "万吨",
+   "freq": "weekly",
+   "pol": -1,
+   "show": "pct",
+   "short": "豆粕库存",
+   "tiny": "库存"
+  },
+  "stu": {
+   "name": "国内库消比",
+   "g": "供给",
+   "unit": "%",
+   "freq": "monthly",
+   "pol": -1,
+   "show": "abs",
+   "short": "库消比",
+   "tiny": "库消比"
+  },
+  "ustu": {
+   "name": "美豆库消比",
+   "g": "供给",
+   "unit": "%",
+   "freq": "yearly",
+   "pol": -1,
+   "show": "abs",
+   "short": "美豆库消比",
+   "tiny": "美豆库消"
+  },
+  "crush": {
+   "name": "油厂开机率",
+   "g": "供给",
+   "unit": "%",
+   "freq": "daily",
+   "pol": -1,
+   "show": "abs",
+   "short": "开机率",
+   "tiny": "开机率"
+  },
+  "arrival": {
+   "name": "大豆到港预报",
+   "g": "供给",
+   "unit": "万吨",
+   "freq": "monthly",
+   "pol": -1,
+   "show": "pct",
+   "short": "到港预报",
+   "tiny": "到港"
+  },
+  "import": {
+   "name": "大豆进口量",
+   "g": "供给",
+   "unit": "万吨",
+   "freq": "monthly",
+   "pol": -1,
+   "show": "pct",
+   "short": "进口量",
+   "tiny": "进口"
+  },
+  "feed": {
+   "name": "饲料库存天数",
+   "g": "需求",
+   "unit": "天",
+   "freq": "weekly",
+   "pol": -1,
+   "show": "abs",
+   "short": "饲料库存",
+   "tiny": "饲料"
+  },
+  "hog": {
+   "name": "猪粮比",
+   "g": "需求",
+   "unit": "",
+   "freq": "daily",
+   "pol": 1,
+   "show": "abs",
+   "short": "猪粮比",
+   "tiny": "猪粮比"
+  },
+  "poultry": {
+   "name": "肉鸡养殖预期盈利",
+   "g": "需求",
+   "unit": "元/只",
+   "freq": "weekly",
+   "pol": 1,
+   "show": "abs",
+   "short": "肉鸡预期盈利",
+   "tiny": "肉鸡",
+   "note": "发改委价格监测中心×卓创的预期盈利，2024-06起的周报；发改委缺失/过期时用Mysteel白羽肉鸡养殖利润顶替同一票位(口径不同，票权×0.5)"
+  },
+  "rm": {
+   "name": "豆菜粕价差",
+   "g": "需求",
+   "unit": "元/吨",
+   "freq": "weekly",
+   "pol": -1,
+   "show": "abs",
+   "short": "豆菜粕价差",
+   "tiny": "豆菜粕",
+   "note": "2026-06起换成三城市单值口径，新口径暂不计分"
+  },
+  "esr": {
+   "name": "美豆出口销售(4周均)",
+   "g": "需求",
+   "unit": "万吨",
+   "freq": "weekly",
+   "pol": 1,
+   "show": "pct",
+   "short": "出口销售",
+   "tiny": "出口",
+   "note": "周度波动很大，用4周均值看趋势"
+  },
+  "basis": {
+   "name": "现货基差",
+   "g": "结构",
+   "unit": "元/吨",
+   "freq": "daily",
+   "pol": 1,
+   "show": "abs",
+   "short": "现货基差",
+   "tiny": "基差",
+   "note": "分位只在当前主力合约(M2701)自己的历史里算——换月造成的断层不混进来；该合约样本<20个交易日不计分"
+  },
+  "cftc": {
+   "name": "CFTC管理基金净多",
+   "g": "资金",
+   "unit": "手",
+   "freq": "weekly",
+   "pol": 0,
+   "show": "pct",
+   "short": "CFTC净多",
+   "tiny": "CFTC"
+  },
+  "gs": {
+   "name": "高盛净持仓",
+   "g": "资金",
+   "unit": "手",
+   "freq": "daily",
+   "pol": 0,
+   "show": "pct",
+   "short": "高盛净持仓",
+   "tiny": "高盛"
+  },
+  "zl": {
+   "name": "中粮净持仓",
+   "g": "资金",
+   "unit": "手",
+   "freq": "daily",
+   "pol": 1,
+   "show": "pct",
+   "short": "中粮净持仓",
+   "tiny": "中粮"
+  },
+  "margin_sep": {
+   "name": "盘面压榨毛利",
+   "g": "供给",
+   "unit": "元/吨",
+   "freq": "seasonal-daily",
+   "pol": -1,
+   "show": "abs",
+   "short": "压榨毛利",
+   "tiny": "压榨",
+   "ctx": "sep"
+  },
+  "spread_sep": {
+   "name": "月差",
+   "g": "结构",
+   "unit": "%",
+   "freq": "seasonal-daily",
+   "pol": 1,
+   "show": "abs",
+   "short": "月差",
+   "tiny": "月差",
+   "ctx": "sep"
+  },
+  "margin_may": {
+   "name": "盘面压榨毛利",
+   "g": "供给",
+   "unit": "元/吨",
+   "freq": "seasonal-daily",
+   "pol": -1,
+   "show": "abs",
+   "short": "压榨毛利",
+   "tiny": "压榨",
+   "ctx": "may"
+  },
+  "spread_may": {
+   "name": "月差",
+   "g": "结构",
+   "unit": "%",
+   "freq": "seasonal-daily",
+   "pol": 1,
+   "show": "abs",
+   "short": "月差",
+   "tiny": "月差",
+   "ctx": "may"
+  },
+  "margin_jan": {
+   "name": "盘面压榨毛利",
+   "g": "供给",
+   "unit": "元/吨",
+   "freq": "seasonal-daily",
+   "pol": -1,
+   "show": "abs",
+   "short": "压榨毛利",
+   "tiny": "压榨",
+   "ctx": "jan"
+  },
+  "spread_jan": {
+   "name": "月差",
+   "g": "结构",
+   "unit": "%",
+   "freq": "seasonal-daily",
+   "pol": 1,
+   "show": "abs",
+   "short": "月差",
+   "tiny": "月差",
+   "ctx": "jan"
+  }
+ }
+}

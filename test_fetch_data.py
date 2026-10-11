@@ -2928,9 +2928,9 @@ def test_frontend_and_backend_plausible_ranges_are_identical(monkeypatch_fetch):
     忘了另一边，这个测试会直接报错(否则两层防线的判断标准不一样，会出现后端放行前端拦截的怪事)。"""
     import json, os, re
     import fetch_data as fd_module
-    html = open(os.path.join(os.path.dirname(__file__), "index.html"), encoding="utf-8").read()
+    html = open(os.path.join(os.path.dirname(__file__), "engine.html"), encoding="utf-8").read()
     m = re.search(r"const SANITY_RANGES = (\{.*?\});", html, re.S)
-    assert m, "index.html里找不到SANITY_RANGES"
+    assert m, "engine.html里找不到SANITY_RANGES"
     frontend = json.loads(m.group(1))
     backend = {k: [v[0], v[1], v[2]] for k, v in fd_module.PLAUSIBLE_RANGES.items()}
     assert set(frontend) == set(backend), (set(frontend) ^ set(backend))

@@ -11,6 +11,7 @@
   spot       现货/主力价10年回补(akshare 生意社接口 futures_spot_price，从新到旧，有时间预算，可重复运行接着补) → <out>/spot_auto.csv
   spot_daily 现货/主力价每日累积(最近4个交易日里文件还没有的) → <out>/spot_auto.csv
   refresh    每日刷新豆粕主连 M0 和未到期的具体合约日K(新抓行数不少于旧文件才覆盖)
+  multi      多品种主连日K(v101.25，用来研究多品种分散)：菜粕RM0、豆油Y0、棕榈油P0、玉米C0、豆一A0 → <out>/multi/<代码>_daily.csv(新抓行数不少于旧文件才覆盖；某个品种失败不影响其它)
   probe      探测生意社分地区(江苏)报价接口 dp.100ppi.com 是否真的存在、返回什么(把状态/表头/前几行写进报告；不写数据文件)
   rank_probe 龙虎榜历史能不能自动回填的探测(v101.21)：东方财富、新浪各在 7 个年份的样本日期(合约取自基线CSV的主力合约)试一次，报告哪个来源、回溯到哪一年有数据；不写数据文件
   rank_auto  龙虎榜历史自动回填(v101.21)：--rank-source em|sina，--rank-start/--rank-end；每个交易日一个文件 M2701_YYYYMMDD.txt → data/raw/dce_rank_auto/；从新到旧，有时间预算，可重复点接着补
@@ -20,7 +21,7 @@
 ★Yahoo 的 ZM=F/ZS=F 是连续合约，换月处同样有缺口(与豆粕主连同理)，用它算涨跌幅时需要像 seasonal_stats 那样处理。"""
 import argparse, csv, datetime, json, os, re, sys, time
 
-JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu", "spot", "spot_daily", "refresh", "rank_probe", "rank_auto"]
+JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu", "spot", "spot_daily", "refresh", "rank_probe", "rank_auto", "multi"]
 CONTRACT_MONTHS = (1, 3, 4, 5, 6, 7, 8, 9, 11, 12)
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=10y"
 CBOT_YAHOO = {"ZM": "ZM=F", "ZS": "ZS=F"}
@@ -99,6 +100,37 @@ def rank_to_text(date_str, df):
 
 
 # ---------- 各项 ----------
+MULTI = {"RM0": "菜粕", "Y0": "豆油", "P0": "棕榈油", "C0": "玉米", "A0": "豆一"}
+
+
+def job_multi(out, ak, symbols=None):
+    """多品种主连日K。每个品种单独 try；新抓的行数比已有文件少就不覆盖(接口偶尔只回最近一段)。"""
+    d = os.path.join(out, "multi")
+    os.makedirs(d, exist_ok=True)
+    rep = {"ok": True, "symbols": {}}
+    for sym in (symbols or MULTI):
+        try:
+            recs = _records(ak.futures_zh_daily_sina(sym))
+            rows = [[str(r["date"])[:10], r["open"], r["high"], r["low"], r["close"], r.get("volume"), r.get("hold"), r.get("settle")] for r in recs if r.get("close") not in (None, "")]
+            if not rows:
+                rep["symbols"][sym] = {"ok": False, "reason": "接口返回空表"}
+                continue
+            path = os.path.join(d, sym + "_daily.csv")
+            old = 0
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    old = max(0, sum(1 for _ in f) - 1)
+            if len(rows) < old:
+                rep["symbols"][sym] = {"ok": False, "reason": f"新抓 {len(rows)} 行少于已有 {old} 行，没有覆盖"}
+                continue
+            _write_csv(path, ["date", "open", "high", "low", "close", "volume", "hold", "settle"], rows)
+            rep["symbols"][sym] = {"ok": True, "name": MULTI.get(sym, ""), **_summ(rows)}
+        except Exception as e:
+            rep["symbols"][sym] = {"ok": False, "reason": f"{type(e).__name__}: {e}"[:300]}
+    rep["ok"] = all(v.get("ok") for v in rep["symbols"].values())
+    return rep
+
+
 def job_main(out, ak):
     try:
         recs = _records(ak.futures_zh_daily_sina("M0"))
@@ -477,6 +509,8 @@ def main(argv=None, ak=None, get_json=None, kline=None):
             elif j == "spot_daily":
                 import spot_history
                 rep[j] = spot_history.job_spot_daily(a.out)
+            elif j == "multi":
+                rep[j] = job_multi(a.out, ak)
             elif j == "refresh":
                 rep[j] = {"main": job_main(a.out, ak), "contracts": job_refresh_contracts(a.out, kline)}
             elif j in ("rank_probe", "rank_auto"):

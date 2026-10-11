@@ -65,11 +65,11 @@ class MockDate extends RealDate {
 function setMockedMonth(m){ mockedMonth = m; global.Date = MockDate; }
 function clearMockedMonth(){ mockedMonth = null; global.Date = RealDate; }
 
-// ---- 从index.html提取<script>内容，供eval()加载仪表盘的实际JS逻辑 ----
+// ---- 从engine.html提取<script>内容，供eval()加载仪表盘的实际JS逻辑 ----
 function loadDashboardJs(){
   const fs = require('fs');
   const path = require('path');
-  const htmlPath = path.join(__dirname, '..', 'index.html');
+  const htmlPath = path.join(__dirname, '..', 'engine.html');
   const content = fs.readFileSync(htmlPath, 'utf8');
   const start = content.indexOf('<script>');
   const end = content.lastIndexOf('</script>');

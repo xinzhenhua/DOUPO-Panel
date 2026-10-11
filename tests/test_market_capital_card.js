@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const H = require('./test_helpers');
 const { makeEl, check } = H;
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'engine.html'), 'utf8');
 eval(H.loadDashboardJs());
 const E = window._eventCal;
 const KEYS = window._autoIndicators.map(c=>c.key);

@@ -22,18 +22,18 @@ def bj(y, m, d, h=0, mi=0):
     return datetime(y, m, d, h, mi, tzinfo=BJ)
 
 
-# ===================== 休市日历：与index.html不能漂移 =====================
-def test_closures_in_python_match_index_html_exactly():
-    """★年底更新日历时只改了一边(比如只改index.html)会让页面和看门狗对"今天是不是交易日"的判断不一致——这条测试会立刻失败。"""
-    html = open(os.path.join(HERE, "index.html"), encoding="utf-8").read()
+# ===================== 休市日历：与engine.html不能漂移 =====================
+def test_closures_in_python_match_engine_html_exactly():
+    """★年底更新日历时只改了一边(比如只改engine.html)会让页面和看门狗对"今天是不是交易日"的判断不一致——这条测试会立刻失败。"""
+    html = open(os.path.join(HERE, "engine.html"), encoding="utf-8").read()
     i = html.index("const DCE_CLOSURES")
     block = html[i: html.index("];", i)]
     js = [(m.group(1), m.group(2)) for m in re.finditer(r"\{from:'(\d{4}-\d{2}-\d{2})',\s*to:'(\d{4}-\d{2}-\d{2})'", block)]
     py = [(a, b) for a, b in cc.DCE_CLOSURES]
-    assert js and js == py, f"index.html={js}  cn_calendar={py}"
+    assert js and js == py, f"engine.html={js}  cn_calendar={py}"
     m = re.search(r"EVENT_CALENDAR_END = '([^']+)'", html)
     assert m.group(1) == cc.EVENT_CALENDAR_END, "日历截止日也要一致"
-    ok(f"休市表与index.html完全一致({js})，日历截止日一致({cc.EVENT_CALENDAR_END})——年底只改一边会立刻失败")
+    ok(f"休市表与engine.html完全一致({js})，日历截止日一致({cc.EVENT_CALENDAR_END})——年底只改一边会立刻失败")
 
 
 def test_is_trading_day_weekends_and_closures():
@@ -60,7 +60,7 @@ const cases = JSON.parse(process.argv[2]);
 const dom = new JSDOM(html, {runScripts:'dangerously', url:'http://localhost/', virtualConsole:new VirtualConsole(), beforeParse(w){ w.fetch = async()=>({ok:false}); }});
 setTimeout(()=>{ const w = dom.window; const out = cases.map(c=>w.tradingDaysMissed(c[0], c[1])); console.log(JSON.stringify(out)); process.exit(0); }, 400);
 """
-    p = subprocess.run(["node", "-e", script, os.path.join(HERE, "index.html"), json.dumps(cases)], capture_output=True, text=True, timeout=60, env=os.environ)
+    p = subprocess.run(["node", "-e", script, os.path.join(HERE, "engine.html"), json.dumps(cases)], capture_output=True, text=True, timeout=60, env=os.environ)
     if "Cannot find module 'jsdom'" in p.stderr:
         return None                                        # 确实没装jsdom：允许跳过(运行器会点名)
     assert p.returncode == 0 and p.stdout.strip(), f"对拍用的Node脚本自己出错了(这不是'没装jsdom')：{p.stderr[:300]}"   # 脚本坏了必须失败，不能悄悄当成跳过——这正是上一版的bug

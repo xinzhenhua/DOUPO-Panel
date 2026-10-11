@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe,jiangsu,spot,spot_daily,refresh,rank_probe,rank_auto。rank_probe=龙虎榜历史能否自动回填的探测；rank_auto=自动回填龙虎榜历史(先跑 rank_probe)。spot=现货/主力价10年回补(可重复点)；默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区报价接口(已确认有安全检查，拿不到)；jiangsu=Mysteel全国豆粕价格日报→江苏等地43%豆粕现货价和Mysteel基差(2020年起，建议单独跑一次 only=jiangsu)"
+        description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe,jiangsu,spot,spot_daily,refresh,rank_probe,rank_auto,multi。multi=菜粕/豆油/棕榈油/玉米/豆一主连日K(2017起，v101.25；之后每天23:05随季节性累积自动刷新)。rank_probe=龙虎榜历史能否自动回填的探测；rank_auto=自动回填龙虎榜历史(先跑 rank_probe)。spot=现货/主力价10年回补(可重复点)；默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区报价接口(已确认有安全检查，拿不到)；jiangsu=Mysteel全国豆粕价格日报→江苏等地43%豆粕现货价和Mysteel基差(2020年起，建议单独跑一次 only=jiangsu)"
         default: "main,contracts,cbot,fx"
       rank_source:
         description: "only 含 rank_auto 时才填：新浪(sina，2026-10-11 探测：2020~2026 全部样本都有数据，推荐)或东方财富(em，探测只有最近一天有)"

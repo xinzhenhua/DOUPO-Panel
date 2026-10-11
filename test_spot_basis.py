@@ -432,7 +432,7 @@ def test_the_collection_routine_actually_calls_the_new_fetch_and_not_the_mysteel
     src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_data.py"), encoding="utf-8").read()
     assert re.search(r'"spotBasis"\s*:\s*fetch_spot_basis\(\)', src), "主流程里没有 spotBasis: fetch_spot_basis()"
     assert not re.search(r'"mysteelBasis"\s*:\s*fetch_mysteel_basis\(\)', src), "主流程里还在调用 Mysteel 基差"
-    html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html"), encoding="utf-8").read()
+    html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine.html"), encoding="utf-8").read()
     m = re.search(r"key:'basis'.*?dataKey:'(\w+)'", html, re.S)
     assert m and m.group(1) == "spotBasis", f"前端基差卡读的键是 {m.group(1) if m else None}，主流程写的是 spotBasis"
     ok("★主流程调用的是 fetch_spot_basis(键 spotBasis)，不再调用 Mysteel 基差；前端基差卡读的 dataKey 与主流程写出的键一致")

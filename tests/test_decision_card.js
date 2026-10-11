@@ -7,7 +7,7 @@
 const fs = require('fs'), path = require('path');
 const H = require('./test_helpers');
 const { makeEl, check } = H;
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'engine.html'), 'utf8');
 eval(H.loadDashboardJs());
 window._sdBalance.minN = 1e9;   // 本文件验证的是别的行为（阈值/排序/质量），期望值是按未均衡票权手算的；供需均衡的单元+集成测试见 test_sd_balance.js / test_sd_balance_integration.js
 const E = window._eventCal;

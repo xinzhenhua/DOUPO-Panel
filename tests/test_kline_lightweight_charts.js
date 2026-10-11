@@ -24,7 +24,7 @@ check('MA40用period=40也应该能正确算(哪怕当前测试数据只有30根
 
 // 验证renderCandlestickChart函数源码里确实配置了MA40(直接检查源码字符串，
 // 因为maConfigs是函数内部局部变量，没法从外部直接访问)
-const rawHtml = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const rawHtml = require('fs').readFileSync(require('path').join(__dirname, '..', 'engine.html'), 'utf8');
 check('★用户要求补充：源码里应该包含MA40这个均线配置', rawHtml.includes("period:40") && rawHtml.includes("label:'MA40'"));
 
 // 数据不够时的边界情况(比如只有10根数据，算MA20)

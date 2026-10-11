@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // ============================================================================
-// 每天记录两个系统的方向：用 jsdom 无头运行页面(index.html)自己的评分代码，读出结果。
+// 每天记录两个系统的方向：用 jsdom 无头运行页面(engine.html)自己的评分代码，读出结果。
 //
 // 为什么这样做：两个系统(基本面=仅供需票、市场结构=基差/月差/量价)的方向是在浏览器里(JS)算出来的，而历史是由
 //   GitHub Actions 里的 Python 写的。重写一遍评分(一千多行)会让两份代码慢慢不一致；存浏览器localStorage只有你打开页面那天才记得到。
 //   所以在 Actions 里把页面本身跑起来——评分逻辑只有一份，记录的就是你在页面上看到的。
 //
-// 用法：node scripts/snapshot_systems.js --html index.html --latest data/latest.json --out /tmp/systems_snapshot.json [--wait 25000]
+// 用法：node scripts/snapshot_systems.js --html engine.html --latest data/latest.json --out /tmp/systems_snapshot.json [--wait 25000]
 // 依赖：jsdom(工作流里 npm install jsdom@30.1.1)。失败时进程以非0退出，但工作流里这一步 continue-on-error，绝不影响数据同步。
 //
 // ⚠️页面加载时会联网：汇率(frankfurter)、美国/南美天气(Open-Meteo)。从GitHub Actions的共享IP出去偶尔会被限流，
@@ -160,7 +160,7 @@ function parseArgs(argv) {
 
 if (require.main === module) {
   const a = parseArgs(process.argv.slice(2));
-  if (!a.html || !a.latest || !a.out) { console.error('用法: node scripts/snapshot_systems.js --html index.html --latest data/latest.json --out <文件> [--wait 25000]'); process.exit(2); }
+  if (!a.html || !a.latest || !a.out) { console.error('用法: node scripts/snapshot_systems.js --html engine.html --latest data/latest.json --out <文件> [--wait 25000]'); process.exit(2); }
   runSnapshot({ htmlPath: a.html, latestPath: a.latest, waitMs: a.wait ? parseInt(a.wait, 10) : undefined })
     .then(s => {
       fs.mkdirSync(path.dirname(path.resolve(a.out)), { recursive: true });

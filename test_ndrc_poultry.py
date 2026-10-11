@@ -611,7 +611,7 @@ def test_backfill_registration_and_main_routine_wiring():
     assert re.search(r'_ndrc_result\s*=\s*fetch_ndrc_poultry\(\)', src) and re.search(r'"ndrcPoultryProfit"\s*:\s*_ndrc_result', src), "主流程里没有 ndrcPoultryProfit ← fetch_ndrc_poultry()"
     assert not re.search(r'"mysteelPoultryProfit"\s*:\s*fetch_mysteel_poultry_profit\(\)', src), "主流程不能无条件调用 Mysteel 肉鸡利润(只能经 fetch_poultry_fallback)"
     assert re.search(r'"mysteelPoultryProfit"\s*:\s*fetch_poultry_fallback\(_ndrc_result\)', src), "主流程没有接上兜底"
-    html_ = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html"), encoding="utf-8").read()
+    html_ = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine.html"), encoding="utf-8").read()
     m = re.search(r"key:'poultry'.*?dataKey:'(\w+)'", html_, re.S)
     assert m and m.group(1) == "ndrcPoultryProfit", f"前端肉鸡卡读的键是 {m.group(1) if m else None}"
     ok("★poultry_ndrc 已登记且不在默认里；主流程调用 fetch_ndrc_poultry(键 ndrcPoultryProfit)、不再调用 Mysteel；前端肉鸡卡读的键与主流程一致(上一轮基差就漏过这一环)")

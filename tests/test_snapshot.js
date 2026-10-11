@@ -11,7 +11,7 @@ const H = require('./test_helpers');
 const { check } = H;
 const { runSnapshot, beijingDate, latestPrice } = require('../scripts/snapshot_systems.js');
 const ROOT = path.join(__dirname, '..');
-const HTML = path.join(ROOT, 'index.html');
+const HTML = path.join(ROOT, 'engine.html');
 const REAL_LATEST = path.join(ROOT, 'data', 'latest.json');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'snap_'));
 const bj = (y,m,d,h,mi)=> Date.UTC(y, m-1, d, h||0, mi||0) - 8*3600*1000;

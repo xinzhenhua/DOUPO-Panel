@@ -45,9 +45,20 @@ def parse_rank_text(text):
     return out
 
 
+# 同一家公司在不同时期的简称(v101.23，新浪回填的 2022 年文件暴露的)：2022-01~08 写"摩根大通期货""国投安信期货"，
+# 2022-09 起"摩根大通""国投安信"，2024-10-25 起"国投期货"。不并起来，摩根大通前 150 天、国投前 610 天都会被当成缺席。
+ALIASES = {"摩根大通期货": "摩根大通", "国投安信期货": "国投期货", "国投安信": "国投期货"}
+
+
+def _canon(name):
+    b = _base(name)
+    return ALIASES.get(b, b)
+
+
 def _find(rows, name):
+    want = _canon(name)
     for r in rows:
-        if _base(r["name"]) == name:
+        if _canon(r["name"]) == want:
             return r
     return None
 

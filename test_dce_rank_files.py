@@ -93,6 +93,18 @@ def test_incomplete_table_gives_no_estimate():
     ok("榜单不足20行时不估计(不知道截断位置)，宁缺勿造")
 
 
+def test_renamed_members_are_merged_so_early_days_are_not_absent():
+    hdr = "大连商品交易所_日成交持仓排名_20220104\n名次\t会员简称\t成交量\t增减\t名次\t会员简称\t持买单量\t增减\t名次\t会员简称\t持卖单量\t增减\n"
+    rows = [f"{i}\tx\t1\t0\t{i}\t买{i}\t{1000 - i}\t0\t{i}\t卖{i}\t{900 - i}\t0" for i in range(1, 21)]
+    rows[0] = "1\tx\t1\t0\t1\t摩根大通期货（代客）\t5000\t300\t1\t国投安信期货\t4000\t-100"
+    p = dr.parse_rank_text(hdr + "\n".join(rows))
+    assert dr.member_net(p, "摩根大通") == {"net": 5000 - 880, "change": 300 - 0, "approx": True}, dr.member_net(p, "摩根大通")
+    # 国投安信期货只在卖榜：买榜用第20名顶替=1000-20=980；净=980-4000=-3020，变化=0-(-100)=100
+    assert dr.member_net(p, "国投期货") == {"net": -3020, "change": 100, "approx": True}, dr.member_net(p, "国投期货")
+    assert dr.member_net(p, "中粮期货") is None
+    ok("改名合并：摩根大通期货=摩根大通、国投安信(期货)=国投期货；不合并的话前 150/610 天会被当成缺席")
+
+
 def test_job_backfills_five_series_with_the_live_point_shape_and_never_overwrites_live_points():
     d = tempfile.mkdtemp()
     try:

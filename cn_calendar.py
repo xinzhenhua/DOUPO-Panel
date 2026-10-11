@@ -149,10 +149,10 @@ def holiday_window(d, before=HOLIDAY_WINDOW_BEFORE, after=HOLIDAY_WINDOW_AFTER):
     return None
 
 
-# ===================== 大商所休市日历(与index.html里的DCE_CLOSURES是同一份数据，必须一致) =====================
+# ===================== 大商所休市日历(与engine.html里的DCE_CLOSURES是同一份数据，必须一致) =====================
 # 页面的"数据健康度"和sync_watchdog.py(数据同步停止的主动警告)都要判断"今天是不是交易日"：两边用的休市表不一致，
-# 就会出现"页面说同步正常、看门狗却报警"(或反过来)。test_sync_watchdog.py里有一条防漂移测试，从index.html里解析出来逐项对比——
-# 年底更新日历时，index.html和这里必须一起改(见TODO.md)。
+# 就会出现"页面说同步正常、看门狗却报警"(或反过来)。test_sync_watchdog.py里有一条防漂移测试，从engine.html里解析出来逐项对比——
+# 年底更新日历时，engine.html和这里必须一起改(见TODO.md)。
 EVENT_CALENDAR_END = "2026-12-31"
 DCE_CLOSURES = [
     ("2026-10-01", "2026-10-07"),     # 国庆节(沪深北交易所、郑商所2026-09-17公告；大商所通常同步，以大商所公告为准)

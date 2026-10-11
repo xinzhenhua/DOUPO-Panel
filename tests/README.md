@@ -1,6 +1,6 @@
 # 前端测试套件
 
-这里是豆粕仪表盘(`../index.html`)的前端JS逻辑测试，用纯Node.js写的，不需要`npm install`任何东西。
+这里是豆粕仪表盘评分引擎(`../engine.html`，v101.25 起原来的 index.html 改名)和新驾驶舱(`../index.html`，源码在 `../cockpit/`)的前端测试，用纯Node.js写的，不需要`npm install`任何东西。
 
 ## 怎么跑
 
@@ -22,6 +22,14 @@ bash run_all_tests.sh
 ```bash
 node test_planting_brl.js
 ```
+
+## 驾驶舱相关
+
+| 文件 | 测试内容 |
+|---|---|
+| `test_cockpit_loader.js` | 取数装配纯函数(CSV、窗口截取、序列装配、D 的组装、就地灌入) |
+| `test_cockpit_plan.js` | 交易计划规则：阶梯、信号、手数、止损、移动止盈(峰值写法)手算 |
+| `e2e_cockpit.py` | 真浏览器端到端(需要 playwright+chromium，没装会明确打印跳过)：`python3 tests/e2e_cockpit.py`；数据用 `data/cockpit_fixture_*.zip` |
 
 ## 测试文件说明
 

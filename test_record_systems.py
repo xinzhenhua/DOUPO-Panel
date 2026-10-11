@@ -355,7 +355,7 @@ def test_workflow_steps_order_and_failure_isolation():
     assert steps[i_node]["uses"].startswith("actions/setup-node@") and str(steps[i_node]["with"]["node-version"]) == "22"
     assert "jsdom@30.1.1" in steps[i_jsdom]["run"], "jsdom要锁版本(测试用的就是这个版本)"
     run = steps[i_rec]["run"]
-    assert "scripts/snapshot_systems.js" in run and "--html index.html" in run and "--latest data/latest.json" in run and "record_systems.py" in run
+    assert "scripts/snapshot_systems.js" in run and "--html engine.html" in run and "--latest data/latest.json" in run and "record_systems.py" in run
     assert steps[i_fetch].get("continue-on-error") is None, "数据抓取本身不能被设成忽略失败"
     assert "git add data/history/" in steps[i_commit]["run"], "记录写在data/history/，提交步骤会一并提交"
     gi = open(os.path.join(root, ".gitignore"), encoding="utf-8").read()

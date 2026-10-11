@@ -290,6 +290,53 @@ def test_job_jiangsu_nothing_found():
     ok("一篇都没搜到 → ok=False 并带原因")
 
 
+def test_job_multi_writes_each_symbol_isolates_failures_and_never_shrinks():
+    out = tmp()
+    rows = lambda n: FakeDF([{"date": "2020-01-%02d" % (i + 1), "open": 1, "high": 2, "low": 0.5, "close": 1.5 + i, "volume": 10, "hold": 20, "settle": 1.4} for i in range(n)])
+    class AK:
+        calls = []
+        def futures_zh_daily_sina(self, symbol):
+            AK.calls.append(symbol)
+            if symbol == "Y0": raise RuntimeError("被限流")
+            if symbol == "P0": return FakeDF([])
+            return rows(5)
+    rep = fr.job_multi(out, AK())
+    assert AK.calls == ["RM0", "Y0", "P0", "C0", "A0"], AK.calls
+    assert rep["ok"] is False and rep["symbols"]["Y0"]["ok"] is False and "被限流" in rep["symbols"]["Y0"]["reason"]
+    assert rep["symbols"]["P0"]["ok"] is False and "空表" in rep["symbols"]["P0"]["reason"]
+    for s in ("RM0", "C0", "A0"):
+        r = read_csv(os.path.join(out, "multi", s + "_daily.csv"))
+        assert len(r) == 5 and r[0]["date"] == "2020-01-01" and r[4]["close"] == "5.5", r
+        assert rep["symbols"][s]["ok"] and rep["symbols"][s]["rows"] == 5
+    assert not os.path.exists(os.path.join(out, "multi", "Y0_daily.csv")) and not os.path.exists(os.path.join(out, "multi", "P0_daily.csv"))
+    # 第二次接口只回3行：已有5行不能被覆盖
+    class AK2:
+        def futures_zh_daily_sina(self, symbol): return rows(3)
+    rep2 = fr.job_multi(out, AK2(), symbols=["RM0"])
+    assert rep2["symbols"]["RM0"]["ok"] is False and "没有覆盖" in rep2["symbols"]["RM0"]["reason"]
+    assert len(read_csv(os.path.join(out, "multi", "RM0_daily.csv"))) == 5
+    # 回7行：覆盖
+    class AK3:
+        def futures_zh_daily_sina(self, symbol): return rows(7)
+    fr.job_multi(out, AK3(), symbols=["RM0"])
+    assert len(read_csv(os.path.join(out, "multi", "RM0_daily.csv"))) == 7
+    shutil.rmtree(out)
+    ok("多品种主连：每个品种单独写csv，单个失败/空表不影响其它，新抓行数更少时不覆盖已有文件")
+
+
+def test_multi_is_a_known_job_and_main_dispatches_it():
+    assert "multi" in fr.JOBS
+    out = tmp()
+    class AK:
+        def futures_zh_daily_sina(self, symbol): return FakeDF([{"date": "2020-01-01", "open": 1, "high": 2, "low": 0.5, "close": 1.5, "volume": 1, "hold": 2, "settle": 1}])
+    fr.main(["--only", "multi", "--out", out], ak=AK(), get_json=lambda *a: None, kline=lambda *a, **k: None)
+    rep = json.load(open(os.path.join(out, "_fetch_report.json"), encoding="utf-8"))
+    assert rep["multi"]["ok"] and set(rep["multi"]["symbols"]) == set(fr.MULTI), rep
+    assert all(os.path.exists(os.path.join(out, "multi", s + "_daily.csv")) for s in fr.MULTI)
+    shutil.rmtree(out)
+    ok("main(--only multi) 能分发到多品种任务并写报告")
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
 if __name__ == "__main__":
     fails = []

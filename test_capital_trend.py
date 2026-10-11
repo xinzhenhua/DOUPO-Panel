@@ -254,6 +254,16 @@ def test_verdict_with_thin_history_falls_back_and_says_so():
     ok("历史只有1天(没有当日变化可推算)：沿用'外资多头拥挤'并写明'趋势暂不可判'，不假装有趋势")
 
 
+
+def test_evidence_uses_2wan_threshold_v10124():
+    """v101.24: 提示阈值从1万手改为2万手(2022-2026事件研究)。证据文字必须写2万手、不能再写'≥1万手后…偏涨'。"""
+    joined = "\n".join(ct.EVIDENCE)
+    assert "净加仓≥2万手" in joined and "31个独立事件" in joined
+    assert "净加仓≥1万手后" not in joined
+    assert "越近越弱" in joined          # 诚实披露前强后弱
+    ok("v101.24 提示证据写2万手(31个独立事件)、披露前强后弱，且不再写'净加仓≥1万手后'")
+
+
 if __name__ == "__main__":
     import traceback
     fails = 0
