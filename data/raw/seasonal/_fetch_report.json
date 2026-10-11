@@ -1,5 +1,5 @@
 {
- "runAt": "2026-10-11 04:07 UTC",
+ "runAt": "2026-10-11 04:35 UTC",
  "jiangsu": {
   "ok": true,
   "windows": [
@@ -242,5 +242,179 @@
   "stoppedByBudget": false,
   "abortedByFailures": true,
   "remaining": 1665
+ },
+ "rank_probe": {
+  "ok": true,
+  "em": {
+   "okCount": 1,
+   "total": 8,
+   "samples": [
+    {
+     "day": "2020-07-01",
+     "contract": "M2009",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2021-07-01",
+     "contract": "M2109",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2022-07-01",
+     "contract": "M2209",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2023-07-03",
+     "contract": "M2309",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2024-07-01",
+     "contract": "M2409",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2025-07-01",
+     "contract": "M2509",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2026-07-01",
+     "contract": "M2609",
+     "ok": false,
+     "why": "多头榜：success=false：返回数据为空"
+    },
+    {
+     "day": "2026-09-30",
+     "contract": "M2701",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "国泰君安",
+       "277,697 "
+      ]
+     }
+    }
+   ]
+  },
+  "sina": {
+   "okCount": 8,
+   "total": 8,
+   "samples": [
+    {
+     "day": "2020-07-01",
+     "contract": "M2009",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "永安期货",
+       "71,341 "
+      ]
+     }
+    },
+    {
+     "day": "2021-07-01",
+     "contract": "M2109",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "中信期货",
+       "108,008 "
+      ]
+     }
+    },
+    {
+     "day": "2022-07-01",
+     "contract": "M2209",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "中信期货",
+       "85,399 "
+      ]
+     }
+    },
+    {
+     "day": "2023-07-03",
+     "contract": "M2309",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "国泰君安",
+       "112,599 "
+      ]
+     }
+    },
+    {
+     "day": "2024-07-01",
+     "contract": "M2409",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "国泰君安（代客）",
+       "143,957 "
+      ]
+     }
+    },
+    {
+     "day": "2025-07-01",
+     "contract": "M2509",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "中信期货",
+       "177,632 "
+      ]
+     }
+    },
+    {
+     "day": "2026-07-01",
+     "contract": "M2609",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "东证期货",
+       "188,741 "
+      ]
+     }
+    },
+    {
+     "day": "2026-09-30",
+     "contract": "M2701",
+     "ok": true,
+     "why": null,
+     "info": {
+      "rows": 20,
+      "top": [
+       "国泰君安",
+       "277,697 "
+      ]
+     }
+    }
+   ]
+  }
  }
 }
