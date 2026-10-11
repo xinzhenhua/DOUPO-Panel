@@ -19,8 +19,8 @@ on:
         description: "抓哪几项(逗号分隔)：main,contracts,cbot,fx,dce_rank,probe,jiangsu,spot,spot_daily,refresh,rank_probe,rank_auto。rank_probe=龙虎榜历史能否自动回填的探测；rank_auto=自动回填龙虎榜历史(先跑 rank_probe)。spot=现货/主力价10年回补(可重复点)；默认 main,contracts,cbot,fx；龙虎榜要单独选 dce_rank；probe=探测生意社分地区报价接口(已确认有安全检查，拿不到)；jiangsu=Mysteel全国豆粕价格日报→江苏等地43%豆粕现货价和Mysteel基差(2020年起，建议单独跑一次 only=jiangsu)"
         default: "main,contracts,cbot,fx"
       rank_source:
-        description: "only 含 rank_auto 时才填：东方财富(em，线上每天用的接口)或新浪(sina)，先跑 rank_probe 看哪个能回溯"
-        default: "em"
+        description: "only 含 rank_auto 时才填：新浪(sina，2026-10-11 探测：2020~2026 全部样本都有数据，推荐)或东方财富(em，探测只有最近一天有)"
+        default: "sina"
       rank_start:
         description: "only 含 rank_auto 时才填：回填起始日，默认 2022-01-01"
         default: "2022-01-01"
@@ -61,7 +61,7 @@ jobs:
           RANK_SOURCE: ${{ github.event.inputs.rank_source }}
           RANK_START: ${{ github.event.inputs.rank_start }}
         run: |
-          python3 fetch_seasonal_raw.py --only "$ONLY" --rank-list "$RANK_LIST" --rank-source "${RANK_SOURCE:-em}" --rank-start "${RANK_START:-2022-01-01}" --budget 2400
+          python3 fetch_seasonal_raw.py --only "$ONLY" --rank-list "$RANK_LIST" --rank-source "${RANK_SOURCE:-sina}" --rank-start "${RANK_START:-2022-01-01}" --budget 2400
 
       # 这一步失败(例如基线CSV被误删)不能拖累下一步：前面抓到的数据必须照样提交，否则白抓。失败原因会显示在这一步的日志里。
       - name: 重新生成季节性统计(data/seasonal.json；合约文件够多就用合约文件，否则用基线CSV)

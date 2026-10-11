@@ -10,7 +10,10 @@
 - [ ] **供需均衡(2026-10-08)**：顶部总倾向 = 50%×供给净倾向 + 50%×需求净倾向(`SD_BALANCE`，总票权不变)。比例是常量，依据只是"没有证据偏向任何一边"，**没有回测**；等每天记录的两个系统方向攒够(约一年半)后用价格数据检验，再决定要不要改比例。
   某一侧有效票<2、或天气开关打开时不均衡(页面会写明原因)。**新增/删除供给或需求票时，检查两边票数和这条规则是否仍合理**。
 
-## ⏰ v101.21 龙虎榜历史回填(部署后按顺序做)
+## ⏰ v101.22 龙虎榜历史回填(部署后按顺序做)
+- [x] rank_probe 已跑：新浪 8/8 有数据(2020~2026)，东方财富只有最近一天 → 用新浪回填。现货 `only=spot` 不用再点了(基线已覆盖，每天自动累积)。
+- [ ] 覆盖 v101.22 → Actions「抓取季节性原始数据」→ `only=rank_auto`、`rank_source=sina`、`rank_start=2022-01-01`；看 `_fetch_report.json` 的 `rank_auto`：`remaining` 不为 0 就再点(已写文件不重抓)，`stoppedByFailures=true` 就等一会再点并把 `firstError` 发我。
+## (旧版说明)v101.21 龙虎榜历史回填
 - [ ] 覆盖仓库为 v101.21 → Actions「抓取季节性原始数据」→ `only=rank_probe`(几十秒)→ 把 `data/raw/seasonal/_fetch_report.json` 里 `rank_probe` 那段发给我。
 - [ ] 探测里哪个来源(em/sina)能回溯到 2022 年 → `only=rank_auto`，`rank_source` 选它，`rank_start=2022-01-01`；没补完再点一次，直到报告 `remaining=0`。
 - [ ] 补完后看「更新豆粕基本面数据」下一次运行日志里 `capital_rank` 的 added/conflicts/coverage；conflicts 不为空说明和线上点数值不同，发我看。

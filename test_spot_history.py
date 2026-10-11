@@ -209,6 +209,27 @@ def test_workflow_runs_daily_accumulation_after_close_and_commits_it():
     ok("工作流：每日累积只在夜盘收盘后那次(cron 与文件里真实存在的一致)和手动运行时做，continue-on-error，在抓数据之后、提交之前，并提交 data/raw/seasonal/ 与 seasonal.json")
 
 
+def test_job_spot_skips_the_range_covered_by_the_baseline_and_only_fetches_after_it():
+    """用户 2026-10-11 的实测：auto 与基线 927 个重叠日差 0.0；整段回补只撞假日→'连续失败8次中止'，remaining 虚高 1665。"""
+    d = tmp()
+    try:
+        with open(os.path.join(d, sh.BASE_NAME), "w", encoding="utf-8-sig") as f:
+            f.write("date,symbol,spot,near_contract,near_contract_price,dominant_contract,futures\n"
+                    "2026-09-29,M,3400,m2611,3349,m2701,3372\n2026-09-30,M,3400,m2611,3349,m2701,3372\n")
+        calls = []
+        def fetch(ds):
+            calls.append(ds)
+            return pd.DataFrame([{"symbol": "M", "spot_price": 3418.0, "dominant_contract": "m2701", "dominant_contract_price": 3366.0, "near_contract": "m2611", "near_contract_price": 3341.0, "dom_basis": -52.0}])
+        rep = sh.job_spot(d, years=1, fetch=fetch, today=datetime.date(2026, 10, 9), pause=0, sleep=lambda s_: None)
+        # 基线覆盖 09-29~09-30 整段不抓(含它们之间/之前的假日)；10-01~10-07 国庆休市(日历里有)；只剩 10-08(周四)、10-09(周五)；09-29 之前一年内的工作日全部不在 [09-29,09-30] 内 → 仍属'基线之前'要抓，所以只断言基线区间内没有请求
+        assert "2026-09-29" not in calls and "2026-09-30" not in calls, calls
+        assert "2026-10-08" in calls and "2026-10-09" in calls, calls
+        assert rep["skippedBecauseBaselineCovers"] == ["2026-09-29", "2026-09-30"], rep
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("回补 job_spot：基线覆盖区间[首日,末日]内不请求(假日也不撞)，只抓区间之外缺的交易日；报告写明跳过的区间")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in list(globals().items()):

@@ -10,6 +10,7 @@
 import csv, os, time, datetime
 
 AUTO_COLS = ["date", "spot", "dominant_contract", "futures", "near_contract", "near_contract_price"]
+BASE_NAME = "meal_spot_futures_10y.csv"
 AUTO_NAME = "spot_auto.csv"
 
 
@@ -161,11 +162,18 @@ def _akshare_fetch():
 
 
 def job_spot(out, years=10, budget_s=2400, fetch=None, today=None, **kw):
-    """回补(从新到旧)。"""
+    """回补(从新到旧)。★基线 CSV 覆盖的区间[首日,末日]整段不抓(v101.22)：基线里没有的工作日就是休市日，
+    而重叠日自动抓取与基线逐个一致(用户 2026-10-11 的实测：927 个重叠日差 0.0)，去抓只会撞上假日、触发'连续失败中止'，
+    还让 remaining 虚高(1665)。只抓基线末日之后(和基线首日之前)缺的交易日。"""
     today = today or datetime.date.today()
     start = (today - datetime.timedelta(days=365 * years)).isoformat()
     get_row = make_get_row(fetch or _akshare_fetch())
-    return backfill(os.path.join(out, AUTO_NAME), start, today.isoformat(), get_row, _is_trading, budget_s=budget_s, **kw)
+    base = load_rows(os.path.join(out, BASE_NAME))
+    lo, hi = (min(base), max(base)) if base else (None, None)
+    trading = (lambda d: _is_trading(d) and not (lo <= d.isoformat() <= hi)) if base else _is_trading
+    rep = backfill(os.path.join(out, AUTO_NAME), start, today.isoformat(), get_row, trading, budget_s=budget_s, **kw)
+    rep["skippedBecauseBaselineCovers"] = [lo, hi] if base else None
+    return rep
 
 
 def job_spot_daily(out, now_bj=None, fetch=None, n=4, **kw):

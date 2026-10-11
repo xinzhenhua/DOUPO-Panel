@@ -305,6 +305,8 @@ def job_rank_auto(job, a, ak, fetch=None, is_trading=None, today=None):
     """rank_probe / rank_auto 的入口。基线 CSV 在 <out>/meal_spot_futures_10y.csv(与季节性共用，合约取自它的 dominant_contract)。"""
     import rank_backfill as rb, spot_history as sh
     base = sh.load_rows(os.path.join(a.out, "meal_spot_futures_10y.csv"))
+    for d, r in sh.load_rows(os.path.join(a.out, sh.AUTO_NAME)).items():      # 基线之后每天累积的 spot_auto 也带主力合约
+        base.setdefault(d, r)
     if not base:
         return {"ok": False, "reason": "找不到基线CSV(data/raw/seasonal/meal_spot_futures_10y.csv)，无法确定每天的主力合约"}
     if fetch is None:
@@ -429,7 +431,7 @@ def main(argv=None, ak=None, get_json=None, kline=None):
     p.add_argument("--out", default="data/raw/seasonal")
     p.add_argument("--rank-list", default="")
     p.add_argument("--rank-out", default="data/raw/dce_rank_hist")
-    p.add_argument("--rank-source", default="em", choices=["em", "sina"])
+    p.add_argument("--rank-source", default="sina", choices=["em", "sina"])
     p.add_argument("--rank-start", default="2022-01-01")
     p.add_argument("--rank-end", default="")
     p.add_argument("--rank-auto-out", default="data/raw/dce_rank_auto")
