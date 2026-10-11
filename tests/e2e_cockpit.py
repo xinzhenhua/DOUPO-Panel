@@ -56,9 +56,13 @@ def main():
     ok('价格历史>2000根、季节数据、龙虎榜都在', info['hist'] > 2000 and info['sea'] and info['cap'], info)
     ok('趋势墙序列>=15条有点', info['ser'] >= 15, info['ser'])
     ok('每日系统记录有数据、事件日历有数据、12个指标', info['sys'] >= 1 and info['ev'] >= 1 and info['ind'] >= 12, info)
+    ok('默认是交易模式：背景带、趋势墙、证据栏收起，交易面板可见', pg.evaluate("document.body.classList.contains('mode-trade') && getComputedStyle(document.getElementById('band')).display === 'none' && getComputedStyle(document.getElementById('wall')).display === 'none' && getComputedStyle(document.getElementById('tradePanel')).display !== 'none'"))
+    ok('检查条里没有规则灯、没有「三方背离」方向灯', pg.evaluate("!document.getElementById('ruleBtn') && !document.querySelector('[data-lamp=\"dir\"]') && !document.body.innerText.includes('三方背离')"))
+    pg.evaluate("document.querySelector('[data-mode=\"research\"]').click()")
+    ok('切到研究模式：背景带和趋势墙出现，交易面板收起', pg.evaluate("getComputedStyle(document.getElementById('band')).display !== 'none' && getComputedStyle(document.getElementById('wall')).display !== 'none' && getComputedStyle(document.getElementById('tradePanel')).display === 'none'"))
     ok('趋势墙画出了格子', pg.evaluate("document.querySelectorAll('#tiles [data-tile]').length") >= 10)
     # ---- 2. 所有视图、证据页、说明 ----
-    for v in ('px', 'pos', 'sea', 'cost', 'plan'):
+    for v in ('px', 'pos', 'sea', 'cost'):
         pg.evaluate("v => document.querySelector('[data-view=\"' + v + '\"]').click()", v)
         ok('视图 %s 能渲染且有内容' % v, pg.evaluate("document.getElementById('chart').innerText.length") > 20)
     for t in ('drivers', 'supply', 'demand', 'capital', 'data', 'input'):
@@ -72,12 +76,13 @@ def main():
     ok('以上全程没有页面 JS 错误', not errs, errs)
     # ---- 3. 交易信号在首页；交易计划：开仓/平仓记录、权益自动、最高价自动、手续费 ----
     pg.on('dialog', lambda dlg: dlg.accept())
-    pg.evaluate("document.querySelector('[data-view=\"px\"]').click()")
+    pg.evaluate("document.querySelector('[data-mode=\"trade\"]').click()")
     sig = pg.evaluate("document.getElementById('sigbar').innerText")
     ok('首页（不点任何按钮）就能看到入场信号和持仓管理', '入场信号' in sig and '持仓管理' in sig and ('信号' in sig), sig[:200])
     ok('首页：空仓时显示"空仓"和自动权益 500,000', '空仓' in sig and '500,000' in sig, sig[:200])
     pg.evaluate("document.querySelector('#sigbar [data-goplan]').click()")
-    ok('点首页信号条直接进入交易计划页', pg.evaluate("document.getElementById('planBody') !== null"))
+    ok('点首页信号条切到交易模式并看到交易计划', pg.evaluate("document.body.classList.contains('mode-trade') && document.getElementById('planBody') !== null"))
+    ok('测试数据里外资5日数据缺失：信号格显示「数据不足，信号不可信」且不给建议手数', '数据不足' in pg.evaluate("document.getElementById('sigbar').innerText") and '建议' not in pg.evaluate("document.getElementById('sigbar').innerText"))
     body = pg.evaluate("document.getElementById('planBody').innerText")
     ok('计划页：有今日信号、持仓管理、账户权益、交易记录四块', all(k in body for k in ('今日入场信号', '持仓管理', '账户权益', '交易记录')), body[:200])
     ok('计划页：仓位阶梯和回测摘要默认折叠', pg.evaluate("[...document.querySelectorAll('#planBody details')].every(d => !d.open)"))
@@ -99,6 +104,9 @@ def main():
     snap = pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return { eq: s.E.equity, fees: s.E.fees, open: !!s.pos }; })()")
     ok('记录平仓后：空仓，权益 = 500000 + 5手×10吨×100 − 来回手续费115', (not snap['open']) and abs(snap['eq'] - 504885) < 1e-6, snap)
     ok('平仓后交易记录里有这一笔，净盈亏 +4,885', '+4,885' in pg.evaluate("document.getElementById('planBody').innerText"))
+    ok('记录开仓时存了决策快照（基本面方向、外资5日等）', pg.evaluate("(() => { const t = window.__cockpit.planSnap().A.trades[0]; return !!t.snap && 'fund' in t.snap && 'fsum' in t.snap && t.snap.gateOk === false && !!t.snapX; })()"))
+    with pg.expect_download() as dl2: pg.evaluate("document.querySelector('[data-act=\"csv\"]').click()")
+    ok('能导出交易记录CSV（含决策快照）', dl2.value.suggested_filename.startswith('cockpit-trades-'))
     pg.fill('#pf-fa', '200000'); pg.fill('#pf-fn', '年度追加'); pg.evaluate("document.querySelector('[data-act=\"flow\"]').click()")
     ok('入金20万后权益自动 = 704,885', abs(pg.evaluate("window.__cockpit.planSnap().E.equity") - 704885) < 1e-6)
     pg.fill('#pf-ca', '700000'); pg.evaluate("document.querySelector('[data-act=\"calib\"]').click()")
@@ -140,7 +148,7 @@ def main():
         ctx, pg, e2 = open_page(b, port, w, 800)
         ov = pg.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
         ok('手机 %dpx：首页不横向溢出' % w, ov <= 0, ov)
-        for v in ('plan', 'pos', 'sea', 'cost'):
+        for v in ('pos', 'sea', 'cost'):
             pg.evaluate("v => document.querySelector('[data-view=\"' + v + '\"]').click()", v)
             ov = pg.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             ok('手机 %dpx：%s 视图不横向溢出' % (w, v), ov <= 0, ov)
@@ -158,7 +166,7 @@ def main():
     ctx.close(); s3.shutdown()
     d4 = make_site(lambda x: os.remove(os.path.join(x, 'data', 'raw', 'seasonal', 'M0_daily.csv'))); s4, p4 = serve(d4)
     ctx, pg, e5 = open_page(b, p4)
-    ok('缺主连日线CSV：照常启动，交易计划页可打开', pg.evaluate("!document.getElementById('boot')") and not pg.evaluate("document.querySelector('[data-view=\"plan\"]').click(), document.getElementById('chart').innerText.length < 20"), e5)
+    ok('缺主连日线CSV：照常启动，交易计划页可打开', pg.evaluate("!document.getElementById('boot')") and not pg.evaluate("document.getElementById('planBody').innerText.length < 20"), e5)
     ctx.close(); s4.shutdown()
     # ---- 7b. 席位覆盖表 ----
     ctx, pg, _e = open_page(b, port)

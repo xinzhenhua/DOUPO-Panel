@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -98,4 +98,13 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   // 联动：自动算出的最高价喂给离场判定
   const hh=P.planHold({d:['2026-01-05','2026-01-06','2026-01-07'],c:[3000,3300,3150]},T()); const mm=P.planManage({side:1,entry:3000,peak:hh.peak,last:hh.last,ma20:null,fsum:0});
   eq('联动 最高浮盈10%后回落4.5% → 移动止盈',mm.action,'移动止盈'); }
+
+// ===== v101.27 数据闸门 =====
+{ let g=P.planGate(['高盛期货'],'2026-10-09','2026-10-12'); eq('闸门 数据齐、价格3天前 → 通过',[g.ok,g.reasons.length,g.warn.length],[true,0,0]);
+  g=P.planGate([],'2026-10-09','2026-10-12'); eq('闸门 外资一个席位都没有 → 不通过',g.ok,false); eq('闸门 原因点名外资',/外资/.test(g.reasons[0]),true);
+  g=P.planGate(['摩根大通'],'2026-10-01','2026-10-12'); eq('闸门 价格11天没更新 → 不通过',g.ok,false);
+  g=P.planGate(['摩根大通'],'2026-10-05','2026-10-12'); eq('闸门 价格7天（国庆长假内）→ 仍通过',g.ok,true);
+  g=P.planGate(['摩根大通'],'2026-10-07','2026-10-12'); eq('闸门 5天 → 通过但提示',[g.ok,g.warn.length],[true,1]);
+  g=P.planGate(['摩根大通'],null,'2026-10-12'); eq('闸门 没有价格数据 → 不通过',g.ok,false);
+  g=P.planGate([],'2026-09-01','2026-10-12'); eq('闸门 两个问题都点名',g.reasons.length,2); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

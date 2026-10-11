@@ -14,7 +14,7 @@ const lampSvg = lv => `<svg class="lamp ${lv}" viewBox="0 0 16 16" aria-hidden="
 const LW = { ok: '正常', note: '留意', warn: '警示', na: '无数据' };
 const CM = { sep: { name: '9月合约', win: '4–7月' }, may: { name: '5月合约', win: '12–3月' }, jan: { name: '1月合约', win: '8–11月' } };
 const autoKey = () => { const m = BJ(D.snapshotMs).getUTCMonth() + 1; for (const k of ['sep', 'may', 'jan']) if (D.ctx[k].recommendedMonths.includes(m)) return k; return 'sep'; };
-const S = { view: 'px', seaKind: 'spot', key: autoKey(), auto: true, span: 'mid', range: 80, ex: false, themePref: 'auto' };
+const S = { mode: 'trade', view: 'px', seaKind: 'spot', key: autoKey(), auto: true, span: 'mid', range: 80, ex: false, themePref: 'auto' };
 const C = () => D.contracts[S.key];
 const closed = () => D.closure && D.closure.state === 'in';
 
@@ -59,7 +59,7 @@ function costBlockHtml() {
 }
 
 /* ======================= v101.19c：驾驶舱新增视图（结论优先，说明收进“?”） ======================= */
-const VIEWS = [['px', '价格持仓'], ['pos', '价格位置'], ['sea', '同期规律'], ['cost', '成本锚'], ['plan', '交易计划']];
+const VIEWS = [['px', '价格持仓'], ['pos', '价格位置'], ['sea', '同期规律'], ['cost', '成本锚']];
 function viewTabs() { return `<div class="seg vtabs" role="group" aria-label="切换视图">${VIEWS.map(([k, n]) => `<button data-view="${k}" aria-pressed="${(S.view || 'px') === k}">${n}</button>`).join('')}</div>`; }
 function viewHdr(title, about) { return `<div class="ch-h"><span class="t">${title}</span><button class="q" data-about="${about}" aria-label="这页怎么看">?</button></div>${viewTabs()}`; }
 const fmtD = n => Math.round(n).toLocaleString('en-US');
@@ -196,6 +196,14 @@ function planWhy(sg) {
   if (!sg.lowOK) return '价格分位 ' + sg.pct.toFixed(0) + '%，不在低位（需 ≤' + TPLAN.LO + '%）';
   return '价格在低位，但还没出现反弹确认';
 }
+/* 信号数据闸门：外资5日数据一个席位都没有、或价格数据太久没更新时，信号不可信（外资缺数据在回测里按0算=去杠杆过滤失效） */
+function planGate(used, lastD, today) {
+  const reasons = [], warn = [];
+  if (!used || !used.length) reasons.push('外资席位5日数据缺失（去杠杆过滤失效）');
+  if (!lastD) reasons.push('没有价格数据');
+  else { const gap = Math.round((Date.parse(today) - Date.parse(lastD)) / 86400000); if (gap > 7) reasons.push('价格数据已 ' + gap + ' 天没更新（最新 ' + lastD + '）'); else if (gap > 4) warn.push('价格数据最新 ' + lastD); }
+  return { ok: !reasons.length, reasons, warn };
+}
 function planNum(x) { return x != null && x !== '' && isFinite(+x); }
 /* 一笔交易的手续费：开仓一半 + 平仓一半（每手来回 perLot 元）；记录时填了实际金额（feeO/feeC）就用实际的 */
 function planFee(t, perLot) {
@@ -258,23 +266,30 @@ function planSnap() {
   const pos = planOpen(A.trades); let hold = null, mg = null;
   if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.sum }); }
   const E = planEquity(A, hold ? hold.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
-  const side = sig.longOK ? 1 : sig.shortOK ? -1 : 0;
+  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, gate = planGate(F.used, hl, todayBJ());
+  const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
-  return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size };
+  return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate };
+}
+/* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
+function planSnapshotNow(s) {
+  const o = { d: todayBJ(), px: Math.round(s.px), pct: s.sig.pct == null ? null : Math.round(s.sig.pct), confirm: s.sig.confirm, delev: s.sig.delev, trendDn: s.sig.trendDn, fsum: Math.round(s.F.sum), gateOk: s.gate.ok };
+  try { const f = fundamentals(), c = C(); o.fund = f.dir || null; o.fundRatio = f.ratio == null ? null : +(+f.ratio).toFixed(2); o.tech = c.tech || null; o.struct = c.structure && !c.structure.thin ? c.structure.direction || null : null; const cp = capital(); o.cap = cp.verdict && cp.verdict.short ? cp.verdict.short : null; o.regime = regimeNow().label; } catch (_) {}
+  return o;
 }
 /* ---- 首页：交易信号条 ---- */
 function renderSig() {
   const el = $('#sigbar'); if (!el) return;
-  const s = planSnap(), sg = s.sig, chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
-  const cls = s.side > 0 ? 'long' : s.side < 0 ? 'short' : 'wait', head = s.side > 0 ? '做多信号' : s.side < 0 ? '做空信号' : '无入场信号';
-  let sub; if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
-  const left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击进入交易计划"><div class="cl">入场信号（收盘后看一次）</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
-    <div class="scs">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}</div></button>`;
+  const s = planSnap(), sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
+  const blocked = !s.gate.ok, cls = blocked ? 'gate' : s.side > 0 ? 'long' : s.side < 0 ? 'short' : 'wait', head = blocked ? '数据不足，信号不可信' : s.side > 0 ? '做多信号' : s.side < 0 ? '做空信号' : '无入场信号';
+  let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
+  const left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 现价 ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
+    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? f2(F.sum) + ' 手' : '无数据'}</span></div></button>`;
   let right;
-  if (!s.pos) right = `<button class="sg" data-goplan="1" aria-label="持仓：空仓。点击进入交易计划"><div class="cl">持仓管理</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? ' · 点击记录开仓' : ''}</div></button>`;
-  else { const m = s.mg, out = m.action !== '持有', fl = planPnl(s.pos, s.hold.last);
-    right = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="1" aria-label="持仓：${sdName(s.pos.side)}${s.pos.lots}手，${out ? '该平仓：' + m.action : '继续持有'}。点击进入交易计划"><div class="cl">持仓 ${sdName(s.pos.side)}${fmtD(s.pos.lots)}手 @${fmtD(s.pos.entryPx)}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>
-      <div class="sb">浮盈亏 ${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}%（${yuan(fl)} 元）· 最高浮盈 ${m.peakR.toFixed(1)}% · 权益 ${fmtD(s.E.equity)}</div></button>`; }
+  if (!s.pos) right = `<button class="sg" data-goplan="1" aria-label="持仓：空仓。点击查看交易计划"><div class="cl">持仓管理</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? ' · 成交后在交易计划里记录开仓' : ''}</div></button>`;
+  else { const m = s.mg, out = m.action !== '持有', fl = planPnl(s.pos, s.hold.last), noF = !s.F.used.length;
+    right = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="1" aria-label="持仓：${sdName(s.pos.side)}${s.pos.lots}手，${out ? '该平仓：' + m.action : '继续持有'}。点击查看交易计划"><div class="cl">持仓 ${sdName(s.pos.side)}${fmtD(s.pos.lots)}手 @${fmtD(s.pos.entryPx)}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>
+      <div class="sb">浮盈亏 ${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}%（${yuan(fl)} 元）· 最高浮盈 ${m.peakR.toFixed(1)}% · 权益 ${fmtD(s.E.equity)}${noF ? '<br>⚠️ 外资数据缺失，外资离场判断暂不可用' : ''}</div></button>`; }
   el.innerHTML = left + right;
 }
 /* ---- 交易计划页 ---- */
@@ -297,10 +312,10 @@ function planBodyHtml(s) {
   const A = s.A, sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), pct1 = x => x == null ? '—' : x.toFixed(0) + '%';
   const mk = (ok, y, n) => `<td class="${ok ? 'ok' : 'no'}">${ok ? '✓ ' + y : '✗ ' + n}</td>`, inp = (id, v, ph, extra) => `<input id="${id}" inputmode="decimal" value="${esc(v)}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
   const sel = (id, cur, opts, extra) => `<select id="${id}" ${extra || ''}>${opts.map(([k, n]) => `<option value="${k}"${String(cur) === String(k) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
-  const head = s.side > 0 ? '满足做多入场条件' : s.side < 0 ? '满足做空入场条件' : '没有入场信号，观望';
+  const head = !s.gate.ok ? '数据不足，信号不可信' : s.side > 0 ? '满足做多入场条件' : s.side < 0 ? '满足做空入场条件' : '没有入场信号，观望';
   let h = PMSG ? `<div class="plw pmsg" role="status">${esc(PMSG)}</div>` : '';
   /* ① 今日信号 */
-  h += `<div class="plt">① 今日入场信号</div><div class="hl"><b>${head}</b><br><span style="color:var(--ink2)">${esc(planWhy(sg))}${s.pos && s.side ? '。你已有持仓，不加仓' : ''}</span></div>
+  h += `<div class="plt">① 今日入场信号</div><div class="hl"><b>${head}</b><br><span style="color:var(--ink2)">${esc(!s.gate.ok ? s.gate.reasons.join('；') + '。先别按这个信号操作' : planWhy(sg))}${s.pos && s.side ? '。你已有持仓，不加仓' : ''}</span>${s.gate.warn.length ? '<br><span class="plh">' + esc(s.gate.warn.join('；')) + '</span>' : ''}</div>
   <table class="tb3x tbpl"><tbody>
    <tr><td>做多①价格低位（260日分位 ≤ ${TPLAN.LO}%）</td><td class="n">${pct1(sg.pct)}</td>${mk(sg.lowOK, '满足', '不满足')}</tr>
    <tr><td>做多②反弹确认（高于5日前，且高出前10日最低价1%）</td><td class="n">—</td>${mk(sg.confirm, '满足', '不满足')}</tr>
@@ -363,18 +378,18 @@ function planBodyHtml(s) {
   /* ④ 交易记录 */
   h += `<div class="plt">④ 交易记录</div>`;
   if (!A.trades.length) h += `<div class="plh">暂无记录。</div>`;
-  else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th>手数</th><th>开仓价</th><th>平仓</th><th>平仓价</th><th>手续费</th><th>净盈亏</th><th>价格涨跌</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
+  else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th>手数</th><th>开仓价</th><th>平仓</th><th>平仓价</th><th>手续费</th><th>净盈亏</th><th>价格涨跌</th><th>开仓时：基本面 · 外资5日</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
       const cl = !!t.exitD, fee = planFee(t, A.fee), net = cl ? planPnl(t, t.exitPx) - fee : null, ret = cl ? (t.side >= 0 ? 1 : -1) * (t.exitPx / t.entryPx - 1) * 100 : null;
-      return `<tr><td>${esc(t.entryD)}</td><td>${sdName(t.side)}</td><td class="n">${fmtD(t.lots)}</td><td class="n">${fmtD(t.entryPx)}</td><td>${cl ? esc(t.exitD) : '持仓中'}</td><td class="n">${cl ? fmtD(t.exitPx) : '—'}</td><td class="n">${fmtD(fee)}</td><td class="n" style="color:${net == null ? 'inherit' : net >= 0 ? 'var(--bull)' : 'var(--bear)'}">${net == null ? '—' : yuan(net)}</td><td class="n">${ret == null ? '—' : (ret >= 0 ? '+' : '') + ret.toFixed(1) + '%'}</td><td><button class="xbtn" data-act="delt" data-id="${esc(t.id)}" aria-label="删除这笔记录">×</button></td></tr>`; }).join('')}</tbody></table></div>`;
+      return `<tr><td>${esc(t.entryD)}</td><td>${sdName(t.side)}</td><td class="n">${fmtD(t.lots)}</td><td class="n">${fmtD(t.entryPx)}</td><td>${cl ? esc(t.exitD) : '持仓中'}</td><td class="n">${cl ? fmtD(t.exitPx) : '—'}</td><td class="n">${fmtD(fee)}</td><td class="n" style="color:${net == null ? 'inherit' : net >= 0 ? 'var(--bull)' : 'var(--bear)'}">${net == null ? '—' : yuan(net)}</td><td class="n">${ret == null ? '—' : (ret >= 0 ? '+' : '') + ret.toFixed(1) + '%'}</td><td>${t.snap ? esc((t.snap.fund || '—') + ' · ' + (t.snap.fsum >= 0 ? '+' : '') + t.snap.fsum) : '—'}</td><td><button class="xbtn" data-act="delt" data-id="${esc(t.id)}" aria-label="删除这笔记录">×</button></td></tr>`; }).join('')}</tbody></table></div>`;
   if (A.flows.length) h += `<details id="pf-fl"><summary>出入金记录（${A.flows.length} 笔）</summary><table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table></details>`;
-  h += `<div class="plh" style="margin-top:8px">记录只存在这台设备的浏览器里（换设备、清缓存会丢）。<button class="lnk" data-act="backup">备份下载</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
+  h += `<div class="plh" style="margin-top:8px">记录只存在这台设备的浏览器里（换设备、清缓存会丢）。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
   /* 折叠：阶梯、回测摘要 */
   h += `<details id="pf-lad"><summary>仓位阶梯（权益越大占用越低）</summary>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要（样本内，仅供参考）</summary>${planBtHtml()}</details>`;
   return h;
 }
-function viewPlan() { return viewHdr('交易计划 · 信号与持仓', 'plan') + `<div id="planForm"><div id="planBody"></div></div>`; }
+function tradeShell() { const t = $('#tradePanel'); if (t && !$('#planBody')) t.innerHTML = `<div class="ch-h"><span class="t">交易计划 · 持仓与账户</span><button class="q" data-about="plan" aria-label="这页怎么用">?</button></div><div id="planForm"><div id="planBody"></div></div>`; }
 function planBtHtml() {
-  return `<table class="tb3x tbpl"><tbody>
+  return `<div class="plw">⚠️ 这些数字对价格数据的处理方式很敏感：同一套规则，只改主连换月跳空的处理，5年终值中位数就在 190万~807万 之间变（只有39笔交易）。把它当「这套规则在这段样本里的上限参考」，不要当预期。把这套规则搬到豆油、棕榈油、玉米、豆一上基本没有优势。</div><table class="tb3x tbpl"><tbody>
     <tr><td>5年后终值（50万起、盈利再投、44个滚动窗口）</td><td class="n">中位 804万 · 差10% 495万 · 最差 214万</td></tr>
     <tr><td>5年内最大回撤</td><td class="n">中位 −43% · 最差 −55%</td></tr>
     <tr><td>每年收益中位（第1~5年）</td><td class="n">+34% · +93% · +135% · +108% · +42%</td></tr>
@@ -396,7 +411,7 @@ function planUpdate(reset, snap) {
   Object.keys(sn.keep).forEach(id => { const e = document.getElementById(id); if (e) { e.value = sn.keep[id]; e.dataset.t = '1'; } });
   sn.opened.forEach(id => { const e = document.getElementById(id); if (e) e.open = true; });
 }
-function planAfter(msg) { PMSG = msg || null; planUpdate(true); renderSig(); }
+function planAfter(msg) { PMSG = msg || null; planUpdate(true); renderSig(); drawChart(); }
 const okDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d) && isFinite(Date.parse(d));
 function planAct(act, el) {
   const A = acctGet(), v = id => { const e = document.getElementById(id); return e ? String(e.value).trim() : ''; }, nm = id => { const x = parseFloat(v(id).replace(/,/g, '')); return isFinite(x) ? x : NaN; };
@@ -406,7 +421,7 @@ function planAct(act, el) {
     if (planOpen(A.trades)) return planAfter('已经有一笔持仓，先记平仓。');
     if (!okDate(d) || !(lots >= 1) || !(px > 0)) return planAfter('开仓没记：日期要写成 2026-10-12，手数≥1，价格>0。');
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('开仓没记：手续费要么留空，要么填数字。');
-    A.trades.push({ id: String(Date.now()), side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee) });
+    A.trades.push({ id: String(Date.now()), side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee), snap: planSnapshotNow(planSnap()) });
     return save(`已记录开仓：${sdName(side)} ${lots} 手 @ ${fmtD(px)}。之后的最高/最低价、浮盈亏、离场判断都自动算。`);
   }
   if (act === 'close') {
@@ -414,7 +429,7 @@ function planAct(act, el) {
     if (!t) return planAfter('当前没有持仓。');
     if (!okDate(d) || d < t.entryD || !(px > 0)) return planAfter('平仓没记：日期要写成 2026-10-12 且不早于开仓日，价格>0。');
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('平仓没记：手续费要么留空，要么填数字。');
-    t.exitD = d; t.exitPx = px; t.feeC = fee === '' ? null : parseFloat(fee);
+    t.exitD = d; t.exitPx = px; t.feeC = fee === '' ? null : parseFloat(fee); t.snapX = planSnapshotNow(planSnap());
     const net = planPnl(t, px) - planFee(t, A.fee);
     return save(`已记录平仓：净盈亏 ${yuan(net)} 元（已扣手续费），权益已更新。`);
   }
@@ -430,6 +445,13 @@ function planAct(act, el) {
   }
   if (act === 'delt') { if (!window.confirm('删除这笔交易记录？权益会重新计算。')) return; A.trades = A.trades.filter(t => String(t.id) !== el.dataset.id); return save('已删除一笔交易记录。'); }
   if (act === 'delf') { if (!window.confirm('删除这笔出入金记录？权益会重新计算。')) return; A.flows.splice(+el.dataset.i, 1); return save('已删除一笔出入金记录。'); }
+  if (act === 'csv') {
+    const per = A.fee, hdr = ['开仓日','方向','手数','开仓价','平仓日','平仓价','手续费','净盈亏','价格涨跌%','开仓基本面','开仓基本面分','开仓技术面','开仓结构','开仓资金面','开仓市场状态','开仓价格分位','反弹确认','外资去杠杆','外资5日','趋势向下','平仓基本面','平仓外资5日'];
+    const rows = A.trades.map(t => { const cl = !!t.exitD, sn = t.snap || {}, sx = t.snapX || {}, fee = planFee(t, per), net = cl ? planPnl(t, t.exitPx) - fee : '', ret = cl ? ((t.side >= 0 ? 1 : -1) * (t.exitPx / t.entryPx - 1) * 100).toFixed(2) : '';
+      return [t.entryD, t.side > 0 ? '多' : '空', t.lots, t.entryPx, t.exitD || '', t.exitPx || '', fee, net, ret, sn.fund || '', sn.fundRatio == null ? '' : sn.fundRatio, sn.tech || '', sn.struct || '', sn.cap || '', sn.regime || '', sn.pct == null ? '' : sn.pct, sn.confirm == null ? '' : sn.confirm, sn.delev == null ? '' : sn.delev, sn.fsum == null ? '' : sn.fsum, sn.trendDn == null ? '' : sn.trendDn, sx.fund || '', sx.fsum == null ? '' : sx.fsum]; });
+    const csv = '\ufeff' + [hdr].concat(rows).map(r => r.map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    try { const b = new Blob([csv], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'cockpit-trades-' + todayBJ() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch (_) { planAfter('这个浏览器不支持下载。'); } return;
+  }
   if (act === 'backup') {
     try { const b = new Blob([JSON.stringify(A, null, 1)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'cockpit-account-' + todayBJ() + '.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
     catch (_) { planAfter('这个浏览器不支持下载备份。'); } return;
@@ -451,7 +473,7 @@ function ladderHtml(eq) {
   const rows = [['< 500 万', .6, 0, 5e6], ['500 ~ 1500 万', .4, 5e6, 1.5e7], ['1500 ~ 5000 万', .25, 1.5e7, 5e7], ['≥ 5000 万', .15, 5e7, Infinity]];
   return `<table class="tb3x tbpl"><thead><tr><th>权益</th><th>占用（保证金/权益）</th><th>回测口径名义杠杆</th></tr></thead><tbody>${rows.map(([n, u, a, b]) => `<tr${eq >= a && eq < b ? ' class="cur"' : ''}><td>${n}${eq >= a && eq < b ? '　← 现在' : ''}</td><td class="n">${Math.round(u * 100)}%</td><td class="n">${(u / TPLAN.BT_MARGIN).toFixed(1)} 倍</td></tr>`).join('')}</tbody></table>`;
 }
-function renderView() { const v = S.view, snap = v === 'plan' && $('#planBody') ? planFormSnap() : null; $('#chart').innerHTML = v === 'pos' ? viewPos() : v === 'sea' ? viewSea() : v === 'plan' ? viewPlan() : viewCost(); if (v === 'plan') planUpdate(false, snap); }
+function renderView() { const v = S.view; $('#chart').innerHTML = v === 'pos' ? viewPos() : v === 'sea' ? viewSea() : viewCost(); }
 
 const BEC = '#8b7cf6';
 const lampOfLevel = lv => ({ red: 'warn', yellow: 'note', green: 'ok', gray: 'na' }[lv] || 'na');
@@ -591,8 +613,6 @@ function checks() {
   const set = [fd, td, st].filter(Boolean);
   let lv = 'note', tx = '未形成一致';
   if (set.length >= 2 && new Set(set).size > 1) { lv = 'warn'; tx = '三方背离'; } else if (set.length === 3) { lv = 'ok'; tx = '三方一致'; } else if (set.length === 0) tx = '都没有方向';
-  out.push({ k: 'dir', t: '方向', lv, tx, body: `<p>基本面 <b>${esc(f.dir === '中性' ? '信号混合' : f.dir || '数据不足')}</b>，技术面 <b>${esc(c.tech || '—')}</b>，市场结构 <b>${esc(c.structure && !c.structure.thin && c.structure.direction ? c.structure.direction : '暂无信号')}</b>。三项里至少两项有方向且一致才算“三方一致”；有方向却互相对立是“三方背离”。</p>` });
-  out.push({ k: 'cap', t: '资金面', lv: lampOfLevel(cap.verdict ? cap.verdict.level : cap.state.level), tx: cap.verdict && cap.verdict.short ? cap.verdict.short : cap.state.label.replace(/[（(].*$/, ''), body: cap.verdict ? `<p><b>${esc(cap.verdict.label)}</b></p>` + (cap.verdict.lines || []).map(l => `<p>${esc(l)}</p>`).join('') : `<p>${esc(cap.state.label)}</p>` });
   let el, et, eb;
   if (closed()) { el = 'note'; et = '休市中'; eb = `<p>${esc(D.closure.closure.name)}休市，${D.closure.closure.from} 至 ${D.closure.closure.to}，${mmdd(D.closure.reopenMs)} ${hhmm(D.closure.reopenMs)} 恢复交易。</p>`; }
   else { const nx = D.events.filter(e => e.kind === 'usda' && e.ms - D.snapshotMs < 48 * 3600e3); el = nx.length ? 'note' : 'ok'; et = nx.length ? nx[0].title : '48小时内无重大事件'; eb = '<p>重大事件指 USDA 月度供需报告、季度库存、休市。</p>'; }
@@ -605,19 +625,10 @@ function checks() {
     body: pb.band === 'unknown' ? '<p>近260日历史不足200根，暂不下结论。</p>' : `<p>最新收盘在近 ${pb.n} 个交易日里处于 <b>${pb.pct}%</b> 分位（${BANDNAME[pb.band]}）。铁底(20%分位价) ${ab(pb.p20)}，铁顶(80%分位价) ${ab(pb.p80)}。${pb.ext ? `前 ${pb.ext} 日是用其他合约按重叠日比例换算的，不是本合约原始成交价。` : ''}</p><p>历史检验：低位带之后略好于基准（温和支持）；高位带没有“之后会跌”的证据。这只描述价格贵不贵，不是买卖信号。</p>` });
   return out;
 }
-function ruleLamp(chs) {
-  const cap = capital().state, c = C();
-  const vcode = capital().verdict && capital().verdict.code;
-  if (cap.code === 'crowded' || cap.code === 'retreat' || ['retreat_from_high', 'retreat', 'crowded_flat', 'build_high'].includes(vcode)) return { w: '休息', why: '外资多头拥挤或在高位撤退时，参考文档的做法是休息。注意：这条规则没有回测；历史检验里外资减仓之后并没有明显的下跌。' };
-  if (closed()) return { w: '观望', why: '现在休市。' };
-  const f = fundamentals().dir;
-  if (f && f !== '中性' && f === c.tech && !chs.some(x => x.lv === 'warn')) return { w: '参与（顺势）', why: '基本面与技术面同向，且没有警示灯。' };
-  return { w: '观望', why: '没有一致的方向，或有警示灯。' };
-}
 function renderChecks() {
-  const chs = checks(), rl = ruleLamp(chs);
+  const chs = checks();
   $('#checks').innerHTML = chs.map(x => `<button class="lp" data-lamp="${x.k}" aria-label="${esc(x.t)}：${LW[x.lv]}，${esc(x.tx)}">${lampSvg(x.lv)}<span class="k">${esc(x.t)}</span><span class="v">${esc(x.tx)}</span></button>`).join('') +
-    `<span class="sp1"></span><button class="rule" id="ruleBtn" title="参考文档的规则翻成的一盏灯，未验证">规则灯（未验证）：${esc(rl.w)}</button>`;
+''
 }
 
 /* ---------- 渲染：左侧价格图 ---------- */
@@ -640,13 +651,17 @@ function renderChart() {
   $('#chart').insertAdjacentHTML('beforeend', posBlockHtml());
   drawChart();
 }
+function planChartLines() {   // 持仓时在K线上画开仓价、止损价、移动止盈触发价
+  try { const t = planOpen(acctGet().trades); if (!t) return []; const s = planSnap(), sd = t.side > 0 ? 1 : -1, L = [{ v: t.entryPx, n: '开仓', c: 'var(--ink)' }, { v: t.entryPx * (1 - sd * TPLAN.STOP / 100), n: '止损', c: 'var(--amber)' }];
+    if (s.mg && s.mg.peakR >= TPLAN.ACT) L.push({ v: s.hold.peak * (1 - sd * TPLAN.TRAIL / 100), n: '移动止盈', c: 'var(--amber)' }); return L; } catch (_) { return []; }
+}
 function drawChart() {
   const box = $('#kl'); if (!box) return;
   const bars = C().kline || [], N = Math.min(S.range, bars.length), b = bars.slice(-N), off = bars.length - N;
   const W = box.clientWidth || 560, H = box.clientHeight || 220, mr = 98, ml = 4, step = (W - mr - ml) / N, cw = Math.max(1.4, step * .62);
   const volH = Math.max(30, H * .2), pH = H - volH - 6;
   const ois = b.map(x => x.oi), oHi = Math.max(...ois), oLo = Math.min(...ois);
-  let hi = Math.max(...b.map(x => x.h)), lo = Math.min(...b.map(x => x.l)); { const bv = beOf(S.key); if (bv != null && bv > lo * .93 && bv < hi * 1.07) { hi = Math.max(hi, bv); lo = Math.min(lo, bv); } const t8 = posBand().t80; if (t8 != null && t8 > lo * .93 && t8 < hi * 1.07) { hi = Math.max(hi, t8); lo = Math.min(lo, t8); } } const pad = (hi - lo) * .06 || 1; hi += pad; lo -= pad;
+  let hi = Math.max(...b.map(x => x.h)), lo = Math.min(...b.map(x => x.l)); { const bv = beOf(S.key); if (bv != null && bv > lo * .93 && bv < hi * 1.07) { hi = Math.max(hi, bv); lo = Math.min(lo, bv); } const t8 = posBand().t80; if (t8 != null && t8 > lo * .93 && t8 < hi * 1.07) { hi = Math.max(hi, t8); lo = Math.min(lo, t8); } } const PL = planChartLines().filter(l => l.v > lo * .93 && l.v < hi * 1.07); PL.forEach(l => { hi = Math.max(hi, l.v); lo = Math.min(lo, l.v); }); const pad = (hi - lo) * .06 || 1; hi += pad; lo -= pad;
   const y = v => 6 + (hi - v) / (hi - lo) * (pH - 6), x = i => ml + i * step + step / 2;
   const yo = v => pH + 6 + (1 - (v - oLo) / ((oHi - oLo) || 1)) * (volH - 8);
   let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(C().symbol)}日K线和持仓量">`;
@@ -654,6 +669,7 @@ function drawChart() {
   if (ps && ps.hi != null) [[ps.hi, '近20日高'], [ps.lo, '近20日低']].forEach(([v]) => { if (v <= hi && v >= lo) s += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--ink3)" stroke-dasharray="4 4"/><text class="lv" x="${W - mr + 5}" y="${y(v) + 4}">${ab(v)}</text>`; });
   const beV = beOf(S.key);
   if (beV != null && beV <= hi && beV >= lo) s += `<line x1="${ml}" x2="${W - mr}" y1="${y(beV)}" y2="${y(beV)}" stroke="${BEC}" stroke-dasharray="6 3" stroke-width="1.4"/><text class="lv" x="${W - mr + 5}" y="${y(beV) + 4}" style="fill:${BEC}">平衡 ${ab(beV)}</text>`;
+  PL.forEach(l => { s += `<line x1="${ml}" x2="${W - mr}" y1="${y(l.v)}" y2="${y(l.v)}" stroke="${l.c}" stroke-dasharray="3 3" stroke-width="1.5"/><text class="lv" x="${W - mr + 5}" y="${y(l.v) + 4}" style="fill:${l.c}">${l.n} ${ab(l.v)}</text>`; });
   const pbd = posBand(), rbs = ribbonBandsProto();
   if (bars.length >= 20) { let prev = null; for (let i = 0; i < N; i++) { const gi = off + i; if (gi < 19) continue; const v = y(bars.slice(gi - 19, gi + 1).reduce((a, z) => a + z.c, 0) / 20), cur = [x(i), v]; if (prev) s += `<line x1="${prev[0]}" y1="${prev[1]}" x2="${cur[0]}" y2="${cur[1]}" stroke="${RB[rbs[gi]] || RB.unknown}" stroke-width="1.8"/>`; prev = cur; } }
   if (pbd.p20 != null) [[pbd.p80, '260天铁顶', RB.high], [pbd.p20, '260天铁底', RB.low], ...(pbd.t80 != null ? [[pbd.t80, '10年铁顶', '#e05d9b']] : [])].forEach(([v, nm, col]) => { if (v <= hi && v >= lo) s += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="2 4" stroke-width="1.2"/><text class="lv" x="${W - mr + 5}" y="${y(v) + 4}" style="fill:${col}">${nm} ${ab(v)}</text>`; });
@@ -793,7 +809,6 @@ function openTile(id) {
 const last = t => { const p = t.tr.last; return p ? L.fmtNum(p.v, t.unit) : '—'; };
 function openLamp(k) { const x = checks().find(y => y.k === k); openSheet(x.t + '：' + x.tx, `<p><span class="chipx ${x.lv === 'warn' ? 'bull' : 'mid'}">${LW[x.lv]}</span></p>${x.body}`); }
 function openMore(si) { const sm = SUMS[+si] || SUMS[0] || { items: [], title: '其余指标' }; openSheet(sm.title, sm.items.map(t => `<div class="cd"><span></span><span><b style="font-weight:500">${esc(t.name)}</b> <span class="num">${last(t)}</span> ${esc(t.unit)}</span><span class="s">${t.tr.chips.filter(c => c.ok).map(c => c.label + arrow(c.dir) + (c.dir === 0 ? '持平' : L.fmtChange(c.change, c.pct, t.show, t.unit).text)).join('　') || '历史累积中，已' + t.tr.n + '个点'}</span></div>`).join('') || '<p>没有。</p>'); }
-function openRule() { const chs = checks(), rl = ruleLamp(chs); openSheet('规则灯（未验证）', `<h3 style="font-size:22px">${esc(rl.w)}</h3><p>${esc(rl.why)}</p><p>这只是把参考文档里的话翻译成一盏灯：外资拥挤或撤退预警时休息；休市时观望；基本面与技术面同向且没有警示灯时顺势参与。<b>没有回测，不是预测，也不是建议</b>，所以默认只在检查条的最右边出现。等龙虎榜历史攒够再校准。</p>`); }
 const ABOUT = {
   regime: ['市场状态怎么判断', `<p>用选中合约的日K线判断，不看资金面以外的任何主观因素。</p><ul><li><b>震荡市</b>：趋势强度 ADX 低于 20，价格来回波动。</li><li><b>趋势市 · 上行/下行</b>：ADX 不低于 25，并且上升力量（+DI）和下降力量（−DI）差距至少 5，价格也在 20 日均线的同一侧。</li><li><b>方向待定</b>：ADX 在 20 到 25 之间，或 ADX 够高但上升下降的力量差不多、方向不清。</li><li><b>资金市迹象</b>：外资多头拥挤，且价格在涨（突破前 20 日高点，或强趋势且方向清楚地向上），且基本面没有明显偏多（净倾向低于 +22%）。三条同时满足才算。</li></ul><p>ADX、+DI、−DI 用通用的 Wilder 方法（14 日），已经和行业通用的 TA-Lib 逐点对拍过。<b>25 和 20 是教科书上的通用阈值，没有针对豆粕标定；资金市的条件来自参考文档，没有回测。</b>所以它描述的是“现在盘面的样子”，不是预测。</p><p>文档里“美豆不涨豆粕涨”这一条目前判断不了：CBOT 豆粕只有一个最新价，没有历史序列。点“资金”页签可以看具体的龙虎榜和 CFTC。</p>`],
   vp: ['量价怎么看', `<p>量价关系看最近 5 个交易日的价格变化和持仓量变化，沿用现有页面的同一套算法，不另造。</p><ul><li><b>增仓上涨</b>：新多头进场，上涨有增量资金确认，偏多。</li><li><b>增仓下跌</b>：新空头进场，下跌有增量资金确认，偏空。</li><li><b>减仓上涨</b>：更多是空头回补，上涨缺乏新资金确认，不判方向。</li><li><b>减仓下跌</b>：多头离场为主，下跌缺乏新空头，动能在衰减，不判方向。</li></ul><p>顶部那排小方块是最近 5 天，从左到右从旧到新：深红增仓上涨，深绿增仓下跌，浅红减仓上涨，浅绿减仓下跌，灰色没有明显变化。</p><p>持仓量在合约临近交割时会机械地下降，所以现有算法设了三道门槛（持仓不低于 50 万手、不低于近 120 日峰值的 60%、距合约月至少 45 天），没过就不计分。</p>`],
@@ -806,7 +821,7 @@ ABOUT.price[1] += `<p><b>紫色虚线 = 盈亏平衡价</b>：用豆二、豆油
 ABOUT.pos = ['价格位置怎么看', `<p>阴影带是每一天往回看 260 个交易日的 <b>20%～80% 分位价</b>：下沿“铁底”（有 20% 的日子比它便宜），上沿“铁顶”（80% 的日子比它便宜）。<b>它们不是历史最高/最低价</b>，会随最近一年的价格走，价格涨起来铁顶也会跟着抬。</p><p>线的颜色：青=在铁底以下，橙=在铁顶以上，灰=中间。下面两条横带是现价在近260日、近10年里的百分位。</p><p>历史检验：低位带之后表现略好于基准，只是温和支持；高位带之后<b>没有“会跌”的证据</b>。它只说明现在贵不贵，不是买卖信号。价格用主力连续价，换月缺口没修正。</p>`];
 ABOUT.sea = ['同期规律怎么看', `<p>每根柱子是该月份在历年里“上涨的年份占比”。默认看现货价格，可切到期货（换月修正后的月度涨跌）。下方数字是历年平均涨跌。</p><p>稳定性分三档：前后两半样本方向相反=不稳；同向但胜率或显著性不够=一般；同向且胜率、显著性都够=较稳。柱子越淡越不稳。</p><p>季节性只描述“历史上通常怎样”，不预测今年，样本只有9~10年。</p>`];
 ABOUT.cost = ['成本锚怎么看', `<p>所有数字都是<b>豆粕价格（元/吨）</b>：豆的成本按出粕率78.5%，扣掉豆油副产品（出油率18.5%）和压榨费150元换算而来。</p><ul><li><b>盈亏平衡价</b>：只用豆二、豆油盘面价算，最可靠。盘面高于它=压榨有利润；低于它=亏损、油厂减产，下方有支撑。</li><li><b>进口成本带</b>：用CBOT大豆+升贴水（±50美分）+关税+增值税9%+港杂100元推算。美豆关税13%，成本偏高，说明盘面是按更便宜的巴西豆定价的。</li><li>升贴水是4月快照，没有历史、无法回测；增值税、港杂是经验值未核实，所以进口成本带只当参考。</li></ul><p>成本锚是估值参照，<b>不是买卖信号</b>。</p>`];
-ABOUT.plan = ['交易计划怎么用', `<p>首页的「入场信号」和「持仓管理」两格就是这一页的结论，点它们进来看细节。<b>系统不会替你下单</b>，它只做三件事：告诉你今天有没有入场信号、该开几手；你成交后记一笔，之后开仓价、持仓最高/最低价、浮盈亏、权益全部自动算；每天自动判定持仓该走还是继续拿。</p>
+ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」两个模式（右上角切换，记住你的选择）：交易模式只留入场信号、持仓管理、账户权益、交易记录和K线；基本面趋势墙、市场状态、成本锚、证据页在研究模式。顶部「入场信号」和「持仓管理」两格就是结论。<b>系统不会替你下单</b>，它只做三件事：告诉你今天有没有入场信号、该开几手；你成交后记一笔，之后开仓价、持仓最高/最低价、浮盈亏、权益全部自动算；每天自动判定持仓该走还是继续拿。</p>
 <ul><li><b>做多</b>：价格在近260日 ≤50% 分位，今天的收盘高于5日前、且比前10日最低价高1%以上，外资5日净变化 > −2万手。</li>
 <li><b>做空</b>：只有外资去杠杆（5日净变化 ≤ −2万手）且价格 < MA20 < MA60、低于5日前才做。</li>
 <li><b>平仓</b>：亏4%止损；持仓期间最高浮盈到过 ≥8% 之后，从最高（空单最低）价回落4% 平；持多单遇外资去杠杆平多；空单遇外资5日净变化 ≥0 或价格站上MA20 离场。</li>
@@ -816,6 +831,8 @@ ABOUT.plan = ['交易计划怎么用', `<p>首页的「入场信号」和「持�
 <p><b>手续费</b>：按「每手来回多少元」估算，开仓/平仓各一半；回测用 23 元（含滑点估计），63、103 元是敏感性。记录时填了实际金额就用实际的。</p>
 <p><b>保证金比例</b>：回测按10%。填期货公司实际比例后，「按我的实际保证金占用」按它算手数；「按回测杠杆」手数不变，实际占用会更高、风险度更接近追保线。风险度到100%的价格是追保/强平的大致位置，以你的期货公司为准。</p>
 <p><b>移动止盈为什么是「最高浮盈 ≥8% 后回落4%」</b>：按「最高浮盈到过4%就开始跟踪」回测，反而更差——小利润的单子被早早洗出；「≥8%后回落4%」和原先回测的写法等价。回落幅度不要收紧。</p>
+<p><b>数据不足时</b>：外资5日数据一个席位都没取到、或价格数据超过7天没更新，信号格会显示「数据不足，信号不可信」，不给开仓建议（回测里缺外资数据按0算，等于去杠杆过滤失效）。</p>
+<p><b>决策快照</b>：每次记开仓/平仓，会同时存下当时的基本面方向、技术面、资金面、市场状态和信号条件；交易记录里能看到开仓时的基本面和外资，「导出CSV」带全部快照字段。基本面目前没有被回测证明有用（见项目文档），快照是为了以后用你自己的实盘去检验它。</p>
 <p><b>记录存在哪</b>：只存在这台设备的浏览器里，换设备或清缓存会丢，所以页面底部有「备份下载 / 恢复备份」。</p>
 <p><b>局限</b>：39笔交易、样本内；外资信号只有2022年以后；不含涨跌停无法成交、大资金冲击成本和持仓限额。</p>`];
 function openAbout(k) {
@@ -842,7 +859,13 @@ function applyTheme() {
   document.documentElement.setAttribute('data-theme', th);
   const b = $('#thBtn'); if (b) b.textContent = S.themePref === 'auto' ? '主题：自动' : S.themePref === 'day' ? '主题：日间' : '主题：夜间';
 }
-function renderAll(anim) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderChart(); renderWall(anim); }
+function setMode(m, noSave) {
+  S.mode = m === 'research' ? 'research' : 'trade'; document.body.classList.toggle('mode-trade', S.mode === 'trade'); document.body.classList.toggle('mode-research', S.mode === 'research');
+  $$('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
+  if (!noSave) { try { localStorage.setItem('cockpit-mode', S.mode); } catch (_) {} }
+  if (S.mode === 'research') { renderWall(false); layoutWall(false); } drawChart();
+}
+function renderAll(anim) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderChart(); renderWall(anim); tradeShell(); planUpdate(); }
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', e => {
@@ -859,9 +882,9 @@ document.addEventListener('click', e => {
   if (t.dataset.tile) { openTile(t.dataset.tile); return; }
   if (t.dataset.more || t.dataset.pend) { openMore(t.dataset.sum); return; }
   if (t.dataset.lamp) { openLamp(t.dataset.lamp); return; }
-  if (t.id === 'ruleBtn') { openRule(); return; }
   if (t.dataset.sea) { S.seaKind = t.dataset.sea; renderChart(); return; }
-  if (t.dataset.goplan) { S.view = 'plan'; renderChart(); const ch = $('#chart'); if (ch && ch.scrollIntoView && window.innerWidth < 900) ch.scrollIntoView({ block: 'start' }); return; }
+  if (t.dataset.mode) { setMode(t.dataset.mode); return; }
+  if (t.dataset.goplan) { setMode('trade'); const tp = $('#tradePanel'); if (tp && tp.scrollIntoView && window.innerWidth < 900) tp.scrollIntoView({ block: 'start' }); return; }
   if (t.dataset.act) { planAct(t.dataset.act, t); return; }
   if (t.dataset.view) { S.view = t.dataset.view; renderChart(); return; }
   if (t.dataset.range) { S.range = +t.dataset.range; $$('[data-range]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.range === S.range)); drawChart(); return; }
@@ -884,13 +907,14 @@ window.addEventListener('resize', relayout);
 if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(relayout); ro.observe($('#tiles') || document.body); ro.observe($('#chart')); }
 setInterval(applyTheme, 60000);
 try { const t = localStorage.getItem('cockpit-theme'); if (t === 'day' || t === 'night' || t === 'auto') S.themePref = t; } catch (_) {}
-applyTheme(); renderAll(true);
+try { const m = localStorage.getItem('cockpit-mode'); if (m === 'research' || m === 'trade') S.mode = m; } catch (_) {}
+setMode(S.mode, true); applyTheme(); renderAll(true); setMode(S.mode, true);
 function refreshed() {   // 后台重取数据后调用：不打断正在输入的表单
   if (S.auto) S.key = autoKey();
   const ae = document.activeElement, typing = ae && ae.closest && ae.closest('#planForm, .inp');
-  if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); if (S.view === 'plan') planUpdate(); }
+  if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); }
   else renderAll(false);
 }
-window.__cockpit = { S, L, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, ruleLamp, regimeNow, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+window.__cockpit = { S, L, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, regimeNow, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 
