@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-11T14:23:49.361638+00:00",
+  "generatedAt": "2026-10-11T16:06:41.270793+00:00",
   "cbotPrice": {
     "available": true,
     "price": 365.6,
@@ -120,7 +120,7 @@
     "dateFallback": false,
     "usedFallback": false,
     "fallbackWeeks": 0,
-    "ageDays": 18,
+    "ageDays": 19,
     "stale": false,
     "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
     "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
@@ -341,7 +341,7 @@
       "value": 16.64
     },
     "date": "2026-08-31",
-    "articleAgeDays": 41,
+    "articleAgeDays": 42,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年8月）",
     "bodiesFetched": 2,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -752,7 +752,7 @@
     "available": true,
     "value": 51.43,
     "auctionDate": "2026-09-28",
-    "ageDays": 13,
+    "ageDays": 14,
     "plannedWan": 51.43,
     "soldWan": 19.17,
     "soldRate": 37.27,
@@ -801,7 +801,7 @@
     "consistent": true,
     "usedFallback": false,
     "fallbackDays": 0,
-    "ageDays": 2,
+    "ageDays": 3,
     "source": "生意社(100ppi.com)豆粕现货价 − 主力合约结算价，自行计算(AKShare futures_spot_price)",
     "sourceUrl": "https://www.100ppi.com/sf/day-2026-10-09.html",
     "spotDefinition": "生意社现货价(口径文档未明确，疑为多地综合的基准价)；主力合约是生意社认定的，可能与页面选的合约月份不同，主力换月处基差会有断层",
@@ -12518,8 +12518,8 @@
         "rank": 2,
         "foreign": true,
         "history": {
-          "n": 113,
-          "since": "2026-04-14",
+          "n": 114,
+          "since": "2026-04-13",
           "run": {
             "direction": "down",
             "days": 2,
@@ -12532,14 +12532,16 @@
             "from": "2026-09-24",
             "to": "2026-10-09",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "approx": 1
           },
           "change20": {
             "change": -8158,
             "from": "2026-09-03",
             "to": "2026-10-09",
             "contract": "M2701",
-            "n": 20
+            "n": 20,
+            "approx": 1
           }
         }
       },
@@ -12550,7 +12552,7 @@
         "rank": 12,
         "foreign": true,
         "history": {
-          "n": 1025,
+          "n": 1063,
           "since": "2022-01-04",
           "run": {
             "direction": "up",
@@ -12602,8 +12604,8 @@
         "rank": 1,
         "foreign": false,
         "history": {
-          "n": 1072,
-          "since": "2022-01-04",
+          "n": 1122,
+          "since": "2022-01-03",
           "run": {
             "direction": "down",
             "days": 1,
@@ -12634,8 +12636,8 @@
         "rank": 2,
         "foreign": false,
         "history": {
-          "n": 1066,
-          "since": "2022-01-04",
+          "n": 1116,
+          "since": "2022-01-03",
           "run": {
             "direction": "up",
             "days": 2,
@@ -12718,7 +12720,7 @@
         "approx": false
       },
       "摩根大通": {
-        "n": 44,
+        "n": 45,
         "contract": "M2701",
         "high": null,
         "code": "building",
@@ -12739,11 +12741,11 @@
           "to": "2026-10-09"
         },
         "peak": {
-          "v": 24517,
-          "d": "2026-08-03"
+          "v": 32450,
+          "d": "2026-07-31"
         },
-        "drawdown": 22882,
-        "drawdownPct": 93.3,
+        "drawdown": 30815,
+        "drawdownPct": 95.0,
         "acrossHoliday": true,
         "approx": false
       },
