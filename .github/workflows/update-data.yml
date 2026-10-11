@@ -66,6 +66,12 @@ jobs:
         continue-on-error: true
         run: pip install -r requirements-selenium.lock.txt
 
+      # v101.30：每小时顺手取最近 12 天的龙虎榜完整排名（新浪，已有文件不重抓，几秒）。外资5日变化要用「多单/空单」两条腿，线上快照里只有净持仓。
+      #   当天的文件要等基线里有当天主力合约（每天 23:05 的累积）后才取得到，所以最新一天的多空明细最晚次日补上；补上之前页面退回净持仓口径并标「估算」。
+      - name: 龙虎榜最近几天完整排名(v101.30)
+        continue-on-error: true
+        run: python3 fetch_seasonal_raw.py --only rank_auto --rank-source sina --rank-start "$(date -u -d '12 days ago' +%F)" --out data/raw/seasonal --budget 300
+
       - name: 龙虎榜历史自动补齐(v101.19，不联网、幂等、几秒；必须在抓数据之前，抓数据那步要读这些历史算外资趋势)
         run: |
           # 读仓库 data/raw/dce_rank/ 下已有的排名文件补席位净持仓历史；线上已有的日期不覆盖。以后放新文件进去，下一小时自动生效，不用再手动点回填
@@ -115,7 +121,7 @@ jobs:
           # 历史序列(data/history/)：首次运行前目录可能不存在，所以单独add，失败不影响主数据的提交
           git add data/history/ 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)
-          git add data/raw/dce_rank_live/ 2>/dev/null || true
+          git add data/raw/dce_rank_live/ data/raw/dce_rank_auto/ 2>/dev/null || true
           # 现货/期货每日累积文件、刷新后的合约日K、重新生成的季节统计(v101.20)
           git add data/raw/seasonal/ data/seasonal.json 2>/dev/null || true
           # 如果数据没变化就不产生空提交

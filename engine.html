@@ -3983,7 +3983,7 @@ function capitalHtml(){
       const word = isShort ? (r.direction === 'up' ? '净空减少' : '净空增加') : (r.direction === 'up' ? '净多增加' : '净多减少');
       parts.push(`连续${r.days}日${word}，累计${sgn(r.total)}手`);
     }
-    if(h.change5) parts.push(`近5个交易日${sgn(h.change5.change)}手`);
+    if(h.change5) parts.push(h.change5.basis==='long'?`近5个交易日多单${sgn(h.change5.change)}手（空单没进前20，不计）`:h.change5.basis==='short'?`近5个交易日空单变化折合${sgn(h.change5.change)}手（多单没进前20，不计）`:`近5个交易日${sgn(h.change5.change)}手${h.change5.approx?'（含估算）':''}`);
     if(h.change20) parts.push(`近20个交易日${sgn(h.change20.change)}手`);
     if(parts.length) return parts.join('；');
     return `<span style="color:var(--t3)">历史累积中(已${h.n||0}个交易日${h.since?`，自${h.since}`:''})</span>`;

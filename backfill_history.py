@@ -1401,6 +1401,7 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
     days = [picked[k] for k in sorted(picked, key=lambda k: (k[1], k[0]))]
     coverage = {n: {"exact": 0, "estimated": 0, "absent": 0} for n in hs.CAPITAL_MEMBER_SERIES}
     new_pts = {k: [] for k in hs.CAPITAL_MEMBER_SERIES.values()}
+    legs_chg = {}
     for contract, parsed in days:
         for name, key in hs.CAPITAL_MEMBER_SERIES.items():
             r = dr.member_net(parsed, name)
@@ -1411,6 +1412,12 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
             x = {"contract": contract, "change": r["change"]}
             if r["approx"]:
                 x["approx"] = 1
+            lg = dr.member_legs(parsed, name)
+            if lg:
+                x.update(L=lg["L"], S=lg["S"])
+                if lg["est"]:
+                    x["est"] = lg["est"]
+                legs_chg[(key, parsed["date"])] = (lg["dL"], lg["dS"])
             new_pts[key].append({"d": parsed["date"], "v": r["net"], "x": x})
     # v101.28：精确点(两边都进了前20)带「当日增减」，前一交易日的净持仓 = 今日净持仓 − 今日增减（对账：737/737 全部吻合）。前一天缺就补上，标 derived=1。
     # 估算点(approx)不推算：对账只吻合 38/226，第20名每天都在变；换月当天也不推算（增减是同一合约的）。
@@ -1424,7 +1431,11 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
                 continue
             pd = hs._prev_trading_day(p["d"])
             if pd and pd not in have_d:
-                extra.append({"d": pd, "v": p["v"] - x["change"], "x": {"contract": x["contract"], "derived": 1}})
+                dx = {"contract": x["contract"], "derived": 1}
+                dl, ds = legs_chg.get((key, p["d"]), (None, None))
+                if "L" in x and dl is not None and ds is not None:
+                    dx.update(L=x["L"] - dl, S=x["S"] - ds)
+                extra.append({"d": pd, "v": p["v"] - x["change"], "x": dx})
                 have_d.add(pd)
         new_pts[key] = pts + extra
         derived_n += len(extra)
@@ -1432,12 +1443,22 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
     for key, pts in new_pts.items():
         have = {p["d"]: p for p in hs.load_series(key, base_dir)["points"]}
         todo = []
+        enriched = 0
         for p in pts:
             old = have.get(p["d"])
             if old is None:
                 todo.append(p)
+            elif old.get("v") == p["v"] and "L" in p["x"] and "L" not in (old.get("x") or {}):
+                old.setdefault("x", {}).update({k_: p["x"][k_] for k_ in ("L", "S", "est") if k_ in p["x"]})     # 线上点数值一致：只补多空两条腿，不改数
+                enriched += 1
             elif old.get("v") != p["v"]:
                 conflicts.append({"series": key, "d": p["d"], "existing": old.get("v"), "fromFile": p["v"]})
+        if enriched:
+            ser = hs.load_series(key, base_dir)
+            for q in ser["points"]:
+                if q["d"] in have and "L" in (have[q["d"]].get("x") or {}):
+                    q["x"] = have[q["d"]]["x"]
+            hs.save_series(ser, base_dir)
         if todo:
             hs.record_points(key, todo, base_dir)
         added += len(todo)

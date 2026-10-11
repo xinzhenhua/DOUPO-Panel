@@ -156,7 +156,7 @@ function planConfirm(cs) { const n = cs.length; if (n < 11) return false; return
 function planForeign(members) {
   const used = [], missing = [], approx = [], parts = []; let sum = 0, lastD = null;
   Object.keys(members || {}).forEach(k => { const m = members[k]; if (!m || !m.foreign) return;
-    const c5 = m.history && m.history.change5; if (c5 && typeof c5.change === 'number') { sum += c5.change; used.push(k); parts.push({ k, v: c5.change, approx: !!c5.approx, bridged: !!c5.bridged }); if (c5.approx) approx.push(k); if (c5.to && (!lastD || c5.to > lastD)) lastD = c5.to; } else missing.push(k); });
+    const c5 = m.history && m.history.change5; if (c5 && typeof c5.change === 'number') { sum += c5.change; used.push(k); parts.push({ k, v: c5.change, approx: !!c5.approx, bridged: !!c5.bridged, basis: c5.basis || '' }); if (c5.approx) approx.push(k); if (c5.to && (!lastD || c5.to > lastD)) lastD = c5.to; } else missing.push(k); });
   return { sum, used, missing, approx, parts, lastD };
 }
 function planSignals(cs, fsum) {
@@ -335,7 +335,7 @@ function planBodyHtml(s) {
    <tr><td>做空①外资去杠杆（5日净变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${f2(F.sum)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
    <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
   </tbody></table>
-  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（估算 = 该席位只进了买或卖一边的前20，另一边用第20名顶替，变化里混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
+  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.basis === 'long' ? '(只算多单)' : q.basis === 'short' ? '(只算空单)' : q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（只算多单/空单 = 该席位只有一边进了前20，只用进榜那一边的真实变化，不把顶替的第20名算进去；估算 = 暂时拿不到多空明细，退回净持仓差，混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
   if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
   /* ② 持仓管理 */
   h += `<div class="plt">② 持仓管理</div>`;

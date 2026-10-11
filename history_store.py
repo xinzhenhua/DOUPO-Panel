@@ -420,6 +420,42 @@ def change_over(points, n, bridge=False):
     return out
 
 
+def change_real(points, n):
+    """v101.30：5日变化只用「真实的那一边」。点的 x 里带 L/S(多单/空单)和 est(顶替的是哪一边)时：
+    两个端点都是两边真实 → 净持仓变化(basis=net)；任一端点多单是顶替的但空单两端都真实 → 只算空单变化的负数(basis=short)；
+    反过来 → 只算多单变化(basis=long)。顶替的是第20名的数字，变动与该席位无关，混进去只有噪音。
+    端点没有 L/S(线上当天点还没补到)、或两边在两端都有顶替 → 返回None，调用方退回净持仓口径并标approx。端点规则同 bridge：最新点与往前第n个交易日同合约。"""
+    pts = []
+    for q in points or []:
+        d = _to_date(q.get("d")) if isinstance(q, dict) else None
+        if d is not None and _is_num(q.get("v")):
+            pts.append((d, q))
+    pts.sort(key=lambda t: t[0])
+    if len(pts) < 2:
+        return None
+    d1, q1 = pts[-1]
+    d0 = _nth_prev_trading_day(d1, n)
+    hit = [q for d, q in pts if d == d0] if d0 else []
+    if not hit:
+        return None
+    q0, x1, x0 = hit[0], q1.get("x") or {}, hit[0].get("x") or {}
+    if x1.get("contract") != x0.get("contract") or not all(_is_num(x.get(k)) for x in (x1, x0) for k in ("L", "S")):
+        return None
+    est = (x1.get("est") or "") + (x0.get("est") or "")
+    if not est:
+        ch, basis = q1["v"] - q0["v"], "net"
+    elif "L" not in est:
+        ch, basis = x1["L"] - x0["L"], "long"
+    elif "S" not in est:
+        ch, basis = -(x1["S"] - x0["S"]), "short"
+    else:
+        return None
+    out = {"change": ch, "from": d0.isoformat(), "to": d1.isoformat(), "contract": x1.get("contract"), "n": n, "basis": basis}
+    if any(_trading_day_between(a[0], b[0]) for a, b in zip(pts, pts[1:]) if d0 <= a[0] and b[0] <= d1):
+        out["bridged"] = 1
+    return out
+
+
 CAPITAL_MEMBER_SERIES = {"高盛期货": "capital_gs_net", "摩根大通": "capital_jpm_net", "瑞银期货": "capital_ubs_net", "中粮期货": "capital_zl_net", "国投期货": "capital_gt_net"}
 
 
@@ -462,13 +498,18 @@ def _record_capital(result, base_dir, touched, note):
             x = {"contract": contract}
             if _is_num(m.get("change")):
                 x["change"] = m["change"]
+            old = next((p for p in load_series(key, base_dir)["points"] if p.get("d") == day), None)
+            if old and old.get("v") == m["net"]:          # 同一天同一个数：保留回填时补上的 L/S/est/approx，线上点不带这些
+                for k_ in ("L", "S", "est", "approx"):
+                    if k_ in (old.get("x") or {}):
+                        x[k_] = old["x"][k_]
             series, changed = record_points(key, [{"d": day, "v": m["net"], "x": x}], base_dir)
             if changed:
                 touched.append(key)
             pts_all = series["points"]
             series_points[name] = pts_all
             m["history"] = {"n": len(pts_all), "since": pts_all[0]["d"] if pts_all else None, "run": consecutive_run(pts_all),
-                            "change5": change_over(pts_all, 5, bridge=True), "change20": change_over(pts_all, 20)}
+                            "change5": change_real(pts_all, 5) or change_over(pts_all, 5, bridge=True), "change20": change_over(pts_all, 20)}
         except Exception as e:  # noqa: BLE001 - 历史是锦上添花
             note(key, e)
     try:

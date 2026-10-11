@@ -77,3 +77,21 @@ def member_net(parsed, name):
             return None
         s, approx = parsed["sell"][TOP_N - 1], True
     return {"net": b["value"] - s["value"], "change": b["change"] - s["change"], "approx": approx}
+
+
+def member_legs(parsed, name):
+    """v101.30：席位的多单/空单两条腿。进了前20的一边是真实数字；只进一边时另一边用第20名顶替(est 标明顶替的是哪边：'L'=多单是顶替的，'S'=空单是顶替的)。
+    返回 {L, S, dL, dS, est}；dL/dS 是当日增减(顶替的一边为 None)。两边都没进、或榜单不足20行：None。"""
+    b, s = _find(parsed["buy"], name), _find(parsed["sell"], name)
+    if b is None and s is None:
+        return None
+    est = ""
+    if b is None:
+        if len(parsed["buy"]) < TOP_N:
+            return None
+        b, est = parsed["buy"][TOP_N - 1], "L"
+    if s is None:
+        if len(parsed["sell"]) < TOP_N:
+            return None
+        s, est = parsed["sell"][TOP_N - 1], "S"
+    return {"L": b["value"], "S": s["value"], "dL": None if est == "L" else b["change"], "dS": None if est == "S" else s["change"], "est": est}

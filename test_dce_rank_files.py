@@ -117,9 +117,9 @@ def test_job_backfills_five_series_with_the_live_point_shape_and_never_overwrite
         zl = {p["d"]: p for p in hs.load_series("capital_zl_net", d)["points"]}
         assert zl["2026-09-29"]["v"] == 1, "线上已有的点不被覆盖"
         assert e["conflicts"] and e["conflicts"][0]["series"] == "capital_zl_net" and e["conflicts"][0]["d"] == "2026-09-29", e["conflicts"]
-        assert zl["2026-09-01"] == {"d": "2026-09-01", "v": -619812, "x": {"contract": "M2701", "change": -1301}}, zl["2026-09-01"]
+        assert zl["2026-09-01"] == {"d": "2026-09-01", "v": -619812, "x": {"contract": "M2701", "change": -1301, "L": 45905, "S": 665717}}, zl["2026-09-01"]
         gs = {p["d"]: p for p in hs.load_series("capital_gs_net", d)["points"]}
-        assert gs["2026-09-01"] == {"d": "2026-09-01", "v": 135753, "x": {"contract": "M2701", "change": 4450, "approx": 1}}, gs["2026-09-01"]
+        assert gs["2026-09-01"] == {"d": "2026-09-01", "v": 135753, "x": {"contract": "M2701", "change": 4450, "approx": 1, "L": 158298, "S": 22545, "est": "S"}}, gs["2026-09-01"]
         ubs_days = [p["d"] for p in hs.load_series("capital_ubs_net", d)["points"]]
         assert "2026-09-04" not in ubs_days and "2026-09-01" in ubs_days
     finally:
@@ -182,6 +182,57 @@ def test_change5_bridges_gaps_between_endpoints_and_flags_approx():
     ok("5日变化：端点都有就能算(标bridged)，端点是估算值标approx，跨合约不算")
 
 
+def test_change_real_uses_only_the_real_side():
+    def pt(d, L, S, est="", c="M2701"):
+        x = {"contract": c, "L": L, "S": S}
+        if est:
+            x["est"] = est
+        return {"d": d, "v": L - S, "x": x}
+    # 两端两边都真实 → 净持仓差
+    r = hs.change_real([pt("2026-09-24", 100, 40), pt("2026-10-09", 130, 50)], 5)
+    assert r["basis"] == "net" and r["change"] == 20, r
+    # 空单两端都是顶替的第20名(22,853→22,000)：只算多单变化，不把第20名的变动算进去
+    r = hs.change_real([pt("2026-09-24", 150000, 23000, "S"), pt("2026-10-09", 140000, 22000, "S")], 5)
+    assert r["basis"] == "long" and r["change"] == -10000, r
+    # 多单是顶替的：只算空单变化的负数
+    r = hs.change_real([pt("2026-09-24", 20000, 60000, "L"), pt("2026-10-09", 21000, 50000, "L")], 5)
+    assert r["basis"] == "short" and r["change"] == 10000, r
+    # 两端顶替的不是同一边 → 没有共同的真实一边 → None(调用方退回净持仓并标估算)
+    assert hs.change_real([pt("2026-09-24", 1, 40, "L"), pt("2026-10-09", 130, 2, "S")], 5) is None
+    # 端点没有 L/S（线上当天点还没补到）→ None；跨合约 → None
+    assert hs.change_real([{"d": "2026-09-24", "v": 1, "x": {"contract": "M2701"}}, pt("2026-10-09", 1, 1)], 5) is None
+    assert hs.change_real([pt("2026-09-24", 1, 1, c="M2605"), pt("2026-10-09", 1, 1)], 5) is None
+    ok("change_real：只用真实一边（净/只多单/只空单），两端顶替不同边或没有明细则退回")
+
+
+def test_live_point_keeps_legs_when_saved_again():
+    d = tempfile.mkdtemp()
+    try:
+        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
+        pts = {p["d"]: p for p in hs.load_series("capital_gs_net", d)["points"]}
+        assert pts["2026-09-30"]["x"]["est"] == "S" and pts["2026-09-30"]["x"]["L"] > 0
+        h5 = hs.change_real(hs.load_series("capital_gs_net", d)["points"], 5)
+        assert h5 is None or h5["basis"] in ("long", "net"), h5
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("回填后的点带多空两条腿(L/S/est)")
+
+
+def test_record_capital_keeps_legs_of_the_same_live_point():
+    d = tempfile.mkdtemp()
+    try:
+        bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
+        res = {"marketCapital": {"available": True, "date": "2026-09-30", "mainContract": {"symbol": "M2701"},
+                                 "members": {"高盛期货": {"net": 152092, "change": 2181, "foreign": True}}}}
+        hs._record_capital(res, d, [], lambda *a: None)
+        p = {q["d"]: q for q in hs.load_series("capital_gs_net", d)["points"]}["2026-09-30"]
+        assert p["x"].get("L") == 174945 and p["x"].get("est") == "S", p
+        assert res["marketCapital"]["members"]["高盛期货"]["history"]["change5"] is not None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    ok("线上同一天同一个数再存一次：多空两条腿不丢")
+
+
 def test_bad_files_are_reported_not_fatal():
     d, raw = tempfile.mkdtemp(), tempfile.mkdtemp()
     try:
@@ -216,7 +267,7 @@ def test_merged_with_live_points_the_series_runs_through_the_holiday_gap():
         bf.backfill_capital_rank(base_dir=d, raw_dir=RAW9)
         pts = hs.load_series("capital_gs_net", d)["points"]
         assert len(pts) == 22 and pts[0]["d"] == "2026-09-01" and pts[-1]["d"] == "2026-10-08", (len(pts), pts[0]["d"], pts[-1]["d"])
-        assert pts[-2] == {"d": "2026-09-30", "v": 152092, "x": {"contract": "M2701", "change": 2181}}, "线上的精确点原样保留(没被加 approx)"
+        assert pts[-2] == {"d": "2026-09-30", "v": 152092, "x": {"contract": "M2701", "change": 2181, "L": 174945, "S": 22853, "est": "S"}}, "线上点的数值和approx口径原样保留，只补上多空两条腿(L/S/est)"
     finally:
         shutil.rmtree(d, ignore_errors=True)
     ok("和线上点合并：9月21天 + 10-08 = 22个点，线上的 09-30 原样保留")
