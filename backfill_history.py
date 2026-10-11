@@ -1366,14 +1366,21 @@ def backfill_hog_ratio(base_dir=None, start=None, today=None):
 
 
 def backfill_capital_rank(base_dir=None, raw_dir=None):
-    """龙虎榜历史回填(v101.13)：读 data/raw/dce_rank/M<合约>_YYYYMMDD.txt(大商所日成交持仓排名文件)，按线上同一口径补五个席位的净持仓序列。
+    """龙虎榜历史回填(v101.13；v101.21 起同时读自动回填目录)：读 data/raw/dce_rank/M<合约>_YYYYMMDD.txt(手动下载的大商所日成交持仓排名文件)
+    和 data/raw/dce_rank_auto/(rank_auto 自动回填的同格式文件；同合约同日期手动文件优先)，按线上同一口径补五个席位的净持仓序列。
     不联网。已有的日期绝不覆盖(线上点是精确的/按同一口径的；数值不同只记 conflicts)；幂等；估计值(只进一边前20)在 x 里标 approx=1。"""
-    raw_dir = raw_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "raw", "dce_rank")
-    if not os.path.isdir(raw_dir):
-        return {"key": "capital_rank", "error": f"没有找到排名文件目录 {raw_dir}"}
+    here = os.path.dirname(os.path.abspath(__file__))
+    if raw_dir:
+        dirs = list(raw_dir) if isinstance(raw_dir, (list, tuple)) else [raw_dir]   # 列表：靠后的目录优先
+    else:
+        dirs = [os.path.join(here, "data", "raw", "dce_rank_auto"), os.path.join(here, "data", "raw", "dce_rank")]   # 后者(手动)后读，覆盖前者
+    dirs_ok = [d for d in dirs if os.path.isdir(d)]
+    if not dirs_ok:
+        return {"key": "capital_rank", "error": f"没有找到排名文件目录 {dirs[-1]}"}
     fname_re = re.compile(r"^([A-Za-z]+\d{3,4})_(\d{8})\.txt$")
-    skipped, days = [], []
-    for fn in sorted(os.listdir(raw_dir)):
+    skipped, picked = [], {}
+    for d_ in dirs_ok:
+      for fn in sorted(os.listdir(d_)):
         if not fn.lower().endswith(".txt"):
             continue
         m = fname_re.match(fn)
@@ -1381,7 +1388,7 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
             skipped.append({"file": fn, "why": "文件名不合规(应为 M2701_YYYYMMDD.txt)"})
             continue
         try:
-            with open(os.path.join(raw_dir, fn), encoding="utf-8") as f:
+            with open(os.path.join(d_, fn), encoding="utf-8") as f:
                 parsed = dr.parse_rank_text(f.read())
         except Exception as e:  # noqa: BLE001
             skipped.append({"file": fn, "why": f"解析失败：{e}"})
@@ -1390,7 +1397,8 @@ def backfill_capital_rank(base_dir=None, raw_dir=None):
         if parsed["date"] != want:
             skipped.append({"file": fn, "why": f"文件名日期{want}和内容日期{parsed['date']}对不上"})
             continue
-        days.append((m.group(1), parsed))
+        picked[(m.group(1).upper(), parsed["date"])] = (m.group(1), parsed)
+    days = [picked[k] for k in sorted(picked, key=lambda k: (k[1], k[0]))]
     coverage = {n: {"exact": 0, "estimated": 0, "absent": 0} for n in hs.CAPITAL_MEMBER_SERIES}
     new_pts = {k: [] for k in hs.CAPITAL_MEMBER_SERIES.values()}
     for contract, parsed in days:

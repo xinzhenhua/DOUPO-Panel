@@ -12,13 +12,15 @@
   spot_daily 现货/主力价每日累积(最近4个交易日里文件还没有的) → <out>/spot_auto.csv
   refresh    每日刷新豆粕主连 M0 和未到期的具体合约日K(新抓行数不少于旧文件才覆盖)
   probe      探测生意社分地区(江苏)报价接口 dp.100ppi.com 是否真的存在、返回什么(把状态/表头/前几行写进报告；不写数据文件)
+  rank_probe 龙虎榜历史能不能自动回填的探测(v101.21)：东方财富、新浪各在 7 个年份的样本日期(合约取自基线CSV的主力合约)试一次，报告哪个来源、回溯到哪一年有数据；不写数据文件
+  rank_auto  龙虎榜历史自动回填(v101.21)：--rank-source em|sina，--rank-start/--rank-end；每个交易日一个文件 M2701_YYYYMMDD.txt → data/raw/dce_rank_auto/；从新到旧，有时间预算，可重复点接着补
   dce_rank   大商所"日成交持仓排名"：按'月份:合约'清单，每个工作日请求一次(akshare 实际调的就是大商所下载页)，
              转成与手动下载同格式的 txt → 单独目录 data/raw/dce_rank_hist/(★不写进 data/raw/dce_rank/，免得干扰 v101.13 的龙虎榜回填)；已有文件跳过
 每一项单独 try/except，失败只在 <out>/_fetch_report.json 里写原因，不影响其它项。
 ★Yahoo 的 ZM=F/ZS=F 是连续合约，换月处同样有缺口(与豆粕主连同理)，用它算涨跌幅时需要像 seasonal_stats 那样处理。"""
 import argparse, csv, datetime, json, os, re, sys, time
 
-JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu", "spot", "spot_daily", "refresh"]
+JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu", "spot", "spot_daily", "refresh", "rank_probe", "rank_auto"]
 CONTRACT_MONTHS = (1, 3, 4, 5, 6, 7, 8, 9, 11, 12)
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=10y"
 CBOT_YAHOO = {"ZM": "ZM=F", "ZS": "ZS=F"}
@@ -299,6 +301,28 @@ def job_rank(out, ak, spec, days=None, sleep=time.sleep, clock=time.time, budget
     return rep
 
 
+def job_rank_auto(job, a, ak, fetch=None, is_trading=None, today=None):
+    """rank_probe / rank_auto 的入口。基线 CSV 在 <out>/meal_spot_futures_10y.csv(与季节性共用，合约取自它的 dominant_contract)。"""
+    import rank_backfill as rb, spot_history as sh
+    base = sh.load_rows(os.path.join(a.out, "meal_spot_futures_10y.csv"))
+    if not base:
+        return {"ok": False, "reason": "找不到基线CSV(data/raw/seasonal/meal_spot_futures_10y.csv)，无法确定每天的主力合约"}
+    if fetch is None:
+        import fetch_data
+        fetch = lambda url: fetch_data.fetch_jsonp_debug(url, retries=2)
+    if is_trading is None:
+        import cn_calendar
+        is_trading = cn_calendar.dce_is_trading_day_ex
+    fns = {"em": lambda c, d: rb.em_day(fetch, c, d), "sina": lambda c, d: rb.sina_day(ak, c, d)}
+    if job == "rank_probe":
+        return {"ok": True, **rb.probe(fns, rb.pick_samples(base))}
+    end = a.rank_end or (today or datetime.date.today()).isoformat()
+    todo = rb.plan(base, a.rank_start, end, is_trading)
+    rep = rb.backfill(a.rank_auto_out, todo, fns[a.rank_source], budget_s=a.budget)
+    rep["source"], rep["planned"] = a.rank_source, len(todo)
+    return rep
+
+
 # ---------- 江苏(华东)现货：Mysteel 全国豆粕价格日报 ----------
 def _default_search(query, start, end):
     import backfill_history
@@ -405,6 +429,10 @@ def main(argv=None, ak=None, get_json=None, kline=None):
     p.add_argument("--out", default="data/raw/seasonal")
     p.add_argument("--rank-list", default="")
     p.add_argument("--rank-out", default="data/raw/dce_rank_hist")
+    p.add_argument("--rank-source", default="em", choices=["em", "sina"])
+    p.add_argument("--rank-start", default="2022-01-01")
+    p.add_argument("--rank-end", default="")
+    p.add_argument("--rank-auto-out", default="data/raw/dce_rank_auto")
     p.add_argument("--budget", type=int, default=2400, help="合约日K/龙虎榜各自的时间预算(秒)")
     a = p.parse_args(argv)
     jobs = [j.strip() for j in a.only.split(",") if j.strip()]
@@ -449,6 +477,8 @@ def main(argv=None, ak=None, get_json=None, kline=None):
                 rep[j] = spot_history.job_spot_daily(a.out)
             elif j == "refresh":
                 rep[j] = {"main": job_main(a.out, ak), "contracts": job_refresh_contracts(a.out, kline)}
+            elif j in ("rank_probe", "rank_auto"):
+                rep[j] = job_rank_auto(j, a, ak)
             elif j == "probe":
                 rep[j] = job_probe(_http_get_raw)
             else:
