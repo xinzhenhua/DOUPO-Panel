@@ -140,5 +140,27 @@ class TestMulti(unittest.TestCase):
         self.assertFalse(fd.build_cost_anchor_multi(self.CM, 6.8, lambda sym: (None, "无"))["available"])
 
 
+class TestBreakeven(unittest.TestCase):
+    def test_breakeven_from_dce_bean_futures(self):
+        # 豆二盘面口径的豆粕盈亏平衡价(已扣压榨费150)：(4164+150−9014×0.185)/0.785 = (4314−1667.59)/0.785 = 2646.41/0.785 = 3371.2
+        self.assertAlmostEqual(ca.breakeven_meal(4164, 9014, 150), 3371.2, delta=0.1)
+
+    def test_breakeven_equals_market_when_margin_is_exactly_fee(self):
+        # 盘面毛利恰好=加工费150时，盈亏平衡价=盘面价：meal×0.785+oil×0.185−bean = 150 → 反推 meal
+        meal, oil = 3000.0, 8000.0
+        bean = meal * 0.785 + oil * 0.185 - 150
+        self.assertAlmostEqual(ca.breakeven_meal(bean, oil, 150), meal, delta=1e-6)
+
+    def test_implied_premium(self):
+        # 豆二4164元/吨 → 去掉港杂100=4064；系数 0.367437×6.6921×1.03×1.09=2.7606；4064/2.7606=1472.1美分；−CBOT 1292 = 180.1
+        self.assertAlmostEqual(ca.implied_premium(4164, 1292, 6.6921, 0.03, 0.09, 100), 180.1, delta=0.3)
+
+    def test_build_carries_breakeven_and_implied_premium(self):
+        r = ca.build(1292, 6.6921, 3402, 9014, ca.params_for(1, "brazil"), bean_price=4164)
+        self.assertAlmostEqual(r["breakeven"], 3371.2, delta=0.2)
+        self.assertAlmostEqual(r["impliedPremium"], 180.1, delta=0.3)
+        self.assertNotIn("breakeven", ca.build(1292, 6.6921, 3402, 9014, ca.params_for(1, "brazil")))
+
+
 if __name__ == "__main__":
     unittest.main()

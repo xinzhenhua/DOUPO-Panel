@@ -4189,6 +4189,9 @@ function costAnchorHtml(ca, month){
   };
   return `<div style="margin-top:8px;font-size:11px;line-height:1.6"><b>💰 成本锚（进口大豆理论成本 · ${c.mealSymbol}）</b>
     <div style="color:var(--t3)">CBOT基准合约：${c.cbotSymbol}${c.zsDate?`(${c.zsDate})`:''}${c.zsExact?'':`　⚠️${c.zsNote}`}</div>
+    ${(()=>{ const r = c.brazil && c.brazil.available ? c.brazil : (c.us && c.us.available ? c.us : null); if(!r || r.breakeven == null) return ''; const d = r.mealPrice - r.breakeven;
+      return `<div style="margin-top:3px"><b>市场口径盈亏平衡价（豆二期货反推，豆粕）</b>：${f(r.breakeven)}元/吨，盘面${d>=0?'高于':'低于'}它 ${f(Math.abs(d))}。<span style="color:var(--t3)">＝(豆二${f(r.beanPrice)}＋压榨费150−豆油${f(r.oilPrice)}×0.185)÷0.785。不依赖升贴水/关税，等于"盘面压榨利润刚好扣完加工费"的豆粕价。</span></div>`
+        + (c.brazil && c.brazil.impliedPremium != null ? `<div style="color:var(--t3)">用豆二价反推，隐含的巴西豆升贴水约 ${f(c.brazil.impliedPremium)} 美分，参数里取的是 ${c.brazil.params.premium_cents}——差得多说明快照过时或豆二另有基差。美豆因13%关税，进口推算成本远高于盘面，说明当前盘面不是按美豆定价的。</div>` : ''); })()}
     ${row('us')}${row('brazil')}
     <div style="color:var(--t3);margin-top:3px">升贴水没有历史数据、无法回测，所以给区间；港杂费、增值税为经验口径，请核对(改 cost_anchor.py)。成本参照，不是回测过的买卖信号：盘面低于理论成本不等于会涨。</div></div>`;
 }

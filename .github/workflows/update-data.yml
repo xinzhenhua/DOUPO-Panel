@@ -77,6 +77,17 @@ jobs:
           NASS_API_KEY: ${{ secrets.NASS_API_KEY }}
         run: python3 fetch_data.py
 
+      # 现货/期货价格每日自动累积(v101.20)：akshare 生意社接口取当天现货价和主力价，追加进 data/raw/seasonal/spot_auto.csv(按日期幂等)，
+      #   同时刷新豆粕主连和未到期合约日K，然后重新生成 data/seasonal.json(季节统计 + 近期趋势随之更新)。
+      #   只在夜盘收盘后的那一次(UTC 15:05，北京23:05，生意社18:30后已出当天数据)和手动运行时做，免得每小时白跑。
+      #   continue-on-error：失败不影响基本面主数据；失败原因看这一步的日志。
+      - name: 季节性数据每日累积(现货+期货)
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '5 15 * * 0-4' }}
+        continue-on-error: true
+        run: |
+          python3 fetch_seasonal_raw.py --only spot_daily,refresh --out data/raw/seasonal
+          python3 seasonal_stats.py --raw data/raw/seasonal --out data/seasonal.json
+
       # ★每天记录两个系统的方向(基本面仅供需票、市场结构)——用jsdom无头运行页面自己的评分代码，评分逻辑只有一份。
       #   用来几个月后检验"基本面与市场结构的背离到底有没有信息"。详见 scripts/snapshot_systems.js、record_systems.py。
       #   ⚠️这几步全部 continue-on-error：失败(jsdom装不上、页面出错、联网被限流)绝不能影响上面的数据同步和下面的提交。
@@ -105,6 +116,8 @@ jobs:
           git add data/history/ 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)
           git add data/raw/dce_rank_live/ 2>/dev/null || true
+          # 现货/期货每日累积文件、刷新后的合约日K、重新生成的季节统计(v101.20)
+          git add data/raw/seasonal/ data/seasonal.json 2>/dev/null || true
           # 如果数据没变化就不产生空提交
           git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push

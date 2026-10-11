@@ -283,6 +283,40 @@ def contracts_sufficient(contracts):
     return True, ""
 
 
+TREND_OFFSETS = (("w1", 5), ("m1", 21), ("q1", 63))      # 1周/1月/3月 = 5/21/63 个交易日前
+
+
+def _chg(vals, off, pct=True):
+    if len(vals) <= off or vals[-1 - off] in (None, 0) or vals[-1] is None:
+        return None
+    return (vals[-1] / vals[-1 - off] - 1) * 100 if pct else vals[-1] - vals[-1 - off]
+
+
+def recent_trend(spot_rows, fut_idx, basis_rows=None):
+    """近期趋势(随每日累积自动更新)：现货价、期货(换月修正指数)的 1周/1月/3月涨跌%，基差(现货−主力价)的最新值、各周期绝对变化、近250日分位。
+    spot_rows [{d,c}]，fut_idx [{d,i,(c)}]，basis_rows [{d,b}]。样本不够的周期给 None。"""
+    def block(vals, last, asof, pct=True):
+        o = {"last": _r(last, 2), "asOf": asof}
+        for k, off in TREND_OFFSETS:
+            v = _chg(vals, off, pct)
+            o[k] = _r(v, 2)
+        return o
+    sv = [r["c"] for r in spot_rows]
+    fv = [r["i"] for r in fut_idx]
+    out = {"spot": block(sv, sv[-1] if sv else None, spot_rows[-1]["d"] if spot_rows else None),
+           "futures": block(fv, fut_idx[-1].get("c") if fut_idx else None, fut_idx[-1]["d"] if fut_idx else None)}
+    bv = [r["b"] for r in (basis_rows or [])]
+    if bv:
+        win = bv[-250:]
+        bb = block(bv, bv[-1], basis_rows[-1]["d"], pct=False)
+        bb["pct"] = _r(sum(1 for x in win if x <= bv[-1]) / len(win) * 100, 1)
+        bb["n"] = len(win)
+        out["basis"] = bb
+    else:
+        out["basis"] = {"last": None, "asOf": None, "w1": None, "m1": None, "q1": None, "pct": None, "n": 0}
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="生成季节性统计 data/seasonal.json")
     ap.add_argument("--raw", default=os.path.join("data", "raw", "seasonal"))
@@ -291,22 +325,34 @@ def main(argv=None):
     base = os.path.join(a.raw, "meal_spot_futures_10y.csv")
     if not os.path.exists(base):
         raise SystemExit(f"找不到基线文件 {base}")
-    fut, spot = load_baseline_csv(base)
-    note = "只用基线CSV"
+    import spot_history as sh
+    base_rows = sh.load_rows(base)
+    auto_rows = sh.load_rows(os.path.join(a.raw, sh.AUTO_NAME))
+    merged, mrep = sh.merge_rows(base_rows, auto_rows)
+    fut = [{"d": r["d"], "c": r["futures"], "k": r["k"]} for r in merged]
+    spot = [{"d": r["d"], "c": r["spot"]} for r in merged]
+    price_by_d = {r["d"]: r["futures"] for r in merged}
+    spot_note = f"生意社现货价(基线CSV到{sorted(base_rows)[-1]}，之后由 akshare 每日自动累积{'，最新 ' + sorted(auto_rows)[-1] if auto_rows else '，尚无自动数据'})"
+    note = "只用基线CSV" + ("+自动累积" if auto_rows else "")
     source = "baseline_csv"
     res = None
+    fidx = None
     cdir = os.path.join(a.raw, "contracts")
     if os.path.isdir(cdir):
         contracts = load_contract_files(cdir)
         okc, why = contracts_sufficient(contracts)
         if okc:
             fidx = index_from_contracts(contracts)
-            res = build(fidx, adjusted_index(spot), {"source": "contracts", "futuresSeries": f"{len(contracts)}个具体合约，每天沿用前一天主力(持仓最大)合约的涨跌", "spotSeries": "生意社现货价(来自基线CSV)"})
+            res = build(fidx, adjusted_index(spot), {"source": "contracts", "futuresSeries": f"{len(contracts)}个具体合约，每天沿用前一天主力(持仓最大)合约的涨跌", "spotSeries": spot_note})
             source, note = "contracts", f"用了{len(contracts)}个合约文件"
         else:
             note = f"合约文件不够用，回退基线CSV：{why}"
     if res is None:
-        res = build(adjusted_index(fut), adjusted_index(spot), {"source": "baseline_csv", "futuresSeries": "生意社主力合约价(换月日不计缺口)", "spotSeries": "生意社现货价"})
+        fidx = adjusted_index(fut)
+        res = build(fidx, adjusted_index(spot), {"source": "baseline_csv", "futuresSeries": "生意社主力合约价(换月日不计缺口)", "spotSeries": spot_note})
+    res["meta"]["autoMerge"] = mrep
+    fidx_c = [dict(r, c=price_by_d.get(r["d"])) for r in fidx]
+    res["recent"] = recent_trend(spot, fidx_c, [{"d": r["d"], "b": round(r["spot"] - r["futures"], 2)} for r in merged])
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)

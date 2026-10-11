@@ -73,7 +73,18 @@ def meal_theory_cost(bean_cost, oil_price, crush_fee):
     return (bean_cost + crush_fee - oil_price * YIELD_OIL) / YIELD_MEAL
 
 
-def build(zs_cents, fx, meal_price, oil_price, params=None):
+def breakeven_meal(bean_price, oil_price, crush_fee):
+    """豆二盘面口径的豆粕盈亏平衡价：(豆二价+压榨费−豆油×0.185)÷0.785。不依赖升贴水/关税，用的是市场自己给豆的价格。"""
+    return (bean_price + crush_fee - oil_price * YIELD_OIL) / YIELD_MEAL
+
+
+def implied_premium(bean_price, zs_cents, fx, tariff, vat, port_fee):
+    """把盘面豆二价反推成'隐含升贴水'(美分/蒲)：和报价快照对比，看升贴水参数是否过时。"""
+    _need_pos("美豆期价", zs_cents); _need_pos("汇率", fx)
+    return (bean_price - port_fee) / (BU_PER_TONNE_FACTOR * fx * (1 + tariff) * (1 + vat)) - zs_cents
+
+
+def build(zs_cents, fx, meal_price, oil_price, params=None, bean_price=None):
     p = dict(PARAMS if params is None else params)
     for name, v in (("美豆期价", zs_cents), ("汇率", fx), ("豆粕盘面价", meal_price), ("豆油盘面价", oil_price)):
         if v is None or not isinstance(v, (int, float)) or v <= 0:
@@ -87,7 +98,12 @@ def build(zs_cents, fx, meal_price, oil_price, params=None):
     hi = meal_theory_cost(bean_hi, oil_price, p["crush_fee"])
     gap = meal_price - cost
     pos = "below" if meal_price < lo else "above" if meal_price > hi else "within"
+    extra = {}
+    if bean_price:
+        extra = {"beanPrice": bean_price, "breakeven": round(breakeven_meal(bean_price, oil_price, p["crush_fee"]), 1),
+                 "impliedPremium": round(implied_premium(bean_price, zs_cents, fx, p["tariff"], p["vat"], p["port_fee"]), 1)}
     return {
+        **extra,
         "available": True, "zsCents": zs_cents, "fx": fx, "mealPrice": meal_price, "oilPrice": oil_price,
         "beanCost": round(bean, 1), "mealCost": round(cost, 1), "mealCostLow": round(lo, 1), "mealCostHigh": round(hi, 1),
         "gap": round(gap, 1), "gapPct": round(gap / cost * 100, 1), "position": pos,

@@ -8,6 +8,9 @@
   cbot       CBOT 豆粕(ZM)、大豆(ZS)10年日收盘 → <out>/cbot_ZM.csv、cbot_ZS.csv；先 Yahoo，失败换 akshare 备选代码；报告里列出 akshare 的海外品种代码
   fx         美元兑人民币(USD/CNY)10年 → <out>/usdcny.csv；先 Yahoo(CNY=X)，失败换 akshare
   jiangsu    Mysteel《全国豆粕价格日报》(search.mysteel.com 文章搜索接口，按年分窗口翻页) → <out>/jiangsu_daily_raw.jsonl(原文，以后改解析不用重新联网) 和 <out>/jiangsu_spot_daily.csv(解析出的江苏/辽宁/天津/山东/广东 43%豆粕价与Mysteel公布的基差；读不出的留空)
+  spot       现货/主力价10年回补(akshare 生意社接口 futures_spot_price，从新到旧，有时间预算，可重复运行接着补) → <out>/spot_auto.csv
+  spot_daily 现货/主力价每日累积(最近4个交易日里文件还没有的) → <out>/spot_auto.csv
+  refresh    每日刷新豆粕主连 M0 和未到期的具体合约日K(新抓行数不少于旧文件才覆盖)
   probe      探测生意社分地区(江苏)报价接口 dp.100ppi.com 是否真的存在、返回什么(把状态/表头/前几行写进报告；不写数据文件)
   dce_rank   大商所"日成交持仓排名"：按'月份:合约'清单，每个工作日请求一次(akshare 实际调的就是大商所下载页)，
              转成与手动下载同格式的 txt → 单独目录 data/raw/dce_rank_hist/(★不写进 data/raw/dce_rank/，免得干扰 v101.13 的龙虎榜回填)；已有文件跳过
@@ -15,7 +18,7 @@
 ★Yahoo 的 ZM=F/ZS=F 是连续合约，换月处同样有缺口(与豆粕主连同理)，用它算涨跌幅时需要像 seasonal_stats 那样处理。"""
 import argparse, csv, datetime, json, os, re, sys, time
 
-JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu"]
+JOBS = ["main", "contracts", "cbot", "fx", "dce_rank", "probe", "jiangsu", "spot", "spot_daily", "refresh"]
 CONTRACT_MONTHS = (1, 3, 4, 5, 6, 7, 8, 9, 11, 12)
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=10y"
 CBOT_YAHOO = {"ZM": "ZM=F", "ZS": "ZS=F"}
@@ -136,6 +139,44 @@ def job_contracts(out, kline, years=(2016, 2027), months=CONTRACT_MONTHS, budget
             rows = [[b["date"], b["open"], b["high"], b["low"], b["close"], b.get("volume"), b.get("hold")] for b in r["bars"]]
             _write_csv(path, ["date", "open", "high", "low", "close", "volume", "hold"], rows)
             rep["fetched"].append(sym)
+        sleep(pause)
+    return rep
+
+
+def job_refresh_contracts(out, kline, today=None, horizon_months=15, sleep=time.sleep, pause=0.8):
+    """每日刷新还没到期的具体合约日K(当月起 horizon_months 个月内、且是真实存在的合约月份)。
+    ★只有新抓到的行数 ≥ 旧文件行数才覆盖(接口偶尔只返回一截，不能把完整历史换成残缺的)；没有旧文件就直接写。"""
+    today = today or datetime.date.today()
+    d = os.path.join(out, "contracts")
+    os.makedirs(d, exist_ok=True)
+    cur = today.year * 12 + today.month - 1
+    rep = {"ok": True, "updated": [], "keptOld": [], "failed": {}, "missing": []}
+    for ym in range(cur, cur + horizon_months + 1):
+        y, m = divmod(ym, 12)
+        m += 1
+        if m not in CONTRACT_MONTHS:
+            continue
+        sym = f"M{y % 100:02d}{m:02d}"
+        path = os.path.join(d, sym + ".csv")
+        try:
+            r = kline(sym, max_rows=5000)
+        except Exception as e:
+            rep["failed"][sym] = f"{type(e).__name__}: {e}"[:150]
+            continue
+        if not r or not r.get("available"):
+            reason = (r or {}).get("reason", "")
+            (rep["missing"].append(sym) if ("没有合约" in reason or "空数据" in reason) else rep["failed"].__setitem__(sym, reason[:150]))
+            continue
+        rows = [[b["date"], b["open"], b["high"], b["low"], b["close"], b.get("volume"), b.get("hold")] for b in r["bars"]]
+        old = 0
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as fh:
+                old = max(0, sum(1 for _ in fh) - 1)
+        if len(rows) >= old:
+            _write_csv(path, ["date", "open", "high", "low", "close", "volume", "hold"], rows)
+            rep["updated"].append(sym)
+        else:
+            rep["keptOld"].append(sym)
         sleep(pause)
     return rep
 
@@ -400,6 +441,14 @@ def main(argv=None, ak=None, get_json=None, kline=None):
                 rep[j] = job_fx(a.out, get_json, ak)
             elif j == "jiangsu":
                 rep[j] = job_jiangsu(a.out)
+            elif j == "spot":
+                import spot_history
+                rep[j] = spot_history.job_spot(a.out, budget_s=a.budget)
+            elif j == "spot_daily":
+                import spot_history
+                rep[j] = spot_history.job_spot_daily(a.out)
+            elif j == "refresh":
+                rep[j] = {"main": job_main(a.out, ak), "contracts": job_refresh_contracts(a.out, kline)}
             elif j == "probe":
                 rep[j] = job_probe(_http_get_raw)
             else:

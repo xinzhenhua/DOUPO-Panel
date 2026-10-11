@@ -78,7 +78,7 @@ check('周末(10-10周六)不判未定型', R.barFinal(E.bjToMs(2026,10,10,10,0)
 window._nowMs = E.bjToMs(2026,10,12,10,0);
 window._dailySymbol = 'M2701';
 window._dailyBars = mk(260, i=>({date:`d${i}`, open:3000+i, high:3010+i, low:2990+i, close:3000+i, hold:10000+i}));
-const mkB = (bean, cost, lo, hi, gap, pct, pos, tariff, prem)=>({available:true, beanCost:bean, mealCost:cost, mealCostLow:lo, mealCostHigh:hi, gap, gapPct:pct, position:pos, mealPrice:3400, zsCents:1300, fx:6.8, params:{premium_cents:prem, premium_step:50, tariff, vat:0.09, port_fee:100, crush_fee:150, asof:'2026-10-10', premium_confirmed:false, ship:'测试船期', note:'测试说明'}});
+const mkB = (bean, cost, lo, hi, gap, pct, pos, tariff, prem)=>({available:true, breakeven:3371.2, beanPrice:4164, oilPrice:9014, impliedPremium:180.1, beanCost:bean, mealCost:cost, mealCostLow:lo, mealCostHigh:hi, gap, gapPct:pct, position:pos, mealPrice:3400, zsCents:1300, fx:6.8, params:{premium_cents:prem, premium_step:50, tariff, vat:0.09, port_fee:100, crush_fee:150, asof:'2026-10-10', premium_confirmed:false, ship:'测试船期', note:'测试说明'}});
 window._selectedContract = 'jan';
 window._syncedData = {costAnchor:{available:true, fx:6.8, contracts:{
   jan:{cbotSymbol:'ZSX26.CBT', zsCents:1300, zsDate:'2026-10-09', zsExact:true, zsNote:'', mealSymbol:'M2701', primary:'us', brazil:mkB(4434,3954.1,3775.4,4132.8,-554.1,-14,'below',0.03,240), us:mkB(4793,4410,4230,4590,-1010,-22.9,'below',0.13,280)},
@@ -92,6 +92,7 @@ check('明说没有前向优势', /没有[^。]{0,30}(前向|预测)/.test(T));
 check('今日K线未收盘提示', /未收盘/.test(T));
 check('★资金市清单和休息灯已移除', !/资金市清单|休息灯|🛑/.test(T));
 check('成本锚(1月)：美豆为主要来源，展示4,410/4,230/4,590，关税13%；巴西豆标参考', ['4,410','4,230','4,590','关税13%','关税3%'].every(s=>T.includes(s)) && /美豆 【该合约主要来源】/.test(T) && /巴西豆 【参考】/.test(T));
+check('★成本锚展示市场口径盈亏平衡价3,371和隐含升贴水180', T.includes('3,371') && T.includes('盈亏平衡') && /隐含的巴西豆升贴水约 180/.test(T));
 check('成本锚声明升贴水未经核实/无法回测', /升贴水未经核实/.test(T) && /无法回测/.test(T));
 check('展示CBOT基准合约ZSX26且精确取到时不报警', T.includes('ZSX26.CBT') && !/基准合约可能/.test(T));
 window._selectedContract = 'may'; R.render();

@@ -4145,7 +4145,7 @@ def build_cost_anchor_multi(crush_margins, fx, price_getter):
         entry["primary"] = cost_anchor.PLAN[month_of[key]]["primary"]
         for origin in cost_anchor.ORIGINS:
             params = cost_anchor.params_for(month_of[key], origin)
-            entry[origin] = (cost_anchor.build(zs, fx, mm.get("mealPrice"), mm.get("oilPrice"), params) if params
+            entry[origin] = (cost_anchor.build(zs, fx, mm.get("mealPrice"), mm.get("oilPrice"), params, bean_price=mm.get("beanPrice")) if params
                              else {"available": False, "reason": "该合约对应的船期没有这个豆源的报价(或不是主要来源)，不编数"})
         contracts[key] = entry
     if not contracts:
