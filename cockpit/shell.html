@@ -85,6 +85,30 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 .fund{display:flex;align-items:center;gap:12px}
 .fund svg.sp{width:92px;height:34px;flex:none;overflow:visible}
 
+
+/* ===== 交易信号条（首页） ===== */
+.sigbar{display:grid;grid-template-columns:1.55fr 1fr;border-bottom:1px solid var(--line);flex:none}
+.sg{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:9px 20px;text-align:left;border-right:1px solid var(--line);min-width:0}
+.sg:last-child{border-right:0}
+.sg:hover{background:var(--focusS)}
+.sg .cl{font-size:12px;color:var(--ink3)}
+.sg .hd{font-size:19px;font-weight:600;line-height:1.25}
+.sg .sb{font-size:12.5px;color:var(--ink2);line-height:1.4}
+.sg.long .hd{color:var(--bull)} .sg.short .hd{color:var(--bear)} .sg.wait .hd{color:var(--ink2)}
+.sg.pos.exit{background:color-mix(in srgb,var(--amber) 16%,transparent);box-shadow:inset 4px 0 0 var(--amber)}
+.sg.pos.exit .hd{color:var(--amber)}
+.scs{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:2px}
+.sc{font-size:12px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--ink3);white-space:nowrap}
+.sc.y{color:var(--ink);border-color:var(--ink3)} .sc.sep{border:0;padding:0 2px;color:var(--ink3)}
+.vd{padding:8px 12px;border-radius:6px;border:1px solid var(--line)}
+.vd.exit{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+.pbtn{margin:6px 0 4px;padding:7px 16px;border:1px solid var(--ink3);border-radius:4px;background:var(--sunk);color:var(--ink);font:inherit;cursor:pointer}
+.pbtn:hover{background:var(--focusS)} .pbtn.warn{border-color:var(--amber);font-weight:600}
+.xbtn{padding:0 8px;color:var(--ink3);font-size:16px;line-height:1.2} .xbtn:hover{color:var(--bear)}
+.lnk{color:var(--focus);text-decoration:underline;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+.pmsg{border:1px solid var(--amber);border-radius:4px;padding:6px 10px}
+#planBody details{margin:10px 0 0;border-top:1px solid var(--line2);padding-top:8px} #planBody summary{cursor:pointer;color:var(--ink2);font-size:13px}
+
 /* ===== 检查条 ===== */
 .checks{display:flex;align-items:center;gap:2px;height:40px;padding:0 14px;border-bottom:1px solid var(--line);flex:none;overflow-x:auto;scrollbar-width:none}
 .checks::-webkit-scrollbar{display:none}
@@ -263,6 +287,8 @@ body.ex .why{display:block}
   .cell.half .fund{flex-direction:column;align-items:flex-start;gap:2px}
   .cell.half .fund svg.sp{width:100%;height:30px}
   .seq i{width:30px;height:20px}
+  .sigbar{grid-template-columns:1fr}
+  .sg{padding:10px 14px;border-right:0;border-bottom:1px solid var(--line)} .sg:last-child{border-bottom:0}
   .checks{height:44px;padding:0 8px;overflow-x:auto;flex-wrap:nowrap}
   .lp{padding:5px 9px}
   .sp1{display:none} .rule{margin-left:0}
@@ -317,6 +343,7 @@ body.ex .why{display:block}
     </div>
   </header>
   <section class="band" id="band" aria-label="当前状态"></section>
+  <section class="sigbar" id="sigbar" aria-label="交易信号与持仓"></section>
   <nav class="checks" id="checks" aria-label="交易前检查"></nav>
   <main class="main">
     <section class="chart" id="chart" aria-label="价格与持仓"></section>

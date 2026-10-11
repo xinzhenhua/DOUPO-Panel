@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -66,4 +66,36 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
 { const u=[...Array(259)].map((_,i)=>i+1).concat([240]); const sg=P.planSignals(u,-30000);
   eq('上行趋势里回落到MA20下方：MA20>MA60 → 不是下行趋势，不做空',sg.shortOK,false); }
 { const m=P.planManage({side:-1,entry:3400,peak:3300,last:3350,ma20:3400,fsum:0}); eq('空单 外资5日净变化=0 → 离场(≥0)',m.action,'空单离场'); }
+
+// ===== v101.26 账户与持仓 =====
+{ const T=(o)=>Object.assign({id:'1',side:1,lots:10,entryD:'2026-01-05',entryPx:3000},o);
+  // 手续费：每手来回23元，10手 → 开仓115，平仓115
+  eq('手续费 持仓中只记开仓一半',P.planFee(T(),23),115); eq('手续费 已平仓记全部',P.planFee(T({exitD:'2026-02-01',exitPx:3100}),23),230);
+  eq('手续费 填实际开仓/平仓金额优先',P.planFee(T({exitD:'x',feeO:50,feeC:60}),23),110); eq('手续费 开仓填了0就是0',P.planFee(T({feeO:0}),23),0);
+  eq('盈亏 多单涨100，10手×10吨=10000',P.planPnl(T(),3100),10000); eq('盈亏 空单涨100亏10000',P.planPnl(T({side:-1}),3100),-10000);
+  eq('找持仓 取最后一笔未平仓',P.planOpen([T({id:'a',exitD:'x'}),T({id:'b'})]).id,'b'); eq('找持仓 全平→null',P.planOpen([T({exitD:'x'})]),null);
+  // 持仓最高/最低（自动）：开仓日 01-05 收盘3000，之后 3100,3300,3200,3050
+  const h={d:['2026-01-02','2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09'],c:[9999,3000,3100,3300,3200,3050]};
+  let r=P.planHold(h,T()); eq('持仓 多单最高=开仓日起最大收盘(不含开仓日前的9999)',r.peak,3300); eq('持仓 多单持仓期最低',r.worst,3000); eq('持仓 现价=最新收盘',r.last,3050); eq('持仓 交易日数=4',r.days,4); eq('持仓 未折算',r.scaled,false);
+  r=P.planHold(h,T({side:-1})); eq('持仓 空单"最高价"位=持仓期最低收盘(不高于开仓价)',r.peak,3000); eq('持仓 空单对应的最不利价=最高收盘',r.worst,3300);
+  r=P.planHold(h,T({entryPx:3100})); eq('持仓 开仓价高于之后所有收盘时，多单最高取开仓价',P.planHold({d:['2026-01-05','2026-01-06'],c:[3100,3000]},T({entryPx:3100})).peak,3100);
+  // 开仓价和当天主连差>2% → 折算（非主力合约）
+  r=P.planHold(h,T({entryPx:3150})); eq('持仓 开仓价高5%→折算系数1.05',r.k,1.05,1e-9); eq('持仓 折算后最高=3300×1.05',r.peak,3465,1e-6); eq('持仓 折算标记',r.scaled,true);
+  r=P.planHold(h,T({entryPx:3050})); eq('持仓 差1.7%不折算',r.scaled,false);
+  r=P.planHold(h,T({entryD:'2026-02-01'})); eq('持仓 开仓日晚于全部数据→covered=false，最高=开仓价',[r.covered,r.peak,r.last],[false,3000,3000]);
+  r=P.planHold({d:[],c:[]},T()); eq('持仓 无价格数据不报错',r.covered,false);
+  // 权益 = 初始 + 出入金 + 已平仓盈亏 + 浮动 − 手续费
+  const A={init:500000,fee:23,flows:[{d:'2026-03-01',amt:200000}],trades:[T({id:'1',exitD:'2026-02-01',exitPx:3100}),T({id:'2',entryD:'2026-03-02',entryPx:3000})]};
+  const e=P.planEquity(A,3050); eq('权益 已平仓 +10000',e.realized,10000); eq('权益 浮动 +5000',e.floating,5000); eq('权益 手续费 230+115=345',e.fees,345); eq('权益 出入金',e.flows,200000);
+  eq('权益 合计',e.equity,500000+200000+10000+5000-345);
+  eq('权益 无持仓价时浮动按开仓价=0',P.planEquity(A,null).floating,0);
+  eq('权益 空账户=初始',P.planEquity({init:500000,fee:23,flows:[],trades:[]},null).equity,500000);
+  const st=P.planStats(A); eq('统计 1笔平仓 胜1',[st.n,st.wins],[1,1]); eq('统计 净盈亏=10000-230',st.net,9770);
+  const A2={init:1,fee:0,flows:[],trades:[T({exitD:'x',exitPx:2900})]}; eq('统计 亏损单不算胜',P.planStats(A2).wins,0);
+  // 信号原因文案
+  eq('原因 低位不满足',/不在低位/.test(P.planWhy({pct:80,lowOK:false,delev:false})),true); eq('原因 去杠杆但趋势不向下',/不做多，也不做空/.test(P.planWhy({pct:30,lowOK:true,delev:true,longOK:false,shortOK:false})),true);
+  eq('原因 低位未确认',/没出现反弹确认/.test(P.planWhy({pct:30,lowOK:true,delev:false,longOK:false,shortOK:false})),true); eq('原因 分位不足',/历史价格不足/.test(P.planWhy({pct:null,lowOK:false,delev:false})),true);
+  // 联动：自动算出的最高价喂给离场判定
+  const hh=P.planHold({d:['2026-01-05','2026-01-06','2026-01-07'],c:[3000,3300,3150]},T()); const mm=P.planManage({side:1,entry:3000,peak:hh.peak,last:hh.last,ma20:null,fsum:0});
+  eq('联动 最高浮盈10%后回落4.5% → 移动止盈',mm.action,'移动止盈'); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);
