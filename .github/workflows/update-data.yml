@@ -151,4 +151,5 @@ jobs:
           git add data/raw/seasonal/ data/seasonal.json 2>/dev/null || true
           # 如果数据没变化就不产生空提交
           git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true   # 页面记账/15分钟价格任务可能在这期间提交过
           git push

@@ -122,10 +122,25 @@
     if (prev && prev !== KEYS[KEYS.length - 1]) { try { w.selectContract(prev); w.updateOverallAlert(); } catch (e) { /* 还原失败不影响读数 */ } }
     return out;
   };
+  /* 盘中价：prices.json(每15分钟) 和 latest.json 里的15分钟/小时线，谁新用谁；日线只到上一个收盘，信号用日线，盘中价只作参考 */
+  CL.livePrices = function (L, prices) {
+    L = L || {};
+    const live = {}, m15 = {};   // 盘中：15分钟线优先、小时线兜底；日线只到上一个收盘，信号用日线，盘中价只作参考
+    const HR = { sep: 'dceM09Hourly', may: 'dceM05Hourly', jan: 'dceM01Hourly' }, MR = { sep: 'dceM09Min15', may: 'dceM05Min15', jan: 'dceM01Min15' };
+    const PK = { sep: 'M09', may: 'M05', jan: 'M01' }, PR = (prices && prices.contracts) || {};
+    for (const c of KEYS) { try {
+      const pb = ((PR[PK[c]] || {}).bars || []).filter(b => b && b.close != null), mb0 = ((L[MR[c]] || {}).bars || []).filter(b => b && b.close != null), mb = pb.length && (!mb0.length || String(pb[pb.length - 1].datetime) >= String(mb0[mb0.length - 1].datetime)) ? pb : mb0;
+      const hb = ((L[HR[c]] || {}).bars || []).filter(b => b && b.close != null), lb = (mb.length ? mb : hb).slice(-1)[0];
+      if (mb.length) m15[c] = mb.map(b => ({ d: String(b.datetime || '').slice(5, 16), o: b.open, h: b.high, l: b.low, c: b.close, v: b.volume, oi: b.hold }));
+      if (lb) live[c] = { dt: String(lb.datetime || '').slice(0, 16), c: +lb.close, src: mb.length ? '15分钟' : '小时' };
+    } catch (_) { /* 没有盘中数据就不显示 */ } }
+    return { live, m15 };
+  };
   /* 把所有来源装成驾驶舱的 D。in: {state, latest, H, seasonal, histCsv, now, STATIC} */
   CL.assemble = function (inp) {
     const S = inp.state, L = inp.latest || {}, H = inp.H || {}, ST = inp.STATIC, now = inp.now;
     const D = { polarity: ST.polarity, ctx: ST.ctx, contracts: {} };
+    { const lp = CL.livePrices(L, inp.prices); D.live = lp.live; D.m15 = lp.m15; }
     for (const c of KEYS) {
       const s = S.contracts[c];
       D.contracts[c] = {
@@ -189,13 +204,14 @@
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
-      let latest = null, seasonal = null, histCsv = '', report = null, adj = null;
+      let latest = null, seasonal = null, histCsv = '', report = null, adj = null, prices = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
       try { histCsv = await tget('data/raw/seasonal/M0_daily.csv'); } catch (e) { fails.push('M0_daily.csv'); }
       try { adj = await jget('data/main_adj.json'); } catch (e) { /* 可选文件：没有就退回原始主连，并在交易信号的数据状态里明说 */ }
       try { report = await jget('data/history/_backfill_report.json'); } catch (e) { /* 可选文件：没有就不显示覆盖表，不算缺文件 */ }
-      lastSide = { H, latest, seasonal, histCsv, report, adj };
+      try { prices = await jget('data/prices.json'); } catch (e) { /* 可选文件：没有就用基本面更新里的小时线/15分钟线 */ }
+      lastSide = { H, latest, seasonal, histCsv, report, adj, prices };
       return lastSide;
     }
     async function waitReady(w, maxMs) {
@@ -215,7 +231,7 @@
         if (!(await waitReady(w, 30000))) throw new Error('评分引擎没有拿到 data/latest.json（引擎页同步失败）');
         await new Promise(r => setTimeout(r, first ? 2500 : 1500));   // 让引擎里的异步指标（汇率/天气/龙虎榜）落定
         const { state, now } = await build();
-        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC });
+        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, prices: side.prices, now, STATIC });
         if (!D) { D = nd; window.__DATA__ = D; runUI(); }
         else { const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); }
         status('', fails);
@@ -224,7 +240,7 @@
     }
     /* 只重新读引擎（不重载 iframe）：用来吃进启动后才返回的汇率/天气等异步指标 */
     async function cycleLight() {
-      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
+      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, prices: side.prices, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
     }
     CL.manualEdit = async function (key, value) {
       const w = frame && frame.contentWindow; if (!w) return false;
@@ -238,6 +254,14 @@
     CL.reload = () => cycle(false);
     cycle(true);
     timers.push(setInterval(() => { if (!doc.hidden) cycle(false); }, 10 * 60 * 1000));
+    /* 每3分钟只读 prices.json（几十KB）：有新的15分钟价就更新盘中价，不重载评分引擎 */
+    CL.refreshPrices = async function () {
+      try {
+        if (!D || !lastSide) return; const p = await jget('data/prices.json'); if (!p || (lastSide.prices && lastSide.prices.updatedAt === p.updatedAt)) return;
+        lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
+      } catch (e) { /* 没有或读失败：保持原样 */ }
+    };
+    timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 3 * 60 * 1000));
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 10 * 60 * 1000) cycle(false); });
   };
 

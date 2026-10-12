@@ -107,9 +107,9 @@ def main():
     hd = pg.evaluate("(() => { const a = window.__DATA__.adj; return {d: a.d.slice(-12), c: a.c.slice(-12)}; })()")
     d0, p0 = hd['d'][0], hd['c'][0]; mx = max(hd['c']); last = hd['c'][-1]
     pg.fill('#pf-od', d0); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(p0)); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
-    body = pg.evaluate("document.getElementById('planBody').innerText")
+    body = pg.evaluate("document.getElementById('planBody').textContent")
     sgt = pg.evaluate("document.getElementById('sigbar').innerText")
-    ok('有持仓时首页：左格是「持仓信号」(继续持有/该平仓)，右格显示浮盈亏金额(元)，不再显示入场信号', '持仓信号' in sgt and ('继续持有' in sgt or '该平仓' in sgt) and '元' in sgt and '入场信号（收盘后看一次）' not in sgt, sgt[:300])
+    ok('有持仓时首页：左格是「持仓信号」(继续持有/该平仓)，右格显示浮盈亏金额(元)，不再显示入场信号', ('继续持有' in sgt or '该平仓' in sgt) and '账户权益' in sgt and '元' in sgt and '入场信号（收盘后看一次）' not in sgt, sgt[:300])
     ok('有持仓时交易计划面板自动展开', pg.evaluate("getComputedStyle(document.getElementById('tradePanel')).display !== 'none'"))
     ok('记录开仓后：持仓管理出现该仓位，且给出继续持有/该平仓的判定', ('继续持有' in body or '该平仓' in body) and '5 手' in body, body[:400])
     ok('持仓期间最高价由系统按价格数据算出（不用手填）', ('{:,}'.format(round(mx))) in body, (mx, body[:600]))
@@ -119,7 +119,7 @@ def main():
     exp = 500000 + (last - p0) * 5 * 10 - 57.5
     ok('权益自动 = 初始 + 浮动盈亏 − 手续费', abs(snap['eq'] - exp) < 1e-6, (snap, exp))
     sig = pg.evaluate("document.getElementById('sigbar').innerText")
-    ok('首页持仓格同步显示持仓和判定', '持仓 多5手' in sig and ('继续持有' in sig or '该平仓' in sig), sig)
+    ok('首页持仓格同步显示持仓和判定', '多 5 手' in sig and '账户权益' in sig and ('继续持有' in sig or '该平仓' in sig), sig)
     ok('已有持仓时不再显示开仓表单', pg.evaluate("document.getElementById('pf-ol') === null"))
     pg.fill('#pf-cd', hd['d'][-1]); pg.fill('#pf-cp', str(p0 + 100)); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()")
     snap = pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return { eq: s.E.equity, fees: s.E.fees, open: !!s.pos }; })()")
@@ -175,6 +175,101 @@ def main():
             ov = pg.evaluate(JS_OV)
             ok('电脑 %dx%d %s 模式：一屏放下，没有上下滚动' % (w, h, mode), max(ov) <= 1, ov)
         ok('电脑 %dx%d：没有页面 JS 错误' % (w, h), not e3, e3); ctx.close()
+    # ---- 5b2. 有持仓时（交易计划自动展开）电脑端一屏放下，不出现上下滚动 ----
+    for (w, h) in ((1920, 1080), (1440, 900), (1366, 768), (1280, 720)):
+        ctx, pg, e7 = open_page(b, port, w, h); pg.wait_for_timeout(300)
+        pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
+        px = pg.evaluate("Math.round(window.__cockpit.planSnap().px)")
+        pg.fill('#pf-od', '2026-10-08'); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(px)); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()"); pg.wait_for_timeout(500)
+        ov = pg.evaluate(JS_OV)
+        ok('电脑 %dx%d 有持仓：一屏放下，没有上下滚动' % (w, h), max(ov) <= 1, ov)
+        ok('电脑 %dx%d 有持仓：没有页面 JS 错误' % (w, h), not e7, e7); ctx.close()
+    # ---- 5e. 持仓页极简：不显示左边K线、权益和浮盈在右上角、权益公式在「?」里；所有图可放大全屏 ----
+    ctx, pg, e8 = open_page(b, port, 1440, 900); pg.wait_for_timeout(300)
+    pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
+    px = pg.evaluate("Math.round(window.__cockpit.planSnap().px)")
+    pg.fill('#pf-od', '2026-10-08'); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(px)); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()"); pg.wait_for_timeout(500)
+    ok('持仓页：左边K线图不显示', pg.evaluate("getComputedStyle(document.getElementById('chart')).display === 'none'"))
+    ok('持仓页：右上角有账户权益和浮盈，没有「= 初始 … 出入金」公式', pg.evaluate("(() => { const t = document.getElementById('sigbar').innerText; return t.includes('账户权益') && !t.includes('出入金') && !document.getElementById('planBody').innerText.includes('= 初始'); })()"))
+    pg.evaluate("document.querySelector('#sigbar [data-about=\"placct\"]').click()"); pg.wait_for_timeout(200)
+    ok('持仓页：右上角「?」里有权益公式', pg.evaluate("document.getElementById('shB').innerText.includes('权益 =')"))
+    pg.evaluate("window.__cockpit.closeSheet()")
+    ok('持仓页：计划页没有大段解释文字（离场规则/说明不外露）', pg.evaluate("!document.getElementById('planBody').innerText.includes('没有触发止损') && !document.getElementById('planBody').innerText.includes('仓位阶梯')"))
+    pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(300)
+    ok('持仓页收起计划后：图回来（三图同屏）', pg.evaluate("getComputedStyle(document.getElementById('chart')).display !== 'none' && !!document.getElementById('mg1')"))
+    for kk in ('px', 'pos', 'sea'):
+        pg.evaluate("k => document.querySelector('#chart [data-full=\"' + k + '\"]').click()", kk); pg.wait_for_timeout(400)
+        r = pg.evaluate("(() => { const o = document.getElementById('fsv'); const b = document.getElementById('fsB'); const r = o.getBoundingClientRect(); return { on: o.classList.contains('on'), w: Math.round(r.width), h: Math.round(r.height), has: kk => 0, svg: !!b.querySelector('svg'), txt: b.innerText.length, tabs: !!b.querySelector('.vtabs') }; })()")
+        ok('全屏：%s 图放大到整个窗口、没有切换按钮' % kk, r['on'] and r['w'] >= 1400 and r['h'] >= 890 and not r['tabs'] and (r['svg'] or r['txt'] > 50), r)
+        if kk == 'px': pg.screenshot(path='/tmp/claude-0/shot_full.png')
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(200)
+        ok('全屏：%s 按 Esc 关闭' % kk, pg.evaluate("!document.getElementById('fsv').classList.contains('on')"))
+    ok('持仓页/全屏：没有 JS 错误', not e8, e8); ctx.close()
+    # ---- 5c. 空仓宽屏：价格持仓/价格位置/同期规律三图同屏，无切换按钮、无成本锚、各列不滚动；计划面板可收起回来 ----
+    for (w, h) in ((1920, 1080), (1440, 900), (1366, 768)):
+        ctx, pg, e4 = open_page(b, port, w, h); pg.wait_for_timeout(300)
+        ok('电脑 %dx%d 空仓：三图同屏、没有切换按钮和成本锚' % (w, h), pg.evaluate("!!document.getElementById('mg1') && !!document.getElementById('mg2') && !!document.getElementById('mg3') && !document.querySelector('.vtabs') && !document.getElementById('chart').innerText.includes('成本锚') && document.getElementById('mg3').innerText.includes('同期规律')"))
+        ov = pg.evaluate("['mg1','mg2','mg3'].map(i => { const e = document.getElementById(i); return e.scrollHeight - e.clientHeight; })")
+        ok('电脑 %dx%d 空仓：三列都不用滚动' % (w, h), max(ov) <= 1, ov)
+        ok('电脑 %dx%d 空仓：入场条件表不在页面上（在信号「?」里）' % (w, h), pg.evaluate("!document.body.innerText.includes('做多①价格低位')"))
+        pg.evaluate("document.querySelector('#sigbar .q, #sigbar [data-about]').click()"); pg.wait_for_timeout(200)
+        ok('电脑 %dx%d：信号「?」里有入场条件表和数据状态' % (w, h), pg.evaluate("(() => { const t = document.getElementById('shB').innerText; return t.includes('做多①价格低位') && t.includes('做空②'); })()"))
+        pg.evaluate("window.__cockpit.closeSheet()")
+        pg.evaluate("document.querySelector('#sigbar .sg:last-child').click()"); pg.wait_for_timeout(250)
+        ok('电脑 %dx%d：点「空仓」格展开计划，图回到切换模式' % (w, h), pg.evaluate("!document.body.classList.contains('plan-off') && !document.getElementById('mg1') && !!document.querySelector('.vtabs')"))
+        pg.evaluate("document.querySelector('#sigbar .sg:last-child').click()"); pg.wait_for_timeout(250)
+        ok('电脑 %dx%d：再点「空仓」格收起，回到三图首页' % (w, h), pg.evaluate("document.body.classList.contains('plan-off') && !!document.getElementById('mg3')"))
+        pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
+        pg.evaluate("document.getElementById('planHide').click()"); pg.wait_for_timeout(250)
+        ok('电脑 %dx%d：计划面板里的「收起」按钮能回到三图首页' % (w, h), pg.evaluate("document.body.classList.contains('plan-off') && !!document.getElementById('mg3')"))
+        pg.evaluate("document.getElementById('planBtn').click()"); pg.keyboard.press('Escape'); pg.wait_for_timeout(250)
+        ok('电脑 %dx%d：按 Esc 也能收起' % (w, h), pg.evaluate("document.body.classList.contains('plan-off')"))
+        if w == 1440: pg.screenshot(path='/tmp/claude-0/shot_multi.png')
+        ok('电脑 %dx%d 三图首页：没有 JS 错误' % (w, h), not e4, e4); ctx.close()
+    ctx, pg, e5 = open_page(b, port, 1100, 800); pg.wait_for_timeout(300)
+    ok('窄屏 1100px：仍是切换视图，不分三栏', pg.evaluate("!document.getElementById('mg1') && !!document.querySelector('.vtabs')")); ctx.close()
+    # ---- 5d. 账户云端同步（用假的 GitHub API）：记账自动上传 account.json + position.json；云端更新的账会被采用；没令牌只读 ----
+    import base64, json as _json
+    store = {}; calls = []
+    def gh(route):
+        rq = route.request; path = rq.url.split('/contents/')[1].split('?')[0]; calls.append((rq.method, path))
+        if rq.headers.get('authorization') != 'Bearer github_pat_TEST123':
+            return route.fulfill(status=401, body='{}')
+        if rq.method == 'GET':
+            if path not in store: return route.fulfill(status=404, body='{}')
+            return route.fulfill(status=200, content_type='application/json', body=_json.dumps({'sha': store[path]['sha'], 'content': base64.b64encode(store[path]['raw']).decode()}))
+        body = _json.loads(rq.post_data); cur = store.get(path)
+        if cur and body.get('sha') != cur['sha']: return route.fulfill(status=409, body='{}')
+        sha = 'sha%d' % (len(calls)); store[path] = {'sha': sha, 'raw': base64.b64decode(body['content'])}
+        return route.fulfill(status=200, content_type='application/json', body=_json.dumps({'content': {'sha': sha}}))
+    ctx = b.new_context(viewport={'width': 1440, 'height': 900}); ctx.add_init_script("window.__CLOUD_POLL_MS=1500; try{ if(!localStorage.getItem('cockpit-pat')){localStorage.setItem('cockpit-pat','github_pat_TEST123');localStorage.setItem('cockpit-gh','{\"owner\":\"o\",\"repo\":\"r\"}');} }catch(e){}")
+    pg = ctx.new_page(); e6 = []; pg.on('pageerror', lambda e: e6.append(str(e)[:200]))
+    pg.route('**/*', lambda r: r.continue_() if r.request.url.startswith('http://127.0.0.1:%d' % port) else r.abort())
+    pg.route('https://api.github.com/**', gh)
+    pg.goto('http://127.0.0.1:%d/index.html' % port); pg.wait_for_selector('#boot', state='detached', timeout=60000); pg.wait_for_timeout(800)
+    ok('云端：有令牌启动时去读 account.json（404=还没有账，不报错）', ('GET', 'data/account.json') in calls and not e6, calls)
+    pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
+    pg.fill('#pf-od', '2026-10-12'); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', '3400'); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
+    pg.wait_for_timeout(2600)
+    acc = _json.loads(store['data/account.json']['raw']) if 'data/account.json' in store else {}
+    pos = _json.loads(store['data/position.json']['raw']) if 'data/position.json' in store else {}
+    ok('云端：记开仓 → 自动上传 account.json（1笔、rev≥1）', len(acc.get('trades', [])) == 1 and acc.get('rev', 0) >= 1, acc.get('rev'))
+    ok('云端：同时写 position.json（多5手@3400）', pos.get('side') == 1 and pos.get('lots') == 5 and pos.get('entryPx') == 3400, pos)
+    ok('云端：页面显示「已同步」', pg.evaluate("document.querySelector('.cloudmsg').textContent.includes('已同步')"), pg.evaluate("document.querySelector('.cloudmsg').textContent"))
+    pg.fill('#pf-cd', '2026-10-12'); pg.fill('#pf-cp', '3450'); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()"); pg.wait_for_timeout(2600)
+    pos = _json.loads(store['data/position.json']['raw'])
+    ok('云端：记平仓 → position.json 变成空仓', pos.get('flat') is True, pos)
+    newer = dict(_json.loads(store['data/account.json']['raw'])); newer['rev'] = 99; newer['trades'] = []; newer['init'] = 777000
+    store['data/account.json'] = {'sha': 'shaNEW', 'raw': _json.dumps(newer).encode()}
+    pg.evaluate("document.querySelector('[data-act=\"pat-sync\"]').click()"); pg.wait_for_timeout(800)
+    ok('云端：云端的账更新（rev 99）→ 页面改用云端的账', pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init") == 777000, pg.evaluate("localStorage.getItem('cockpit-acct').slice(0,80)"))
+    store['data/account.json'] = {'sha': 'shaNEW2', 'raw': _json.dumps(dict(newer, rev=150, init=888000)).encode()}
+    pg.wait_for_timeout(2600)
+    ok('云端：页面开着，2分钟后自动拉到云端更新的账', pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init") == 888000, pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init"))
+    pg.evaluate("document.querySelector('[data-act=\"pat-clear\"]').click()"); pg.wait_for_timeout(200)
+    n0 = len(calls); pg.evaluate("document.getElementById('pf-set').open = true")
+    ok('云端：清除令牌后令牌不在本机', pg.evaluate("localStorage.getItem('cockpit-pat')") is None)
+    ok('云端：整个过程没有 JS 错误', not e6, e6); ctx.close()
     # ---- 6. 手机宽度 ----
     for w in (390, 360):
         ctx, pg, e2 = open_page(b, port, w, 800)

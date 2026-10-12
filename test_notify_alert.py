@@ -126,6 +126,54 @@ def test_end_to_end_with_node_script():
     finally: shutil.rmtree(d, ignore_errors=True)
     ok("端到端：合成数据 → node 算出做多信号/止损离场/数据不足 → 发送记账")
 
+def test_trailing_alerts_with_node_script():
+    root = os.path.dirname(os.path.abspath(__file__))
+    if not shutil.which("node"): print("⚠️ 跳过：没有 node"); return
+    d = tempfile.mkdtemp()
+    try:
+        import datetime as dt
+        data = os.path.join(d, "data"); os.makedirs(os.path.join(data, "raw", "seasonal"))
+        days = []; x = dt.date(2025, 1, 1)
+        while len(days) < 350:
+            if x.weekday() < 5: days.append(x.isoformat())
+            x += dt.timedelta(days=1)
+        # 多单开在 3000：先涨到 3300（+10%，启动移动止盈，最高 3300 → 线 3168），再回落到 3180（距线 0.4%）
+        px = [3000] * 330 + [3000 + i * 30 for i in range(11)] + [3300, 3290, 3250, 3220, 3200, 3190, 3185, 3182, 3181][: 9]
+        px = px[:350] if len(px) >= 350 else px + [3180] * (350 - len(px))
+        open(os.path.join(data, "raw", "seasonal", "M0_daily.csv"), "w").write("date,open,high,low,close,volume,hold,settle\n" + "\n".join(f"{dd},{p},{p},{p},{p},1,1,0" for dd, p in zip(days, px)))
+        json.dump({"d": days, "i": [round(p / px[0] * 100, 5) for p in px], "k": ["m2701"] * len(days)}, open(os.path.join(data, "main_adj.json"), "w"))
+        json.dump({"marketCapital": {"members": {"摩根大通": {"foreign": True, "history": {"change5": {"change": 5000, "to": days[-1]}}}}}}, open(os.path.join(data, "latest.json"), "w"))
+        pos = os.path.join(d, "position.json"); json.dump({"side": 1, "lots": 3, "entryD": days[329], "entryPx": 3000}, open(pos, "w"))
+        out = os.path.join(d, "a.json"); run = lambda *extra: subprocess.run(["node", os.path.join(root, "scripts", "plan_alert.js"), "--data", data, "--position", pos, "--out", out, "--today", days[-1], *extra], check=True, capture_output=True)
+        run(); a = json.load(open(out)); ty = [e["type"] for e in a["events"]]
+        assert a["manage"]["action"] == "持有" and "act" in ty and "trail" in ty, a
+        ac = [e for e in a["events"] if e["type"] == "act"][0]; assert "止损改成移动止损" in ac["title"] and "建议止损价：3,168" in ac["body"] and "原固定止损 2,880 作废" in ac["body"], ac
+        tr = [e for e in a["events"] if e["type"] == "trail"][0]; assert "止损上移到 3,168" in tr["title"] and "只往有利方向走" in tr["body"], tr
+        assert "near" in ty, a   # 收盘 3180 距线 3168 只有 0.4%
+        # 盘中价已跌破移动止盈线 → touch（用15分钟线）
+        prices = os.path.join(d, "prices.json"); nd = (dt.date.fromisoformat(days[-1]) + dt.timedelta(days=1)).isoformat()
+        json.dump({"contracts": {"M01": {"symbol": "M2701", "bars": [{"datetime": nd + " 10:15:00", "close": 3160}]}}}, open(prices, "w"))
+        run("--prices", prices); b = json.load(open(out)); t2 = [e for e in b["events"] if e["type"] == "touch"]
+        assert t2 and "盘中已跌破移动止损线" in t2[0]["title"] and "收盘还在线下才" in t2[0]["body"], b["events"]
+        # 同一天同一条线只提醒一次（key 相同）；第二天换 key
+        st, rep = na.run(b, {}, {}, nd, {"x": Rec()}); n1 = len(rep["sent"]); st2, rep2 = na.run(b, st, {}, nd, {"x": Rec()}); assert n1 >= 3 and not rep2["sent"], (rep, rep2)
+        # 没有盘中数据 / 盘中价没到线 → 没有 touch
+        json.dump({"contracts": {"M01": {"symbol": "M2701", "bars": [{"datetime": nd + " 10:15:00", "close": 3400}]}}}, open(prices, "w"))
+        run("--prices", prices); assert not [e for e in json.load(open(out))["events"] if e["type"] in ("touch",)], "盘中价在线上方不该有 touch"
+        # 还没到启动价：多单开在 3000，启动价 3240；现价 3230 → 提醒「快到启动价」；盘中最高碰到 3250 → 立刻出「改成移动止损」，建议价 3250×0.96=3,120
+        px2 = [3000] * 349 + [3230]
+        open(os.path.join(data, "raw", "seasonal", "M0_daily.csv"), "w").write("date,open,high,low,close,volume,hold,settle\n" + "\n".join(f"{dd},{p},{p},{p},{p},1,1,0" for dd, p in zip(days, px2)))
+        json.dump({"d": days, "i": [round(p / px2[0] * 100, 5) for p in px2], "k": ["m2701"] * len(days)}, open(os.path.join(data, "main_adj.json"), "w"))
+        os.remove(prices) if os.path.exists(prices) else None
+        run(); e1 = json.load(open(out))["events"]; assert [e["type"] for e in e1] == ["near"] and "快到移动止损启动价 3,240" in e1[0]["title"], e1
+        json.dump({"contracts": {"M01": {"symbol": "M2701", "bars": [{"datetime": nd + " 10:15:00", "high": 3250, "low": 3228, "close": 3245}]}}}, open(prices, "w"))
+        run("--prices", prices); e2 = json.load(open(out))["events"]; a2 = [e for e in e2 if e["type"] == "act"]
+        assert a2 and "建议止损价：3,120" in a2[0]["body"] and "锁住约 +4.0%" in a2[0]["body"], e2
+        # 空单：镜像
+        json.dump({"side": -1, "lots": 3, "entryD": days[329], "entryPx": 3000}, open(pos, "w")); run(); c = json.load(open(out)); assert c["manage"]["action"] != "持有" or not [e for e in c["events"] if e["type"] == "trail"]
+    finally: shutil.rmtree(d, ignore_errors=True)
+    ok("移动止损动态提示：到启动价→改成移动止损+建议价；上移提示；快到启动价；逼近≤1%、盘中触及；同日同线只发一次")
+
 def test_send_test_and_failure_reason():
     env = {"PUSHPLUS_TOKEN": "tok"}
     assert na.configured(env) == (["pushplus"], ["issue", "serverchan", "smtp"]), na.configured(env)

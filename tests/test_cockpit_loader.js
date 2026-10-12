@@ -98,4 +98,13 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
   eq('adjFrom：没有原始主连也能给出（水平为指数本身）', CL.adjFrom({ d: days, i: idx }, null).c[0], 100);
   eq('assemble：D.adj', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: null, adj: { d: days, i: idx }, now: Date.UTC(2026, 9, 11, 13), STATIC }).adj.d.length, 300); }
 
+{
+  const bar = (dt, c) => ({ datetime: dt, open: c, high: c, low: c, close: c, volume: 1, hold: 1 });
+  const A = (latest, prices) => CL.assemble({ state: mkState(), latest, H: {}, seasonal: null, histCsv: '', prices, now: Date.UTC(2026, 9, 12, 5), STATIC });
+  const lt = { dceM01Min15: { bars: [bar('2026-10-12 10:00:00', 3380)] } };
+  eq('prices.json 比 latest 新 → 用 prices 的15分钟价', A(lt, { contracts: { M01: { bars: [bar('2026-10-12 11:15:00', 3365)] } } }).live.jan.c, 3365);
+  eq('prices.json 比 latest 旧 → 用 latest 里的', A(lt, { contracts: { M01: { bars: [bar('2026-10-12 09:00:00', 3300)] } } }).live.jan.c, 3380);
+  eq('没有 prices.json → 不报错，用 latest', A(lt, null).live.jan.c, 3380);
+  eq('D.m15 的 d 字段是 月-日 时:分', A(lt, null).m15.jan[0].d, '10-12 10:00');
+}
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

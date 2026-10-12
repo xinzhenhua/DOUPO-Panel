@@ -55,6 +55,39 @@ function compute(dataDir, opts) {
     ev.push({ type: 'exit', key: 'exit|' + lastD + '|' + pos.entryD + '|' + mg.action, title: '【豆粕】持仓该平了：' + mg.action + '（' + sd + pos.lots + '手）',
       body: '你的持仓：' + sd + ' ' + pos.lots + ' 手 @' + f0(pos.entryPx) + '（' + pos.entryD + '）。\n信号：' + mg.action + '。浮盈亏 ' + (mg.r >= 0 ? '+' : '') + mg.r.toFixed(1) + '%，持仓期间最高浮盈 ' + mg.peakR.toFixed(1) + '%，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手。\n建议：下一个交易日开盘平仓；平仓后记得在 GitHub Actions 里「记录持仓」点平仓，否则明天还会提醒。' + tail });
   }
+  /* v101.42 动态提示：持仓时的止损管理。
+   *   ① 价格涨到启动价（浮盈 ACT%）→ 提醒「把固定止损改成移动止损」并给出新的止损价（= 持仓最高价回落 TRAIL%）；
+   *   ② 之后每创新高、止损线又上移 0.5%（按开仓价算）→ 提醒「把止损上移到 X」；
+   *   ③ 价格离止损价/移动止损线 ≤1% 提醒；盘中价已触及线也提醒（只预警，是否平仓以收盘结论为准）。
+   * 最高价取收盘序列和当天15分钟线的最高/最低价的更极端者；线和回测、页面是同一个公式。 */
+  if (pos && mg && hold && mg.action === '持有') {
+    const sg = pos.side, last = hold.last, k = hold.k || 1, NEAR = 1, f1 = n => Math.round(n * 10) / 10;
+    const pr = opts.prices && opts.prices.contracts && opts.prices.contracts[opts.contract || 'M01'], bars = pr && pr.bars ? pr.bars.filter(b => b && b.close != null && String(b.datetime).slice(0, 10) > lastD) : [];
+    const lb = bars.length ? bars[bars.length - 1] : null, lp = lb ? +lb.close * k : null;
+    let peak = hold.peak; bars.forEach(b => { const x = (sg > 0 ? +(b.high != null ? b.high : b.close) : +(b.low != null ? b.low : b.close)) * k; peak = sg > 0 ? Math.max(peak, x) : Math.min(peak, x); });
+    const stopPx = pos.entryPx * (1 - sg * TP.STOP / 100), actPx = pos.entryPx * (1 + sg * TP.ACT / 100), peakR = sg * (peak / pos.entryPx - 1) * 100, on = peakR >= TP.ACT;
+    const trig = peak * (1 - sg * TP.TRAIL / 100), trigAct = actPx * (1 - sg * TP.TRAIL / 100), step = pos.entryPx * 0.005, dirw = sg > 0 ? '跌破' : '涨过';
+    const head = sd + pos.lots + '手 @' + f0(pos.entryPx), lock = sg * (trig / pos.entryPx - 1) * 100, gap = (v, p) => Math.abs((v / p - 1) * 100);
+    const note = '\n（回测按收盘价判断；若你在期货公司挂的是盘中条件单，会比回测更容易被短暂波动洗出，可改成收盘后手动判断。）';
+    if (on) {
+      ev.push({ type: 'act', key: 'act|' + pos.entryD, title: '【豆粕】已到启动价 ' + f0(actPx) + '：止损改成移动止损（' + head + '）',
+        body: '浮盈已到 ' + peakR.toFixed(1) + '%（≥' + TP.ACT + '%），按策略把固定止损改成移动止损。\n建议止损价：' + f0(trig) + '（' + (sg > 0 ? '最高 ' : '最低 ') + f0(peak) + ' 回落 ' + TP.TRAIL + '%，' + (lock >= 0 ? '锁住约 +' : '仍亏约 ') + Math.abs(lock).toFixed(1) + '%）；原固定止损 ' + f0(stopPx) + ' 作废。\n之后每创新高，止损线上移，我再提醒你。' + note });
+      const b = sg * (trig - trigAct) / step | 0;   // 比刚启动时又上移了几格（每格 0.5% 开仓价）
+      if (b >= 1) ev.push({ type: 'trail', key: 'trail|' + pos.entryD + '|' + b, title: '【豆粕】止损上移到 ' + f0(trig) + '（' + head + '）',
+        body: '持仓期间' + (sg > 0 ? '最高 ' : '最低 ') + f0(peak) + '（最高浮盈 ' + peakR.toFixed(1) + '%）。把止损改到 ' + f0(trig) + '，锁住约 ' + (lock >= 0 ? '+' : '') + lock.toFixed(1) + '%。\n现价 ' + f0(lp != null ? lp : last) + '，距止损线 ' + gap(trig, lp != null ? lp : last).toFixed(1) + '%。线只往有利方向走，不会回退。' + note });
+    } else if (gap(actPx, lp != null ? lp : last) <= NEAR) {
+      ev.push({ type: 'near', key: 'nearact|' + pos.entryD + '|' + (lb ? String(lb.datetime).slice(0, 10) : lastD), title: '【豆粕】快到移动止损启动价 ' + f0(actPx) + '（' + head + '）',
+        body: '现价 ' + f0(lp != null ? lp : last) + '，到 ' + f0(actPx) + '（浮盈 ' + TP.ACT + '%）就把固定止损改成移动止损，届时我再给你新的止损价（约 ' + f0(trigAct) + '）。当前止损价 ' + f0(stopPx) + '。' });
+    }
+    const cur = lp != null ? lp : last, lines = [{ n: '止损价', v: stopPx, id: 'stop' }]; if (on) { lines.length = 0; lines.push({ n: '移动止损线', v: trig, id: 'trail' }); }
+    lines.forEach(L => {
+      const hit = sg > 0 ? cur <= L.v : cur >= L.v, td = lb ? String(lb.datetime).slice(0, 10) : lastD;
+      if (lb && hit) ev.push({ type: 'touch', key: 'touch|' + pos.entryD + '|' + L.id + '|' + td, title: '【豆粕】盘中已' + dirw + L.n + '（' + head + '）',
+        body: '盘中价 ' + f0(cur) + '（' + String(lb.datetime).slice(5, 16) + '）已' + dirw + L.n + ' ' + f0(L.v) + '。\n结论按收盘：收盘还在线' + (sg > 0 ? '下' : '上') + '才平仓，系统会在收盘后再提醒。想提前走由你决定。' });
+      else if (!hit && gap(L.v, cur) <= NEAR) ev.push({ type: 'near', key: 'near|' + pos.entryD + '|' + L.id + '|' + td, title: '【豆粕】离' + L.n + '只剩 ' + gap(L.v, cur).toFixed(1) + '%（' + head + '）',
+        body: L.n + ' ' + f0(L.v) + '，' + (lb ? '盘中价 ' : '收盘价 ') + f0(cur) + '。' });
+    });
+  }
   return { today, priceDate: lastD, adj: !!adj, px, side, gate: { ok: gate.ok, level: gate.level, reasons: gate.reasons, warn: gate.warn }, fsum: F.min, fsumAll: F.sum, foreign: F.parts,
            sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK },
            position: pos, manage: mg ? { action: mg.action, r: mg.r, peakR: mg.peakR } : null, events: ev };
@@ -62,7 +95,7 @@ function compute(dataDir, opts) {
 
 function main(argv) {
   const a = {}; for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) a[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true;
-  const dataDir = a.data || 'data', out = compute(dataDir, { today: a.today, position: readJson(a.position || path.join(dataDir, 'position.json')) });
+  const dataDir = a.data || 'data', out = compute(dataDir, { today: a.today, position: readJson(a.position || path.join(dataDir, 'position.json')), prices: readJson(a.prices || path.join(dataDir, 'prices.json')), contract: a.contract });
   const txt = JSON.stringify(out, null, 1);
   if (a.out) fs.writeFileSync(a.out, txt); else console.log(txt);
   console.error(`[提醒] 价格日 ${out.priceDate} · ${out.gate.ok ? '数据可用' : '数据不足'} · 入场信号 ${out.side || '无'} · 持仓 ${out.position ? (out.position.side > 0 ? '多' : '空') + out.position.lots + '手' : '空仓'} · 事件 ${out.events.length} 个`);

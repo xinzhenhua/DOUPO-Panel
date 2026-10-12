@@ -4046,7 +4046,7 @@ def fetch_dce_continuous_kline(symbol="M0", years=3):
     }
 
 
-def fetch_dce_hourly_kline(symbol, max_bars=180):
+def fetch_dce_hourly_kline(symbol, max_bars=180, period="60"):
     """DCE豆粕小时K线，默认取最近约180根(按日盘+夜盘大约6根/天算，约30天)。
     ★ 用akshare的futures_zh_minute_sina接口，period=60表示60分钟(小时)线。"""
     try:
@@ -4055,7 +4055,7 @@ def fetch_dce_hourly_kline(symbol, max_bars=180):
         return {"available": False, "reason": "未安装akshare库，请检查GitHub Actions是否执行了pip install akshare"}
 
     try:
-        df = ak.futures_zh_minute_sina(symbol=symbol, period="60")
+        df = ak.futures_zh_minute_sina(symbol=symbol, period=period)
     except Exception as e:
         return {"available": False, "reason": f"akshare小时K线接口调用失败: {e}", "debug": {"symbol": symbol, "errorType": type(e).__name__}}
 
@@ -5161,10 +5161,13 @@ def main():
         #   这样合约年份每年滚动时key不用跟着改——具体是哪年的合约看里面的symbol字段。
         "dceM09Daily": fetch_dce_daily_kline(sep_code),
         "dceM09Hourly": fetch_dce_hourly_kline(sep_code),
+        "dceM09Min15": fetch_dce_hourly_kline(sep_code, max_bars=300, period="15"),   # 15分钟线（盘中参考，信号仍按日线）
         "dceM05Daily": fetch_dce_daily_kline(may_code),
         "dceM05Hourly": fetch_dce_hourly_kline(may_code),
+        "dceM05Min15": fetch_dce_hourly_kline(may_code, max_bars=300, period="15"),   # 15分钟线（盘中参考，信号仍按日线）
         "dceM01Daily": fetch_dce_daily_kline(jan_code),
         "dceM01Hourly": fetch_dce_hourly_kline(jan_code),
+        "dceM01Min15": fetch_dce_hourly_kline(jan_code, max_bars=300, period="15"),   # 15分钟线（盘中参考，信号仍按日线）
         # ★龙虎榜(会员持仓排名)，同样按月份命名key，三个合约一次请求批量拿到
         "dceM09PositionRank": position_ranks[sep_code],
         "dceM05PositionRank": position_ranks[may_code],
