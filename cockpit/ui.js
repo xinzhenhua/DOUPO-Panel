@@ -145,19 +145,21 @@ function viewCost() {
 const TPLAN = {
   TIERS: [[5000000, .6], [15000000, .4], [50000000, .25], [Infinity, .15]],   // [权益上限(元), 占用]：<500万 60%；<1500万 40%；<5000万 25%；其余 15%
   STOP: 4, TRAIL: 4, ACT: 8,          // 止损4%；移动止盈：持仓期间最高浮盈≥8% 之后，从持仓最高(低)价回落≥4% 平仓（回测验证过的等价写法）
-  LO: 50, DELEV: -20000,              // 低位：近260日分位≤50；外资5日净变化≤-2万手=去杠杆
+  LO: 50, DELEV: -20000,              // 低位：近260日分位≤50；任一外资席位5日变化≤-2万手=去杠杆（看单个席位，不看合计：席位之间可能互相对冲）
   BT_MARGIN: .10, TON: 10             // 回测保证金10%；每手10吨
 };
 function planTier(E) { for (const [lim, u] of TPLAN.TIERS) if (E < lim) return u; return TPLAN.TIERS[TPLAN.TIERS.length - 1][1]; }
 function planPct(cs, w) { w = w || 260; const win = cs.slice(-w); if (win.length < 200) return null; const last = cs[cs.length - 1]; return win.filter(v => v <= last).length / win.length * 100; }
 function planMA(cs, n) { if (cs.length < n) return null; let s = 0; for (let i = cs.length - n; i < cs.length; i++) s += cs[i]; return s / n; }
 function planConfirm(cs) { const n = cs.length; if (n < 11) return false; return cs[n - 1] > cs[n - 6] && cs[n - 1] > Math.min(...cs.slice(n - 11, n - 1)) * 1.01; }
-/* 外资5日净变化 = 摩根大通+高盛+瑞银 各自 change5.change 之和；缺的席位按0算并列出（回测里缺数据日也按0，偏保守） */
+/* 外资5日：摩根大通/高盛/瑞银 各自的 change5.change。v101.33 起信号看「最弱席位」(min)，不再看三家之和(sum，只作参考显示)：
+   席位之间可能对冲(如摩根+8,143 对高盛−15,392)，合计会把单个席位的撤退抵消掉。缺的席位不参与(回测里缺数据日按0，等价于不触发) */
 function planForeign(members) {
   const used = [], missing = [], approx = [], parts = []; let sum = 0, lastD = null;
   Object.keys(members || {}).forEach(k => { const m = members[k]; if (!m || !m.foreign) return;
     const c5 = m.history && m.history.change5; if (c5 && typeof c5.change === 'number') { sum += c5.change; used.push(k); parts.push({ k, v: c5.change, approx: !!c5.approx, bridged: !!c5.bridged, basis: c5.basis || '' }); if (c5.approx) approx.push(k); if (c5.to && (!lastD || c5.to > lastD)) lastD = c5.to; } else missing.push(k); });
-  return { sum, used, missing, approx, parts, lastD };
+  const w = parts.length ? parts.reduce((a, q) => q.v < a.v ? q : a) : null;
+  return { sum, used, missing, approx, parts, lastD, min: w ? w.v : 0, minK: w ? w.k : '' };
 }
 function planSignals(cs, fsum) {
   const n = cs.length, last = cs[n - 1], pct = planPct(cs), ma20 = planMA(cs, 20), ma60 = planMA(cs, 60), conf = planConfirm(cs), delev = fsum <= TPLAN.DELEV;
@@ -177,13 +179,13 @@ function planSize(o) {
   return { u, lots, notional, margin, usage: margin / E, leverage: notional / E, stopPx, lossStop, lossPct: lossStop / E, actPx, liqPx,
            liqGapPct: Math.abs(liqPx - stopPx) / px * 100, riskAtStop, riskNow: margin / E };
 }
-function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum}
+function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum=最弱席位5日变化(多单离场用), fall=三家合计5日变化(空单离场用；不传则用fsum)}
   const side = o.side >= 0 ? 1 : -1, r = side * (o.last / o.entry - 1) * 100;
   const stop = r <= -TPLAN.STOP;
   const peakR = side * (o.peak / o.entry - 1) * 100;      // 持仓期间出现过的最高浮盈
   const trail = peakR >= TPLAN.ACT && (side > 0 ? o.last <= o.peak * (1 - TPLAN.TRAIL / 100) : o.last >= o.peak * (1 + TPLAN.TRAIL / 100));
   const delevOut = side > 0 && o.fsum <= TPLAN.DELEV;
-  const shortOut = side < 0 && (o.fsum >= 0 || (o.ma20 != null && o.last > o.ma20));
+  const shortOut = side < 0 && ((o.fall != null ? o.fall : o.fsum) >= 0 || (o.ma20 != null && o.last > o.ma20));
   const action = stop ? '止损' : trail ? '移动止盈' : delevOut ? '外资去杠杆·平多' : shortOut ? '空单离场' : '持有';
   return { r, peakR, stop, trail, delevOut, shortOut, action };
 }
@@ -211,8 +213,15 @@ function planGate(used, lastD, today, opt) {
   return { ok: !reasons.length, level, reasons, warn, missing: miss, approx: ap };
 }
 /* 信号旁的「数据状态」一句话：让人一眼看出数据够不够 */
-function planDataLine(g, used, lastD, fD, adjOn) {
-  const seats = (used && used.length ? used.join('+') : '无') + (fD ? ' ' + fD.slice(5) : ''), px = lastD ? '价格 ' + lastD.slice(5) + (adjOn === true ? '(换月调整)' : adjOn === false ? '(原始主连)' : '') : '价格无数据';
+function planPartsText(parts) {   // 「高盛 −15,392(多单) · 摩根大通 +8,143 = −7,249」：每个席位的5日变化都写出来
+  const sgn = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US');
+  if (!parts || !parts.length) return '';
+  const one = q => q.k.replace('期货', '') + ' ' + sgn(q.v) + (q.basis === 'long' ? '(多单)' : q.basis === 'short' ? '(空单)' : q.approx ? '(估)' : '');
+  const w = parts.reduce((a, q) => q.v < a.v ? q : a);
+  return parts.map(one).join(' · ') + (parts.length > 1 ? ' → 最弱 ' + w.k.replace('期货', '') + ' ' + sgn(w.v) : '');
+}
+function planDataLine(g, used, lastD, fD, adjOn, parts) {
+  const pt = planPartsText(parts), seats = (pt || (used && used.length ? used.join('+') : '无')) + (fD ? '（' + fD.slice(5) + '）' : ''), px = lastD ? '价格 ' + lastD.slice(5) + (adjOn === true ? '(换月调整)' : adjOn === false ? '(原始主连)' : '') : '价格无数据';
   if (g.level === 'bad') return { cls: 'bad', t: '✗ 数据不足 · ' + g.reasons.join('；') + ' · ' + px };
   if (g.level === 'part') return { cls: 'part', t: '⚠ 数据基本够用 · ' + [g.missing.length ? g.missing.join('、') + '缺数据按0算' : '', g.warn.join('；')].filter(Boolean).join('；') + ' · 外资 ' + seats + ' · ' + px };
   return { cls: 'ok', t: '✓ 数据齐全 · 外资 ' + seats + ' · ' + px };
@@ -274,41 +283,61 @@ const yuan = n => (n >= 0 ? '+' : '−') + fmtD(Math.abs(n));
 const pc1 = x => (x * 100).toFixed(1) + '%';
 /* 一次算好：信号、持仓、自动判定、权益、建议手数。首页信号条和计划页共用，保证两处结论一致 */
 function planSnap() {
-  const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), sig = planSignals(cs, F.sum);
+  const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), sig = planSignals(cs, F.min);
   const px = cs.length ? cs[cs.length - 1] : planLastPx(), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
   const pos = planOpen(A.trades); let hold = null, mg = null;
-  if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.sum }); }
+  if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.min, fall: F.sum }); }
   const E = planEquity(A, hold ? hold.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
-  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn);
+  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
   return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate, dl };
 }
 /* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
 function planSnapshotNow(s) {
-  const o = { d: todayBJ(), px: Math.round(s.px), pct: s.sig.pct == null ? null : Math.round(s.sig.pct), confirm: s.sig.confirm, delev: s.sig.delev, trendDn: s.sig.trendDn, fsum: Math.round(s.F.sum), gateOk: s.gate.ok };
+  const o = { d: todayBJ(), px: Math.round(s.px), pct: s.sig.pct == null ? null : Math.round(s.sig.pct), confirm: s.sig.confirm, delev: s.sig.delev, trendDn: s.sig.trendDn, fsum: Math.round(s.F.min), fsumAll: Math.round(s.F.sum), fsumK: s.F.minK, gateOk: s.gate.ok };
   try { const f = fundamentals(), c = C(); o.fund = f.dir || null; o.fundRatio = f.ratio == null ? null : +(+f.ratio).toFixed(2); o.tech = c.tech || null; o.struct = c.structure && !c.structure.thin ? c.structure.direction || null : null; const cp = capital(); o.cap = cp.verdict && cp.verdict.short ? cp.verdict.short : null; o.regime = regimeNow().label; } catch (_) {}
   return o;
 }
 /* ---- 首页：交易信号条 ---- */
+/* 交易计划面板：空仓时默认收起（首页信号格已经是结论），有持仓时默认展开；点信号格/「计划」按钮手动开关，记平仓后恢复自动 */
+function planShown() { if (S.planShow === true || S.planShow === false) return S.planShow; return !!planOpen(acctGet().trades); }
+function applyPlanVis() {
+  const off = !planShown(), had = document.body.classList.contains('plan-off'); document.body.classList.toggle('plan-off', off);
+  const b = $('#planBtn'); if (b) b.setAttribute('aria-pressed', String(!off));
+  if (off !== had) drawChart();
+}
 function renderSig() {
   const el = $('#sigbar'); if (!el) return;
   const s = planSnap(), sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
   const blocked = !s.gate.ok, cls = blocked ? 'gate' : s.side > 0 ? 'long' : s.side < 0 ? 'short' : 'wait', head = blocked ? '数据不足，信号不可信' : s.side > 0 ? '做多信号' : s.side < 0 ? '做空信号' : '无入场信号';
-  let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
-  const left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 现价 ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
-    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? f2(F.sum) + ' 手' : '无数据'}</span></div><div class="dsl ${s.dl.cls}" id="dataLine">${esc(s.dl.t)}</div></button>`;
-  let right;
-  if (!s.pos) right = `<button class="sg" data-goplan="1" aria-label="持仓：空仓。点击查看交易计划"><div class="cl">持仓管理</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? ' · 成交后在交易计划里记录开仓' : ''}</div></button>`;
-  else { const m = s.mg, out = m.action !== '持有', fl = planPnl(s.pos, s.hold.last), noF = !s.F.used.length;
-    right = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="1" aria-label="持仓：${sdName(s.pos.side)}${s.pos.lots}手，${out ? '该平仓：' + m.action : '继续持有'}。点击查看交易计划"><div class="cl">持仓 ${sdName(s.pos.side)}${fmtD(s.pos.lots)}手 @${fmtD(s.pos.entryPx)}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>
-      <div class="sb">浮盈亏 ${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}%（${yuan(fl)} 元）· 最高浮盈 ${m.peakR.toFixed(1)}% · 权益 ${fmtD(s.E.equity)}${noF ? '<br>⚠️ 外资数据缺失，外资离场判断暂不可用' : ''}</div></button>`; }
-  el.innerHTML = left + right;
+  let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 限价 ${s.side > 0 ? '≤' : '≥'} ${fmtD(s.px)} · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
+  const dsl = `<div class="dsl ${s.dl.cls}" id="dataLine">${esc(s.dl.t)}</div>`;
+  let left, right;
+  if (!s.pos) {
+    left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 现价 ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
+    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
+    right = `<button class="sg" data-goplan="1" aria-label="持仓：空仓。点击打开交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
+  } else {
+    const m = s.mg, ho = s.hold, t = s.pos, sd = t.side > 0, out = m.action !== '持有', fl = planPnl(t, ho.last), noF = !F.used.length;
+    const stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), stopGap = Math.abs((stopPx / ho.last - 1) * 100);
+    const why = !out ? '没有触发止损、移动止盈或外资离场' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损` : m.action === '移动止盈' ? `最高浮盈 ${m.peakR.toFixed(1)}% 后回落已到 ${TPLAN.TRAIL}%` : m.action === '外资去杠杆·平多' ? `${F.minK} 5日 ${f2(F.min)} 手，≤ ${f2(TPLAN.DELEV)}` : `外资三家合计5日 ${f2(F.sum)} 手（≥0），或价格站上MA20`;
+    const trailTxt = m.peakR >= TPLAN.ACT ? '移动止盈已启动' : `移动止盈未启动（最高浮盈 ${m.peakR.toFixed(1)}%<${TPLAN.ACT}%）`;
+    const fch = sd ? chip(!m.delevOut, m.delevOut ? '外资去杠杆' : '外资未去杠杆') : chip(!(F.used.length && F.sum >= 0), '外资合计 ' + (F.used.length ? f2(F.sum) : '无数据') + (F.sum >= 0 && F.used.length ? '（回正）' : '，未回正')) + (sg.ma20 != null ? chip(!(ho.last > sg.ma20 * ho.k), '未站上MA20') : '');
+    left = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="1" aria-label="持仓信号：${out ? '该平仓：' + m.action : '继续持有'}。${esc(why)}。点击打开交易计划"><div class="cl">持仓信号（收盘后看一次）· 现价 ${fmtD(ho.last)}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div><div class="sb">${esc(why)}${s.side && !blocked ? '<br>入场信号仍成立，已有持仓不加仓' : ''}</div>
+    <div class="scs">${chip(!m.stop, '止损价 ' + fmtD(stopPx) + '（距 ' + stopGap.toFixed(1) + '%）')}${chip(!m.trail, trailTxt)}${fch}</div>${dsl}</button>`;
+    const up = fl >= 0;
+    right = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="1" aria-label="持仓：${sdName(t.side)}${t.lots}手，浮盈亏 ${yuan(fl)} 元。点击打开交易计划"><div class="cl">持仓 ${sdName(t.side)}${fmtD(t.lots)}手 @${fmtD(t.entryPx)} · ${esc(t.entryD.slice(5))}</div><div class="hd" style="color:${up ? 'var(--bull)' : 'var(--bear)'}">${yuan(fl)} 元</div>
+      <div class="sb">浮盈亏 ${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}% · 最高浮盈 ${m.peakR.toFixed(1)}%<br>权益 ${fmtD(s.E.equity)} 元${noF ? '<br>⚠️ 外资数据缺失，外资离场判断暂不可用' : ''}</div></button>`;
+  }
+  el.innerHTML = `<div class="sgw">${left}${qb(s.pos ? 'plpos' : 'plsig')}</div>` + right;
+  applyPlanVis();
 }
 /* ---- 交易计划页 ---- */
-function sizeHtml(z, side, m, mode, eq) {
+function sizeHtml(z, side, m, mode, eq, px) {
   const sd = sdName(side);
   let h = `<table class="tb3x tbpl"><tbody>
+    <tr><td><b>建议入场价（${sd}，挂限价单）</b></td><td class="n"><b>${side > 0 ? '≤ ' : '≥ '}${fmtD(px)}</b>（信号日收盘价；下一个交易日有效，没成交就作废；跳空${side > 0 ? '低开' : '高开'}按开盘价成交）</td></tr>
     <tr><td>权益所在阶梯 → 占用</td><td class="n">${fmtD(eq)} 元 → ${Math.round(z.u * 100)}%</td></tr>
     <tr><td><b>开仓手数（${sd}）</b></td><td class="n"><b>${fmtD(z.lots)} 手</b>（名义 ${fmtD(z.notional)} 元 · ${z.leverage.toFixed(1)} 倍）</td></tr>
     <tr><td>占用保证金（按 ${(m * 100).toFixed(1)}%）</td><td class="n">${fmtD(z.margin)} 元（占权益 ${pc1(z.usage)}）</td></tr>
@@ -325,32 +354,34 @@ function sizeHtml(z, side, m, mode, eq) {
 function syncActionsUrl() { const m = location.hostname.match(/^([^.]+)\.github\.io$/), r = location.pathname.split('/')[1]; return m && r ? `https://github.com/${m[1]}/${r}/actions/workflows/record-position.yml` : null; }
 function syncHtml(pos) {
   const u = syncActionsUrl(), ex = pos ? `动作 <b>open</b> · 方向 <b>${pos.side > 0 ? '多' : '空'}</b> · 手数 <b>${pos.lots}</b> · 日期 <b>${esc(pos.entryD)}</b> · 成交均价 <b>${fmtD(pos.entryPx)}</b>` : '动作 <b>open</b> · 方向 多/空 · 手数 · 开仓日期 · 成交均价';
-  return `<details id="pf-sync"><summary>同步持仓到提醒系统（想收到「该平仓」提醒就要做）</summary><div class="plh">页面里记的账只存在这台设备的浏览器里，服务器上的提醒不知道你有没有仓位。开仓后到 GitHub 点一次，平仓后再点一次（一年大约十次）：</div>
+  return `<details id="pf-sync"><summary>同步持仓到提醒</summary><div class="plh">想收到「该平仓」提醒就要做这一步。页面里记的账只存在这台设备的浏览器里，服务器上的提醒不知道你有没有仓位。开仓后到 GitHub 点一次，平仓后再点一次（一年大约十次）：</div>
    <div class="plh">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">GitHub → Actions → 记录持仓 → Run workflow</a>` : 'GitHub → Actions → 记录持仓 → Run workflow'}，填：${ex}；平仓后填 动作 <b>close</b>。</div>
    <div class="plh">不同步也能用：入场提醒不需要持仓；离场判断页面首页每天仍会显示「继续持有 / 该平仓」。</div></details>`;
 }
+const qb = k => `<button class="q" data-about="${k}" aria-label="说明">?</button>`;
 function planBodyHtml(s) {
   const A = s.A, sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), pct1 = x => x == null ? '—' : x.toFixed(0) + '%';
-  const mk = (ok, y, n) => `<td class="${ok ? 'ok' : 'no'}">${ok ? '✓ ' + y : '✗ ' + n}</td>`, inp = (id, v, ph, extra) => `<input id="${id}" inputmode="decimal" value="${esc(v)}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
+  const fwk = F => F.parts.length ? esc(F.minK.replace('期货', '')) + ' ' + f2(F.min) : '—', mk = (ok, y, n) => `<td class="${ok ? 'ok' : 'no'}">${ok ? '✓ ' + y : '✗ ' + n}</td>`, inp = (id, v, ph, extra) => `<input id="${id}" inputmode="decimal" value="${esc(v)}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
   const sel = (id, cur, opts, extra) => `<select id="${id}" ${extra || ''}>${opts.map(([k, n]) => `<option value="${k}"${String(cur) === String(k) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
   const head = !s.gate.ok ? '数据不足，信号不可信' : s.side > 0 ? '满足做多入场条件' : s.side < 0 ? '满足做空入场条件' : '没有入场信号，观望';
-  let h = PMSG ? `<div class="plw pmsg" role="status">${esc(PMSG)}</div>` : '';
-  /* ① 今日信号 */
-  h += `<div class="plt">① 今日入场信号</div><div class="hl"><b>${head}</b><br><span style="color:var(--ink2)">${esc(!s.gate.ok ? s.gate.reasons.join('；') + '。先别按这个信号操作' : planWhy(sg))}${s.pos && s.side ? '。你已有持仓，不加仓' : ''}</span>${s.gate.warn.length ? '<br><span class="plh">' + esc(s.gate.warn.join('；')) + '</span>' : ''}</div>
+  const pmsg = PMSG ? `<div class="plw pmsg" role="status">${esc(PMSG)}</div>` : '';
+  let h = '';
+  /* ① 今日信号（页面分块：ps1..ps5，电脑端排成两列一屏放下） */
+  h += `<div class="plt">今日入场信号 ${qb('plsig')}</div><div class="hl plhead"><b>${head}</b><br><span style="color:var(--ink2)">${esc(!s.gate.ok ? s.gate.reasons.join('；') + '。先别按这个信号操作' : planWhy(sg))}${s.pos && s.side ? '。你已有持仓，不加仓' : ''}</span>${s.gate.warn.length ? '<br><span class="plh">' + esc(s.gate.warn.join('；')) + '</span>' : ''}</div>
   <table class="tb3x tbpl"><tbody>
    <tr><td>做多①价格低位（260日分位 ≤ ${TPLAN.LO}%）</td><td class="n">${pct1(sg.pct)}</td>${mk(sg.lowOK, '满足', '不满足')}</tr>
    <tr><td>做多②反弹确认（高于5日前，且高出前10日最低价1%）</td><td class="n">—</td>${mk(sg.confirm, '满足', '不满足')}</tr>
-   <tr><td>做多③外资没有去杠杆（5日净变化 > ${f2(TPLAN.DELEV)} 手）</td><td class="n">${f2(F.sum)}</td>${mk(!sg.delev, '满足', '外资去杠杆')}</tr>
-   <tr><td>做空①外资去杠杆（5日净变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${f2(F.sum)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
+   <tr><td>做多③外资没有去杠杆（任一席位5日变化 > ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(!sg.delev, '满足', '外资去杠杆')}</tr>
+   <tr><td>做空①外资去杠杆（任一席位5日变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
    <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
   </tbody></table>
-  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">${esc(monthHint())}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.basis === 'long' ? '(只算多单)' : q.basis === 'short' ? '(只算空单)' : q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（只算多单/空单 = 该席位只有一边进了前20，只用进榜那一边的真实变化，不把顶替的第20名算进去；估算 = 暂时拿不到多空明细，退回净持仓差，混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
-  if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
+  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div>`;
+  if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity, s.px) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
   /* ② 持仓管理 */
-  h += `<div class="plt">② 持仓管理</div>`;
+  h += `\u0001<div class="plt">持仓管理 ${qb('plpos')}</div>`;
   if (!s.pos) {
     const ds = s.side || 1, lots = s.size ? s.size.lots : '';
-    h += `<div class="plh">当前空仓。成交后在这里记一笔，之后开仓价、持仓最高/最低价、浮盈亏、该不该走都自动算。</div><div class="plf">
+    h += `<div class="plf">
       <label>开仓日期${inp('pf-od', todayBJ(), 'YYYY-MM-DD')}</label>
       <label>方向${sel('pf-os', ds, [[1, '做多'], [-1, '做空']])}</label>
       <label>手数${inp('pf-ol', lots, '手')}</label>
@@ -359,55 +390,54 @@ function planBodyHtml(s) {
       <button class="pbtn" data-act="open">记录开仓</button>`;
   } else {
     const t = s.pos, m = s.mg, ho = s.hold, out = m.action !== '持有', fl = planPnl(t, ho.last), sd = t.side > 0, usage = t.lots * TPLAN.TON * ho.last * (A.margin / 100) / (s.E.equity > 0 ? s.E.equity : 1);
-    const why2 = !out ? '没有触发止损、移动止盈或外资离场。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `外资5日净变化 ${f2(s.F.sum)} 手，≤ ${f2(TPLAN.DELEV)}。` : '外资5日净变化 ≥ 0，或价格已站上MA20。';
+    const why2 = !out ? '没有触发止损、移动止盈或外资离场。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `${esc(s.F.minK)} 5日变化 ${f2(s.F.min)} 手，≤ ${f2(TPLAN.DELEV)}。` : `外资三家合计5日变化 ${f2(s.F.sum)} 手（≥0），或价格已站上MA20。`;
     const trigPx = sd ? ho.peak * (1 - TPLAN.TRAIL / 100) : ho.peak * (1 + TPLAN.TRAIL / 100), stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), actPx = t.entryPx * (1 + (sd ? 1 : -1) * TPLAN.ACT / 100);
     const trailTxt = m.peakR >= TPLAN.ACT ? `已启动：${sd ? '跌破' : '涨过'} ${fmtD(trigPx)} 平仓（距现价 ${Math.abs((trigPx / ho.last - 1) * 100).toFixed(1)}%）` : `未启动（最高浮盈 ${m.peakR.toFixed(1)}% < ${TPLAN.ACT}%）；价格到 ${fmtD(actPx)} 后启动`;
     h += `<div class="hl vd ${out ? 'exit' : 'hold'}"><b>${out ? '该平仓：' + esc(m.action) : '继续持有'}</b>　浮盈亏 ${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}%（${yuan(fl)} 元）<br><span style="color:var(--ink2)">${esc(why2)}</span></div>
-    <table class="tb3x tbpl"><tbody>
+    <table class="tb3x tbpl tb2c"><tbody>
      <tr><td>持仓</td><td class="n">${sdName(t.side)}单 ${fmtD(t.lots)} 手 · ${esc(t.entryD)} @ ${fmtD(t.entryPx)} · 已持有 ${ho.days} 个交易日</td></tr>
      <tr><td>现价（主力连续，截至${ho.lastD ? esc(ho.lastD.slice(5)) : '开仓日'}）</td><td class="n">${fmtD(ho.last)}</td></tr>
      <tr><td>持仓期间${sd ? '最高' : '最低'}价（自动）</td><td class="n">${fmtD(ho.peak)}（最高浮盈 ${m.peakR.toFixed(1)}%）</td></tr>
      <tr><td>持仓期间${sd ? '最低' : '最高'}价（自动）</td><td class="n">${fmtD(ho.worst)}</td></tr>
      <tr><td>止损价（${TPLAN.STOP}%）</td><td class="n">${fmtD(stopPx)}（距现价 ${Math.abs((stopPx / ho.last - 1) * 100).toFixed(1)}%）</td></tr>
      <tr><td>移动止盈</td><td class="n">${trailTxt}</td></tr>
-     <tr><td>外资5日净变化 · ${sd ? '外资去杠杆则平多' : '≥0 或站上MA20 则离场'}</td><td class="n">${f2(s.F.sum)} 手${!sd && s.sig.ma20 != null ? ' · MA20 ' + fmtD(s.sig.ma20 * ho.k) : ''}</td></tr>
+     <tr><td>${sd ? '外资最弱席位5日变化 · 任一席位 ≤ −2万则平多' : '外资三家合计5日变化 · ≥0 或站上MA20 则离场'}</td><td class="n">${sd ? (s.F.parts.length ? esc(s.F.minK.replace('期货', '')) + ' ' : '') + f2(s.F.min) : f2(s.F.sum)} 手${!sd && s.sig.ma20 != null ? ' · MA20 ' + fmtD(s.sig.ma20 * ho.k) : ''}</td></tr>
      <tr><td>当前风险度（保证金/权益）</td><td class="n">${pc1(usage)}</td></tr></tbody></table>
     ${ho.scaled ? `<div class="plh">你的开仓价和开仓日主连收盘差超过2%（可能是非主力合约），最高/最低价和现价已按开仓日主连收盘折算，涨跌幅准确。</div>` : ''}${ho.covered ? '' : `<div class="plh">开仓日期晚于已有价格数据，最高/最低价暂按开仓价，数据更新后自动补上。</div>`}
-    <div class="plt" style="margin-top:10px">${out ? '已平仓？记一笔' : '手动平仓（系统没让走，你自己要走时）'}</div><div class="plf">
+    <div class="plt" style="margin-top:6px">${out ? '已平仓？记一笔' : '手动平仓（系统没让走，你自己要走时）'}</div><div class="plf">
       <label>平仓日期${inp('pf-cd', todayBJ(), 'YYYY-MM-DD')}</label>
       <label>成交均价（元/吨）${inp('pf-cp', Math.round(ho.last), '')}</label>
       <label>平仓手续费（元，留空=每手${fmtD(A.fee)}元的一半）${inp('pf-cf', '', '留空自动')}</label></div>
       <button class="pbtn${out ? ' warn' : ''}" data-act="close">记录平仓</button>`;
   }
-  h += syncHtml(s.pos);
   /* ③ 账户权益 */
   const E = s.E, st = planStats(A);
-  h += `<div class="plt">③ 账户权益（自动）</div><div class="hl"><b>${fmtD(E.equity)} 元</b>　<span style="color:var(--ink2)">= 初始 ${fmtD(E.init)} ${yuan(E.flows)}出入金 ${yuan(E.realized)}已平仓 ${yuan(E.floating)}持仓浮动 −${fmtD(E.fees)}手续费</span></div>
-   <div class="plh">${st.n ? `已平仓 ${st.n} 笔，胜 ${st.wins} 笔（${(st.wins / st.n * 100).toFixed(0)}%），净盈亏 ${yuan(st.net)} 元（已扣手续费）。` : '还没有已平仓记录。'}手续费按每手来回 ${fmtD(A.fee)} 元估算，开仓/平仓各记一半，记录时填了实际金额就用实际的。现价用主力连续收盘价，和期货公司结算价会有小差别，需要时用下面的校准。</div>
-   <div class="plf">
+  h += `\u0001<div class="plt">账户权益（自动）${qb('placct')}</div><div class="hl"><b>${fmtD(E.equity)} 元</b>　<span style="color:var(--ink2)">= 初始 ${fmtD(E.init)} ${yuan(E.flows)}出入金 ${yuan(E.realized)}已平仓 ${yuan(E.floating)}持仓浮动 −${fmtD(E.fees)}手续费</span></div>
+   <div class="plh">${st.n ? `已平仓 ${st.n} 笔，胜 ${st.wins} 笔（${(st.wins / st.n * 100).toFixed(0)}%），净盈亏 ${yuan(st.net)} 元（已扣手续费）。` : '还没有已平仓记录。'}</div>
+   <details id="pf-set"><summary>账户设置 · 出入金 · 对账校准</summary><div class="plf">
     <label>初始资金（元）${inp('pf-init', A.init, '', 'data-set="init"')}</label>
     <label>期货公司保证金比例（%）${inp('pf-m', A.margin, '', 'data-set="margin"')}</label>
     <label>每手手续费，来回（元）${inp('pf-fee', A.fee, '', 'data-set="fee"')}</label>
     <label>手数口径${sel('pf-mode', A.mode, [['real', '按我的实际保证金占用'], ['bt', '按回测杠杆（10%保证金）']], 'data-set="mode"')}</label></div>
-   <div class="plh">回测每手来回按 23 元（含滑点估计）；摘要里 63、103 元是敏感性测试。保证金比例填期货公司实际收的（交易所10% + 加收），回测按10%。</div>
    <div class="plf">
     <label>出入金日期${inp('pf-fd', todayBJ(), 'YYYY-MM-DD')}</label>
     <label>金额（入金填正数，出金填负数）${inp('pf-fa', '', '如 200000 或 -50000')}</label>
     <label>备注${inp('pf-fn', '', '如 年度追加')}</label></div>
    <button class="pbtn" data-act="flow">记录出入金</button>
    <div class="plf" style="margin-top:8px"><label>期货公司账户实际权益（元）${inp('pf-ca', '', '对账后填，系统记一笔差额')}</label></div>
-   <button class="pbtn" data-act="calib">按实际权益校准</button>`;
+   <button class="pbtn" data-act="calib">按实际权益校准</button></details>`;
   /* ④ 交易记录 */
-  h += `<div class="plt">④ 交易记录</div>`;
+  h += `\u0001<div class="plt">交易记录</div>`;
   if (!A.trades.length) h += `<div class="plh">暂无记录。</div>`;
   else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th>手数</th><th>开仓价</th><th>平仓</th><th>平仓价</th><th>手续费</th><th>净盈亏</th><th>价格涨跌</th><th>开仓时：基本面 · 外资5日</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
       const cl = !!t.exitD, fee = planFee(t, A.fee), net = cl ? planPnl(t, t.exitPx) - fee : null, ret = cl ? (t.side >= 0 ? 1 : -1) * (t.exitPx / t.entryPx - 1) * 100 : null;
       return `<tr><td>${esc(t.entryD)}</td><td>${sdName(t.side)}</td><td class="n">${fmtD(t.lots)}</td><td class="n">${fmtD(t.entryPx)}</td><td>${cl ? esc(t.exitD) : '持仓中'}</td><td class="n">${cl ? fmtD(t.exitPx) : '—'}</td><td class="n">${fmtD(fee)}</td><td class="n" style="color:${net == null ? 'inherit' : net >= 0 ? 'var(--bull)' : 'var(--bear)'}">${net == null ? '—' : yuan(net)}</td><td class="n">${ret == null ? '—' : (ret >= 0 ? '+' : '') + ret.toFixed(1) + '%'}</td><td>${t.snap ? esc((t.snap.fund || '—') + ' · ' + (t.snap.fsum >= 0 ? '+' : '') + t.snap.fsum) : '—'}</td><td><button class="xbtn" data-act="delt" data-id="${esc(t.id)}" aria-label="删除这笔记录">×</button></td></tr>`; }).join('')}</tbody></table></div>`;
   if (A.flows.length) h += `<details id="pf-fl"><summary>出入金记录（${A.flows.length} 笔）</summary><table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table></details>`;
-  h += `<div class="plh" style="margin-top:8px">记录只存在这台设备的浏览器里（换设备、清缓存会丢）。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
+  h += `<div class="plh" style="margin-top:8px">记录只存本机浏览器。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
   /* 折叠：阶梯、回测摘要 */
-  h += `<details id="pf-mo"><summary>历史开仓月份（背景参考 · 信号频率有参考，盈亏没有）</summary>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯（权益越大占用越低）</summary>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要（样本内，仅供参考）</summary>${planBtHtml()}</details>`;
-  return h;
+  h += `\u0001${syncHtml(s.pos)}<details id="pf-mo"><summary>历史开仓月份</summary><div class="plh">背景参考：信号出现的频率有参考，盈亏没有。</div>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯</summary><div class="plh">权益越大，占用越低。</div>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要</summary><div class="plh">样本内结果，仅供参考。</div>${planBtHtml()}</details>`;
+  const q = h.split('\u0001');   // [入场信号, 持仓管理, 账户权益, 交易记录, 折叠项]：电脑端两列排版时按 入场/账户/记录 | 持仓 的顺序放，高度才平衡
+  return pmsg + `<div class="plgrid"><div class="ps ps1">${s.pos ? `<details id="pf-sig"><summary>入场信号条件（已有持仓，不加仓）</summary>${q[0]}</details>` : q[0]}</div><div class="ps ps3">${q[2]}</div><div class="ps ps4">${q[3]}</div><div class="ps ps2">${q[1]}</div><div class="ps ps5">${q[4]}</div></div>`;
 }
 function tradeShell() { const t = $('#tradePanel'); if (t && !$('#planBody')) t.innerHTML = `<div class="ch-h"><span class="t">交易计划 · 持仓与账户</span><button class="q" data-about="plan" aria-label="这页怎么用">?</button></div><div id="planForm"><div id="planBody"></div></div>`; }
 function planBtHtml() {
@@ -416,9 +446,12 @@ function planBtHtml() {
     <tr><td>收盘价成交 + 当天龙虎榜（做不到：龙虎榜收盘后才公布）</td><td class="n">895万 · 396万 · 245万</td></tr>
     <tr><td>14:58 下单（收盘价±2分钟波动模拟）+ 只能用前一天龙虎榜</td><td class="n">754万 · 317万 · 221万</td></tr>
     <tr><td><b>★ 收盘后看信号，次日开盘价成交（本页的流程）</b></td><td class="n"><b>735万 · 379万 · 237万</b></td></tr>
+    <tr><td>次日挂限价单=信号日收盘价（没成交就作废；95% 的信号能成交）</td><td class="n">830万 · 385万 · 241万</td></tr>
+    <tr><td>次日挂限价单=收盘价回调 0.3%（成交率 83%）/ 0.5%（58%）</td><td class="n">1022万 · 395万 · 247万 / 919万 · 409万 · 257万</td></tr>
+    <tr><td>次日挂限价单=收盘价回调 1%（成交率 22%）/ 1.5%</td><td class="n">337万 · 160万 · 156万 / 146万 · 96万 · 94万</td></tr>
     <tr><td>信号用原始主连（换月日有价差跳空；本页早期版本的做法），次日开盘成交</td><td class="n">317万 · 113万 · 45万</td></tr>
   </tbody></table>
-  <div class="plh">结论：14:58 抢跑并不比次日开盘明显好（模拟范围 703~803万 与 735万 重叠），却要盯盘、龙虎榜还没出；所以只在收盘后看一次。信号和盈亏必须用「换月调整价」（本页已改），否则会多出换月假信号。</div>
+  <div class="plh">结论：14:58 抢跑并不比次日开盘明显好（模拟范围 703~803万 与 735万 重叠），却要盯盘、龙虎榜还没出；所以只在收盘后看一次。入场价见上面的限价单几行：挂在收盘价没问题（不比开盘市价差），回调挂得越深越容易错过——回调 1% 就掉到 337万（夏普 0.89），中间 0.3~0.5% 好看是 43 笔里个别单的路径，不当规则。信号和盈亏必须用「换月调整价」（本页已改），否则会多出换月假信号。</div>
   <table class="tb3x tbpl"><tbody>
     <tr><td>★口径：年化 · 夏普（全程）</td><td class="n">+54% · 1.09</td></tr>
     <tr><td>5年内最大回撤</td><td class="n">中位 −48% · 最差 −54%</td></tr>
@@ -446,12 +479,16 @@ function monthHtml() {
 }
 function monthHint() { const r = MSTAT.rows[+todayBJ().slice(5, 7) - 1], x = r.n / MSTAT.n * 12, k = x >= 1.8 ? '高发月：历史上信号较常出现，提醒保持开启' : x <= 0.6 ? '少发月：历史上很少出信号' : '平常月份'; return `本月（${r.m}月）历史开仓 ${r.n} 笔（占 ${(r.n / MSTAT.n * 100).toFixed(0)}%）· ${k}`; }
 function planFormSnap() { const keep = {}; $$('#planBody [id^="pf-"]').forEach(e => { if (e.dataset.t) keep[e.id] = e.value; }); return { keep, opened: $$('#planBody details[open]').map(e => e.id) }; }
+let PLAN_BUSY = false;   // 正在重绘时不再重入：浏览器在拆掉有焦点的输入框时会同步触发 change/blur，里面又会调用重绘
 function planUpdate(reset, snap) {
-  const box = $('#planBody'); if (!box) return;
-  const sn = reset ? { keep: {}, opened: planFormSnap().opened } : (snap || planFormSnap());
-  box.innerHTML = planBodyHtml(planSnap());
-  Object.keys(sn.keep).forEach(id => { const e = document.getElementById(id); if (e) { e.value = sn.keep[id]; e.dataset.t = '1'; } });
-  sn.opened.forEach(id => { const e = document.getElementById(id); if (e) e.open = true; });
+  const box = $('#planBody'); if (!box || PLAN_BUSY) return;
+  PLAN_BUSY = true;
+  try {
+    const sn = reset ? { keep: {}, opened: planFormSnap().opened } : (snap || planFormSnap());
+    box.innerHTML = planBodyHtml(planSnap());
+    Object.keys(sn.keep).forEach(id => { const e = document.getElementById(id); if (e) { e.value = sn.keep[id]; e.dataset.t = '1'; } });
+    sn.opened.forEach(id => { const e = document.getElementById(id); if (e) e.open = true; });
+  } finally { PLAN_BUSY = false; }
 }
 function planAfter(msg) { PMSG = msg || null; planUpdate(true); renderSig(); drawChart(); }
 const okDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d) && isFinite(Date.parse(d));
@@ -473,6 +510,7 @@ function planAct(act, el) {
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('平仓没记：手续费要么留空，要么填数字。');
     t.exitD = d; t.exitPx = px; t.feeC = fee === '' ? null : parseFloat(fee); t.snapX = planSnapshotNow(planSnap());
     const net = planPnl(t, px) - planFee(t, A.fee);
+    S.planShow = undefined;   // 平仓后回到自动：空仓就把交易计划收起来
     return save(`已记录平仓：净盈亏 ${yuan(net)} 元（已扣手续费），权益已更新。`);
   }
   if (act === 'flow') {
@@ -657,7 +695,7 @@ function checks() {
   if (set.length >= 2 && new Set(set).size > 1) { lv = 'warn'; tx = '三方背离'; } else if (set.length === 3) { lv = 'ok'; tx = '三方一致'; } else if (set.length === 0) tx = '都没有方向';
   let el, et, eb;
   if (closed()) { el = 'note'; et = '休市中'; eb = `<p>${esc(D.closure.closure.name)}休市，${D.closure.closure.from} 至 ${D.closure.closure.to}，${mmdd(D.closure.reopenMs)} ${hhmm(D.closure.reopenMs)} 恢复交易。</p>`; }
-  else { const nx = D.events.filter(e => e.kind === 'usda' && e.ms - D.snapshotMs < 48 * 3600e3); el = nx.length ? 'note' : 'ok'; et = nx.length ? nx[0].title : '48小时内无重大事件'; eb = '<p>重大事件指 USDA 月度供需报告、季度库存、休市。</p>'; }
+  else { const nx = D.events.filter(e => e.kind === 'usda' && e.ms - D.snapshotMs < 48 * 3600e3); el = nx.length ? 'note' : 'ok'; const mj = D.events.filter(e => (e.kind === 'usda' || e.kind === 'closure' || e.kind === 'reopen') && e.ms > D.snapshotMs), nm = mj[0]; et = nx.length ? nx[0].title : '48小时内无重大事件' + (nm ? ' · 下一个 ' + nm.label.slice(0, 5) : ''); eb = '<p>重大事件指 USDA 月度供需报告、季度库存、休市（北京时间）。</p>' + (mj.length ? '<h3>接下来的重大事件</h3>' + mj.map(evRow).join('') : '<p class="dim2">未来45天里日历里没有重大事件。</p>') + '<h3>近14天的周度数据（不算重大）</h3>' + (D.events.filter(e => e.kind === 'weekly' && e.ms - D.snapshotMs < 14 * 86400e3).map(evRow).join('') || '<p class="dim2">没有。</p>'); }
   out.push({ k: 'evt', t: '事件', lv: el, tx: et, body: eb });
   const nx = D.events.find(e => e.ms > D.snapshotMs && !(closed() && e.kind === 'reopen')) || D.events[0];
   const hl = !h ? 'na' : h.sync.state !== 'ok' ? (h.sync.state === 'degraded' ? 'note' : 'warn') : (h.bad > 0 || h.warn > 0 ? 'note' : 'ok');
@@ -667,6 +705,7 @@ function checks() {
     body: pb.band === 'unknown' ? '<p>近260日历史不足200根，暂不下结论。</p>' : `<p>最新收盘在近 ${pb.n} 个交易日里处于 <b>${pb.pct}%</b> 分位（${BANDNAME[pb.band]}）。铁底(20%分位价) ${ab(pb.p20)}，铁顶(80%分位价) ${ab(pb.p80)}。${pb.ext ? `前 ${pb.ext} 日是用其他合约按重叠日比例换算的，不是本合约原始成交价。` : ''}</p><p>历史检验：低位带之后略好于基准（温和支持）；高位带没有“之后会跌”的证据。这只描述价格贵不贵，不是买卖信号。</p>` });
   return out;
 }
+const evRow = e => `<div class="cd"><span></span><span>${esc(e.title)}</span><span class="s">${esc(e.label)}</span></div>`;
 function renderChecks() {
   const chs = checks();
   $('#checks').innerHTML = chs.map(x => `<button class="lp" data-lamp="${x.k}" aria-label="${esc(x.t)}：${LW[x.lv]}，${esc(x.tx)}">${lampSvg(x.lv)}<span class="k">${esc(x.t)}</span><span class="v">${esc(x.tx)}</span></button>`).join('') +
@@ -838,6 +877,12 @@ function tabBody(k) {
   return '';
 }
 function openTab(k) { const t = TABS.find(x => x[0] === k); openSheet('证据：' + t[1], tabBody(k), TABS, k); }
+function tileSeatNote(t) {   // 研究页的高盛(净持仓、按自然日对比)和交易计划的外资5日(近5个交易日、只算真实一边)口径不同：把后者的数字摆在这里对照
+  const nm = { gs: '高盛期货' }[t.id], m = nm && D.capital && D.capital.members && D.capital.members[nm], c5 = m && m.history && m.history.change5;
+  if (!c5 || typeof c5.change !== 'number') return '';
+  const how = c5.basis === 'long' ? '只算多单的真实变化' : c5.basis === 'short' ? '只算空单的真实变化' : c5.approx ? '估算(净持仓差)' : '净持仓变化';
+  return `<p class="dim2" style="margin-top:10px"><b>交易计划用的口径</b>：近5个交易日（${esc(String(c5.from).slice(5))} → ${esc(String(c5.to).slice(5))}），${how}，<b>${sg(c5.change)}</b> 手。上表是净持仓(多−空；空单常是第20名顶替的下限估计)按自然日(1周/1月/3月)对比，起点和口径都不同，所以数字不同，不是数据错了。</p>`;
+}
 function openTile(id) {
   const t = TILES.find(x => x.id === id); if (!t) return;
   const tr = t.tr, pts = t.freq === 'seasonal-daily' ? L.currentRun(t.pts, 10) : t.pts.slice(-(WIN[t.freq] || WIN.daily).long);
@@ -846,6 +891,7 @@ function openTile(id) {
   openSheet(t.name, `<div class="dbig">${svg || '<div class="dim2">历史累积中，画不出趋势。</div>'}</div>
     <p>最新 <b class="num">${last(t)}</b> ${esc(t.unit)}，${esc(tr.last ? tr.last.d : '—')}，频率 ${esc(t.freq === 'seasonal-daily' ? '日度(只在建议交易窗口内有数据)' : t.freq)}，共 ${pts.length} 个点。</p>
     <table class="tb3x"><thead><tr><th>周期</th><th>对比的点</th><th>变化</th><th>对价格</th></tr></thead><tbody>${tr.chips.map(row).join('')}</tbody></table>
+    ${tileSeatNote(t)}
     <p class="dim2" style="margin-top:12px">${t.pol === 0 ? '这个指标升降本身不直接对应多空（反映的是拥挤程度）。' : t.pol > 0 ? '数值上升对价格偏多，下降偏空。' : '数值上升对价格偏空，下降偏多。'}${t.note ? ' ' + esc(t.note) + '。' : ''}</p>`);
 }
 const last = t => { const p = t.tr.last; return p ? L.fmtNum(p.v, t.unit) : '—'; };
@@ -864,10 +910,18 @@ ABOUT.pos = ['价格位置怎么看', `<p>阴影带是每一天往回看 260 个
 ABOUT.sea = ['同期规律怎么看', `<p>每根柱子是该月份在历年里“上涨的年份占比”。默认看现货价格，可切到期货（换月修正后的月度涨跌）。下方数字是历年平均涨跌。</p><p>稳定性分三档：前后两半样本方向相反=不稳；同向但胜率或显著性不够=一般；同向且胜率、显著性都够=较稳。柱子越淡越不稳。</p><p>季节性只描述“历史上通常怎样”，不预测今年，样本只有9~10年。</p>`];
 ABOUT.cost = ['成本锚怎么看', `<p>所有数字都是<b>豆粕价格（元/吨）</b>：豆的成本按出粕率78.5%，扣掉豆油副产品（出油率18.5%）和压榨费150元换算而来。</p><ul><li><b>盈亏平衡价</b>：只用豆二、豆油盘面价算，最可靠。盘面高于它=压榨有利润；低于它=亏损、油厂减产，下方有支撑。</li><li><b>进口成本带</b>：用CBOT大豆+升贴水（±50美分）+关税+增值税9%+港杂100元推算。美豆关税13%，成本偏高，说明盘面是按更便宜的巴西豆定价的。</li><li>升贴水是4月快照，没有历史、无法回测；增值税、港杂是经验值未核实，所以进口成本带只当参考。</li></ul><p>成本锚是估值参照，<b>不是买卖信号</b>。</p>`];
 ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」两个模式（右上角切换，记住你的选择）：交易模式只留入场信号、持仓管理、账户权益、交易记录和K线；基本面趋势墙、市场状态、成本锚、证据页在研究模式。顶部「入场信号」和「持仓管理」两格就是结论。<b>系统不会替你下单</b>，它只做三件事：告诉你今天有没有入场信号、该开几手；你成交后记一笔，之后开仓价、持仓最高/最低价、浮盈亏、权益全部自动算；每天自动判定持仓该走还是继续拿。</p>
-<ul><li><b>做多</b>：价格在近260日 ≤50% 分位，今天的收盘高于5日前、且比前10日最低价高1%以上，外资5日净变化 > −2万手。</li>
-<li><b>做空</b>：只有外资去杠杆（5日净变化 ≤ −2万手）且价格 < MA20 < MA60、低于5日前才做。</li>
-<li><b>平仓</b>：亏4%止损；持仓期间最高浮盈到过 ≥8% 之后，从最高（空单最低）价回落4% 平；持多单遇外资去杠杆平多；空单遇外资5日净变化 ≥0 或价格站上MA20 离场。</li>
-<li><b>占用阶梯</b>：权益<500万 60%；500~1500万 40%；1500~5000万 25%；其后 15%（页面底部可展开）。没有账户回撤熔断。</li></ul>
+<h3>完整交易逻辑（回测和页面是同一套）</h3>
+<ul><li><b>价格</b>：用「换月调整的主力连续价」（只做主力合约，主力按持仓量在1/5/9月之间轮换，换月日沿用前一天涨跌幅，不吃价差跳空）。信号和持仓涨跌都用它，收盘后看一次，操作在<b>下一个交易日</b>（入场挂限价单，平仓开盘市价）。</li>
+<li><b>外资</b> = 摩根大通、高盛期货、瑞银期货，各自「近5个交易日」持仓变化。龙虎榜每边只公布前20名：席位只有一边进前20时，只用进榜那一边的真实变化，不把顶替的第20名算进去；拿不到的席位不参与（回测里缺数据日按0）。</li>
+<li><b>外资去杠杆</b>：<b>任一</b>席位5日变化 ≤ −2万手（看单个席位，不看合计：席位之间会对冲，例如摩根加仓、高盛减仓）。</li>
+<li><b>做多</b>（三条同时满足）：①价格在近260日 ≤50% 分位；②反弹确认：今天收盘高于5日前，且比前10日最低价高1%以上；③外资没有去杠杆。</li>
+<li><b>做空</b>（三条同时满足）：①外资去杠杆（任一席位5日变化 ≤ −2万手）；②价格 < MA20 < MA60；③价格低于5日前。空头只在外资去杠杆时才做。</li>
+<li><b>平多</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最高价回落4%；外资去杠杆（任一席位 ≤ −2万手）。</li>
+<li><b>平空</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最低价反弹4%；外资<b>三家合计</b>5日变化 ≥0（外资回正）；价格站上MA20。</li>
+<li><b>入场价（挂条件单用）</b>：信号出现后，下一个交易日挂<b>限价单</b>：做多 ≤ 信号日收盘价、做空 ≥ 信号日收盘价，当日有效，没成交就作废、不追（第二天信号还在会重新给价）。跳空低开（做空是高开）时按开盘价成交，等于不追高。回测（收盘价限价）：5年终值中位 830万 / 夏普 1.11，95% 的信号能成交，不比开盘市价（735万）差。想挂得更低（回调）：回调 0.3%~0.5% 回测更好看但只是少数单的路径，回调 1% 成交率只剩 22%、终值掉到 337万——<b>不建议为了便宜去等回调</b>。止损价按<b>实际成交价</b>×(1∓4%)重新算，页面给的止损价是按收盘价算的参考。</li>
+<li><b>已有持仓时</b>不加仓；同一时间只持一个方向。</li>
+<li><b>占用阶梯</b>：权益<500万 60%；500~1500万 40%；1500~5000万 25%；其后 15%（页面底部可展开）。手数 = 权益×占用 ÷（每吨×10吨×保证金）。没有账户回撤熔断。</li>
+<li><b>平空为什么看合计、去杠杆却看单个席位</b>：回测里两种平空口径几乎一样（14笔空单里13笔完全相同，只差一笔 +1.2%），不是证明出来的优劣，按回测验证过的口径写。</li></ul>
 <p><b>权益怎么算</b>：初始资金 + 出入金 + 已平仓盈亏 + 持仓浮动盈亏 − 手续费。要追加资金（比如每年加20万）就记一笔入金；和期货公司账户对不上时用「按实际权益校准」，系统会记一笔差额。</p>
 <p><b>最高/最低价怎么来</b>：用主力连续日线收盘价，从你的开仓日取到最新一天，和回测同口径（盘中最高价不计）。你的开仓价和主连差超过2%时按开仓日折算。信号和离场判断都只在收盘后看一次。</p>
 <p><b>手续费</b>：按「每手来回多少元」估算，开仓/平仓各一半；回测用 23 元（含滑点估计），63、103 元是敏感性。记录时填了实际金额就用实际的。</p>
@@ -875,13 +929,30 @@ ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」�
 <p><b>移动止盈为什么是「最高浮盈 ≥8% 后回落4%」</b>：按「最高浮盈到过4%就开始跟踪」回测，反而更差——小利润的单子被早早洗出；「≥8%后回落4%」和原先回测的写法等价。回落幅度不要收紧。</p>
 <p><b>数据不足时</b>：外资5日数据一个席位都没取到、或价格数据超过7天没更新，信号格会显示「数据不足，信号不可信」，不给开仓建议（回测里缺外资数据按0算，等于去杠杆过滤失效）。</p>
 <p><b>决策快照</b>：每次记开仓/平仓，会同时存下当时的基本面方向、技术面、资金面、市场状态和信号条件；交易记录里能看到开仓时的基本面和外资，「导出CSV」带全部快照字段。基本面目前没有被回测证明有用（见项目文档），快照是为了以后用你自己的实盘去检验它。</p>
+<p><b>首页随持仓状态变化</b>：空仓时，左格是入场信号（做多/做空、建议手数、限价、止损价），交易计划面板默认收起，点信号格或右上角「计划」展开（成交后在里面「记录开仓」）。有持仓时，左格变成「持仓信号」（继续持有 / 该平仓 + 原因 + 止损价、移动止盈、外资三项状态），右格显示浮盈亏金额，交易计划面板自动展开；记录平仓后恢复空仓界面。同一时间只持一笔：回测一共 43 笔，持仓期间约 28% 的交易日里「入场信号」仍然成立（页面会写「入场信号仍成立，已有持仓不加仓」），这些信号不开第二笔；反向信号只有 18 个持仓日，而且都要先触发离场才会再看。</p>
 <p><b>提醒（邮件 + 微信）</b>：每天夜盘收盘后的那次同步会用同一套逻辑检查：出现新的入场信号、你的持仓该平了、数据不足，就发提醒——GitHub Issue（自动发邮件）、Server酱 / PushPlus（微信）、SMTP 邮件，哪个配了密钥发哪个。入场信号只在「从无到有」时发一次；离场提醒在你平仓并「记录持仓」之前每个交易日提醒一次。提醒里的操作都是<b>下一个交易日开盘</b>。</p>
 <p><b>为什么不是14:58下单</b>：回测对比过。龙虎榜收盘后才公布，14:58 只能用前一天的外资数据，加上价格波动，5年终值中位 754万；收盘后看、次日开盘成交 735万，差别在噪声之内，却要盯盘。所以只在收盘后看一次。</p>
 <p><b>历史开仓月份</b>：交易计划页底部「历史开仓月份」。信号出现频率有一定参考（1、2月最多，★★★☆☆），盈亏没有参考（★☆☆☆☆），不要因为月份加仓或放弃信号。</p>
 <p><b>价格口径</b>：信号、持仓涨跌用「换月调整价」（data/main_adj.json），原始主连在换月日会跳一个合约价差，拿它算会多出假信号（同样次日开盘成交，回测对比：317万 vs 735万）。缺这个文件时信号格会写明并作废信号。</p>
 <p><b>记录存在哪</b>：只存在这台设备的浏览器里，换设备或清缓存会丢，所以页面底部有「备份下载 / 恢复备份」。</p>
 <p><b>局限</b>：39笔交易、样本内；外资信号只有2022年以后；不含涨跌停无法成交、大资金冲击成本和持仓限额。</p>`];
+function sigHelp() {
+  const s = planSnap(), F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US');
+  const bs = q => q.basis === 'long' ? '只算多单(空单只在第20名外，不计)' : q.basis === 'short' ? '只算空单(多单只在第20名外，不计)' : q.approx ? '估算(拿不到多空明细，用净持仓差，混有第20名的变动)' : '净持仓变化(买卖两边都在前20，真值)';
+  return `<h3>外资去杠杆：看单个席位，任一席位「近5个交易日」变化 ≤ −2万手</h3><ul>${F.parts.map(q => `<li><b>${esc(q.k)}</b> ${f2(q.v)} 手：${bs(q)}</li>`).join('')}${F.missing.map(k => `<li><b>${esc(k)}</b>：暂无5日数据，按0算（回测里缺数据的日子也按0）</li>`).join('')}</ul>
+   <p>${F.parts.length ? '最弱席位 <b>' + esc(F.minK) + ' ' + f2(F.min) + '</b> 手（三家合计 ' + f2(F.sum) + ' 手，仅供参考）；最弱的一家 ≤ −20,000 手就算「外资去杠杆」。' : '没有可用的外资数据。'}</p>
+   <p>为什么不用三家合计：席位之间可能对冲(比如摩根加仓、高盛减仓)，合计会把单个席位的撤退抵消掉。回测里两种口径几乎一样(历史上外资信号基本就是摩根大通)，这里按单个席位判断。</p><p>龙虎榜每边只公布前20名。一个席位只有一边进了前20时，另一边用第20名顶替，那个数字的变动和该席位无关，所以信号只用进榜那一边的真实变化。</p>
+   <h3>和研究页「高盛净持仓」为什么对不上</h3><p>研究页画的是<b>净持仓(多−空)</b>，空单常常是第20名顶替的下限估计，周期是「1周/1月」按自然日找对比点；这里是<b>近5个交易日</b>、只用真实一边。起点日期和口径都不同，数字就不同。研究页高盛的明细里有这一行对照。</p>
+   <h3>价格口径</h3><p>价格用「换月调整的主力连续价」(与回测同一口径)，现价 ${fmtD(s.px)}。信号收盘后看一次即可，龙虎榜收盘后才发布，所以数据日是前一个交易日。</p>
+   <h3>完整规则</h3><p>入场、离场、仓位的全部逻辑见右上角「说明」→「交易计划怎么用」。</p><h3>本月</h3><p>${esc(monthHint())}</p>`;
+}
+const HELP = {
+  plsig: ['入场信号：数据和口径说明', sigHelp],
+  plpos: ['持仓管理怎么用', () => '<p><b>离场规则</b>：多单——亏4%止损；最高浮盈到过 ≥8% 后从最高价回落4%；外资去杠杆（任一席位5日变化 ≤ −2万手）。空单——亏4%止损；最高浮盈到过 ≥8% 后从最低价反弹4%；外资三家合计5日变化 ≥0；价格站上MA20。完整交易逻辑见右上角「说明」。</p><p>当前空仓时，成交后在这里记一笔，之后开仓价、持仓期间最高/最低价、浮盈亏、该不该走都自动算。持仓中，这里显示止损价、移动止盈、外资离场条件。</p><p>想收到「该平仓」提醒，要把持仓同步到仓库：见下方「同步持仓到提醒系统」。</p>'],
+  placct: ['账户权益说明', () => '<p>权益 = 初始资金 ± 出入金 + 已平仓盈亏 + 持仓浮动 − 手续费。手续费按每手来回估算，开仓/平仓各记一半，记录时填了实际金额就用实际的。现价用主力连续收盘价，和期货公司结算价会有小差别，需要时用「账户设置」里的校准。</p><p>回测每手来回按 23 元（含滑点估计）；回测摘要里 63、103 元是敏感性测试。保证金比例填期货公司实际收的（交易所10% + 加收），回测按10%。</p>'],
+};
 function openAbout(k) {
+  if (HELP[k]) { openSheet(HELP[k][0], HELP[k][1]()); return; }
   if (['pos', 'sea', 'cost', 'plan'].includes(k)) { openSheet(ABOUT[k][0], ABOUT[k][1]); return; }
   const keys = ['regime', 'vp', 'fund', 'capital', 'price', 'wall'], order = k ? [k, ...keys.filter(x => x !== k)] : keys;
   const extra = `<h3>合约自动切换</h3><p>按你定的建议交易窗口自动选：9月合约 4–7月，1月合约 8–11月，5月合约 12–3月，全年没有空档。点头部的合约标签可以手动看别的合约；每日记录仍然记三个合约，不受影响。</p><h3>主题</h3><p>默认按本地时间自动切换：06:30 到 18:30 是日间，其余是夜间。点“主题”可以固定成日间、夜间或回到自动。</p><h3>数据口径提醒</h3><ul><li>豆菜粕价差 2026-06 起换成三城市单值，旧阈值不适用，新口径暂不计分。</li><li>开机率历史不足时回退固定阈值。</li><li>国储拍卖、能繁母猪只展示，不计分。</li></ul>`;
@@ -923,6 +994,7 @@ document.addEventListener('click', e => {
   if (t.id === 'exBtn') { S.ex = !S.ex; document.body.classList.toggle('ex', S.ex); t.setAttribute('aria-pressed', S.ex); layoutWall(false); return; }
   if (t.id === 'thBtn') { S.themePref = { auto: 'day', day: 'night', night: 'auto' }[S.themePref]; applyTheme(); try { localStorage.setItem('cockpit-theme', S.themePref); } catch (_) {} return; }
   if (t.id === 'abBtn') { openAbout(); return; }
+  if (t.id === 'planBtn') { S.planShow = !planShown(); applyPlanVis(); return; }
   if (t.dataset.about) { openAbout(t.dataset.about); return; }
   if (t.id === 'shX') { closeSheet(); return; }
   if (t.dataset.tile) { openTile(t.dataset.tile); return; }
@@ -930,7 +1002,7 @@ document.addEventListener('click', e => {
   if (t.dataset.lamp) { openLamp(t.dataset.lamp); return; }
   if (t.dataset.sea) { S.seaKind = t.dataset.sea; renderChart(); return; }
   if (t.dataset.mode) { setMode(t.dataset.mode); return; }
-  if (t.dataset.goplan) { setMode('trade'); const tp = $('#tradePanel'); if (tp && tp.scrollIntoView && window.innerWidth < 900) tp.scrollIntoView({ block: 'start' }); return; }
+  if (t.dataset.goplan) { setMode('trade'); S.planShow = true; applyPlanVis(); const tp = $('#tradePanel'); if (tp && tp.scrollIntoView && window.innerWidth < 900) tp.scrollIntoView({ block: 'start' }); return; }
   if (t.dataset.act) { planAct(t.dataset.act, t); return; }
   if (t.dataset.view) { S.view = t.dataset.view; renderChart(); return; }
   if (t.dataset.range) { S.range = +t.dataset.range; $$('[data-range]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.range === S.range)); drawChart(); return; }

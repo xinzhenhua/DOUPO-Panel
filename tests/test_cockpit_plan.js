@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate,planDataLine};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate,planDataLine,planPartsText};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -18,7 +18,7 @@ const c2=base.slice(); c2[c2.length-10]=100; c2.push(100.9); eq('反弹确认 �
 const c3=base.slice(); c3[c3.length-10]=100; c3[c3.length-5]=120; c3.push(102.5); eq('反弹确认 不高于5日前→否',P.planConfirm(c3),false);
 // 外资合计
 const mem={'高盛期货':{foreign:true,history:{change5:{change:-11887}}},'摩根大通':{foreign:true,history:{change5:{change:8143}}},'瑞银期货':{foreign:true,history:{change5:null}},'中粮期货':{foreign:false,history:{change5:{change:7383}}}};
-const f=P.planForeign(mem); eq('外资5日合计=-3744',f.sum,-3744); eq('外资缺失席位',f.missing,['瑞银期货']); eq('外资用到的席位',f.used,['高盛期货','摩根大通']);
+const f=P.planForeign(mem); eq('外资5日合计=-3744',f.sum,-3744); eq('外资缺失席位',f.missing,['瑞银期货']); eq('最弱席位=各席位变化的最小值',f.min,Math.min(...f.parts.map(q=>q.v))); eq('外资用到的席位',f.used,['高盛期货','摩根大通']);
 // 信号：构造 260 根：前200根100，之后60根缓降到 80，最后一根反弹
 let cs=Array(200).fill(100); for(let i=0;i<59;i++) cs.push(100-i*0.3); cs.push(cs[cs.length-1]+1.5);
 let s=P.planSignals(cs,0); eq('信号 低位+反弹+无去杠杆→可做多',s.longOK,true); eq('信号 去杠杆则禁做多',P.planSignals(cs,-20000).longOK,false);
@@ -119,5 +119,20 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{adj:false,fD:'2026-10-09'}); eq('缺换月调整价 → 不可用并点名文件',[g.ok,/main_adj/.test(g.reasons[0])],[false,true]);
   g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{adj:true,fD:'2026-10-09'}); eq('有换月调整价 → 通过',g.ok,true);
   eq('数据行带价格口径',/换月调整/.test(P.planDataLine(g,['摩根大通'],'2026-10-09','2026-10-09',true).t),true);
+  { const parts=[{k:'高盛期货',v:-15392,basis:'long'},{k:'摩根大通',v:8143}], g2=P.planGate(['高盛期货','摩根大通'],'2026-10-09','2026-10-12',{missing:['瑞银期货'],fD:'2026-10-09'});
+    const t=P.planDataLine(g2,['高盛期货','摩根大通'],'2026-10-09','2026-10-09',true,parts).t;
+    eq('数据行写出每个席位的金额和合计',[/高盛 −15,392\(多单\)/.test(t),/摩根大通 \+8,143/.test(t),/最弱 高盛 −15,392/.test(t)],[true,true,true]);
+    eq('数据行没传parts时退回席位名',/外资 高盛期货\+摩根大通/.test(P.planDataLine(g2,['高盛期货','摩根大通'],'2026-10-09','2026-10-09',true).t),true); }
   l=P.planDataLine(P.planGate([],'2026-10-09','2026-10-12',{}),[],'2026-10-09',null); eq('数据行 不足',[l.cls,/数据不足/.test(l.t)],['bad',true]); }
+
+{ const hedge=P.planForeign({a:{foreign:1,history:{change5:{change:-25000,to:'2026-10-09'}}},b:{foreign:1,history:{change5:{change:10000,to:'2026-10-09'}}}});
+  eq('对冲：合计-15000，但单个席位-25000',[hedge.sum,hedge.min,hedge.minK],[-15000,-25000,'a']);
+  const cs=Array.from({length:300},(_,i)=>3000+i*0.1);
+  eq('单席位≤-2万 → 去杠杆(哪怕合计没到)',[P.planSignals(cs,hedge.sum).delev,P.planSignals(cs,hedge.min).delev],[false,true]);
+  eq('没有任何席位数据时 min=0 不触发去杠杆',[P.planForeign({}).min,P.planSignals(cs,P.planForeign({}).min).delev],[0,false]); }
+
+{ const base={side:-1,entry:3400,peak:3300,last:3350,ma20:3400};
+  eq('空单：最弱席位-2.5万但三家合计+0.5万 → 空单离场(外资回正，看合计)',P.planManage(Object.assign({fsum:-25000,fall:5000},base)).action,'空单离场');
+  eq('空单：某席位回到≥0但合计仍<0 → 持有(看合计不看最弱)',P.planManage(Object.assign({fsum:0,fall:-5000},base)).action,'持有');
+  eq('多单：最弱席位≤-2万 → 平多，不看合计',P.planManage({side:1,entry:3400,peak:3450,last:3420,ma20:3300,fsum:-25000,fall:5000}).action,'外资去杠杆·平多'); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

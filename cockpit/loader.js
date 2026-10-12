@@ -117,7 +117,7 @@
       };
     }
     out.indicators = (w._autoIndicators || []).map(cfg => { const inp = w.document.getElementById(cfg.inputId), bd = w.document.getElementById('ind_' + cfg.key); return { key: cfg.key, inputId: cfg.inputId, title: cfg.title, freq: cfg.freq || null, source: cfg.sourceName || null, noVote: cfg.noVote || null, unit: cfg.unit || null, input: inp ? inp.value : null, badge: bd ? bd.textContent : null }; });
-    out.events = clone(w._eventCal.buildEventList(nowMs, nowMs + 14 * 86400000));
+    out.events = clone(w._eventCal.buildEventList(nowMs, nowMs + 45 * 86400000));
     out.closure = clone(w._eventCal.closureStatus(nowMs, 3));
     if (prev && prev !== KEYS[KEYS.length - 1]) { try { w.selectContract(prev); w.updateOverallAlert(); } catch (e) { /* 还原失败不影响读数 */ } }
     return out;

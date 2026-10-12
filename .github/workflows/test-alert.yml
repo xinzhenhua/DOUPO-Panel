@@ -1,0 +1,30 @@
+name: 测试提醒
+
+# 手动触发(Actions标签页 → 测试提醒 → Run workflow)：不管有没有信号，立刻给每个配了密钥的渠道（GitHub Issue邮件 / Server酱 / PushPlus / SMTP）发一条测试消息。
+# 日志里会写明：哪些渠道这次拿到了密钥、哪个渠道发送失败以及对方返回的原因。手机没收到提醒时先点这个。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 发送测试消息
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+        run: python3 notify_alert.py --test

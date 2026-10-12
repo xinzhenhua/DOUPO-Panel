@@ -112,6 +112,7 @@ def test_end_to_end_with_node_script():
         subprocess.run(["node", os.path.join(root, "scripts", "plan_alert.js"), "--data", data, "--out", out, "--today", days[-1]], check=True, capture_output=True)
         a = json.load(open(out))
         assert a["gate"]["ok"] and a["side"] == 1 and a["events"][0]["type"] == "entry" and "做多" in a["events"][0]["title"], a
+        assert "限价单" in a["events"][0]["body"] and "做多 ≤" in a["events"][0]["body"] and "没成交就作废" in a["events"][0]["body"], a["events"][0]["body"]
         # 持仓：空单开在 2200，价格涨到 2380（−8%）→ 止损
         pos = os.path.join(d, "position.json"); json.dump({"side": -1, "lots": 3, "entryD": days[-10], "entryPx": 2200}, open(pos, "w"))
         subprocess.run(["node", os.path.join(root, "scripts", "plan_alert.js"), "--data", data, "--position", pos, "--out", out, "--today", days[-1]], check=True, capture_output=True)
@@ -125,11 +126,33 @@ def test_end_to_end_with_node_script():
     finally: shutil.rmtree(d, ignore_errors=True)
     ok("端到端：合成数据 → node 算出做多信号/止损离场/数据不足 → 发送记账")
 
+def test_send_test_and_failure_reason():
+    env = {"PUSHPLUS_TOKEN": "tok"}
+    assert na.configured(env) == (["pushplus"], ["issue", "serverchan", "smtp"]), na.configured(env)
+    # 正常：测试消息发到 pushplus，其余渠道没配=none
+    post = lambda url, data=None, js=None, headers=None: (200, '{"code":200,"msg":"请求成功"}')
+    senders = {n: (lambda e, t, b, f=f: f(e, t, b, post)) for n, f in (("pushplus", na.send_pushplus), ("serverchan", na.send_serverchan))}
+    r = na.send_test(env, "2026-10-12", senders); assert r["ok"] == ["pushplus"] and r["none"] == ["serverchan"] and not r["failed"], r
+    # 对方返回错误：不再静悄悄，错误原因写进 failed
+    bad = lambda url, data=None, js=None, headers=None: (200, '{"code":903,"msg":"用户token不正确"}')
+    senders = {"pushplus": lambda e, t, b: na.send_pushplus(e, t, b, bad)}
+    r = na.send_test(env, "2026-10-12", senders); assert not r["ok"] and "token不正确" in r["failed"][0], r
+    # 正常运行里同样：发送失败写进 failed、不记账
+    a = {"priceDate": "2026-10-09", "side": 1, "gate": {"ok": True}, "events": [{"type": "entry", "key": "entry|2026-10-09|1", "side": 1, "title": "T", "body": "B"}]}
+    st, rep = na.run(a, {}, env, "2026-10-12", senders); assert rep["failed"] and not rep["sent"] and not st.get("sent"), rep
+    # pushplus 必须走 https（http 会被重定向成 GET 而失败）
+    seen = []
+    na.send_pushplus(env, "T", "B", lambda url, data=None, js=None, headers=None: (seen.append(url) or (200, '{"code":200}')))
+    assert seen[0].startswith("https://www.pushplus.plus"), seen
+    ok("测试提醒：能看出哪个渠道配了、失败原因写进日志、pushplus走https")
+
 def test_workflows_wired():
     root = os.path.dirname(os.path.abspath(__file__))
     w = open(os.path.join(root, ".github", "workflows", "update-data.yml"), encoding="utf-8").read()
     assert "issues: write" in w and "scripts/plan_alert.js" in w and "notify_alert.py" in w and "SERVERCHAN_KEY" in w and "PUSHPLUS_TOKEN" in w and "SMTP_PASS" in w
     assert "data/main_adj.json" in w and "data/alert_state.json" in w and w.index("plan_alert.js") < w.index("提交更新后的数据文件")
+    t = open(os.path.join(root, ".github", "workflows", "test-alert.yml"), encoding="utf-8").read()
+    assert "workflow_dispatch" in t and "notify_alert.py --test" in t and "PUSHPLUS_TOKEN" in t and "SERVERCHAN_KEY" in t
     r = open(os.path.join(root, ".github", "workflows", "record-position.yml"), encoding="utf-8").read()
     assert "workflow_dispatch" in r and "record_position.py" in r and "group: data-writes" in r and "data/position.json" in r
     ok("工作流接线：提醒步骤在提交之前、有 issues 权限和各渠道密钥；记录持仓工作流共用并发组")

@@ -170,7 +170,7 @@ body.mode-research .tradepane{display:none}
 .pr2 .pnm{color:var(--ink3);font-size:12.5px}
 .pc{display:flex;gap:6px;align-items:baseline;white-space:nowrap;min-width:0}
 .pc i{font-style:normal;font-size:11.5px;color:var(--ink3)} .pc b{font-family:var(--num);font-size:15px;font-weight:700} .pc.na b{color:var(--ink3);font-weight:400}
-.kl{position:relative;flex:1 1 auto;min-height:190px}
+.kl{position:relative;flex:1 1 auto;min-height:110px}
 .kl svg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .kl .tip{position:absolute;left:0;top:0;font-family:var(--num);font-size:12px;color:var(--ink2);background:var(--surface);padding:1px 6px;pointer-events:none;border-radius:3px}
 .kl .lv{font-size:11px;fill:var(--ink2);font-family:var(--num)}
@@ -343,6 +343,43 @@ body.ex .why{display:block}
 .tbcv th,.tbcv td{white-space:nowrap}
 @media(max-width:560px){.tbpl,.tbpl tbody,.tbpl tr,.tbpl td{display:block;width:auto}.tbpl thead{display:none}.tbpl tr{padding:7px 0;border-bottom:1px solid var(--line2)}.tbpl td{padding:1px 0;text-align:left!important}.tbpl td.n{color:var(--ink)}}
 .tb3x td.ok{color:var(--ink)} .tb3x td.no{color:var(--ink3)} .tb3x tr.cur td{font-weight:600}
+
+/* ===== v101.32：电脑端一屏放下（交易页两列；说明收进问号） ===== */
+.sgw{position:relative;display:flex;min-width:0}.sgw>.sg{flex:1}.sgw>.q{position:absolute;top:9px;right:12px;background:var(--surface)}
+.dsl{white-space:normal}
+.plgrid{display:flex;flex-direction:column}.ps1{order:1}.ps2{order:2}.ps3{order:3}.ps4{order:4}.ps5{order:5}
+@media(min-width:900px){
+ body.mode-trade .main{grid-template-columns:minmax(0,34fr) minmax(0,66fr)}
+ body.mode-trade .plgrid{display:block;column-count:2;column-gap:28px;column-fill:balance}
+ .ps{break-inside:avoid;min-width:0}
+ .ps5{column-span:all;display:flex;flex-wrap:wrap;gap:0 24px}.ps5 details{flex:1 1 calc(25% - 18px);min-width:140px}.ps5 details[open]{flex-basis:100%}
+ body.mode-trade .plhead{display:none}
+ body.mode-trade .tradepane{padding:8px 20px 6px}
+ body.mode-trade .tradepane .ch-h{margin-bottom:0}
+ .ps .plt{margin:8px 0 3px}.ps .plf{margin:4px 0 2px;gap:6px 12px}.ps .plf input,.ps .plf select{padding:4px 8px}.ps .pbtn{margin:4px 0 2px;padding:5px 14px}
+ .ps .tbpl td{padding:4px 8px}.ps .tbcv th,.ps .tbcv td{padding:3px 6px}.ps .hl{margin:2px 0 6px}
+ .tb2c{display:block;width:100%}.tb2c tbody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px}
+ .tb2c tr{display:flex;flex-direction:column;padding:3px 0;border-bottom:1px solid var(--line2)}
+ .tb2c td{white-space:normal!important;overflow-wrap:anywhere;padding:0!important;text-align:left!important;border:0!important}.tb2c td:first-child{font-size:11.5px;color:var(--ink3)}
+}
+@media(min-width:900px){.tbpl td.ok,.tbpl td.no{white-space:nowrap;width:1%}}
+@media(min-width:900px) and (max-height:830px){
+ .chart{padding:8px 16px 6px}.vtabs{margin:0 0 4px}.vtabs button{padding:4px 2px}.ch-r{margin:0 0 3px}.ptr{margin:0 0 4px}.rng{margin-top:5px}
+ .chart .rng + .rng .l2{display:none}
+ body.mode-trade .plgrid .ps .plt{margin:5px 0 2px}.ps .tbpl td{padding:2px 8px}
+ .sg{padding:6px 20px;gap:1px}.sg .hd{font-size:18px}.band{min-height:104px}
+}
+@media(min-width:900px) and (max-height:760px){
+ .checks{height:32px}.band{min-height:92px}.cell{padding:6px 16px}.sg{padding:4px 16px}.sg .cl{font-size:11px}.dsl{margin-top:2px}.scs{margin-top:0}
+ .chart .rng{display:none}.dock{height:36px}body.mode-trade .tradepane .ch-h{display:none}.bar{min-height:44px}
+ .ps5 details{padding-top:3px;margin-top:4px!important}
+}
+@media(min-width:900px) and (max-height:830px){
+ .ps .hl.vd{padding:3px 10px;margin-bottom:3px}.tb2c tr{padding:1px 0!important}.ps .plh{margin:1px 0 3px}.ps .plf label{font-size:11px;gap:1px}.ps .plf input,.ps .plf select{padding:3px 7px}
+ .ps5 details{margin-top:2px!important;padding-top:2px!important}.ps .hl b{font-size:15px}
+}
+body.mode-research #planBtn{display:none}#planBtn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+body.mode-trade.plan-off .tradepane{display:none}body.mode-trade.plan-off .main{grid-template-columns:minmax(0,1fr)}body.mode-trade.plan-off .chart{border-right:0}
 </style>
 </head>
 <body>
@@ -355,6 +392,7 @@ body.ex .why{display:block}
     <div class="seg modes" id="modeSeg" role="group" aria-label="切换模式"><button data-mode="trade" aria-pressed="true">交易</button><button data-mode="research" aria-pressed="false" title="基本面趋势、市场状态、证据页">研究</button></div>
     <div class="right">
       <div class="sync" id="sync"></div>
+      <button class="tb" id="planBtn" aria-pressed="false" title="显示/收起交易计划面板（空仓时默认收起，有持仓时默认展开）">计划</button>
       <button class="tb" id="exBtn" aria-pressed="false" title="显示每一块的白话说明（快捷键 E）">解释</button>
       <button class="tb opt" id="thBtn" title="日夜主题：自动按时间切换">主题</button>
       <button class="tb" id="abBtn" title="方法与口径（快捷键 ?）">说明</button>

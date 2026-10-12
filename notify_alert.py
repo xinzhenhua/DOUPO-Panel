@@ -36,7 +36,9 @@ def send_issue(env, title, body, post=_post):
     owner = env.get("GITHUB_REPOSITORY_OWNER") or repo.split("/")[0]
     st, _ = post(f"https://api.github.com/repos/{repo}/issues", js={"title": title, "body": f"@{owner}\n\n{body}", "labels": ["提醒"]},
                  headers={"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
-    return 200 <= st < 300
+    if not 200 <= st < 300:
+        raise RuntimeError(f"GitHub Issue 返回 HTTP {st}")
+    return True
 
 
 def send_serverchan(env, title, body, post=_post):
@@ -44,15 +46,19 @@ def send_serverchan(env, title, body, post=_post):
     if not k:
         return None
     st, txt = post(f"https://sctapi.ftqq.com/{k}.send", data={"title": title[:100], "desp": body})
-    return 200 <= st < 300 and '"code":0' in txt.replace(" ", "")
+    if not (200 <= st < 300 and '"code":0' in txt.replace(" ", "")):
+        raise RuntimeError(f"Server酱返回 HTTP {st}：{txt[:150]}")
+    return True
 
 
 def send_pushplus(env, title, body, post=_post):
     t = env.get("PUSHPLUS_TOKEN")
     if not t:
         return None
-    st, txt = post("http://www.pushplus.plus/send", js={"token": t, "title": title[:100], "content": body.replace("\n", "<br>"), "template": "html"})
-    return 200 <= st < 300 and '"code":200' in txt.replace(" ", "")
+    st, txt = post("https://www.pushplus.plus/send", js={"token": t, "title": title[:100], "content": body.replace("\n", "<br>"), "template": "html"})
+    if not (200 <= st < 300 and '"code":200' in txt.replace(" ", "")):
+        raise RuntimeError(f"PushPlus返回 HTTP {st}：{txt[:150]}")   # 常见：token 填错、没关注公众号、消息被限流
+    return True
 
 
 def send_smtp(env, title, body, smtp=smtplib.SMTP_SSL):
@@ -63,6 +69,28 @@ def send_smtp(env, title, body, smtp=smtplib.SMTP_SSL):
     with smtp(host, int(env.get("SMTP_PORT") or 465), timeout=20) as s:
         s.login(user, pw); s.sendmail(user, [m["To"]], m.as_string())
     return True
+
+
+def configured(env):
+    """哪些渠道的密钥这次运行真的拿到了（Secrets 名字拼错/没加时这里就是空的）。"""
+    ok = {"issue": bool(env.get("GITHUB_REPOSITORY") and env.get("GITHUB_TOKEN")) and env.get("ALERT_ISSUE", "1") != "0",
+          "serverchan": bool(env.get("SERVERCHAN_KEY")), "pushplus": bool(env.get("PUSHPLUS_TOKEN")),
+          "smtp": bool(env.get("SMTP_HOST") and env.get("SMTP_USER") and env.get("SMTP_PASS"))}
+    return [k for k, v in ok.items() if v], [k for k, v in ok.items() if not v]
+
+
+def send_test(env, today, senders=None):
+    """手动「测试提醒」：不看信号，直接给每个配了密钥的渠道发一条测试消息，并把每个渠道的结果/错误原因打出来。"""
+    senders = senders or CHANNELS
+    title, body = "【豆粕提醒】测试消息", f"这是一条测试消息（{today}）。收到了，说明这个渠道配置正确；之后有入场信号、该平仓或数据不足时会用同样的方式通知你。"
+    rep = {"ok": [], "failed": [], "none": []}
+    for name, fn in senders.items():
+        try:
+            r = fn(env, title, body)
+        except Exception as ex:  # noqa: BLE001
+            rep["failed"].append(f"{name}: {type(ex).__name__}: {str(ex)[:200]}"); continue
+        (rep["none"] if r is None else rep["ok"] if r else rep["failed"]).append(name if r is not False else f"{name}: 发送失败")
+    return rep
 
 
 CHANNELS = {"issue": send_issue, "serverchan": send_serverchan, "pushplus": send_pushplus, "smtp": send_smtp}
@@ -127,14 +155,22 @@ def run(alert, state, env, today, senders=None):
 
 def main(argv=None):
     import argparse
-    ap = argparse.ArgumentParser(); ap.add_argument("--alert", required=True); ap.add_argument("--state", default="data/alert_state.json"); ap.add_argument("--today", default="")
+    ap = argparse.ArgumentParser(); ap.add_argument("--alert", default=""); ap.add_argument("--test", action="store_true"); ap.add_argument("--state", default="data/alert_state.json"); ap.add_argument("--today", default="")
     a = ap.parse_args(argv)
+    today = a.today or (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
+    on, off = configured(dict(os.environ))
+    print("[提醒渠道] 这次运行拿到密钥的渠道：", "、".join(on) or "无", "；没配置/没拿到：", "、".join(off) or "无")
+    if a.test:
+        rep = send_test(dict(os.environ), today)
+        print("[测试提醒]", json.dumps(rep, ensure_ascii=False))
+        return 1 if rep["failed"] or not rep["ok"] else 0
+    if not a.alert:
+        ap.error("需要 --alert 或 --test")
     alert = json.load(open(a.alert, encoding="utf-8"))
     try:
         state = json.load(open(a.state, encoding="utf-8"))
     except Exception:  # noqa: BLE001
         state = {}
-    today = a.today or (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
     st, rep = run(alert, state, dict(os.environ), today)
     os.makedirs(os.path.dirname(os.path.abspath(a.state)), exist_ok=True)
     with open(a.state, "w", encoding="utf-8") as f:

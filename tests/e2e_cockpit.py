@@ -56,7 +56,12 @@ def main():
     ok('价格历史>2000根、季节数据、龙虎榜都在', info['hist'] > 2000 and info['sea'] and info['cap'], info)
     ok('趋势墙序列>=15条有点', info['ser'] >= 15, info['ser'])
     ok('每日系统记录有数据、事件日历有数据、12个指标', info['sys'] >= 1 and info['ev'] >= 1 and info['ind'] >= 12, info)
-    ok('默认是交易模式：背景带、趋势墙、证据栏收起，交易面板可见', pg.evaluate("document.body.classList.contains('mode-trade') && getComputedStyle(document.getElementById('band')).display === 'none' && getComputedStyle(document.getElementById('wall')).display === 'none' && getComputedStyle(document.getElementById('tradePanel')).display !== 'none'"))
+    ok('默认是交易模式：背景带、趋势墙、证据栏收起，交易面板可见', pg.evaluate("document.body.classList.contains('mode-trade') && getComputedStyle(document.getElementById('band')).display === 'none' && getComputedStyle(document.getElementById('wall')).display === 'none' && getComputedStyle(document.getElementById('tradePanel')).display === 'none' && document.body.classList.contains('plan-off')"))
+    pg.evaluate("document.querySelector('#checks [data-lamp=\"evt\"], #checks .chk:first-child, #checks button').click()"); pg.wait_for_timeout(200)
+    evt = pg.evaluate("document.getElementById('shB').innerText")
+    ok('事件的说明里列出了带日期的事件（不只是一句定义）', '重大事件指' in evt and any(k in evt for k in ('10-', '11-', '12-')) and ('周度' in evt), evt[:300])
+    pg.evaluate("window.__cockpit.closeSheet()")
+    ok('空仓时交易计划默认收起，「计划」按钮点一下展开、再点收起', pg.evaluate("(() => { const b = document.getElementById('planBtn'), v = () => getComputedStyle(document.getElementById('tradePanel')).display !== 'none'; const a = v(); b.click(); const c = v(); b.click(); return !a && c && !v(); })()"))
     ok('检查条里没有规则灯、没有「三方背离」方向灯', pg.evaluate("!document.getElementById('ruleBtn') && !document.querySelector('[data-lamp=\"dir\"]') && !document.body.innerText.includes('三方背离')"))
     pg.evaluate("document.querySelector('[data-mode=\"research\"]').click()")
     ok('切到研究模式：背景带和趋势墙出现，交易面板收起', pg.evaluate("getComputedStyle(document.getElementById('band')).display !== 'none' && getComputedStyle(document.getElementById('wall')).display !== 'none' && getComputedStyle(document.getElementById('tradePanel')).display === 'none'"))
@@ -78,7 +83,7 @@ def main():
     pg.on('dialog', lambda dlg: dlg.accept())
     pg.evaluate("document.querySelector('[data-mode=\"trade\"]').click()")
     sig = pg.evaluate("document.getElementById('sigbar').innerText")
-    ok('首页（不点任何按钮）就能看到入场信号和持仓管理', '入场信号' in sig and '持仓管理' in sig and ('信号' in sig), sig[:200])
+    ok('首页（不点任何按钮）就能看到入场信号和空仓状态', '入场信号' in sig and '空仓' in sig and ('信号' in sig), sig[:200])
     ok('首页：空仓时显示"空仓"和自动权益 500,000', '空仓' in sig and '500,000' in sig, sig[:200])
     pg.evaluate("document.querySelector('#sigbar [data-goplan]').click()")
     ok('点首页信号条切到交易模式并看到交易计划', pg.evaluate("document.body.classList.contains('mode-trade') && document.getElementById('planBody') !== null"))
@@ -88,7 +93,14 @@ def main():
     ok('计划页：有今日信号、持仓管理、账户权益、交易记录四块', all(k in body for k in ('今日入场信号', '持仓管理', '账户权益', '交易记录')), body[:200])
     ok('计划页：历史开仓月份卡片在，默认折叠，写明两类重要程度和本月标记', pg.evaluate("(()=>{const d=document.getElementById('pf-mo');if(!d||d.open)return false;const t=d.innerText+d.innerHTML;return /信号出现的频率/.test(t)&&/开仓的盈亏/.test(t)&&/★★★☆☆/.test(t)&&/★☆☆☆☆/.test(t)&&/（本月）/.test(t)&&d.querySelectorAll('tbody tr').length>=12})()"))
     ok('持仓管理里有「同步持仓到提醒系统」说明，默认折叠', pg.evaluate("(()=>{const d=document.getElementById('pf-sync');return !!d&&!d.open&&/记录持仓/.test(d.innerText+d.innerHTML)})()"))
-    ok('计划页：①里有「本月历史开仓」提示', '历史开仓' in body and '本月' in body)
+    ok('说明收进问号：计划页正文里不再有大段「外资5日 = …」解释', '只算多单/空单 = 该席位' not in body and '价格用主力连续价，现价' not in body)
+    pg.evaluate("document.querySelector('#sigbar [data-about=\"plsig\"]').click()"); pg.wait_for_timeout(200)
+    sh = pg.evaluate("document.getElementById('shB').innerText")
+    ok('首页入场信号旁的「?」里有：外资单席位口径、和研究页高盛对不上的原因、价格口径、本月提示', all(k in sh for k in ('单个席位', '研究页', '价格口径', '本月', '历史开仓')), sh[:200])
+    pg.evaluate("window.__cockpit.closeSheet()")
+    pg.evaluate("document.querySelector('#planBody [data-about=\"placct\"]').click()"); pg.wait_for_timeout(200)
+    ok('账户权益的「?」里有手续费和保证金说明', '23 元' in pg.evaluate("document.getElementById('shB').innerText"))
+    pg.evaluate("window.__cockpit.closeSheet()")
     ok('计划页：仓位阶梯和回测摘要默认折叠', pg.evaluate("[...document.querySelectorAll('#planBody details')].every(d => !d.open)"))
     ok("夹具里有换月调整价，页面读到了（交易信号用它）", pg.evaluate("!!window.__DATA__.adj && window.__DATA__.adj.d.length > 1000"))
     ok("数据状态行写明价格口径是换月调整价", "换月调整" in pg.evaluate("document.getElementById('dataLine').innerText"))
@@ -96,6 +108,9 @@ def main():
     d0, p0 = hd['d'][0], hd['c'][0]; mx = max(hd['c']); last = hd['c'][-1]
     pg.fill('#pf-od', d0); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(p0)); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
     body = pg.evaluate("document.getElementById('planBody').innerText")
+    sgt = pg.evaluate("document.getElementById('sigbar').innerText")
+    ok('有持仓时首页：左格是「持仓信号」(继续持有/该平仓)，右格显示浮盈亏金额(元)，不再显示入场信号', '持仓信号' in sgt and ('继续持有' in sgt or '该平仓' in sgt) and '元' in sgt and '入场信号（收盘后看一次）' not in sgt, sgt[:300])
+    ok('有持仓时交易计划面板自动展开', pg.evaluate("getComputedStyle(document.getElementById('tradePanel')).display !== 'none'"))
     ok('记录开仓后：持仓管理出现该仓位，且给出继续持有/该平仓的判定', ('继续持有' in body or '该平仓' in body) and '5 手' in body, body[:400])
     ok('持仓期间最高价由系统按价格数据算出（不用手填）', ('{:,}'.format(round(mx))) in body, (mx, body[:600]))
     snap = pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return { eq: s.E.equity, fees: s.E.fees, peak: s.hold.peak, days: s.hold.days }; })()")
@@ -113,6 +128,8 @@ def main():
     ok('记录开仓时存了决策快照（基本面方向、外资5日等）', pg.evaluate("(() => { const t = window.__cockpit.planSnap().A.trades[0]; return !!t.snap && 'fund' in t.snap && 'fsum' in t.snap && t.snap.gateOk === false && !!t.snapX; })()"))
     with pg.expect_download() as dl2: pg.evaluate("document.querySelector('[data-act=\"csv\"]').click()")
     ok('能导出交易记录CSV（含决策快照）', dl2.value.suggested_filename.startswith('cockpit-trades-'))
+    pg.evaluate("document.getElementById('tradePanel').offsetParent === null && document.getElementById('planBtn').click()")   # 平仓后回到空仓，计划面板自动收起：手动展开
+    pg.evaluate("document.getElementById('pf-set').open = true")   # 账户设置/出入金/校准默认折叠
     pg.fill('#pf-fa', '200000'); pg.fill('#pf-fn', '年度追加'); pg.evaluate("document.querySelector('[data-act=\"flow\"]').click()")
     ok('入金20万后权益自动 = 704,885', abs(pg.evaluate("window.__cockpit.planSnap().E.equity") - 704885) < 1e-6)
     pg.fill('#pf-ca', '700000'); pg.evaluate("document.querySelector('[data-act=\"calib\"]').click()")
@@ -149,6 +166,15 @@ def main():
     ok('重取后 D / series / contracts 还是同一个对象且有数据', same)
     ok('重取后没有页面 JS 错误', not errs, errs)
     ctx.close()
+    # ---- 5b. 电脑端一屏放下：交易/研究两个模式下，图表列、交易计划列、趋势墙都不出现竖向滚动（常见笔记本和台式分辨率）----
+    JS_OV = "() => ['chart','tradePanel','wall'].map(i => { const e = document.getElementById(i); return !e || getComputedStyle(e).display === 'none' ? 0 : e.scrollHeight - e.clientHeight; }).concat([document.documentElement.scrollHeight - innerHeight])"
+    for (w, h) in ((1920, 1080), (1440, 900), (1366, 768)):
+        ctx, pg, e3 = open_page(b, port, w, h)
+        for mode in ('trade', 'research'):
+            pg.click('[data-mode=%s]' % mode); pg.wait_for_timeout(300)
+            ov = pg.evaluate(JS_OV)
+            ok('电脑 %dx%d %s 模式：一屏放下，没有上下滚动' % (w, h, mode), max(ov) <= 1, ov)
+        ok('电脑 %dx%d：没有页面 JS 错误' % (w, h), not e3, e3); ctx.close()
     # ---- 6. 手机宽度 ----
     for w in (390, 360):
         ctx, pg, e2 = open_page(b, port, w, 800)

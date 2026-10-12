@@ -37,25 +37,25 @@ function compute(dataDir, opts) {
   const F = P.planForeign(latest.marketCapital && latest.marketCapital.members);
   const lastD = h.d.length ? h.d[h.d.length - 1] : null;
   const gate = P.planGate(F.used, lastD, today, { missing: F.missing, approx: F.approx, fD: F.lastD, adj: !!adj });
-  const sig = cs.length >= 11 ? P.planSignals(cs, F.sum) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, longOK: false, shortOK: false };
+  const sig = cs.length >= 11 ? P.planSignals(cs, F.min) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, longOK: false, shortOK: false };
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const px = cs.length ? cs[cs.length - 1] : null;
   const pos = normPosition(opts.position);
   let hold = null, mg = null;
-  if (pos && h.d.length) { hold = P.planHold(h, pos); mg = P.planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.sum }); }
+  if (pos && h.d.length) { hold = P.planHold(h, pos); mg = P.planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.min, fall: F.sum }); }
   const ev = [], sd = pos ? (pos.side > 0 ? '多' : '空') : '';
-  const tail = '\n\n（提醒按收盘后的数据算；操作在下一个交易日开盘。手数、止损价、账户权益请打开驾驶舱看。）';
+  const tail = '\n\n（提醒按收盘后的数据算；入场挂限价单、平仓开盘市价，都在下一个交易日。手数、止损价、账户权益请打开驾驶舱看。）';
   if (!gate.ok) ev.push({ type: 'gate', key: 'gate|' + today, title: '【豆粕】数据不足，信号暂停', body: '信号和离场判断暂时不可信：' + gate.reasons.join('；') + '。\n先别按页面上的信号操作，检查 Actions 是否正常运行。' });
   if (side !== 0 && !pos) {
     const stop = px * (1 - side * TP.STOP / 100);
     ev.push({ type: 'entry', side, key: 'entry|' + lastD + '|' + side, title: '【豆粕】' + (side > 0 ? '做多' : '做空') + '入场信号（数据日 ' + lastD + '）',
-      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资5日 ' + f2(F.sum) + ' 手，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日开盘价入场；止损 ' + TP.STOP + '%（约 ' + f0(stop) + '）；浮盈 ≥' + TP.ACT + '% 后从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '% 平仓。' + tail });
+      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日挂限价单——' + (side > 0 ? '做多 ≤ ' : '做空 ≥ ') + f0(px) + '（信号日收盘价），当日有效，没成交就作废、不追；止损 ' + TP.STOP + '%（约 ' + f0(stop) + '）；浮盈 ≥' + TP.ACT + '% 后从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '% 平仓。' + tail });
   }
   if (pos && mg && mg.action !== '持有') {
     ev.push({ type: 'exit', key: 'exit|' + lastD + '|' + pos.entryD + '|' + mg.action, title: '【豆粕】持仓该平了：' + mg.action + '（' + sd + pos.lots + '手）',
-      body: '你的持仓：' + sd + ' ' + pos.lots + ' 手 @' + f0(pos.entryPx) + '（' + pos.entryD + '）。\n信号：' + mg.action + '。浮盈亏 ' + (mg.r >= 0 ? '+' : '') + mg.r.toFixed(1) + '%，持仓期间最高浮盈 ' + mg.peakR.toFixed(1) + '%，外资5日 ' + f2(F.sum) + ' 手。\n建议：下一个交易日开盘平仓；平仓后记得在 GitHub Actions 里「记录持仓」点平仓，否则明天还会提醒。' + tail });
+      body: '你的持仓：' + sd + ' ' + pos.lots + ' 手 @' + f0(pos.entryPx) + '（' + pos.entryD + '）。\n信号：' + mg.action + '。浮盈亏 ' + (mg.r >= 0 ? '+' : '') + mg.r.toFixed(1) + '%，持仓期间最高浮盈 ' + mg.peakR.toFixed(1) + '%，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手。\n建议：下一个交易日开盘平仓；平仓后记得在 GitHub Actions 里「记录持仓」点平仓，否则明天还会提醒。' + tail });
   }
-  return { today, priceDate: lastD, adj: !!adj, px, side, gate: { ok: gate.ok, level: gate.level, reasons: gate.reasons, warn: gate.warn }, fsum: F.sum, foreign: F.parts,
+  return { today, priceDate: lastD, adj: !!adj, px, side, gate: { ok: gate.ok, level: gate.level, reasons: gate.reasons, warn: gate.warn }, fsum: F.min, fsumAll: F.sum, foreign: F.parts,
            sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK },
            position: pos, manage: mg ? { action: mg.action, r: mg.r, peakR: mg.peakR } : null, events: ev };
 }
