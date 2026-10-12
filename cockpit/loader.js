@@ -36,6 +36,20 @@
     if (hist && hist.d && hist.d.length) { const m = new Map(hist.d.map((x, n) => [x, hist.c[n]])); for (let n = d.length - 1; n >= 0; n--) if (m.has(d[n])) { scale = m.get(d[n]) / v[n]; break; } }
     return { d, c: v.map(x => x * scale), k };
   };
+  /* 价格序列接上「刚收盘的日线」：main_adj.json 来自生意社 + 夜里 23:05 才累积一次的文件，一天只更新一次；而新浪日线在收盘后不久就有当天收盘价。
+   这里把 adj 之后新出现的、已收盘的日线（同一个合约，按两边同一天的收盘比折到调整价水平）接在后面，信号和浮盈当天收盘后就能更新。
+   bars: [{d,c}]；sym: 这些日线属于哪个合约；nowMs: 现在。当天的K线只有过了 15:01 才算已收盘；比今天还晚的（夜盘占位）一律不接。 */
+  CL.extendAdj = function (adj, bars, sym, nowMs) {
+    if (!adj || !adj.d || !adj.d.length || !bars || !bars.length) return adj;
+    const n0 = adj.d.length, lastD = adj.d[n0 - 1], kEnd = adj.k && adj.k[n0 - 1] ? String(adj.k[n0 - 1]).toLowerCase() : '';
+    if (sym && kEnd && String(sym).toLowerCase() !== kEnd) return adj;   // 不是 adj 当前这个合约（换月了）就不接，免得价差混进来
+    const bj = new Date(nowMs + 8 * 3600e3), today = bj.toISOString().slice(0, 10), mins = bj.getUTCHours() * 60 + bj.getUTCMinutes();
+    const map = {}; bars.forEach(b => { const d = String(b.d || b.date || '').slice(0, 10), c = +(b.c != null ? b.c : b.close); if (d && c > 0) map[d] = c; });
+    const base = map[lastD], r = base > 0 ? adj.c[n0 - 1] / base : 1, nd = [], nc = [];
+    Object.keys(map).sort().forEach(d => { if (d > lastD && (d < today || (d === today && mins >= 15 * 60 + 1))) { nd.push(d); nc.push(map[d] * r); } });
+    if (!nd.length) return adj;
+    return Object.assign({}, adj, { d: adj.d.concat(nd), c: adj.c.concat(nc), k: adj.k ? adj.k.concat(nd.map(() => adj.k[n0 - 1])) : adj.k, extended: nd.length });
+  };
   const pt = p => ({ d: p.d, v: p.v });
   const tail = (a, n) => (n ? a.slice(-n) : a);
   /* 当前窗口内的连续一段：series 里按"推荐月份"截取最近一段（跨度超过 gapDays 视为另一个窗口） */
@@ -136,6 +150,17 @@
     } catch (_) { /* 没有盘中数据就不显示 */ } }
     return { live, m15 };
   };
+  /* 把 D.adjBase 接上 K线/prices.json 里刚收盘的日线，结果放进 D.adj（每次从 adjBase 重算，可反复调用） */
+  CL.extendFromSources = function (D, prices, now) {
+    if (!D.adjBase) return;
+    const PKd = { sep: 'M09', may: 'M05', jan: 'M01' }, PRd = (prices && prices.contracts) || {}; let out = D.adjBase;
+    for (const c of ['sep', 'may', 'jan']) { try {
+      const ct = D.contracts && D.contracts[c]; if (!ct || !ct.symbol) continue;
+      const pc = PRd[PKd[c]] || {}, extra = pc.symbol && String(pc.symbol).toLowerCase() === String(ct.symbol).toLowerCase() ? (pc.daily || []).map(b => ({ d: b.date, c: b.close })) : [];
+      const nx = CL.extendAdj(D.adjBase, (ct.kline || []).map(b => ({ d: b.d, c: b.c })).concat(extra), ct.symbol, now); if (nx !== D.adjBase) { out = nx; break; }
+    } catch (_) { /* 接不上就用原来的 */ } }
+    D.adj = out;
+  };
   /* 把所有来源装成驾驶舱的 D。in: {state, latest, H, seasonal, histCsv, now, STATIC} */
   CL.assemble = function (inp) {
     const S = inp.state, L = inp.latest || {}, H = inp.H || {}, ST = inp.STATIC, now = inp.now;
@@ -174,6 +199,7 @@
     D.pricePosition = L.pricePosition || {}; D.costAnchor = L.costAnchor || null;
     D.hist = inp.histCsv ? CL.histFromCsv(inp.histCsv, '2015-04-03') : { d: [], c: [] };
     D.adj = CL.adjFrom(inp.adj, D.hist);
+    D.adjBase = D.adj; CL.extendFromSources(D, inp.prices, now);
     D.sea = inp.seasonal || null;
     D.crush = CL.crushFrom(L);
     D.capitalCoverage = CL.coverageFrom(inp.report);
@@ -258,7 +284,7 @@
     CL.refreshPrices = async function () {
       try {
         if (!D || !lastSide) return; const p = await jget('data/prices.json'); if (!p || (lastSide.prices && lastSide.prices.updatedAt === p.updatedAt)) return;
-        lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
+        lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; CL.extendFromSources(D, p, Date.now()); if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 3 * 60 * 1000));

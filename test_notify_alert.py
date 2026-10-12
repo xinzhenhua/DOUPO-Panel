@@ -174,6 +174,36 @@ def test_trailing_alerts_with_node_script():
     finally: shutil.rmtree(d, ignore_errors=True)
     ok("移动止损动态提示：到启动价→改成移动止损+建议价；上移提示；快到启动价；逼近≤1%、盘中触及；同日同线只发一次")
 
+def test_alert_uses_just_closed_daily_bar():
+    root = os.path.dirname(os.path.abspath(__file__))
+    if not shutil.which("node"): print("⚠️ 跳过：没有 node"); return
+    d = tempfile.mkdtemp()
+    try:
+        import datetime as dt
+        data = os.path.join(d, "data"); os.makedirs(os.path.join(data, "raw", "seasonal"))
+        days = []; x = dt.date(2025, 1, 1)
+        while len(days) < 350:
+            if x.weekday() < 5: days.append(x.isoformat())
+            x += dt.timedelta(days=1)
+        px = [3000 + (i % 7) for i in range(350)]
+        open(os.path.join(data, "raw", "seasonal", "M0_daily.csv"), "w").write("date,open,high,low,close,volume,hold,settle\n" + "\n".join(f"{dd},{p},{p},{p},{p},1,1,0" for dd, p in zip(days, px)))
+        json.dump({"d": days, "i": [round(p / px[0] * 100, 5) for p in px], "k": ["m2701"] * len(days)}, open(os.path.join(data, "main_adj.json"), "w"))
+        nxt = dt.date.fromisoformat(days[-1]); nxt += dt.timedelta(days=1)
+        while nxt.weekday() >= 5: nxt += dt.timedelta(days=1)
+        nxt = nxt.isoformat()
+        bars = [{"date": days[-1], "close": px[-1]}, {"date": nxt, "close": px[-1] + 40}]
+        json.dump({"dceM01Daily": {"symbol": "M2701", "bars": bars}, "marketCapital": {"members": {}}}, open(os.path.join(data, "latest.json"), "w"))
+        out = os.path.join(d, "a.json")
+        def run(h):
+            now = int(dt.datetime.fromisoformat(nxt + "T%02d:%02d:00+08:00" % h).timestamp() * 1000)
+            subprocess.run(["node", os.path.join(root, "scripts", "plan_alert.js"), "--data", data, "--out", out, "--today", nxt, "--now", str(now)], check=True, capture_output=True)
+            return json.load(open(out))
+        a = run((15, 20)); assert a["priceDate"] == nxt and abs(a["px"] - (px[-1] + 40)) < 1e-6, (a["priceDate"], a["px"])
+        b = run((11, 0)); assert b["priceDate"] == days[-1], b["priceDate"]
+        # 价格是昨天的，今天已经开盘却没有当天收盘 → 数据不足的判断仍然成立（不会拿旧价当新价）
+    finally: shutil.rmtree(d, ignore_errors=True)
+    ok("提醒：收盘（15:01 后）新浪日线有当天收盘价就接上，盘中不接")
+
 def test_send_test_and_failure_reason():
     env = {"PUSHPLUS_TOKEN": "tok"}
     assert na.configured(env) == (["pushplus"], ["issue", "serverchan", "smtp"]), na.configured(env)

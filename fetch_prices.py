@@ -15,6 +15,8 @@ def merge(old, fresh, now):
     for k, v in fresh.items():
         if not v or not v.get("bars"):
             continue
+        v = dict(v); v.setdefault("daily", (cons.get(k) or {}).get("daily"))
+        if v.get("daily") is None: v.pop("daily", None)
         if cons.get(k) != v:
             cons[k] = v; changed = True
     out = {"updatedAt": now if changed else (old or {}).get("updatedAt", now), "source": "新浪财经(akshare) 15分钟线", "contracts": cons}
@@ -30,6 +32,12 @@ def main():
         r = fd.fetch_dce_hourly_kline(code, max_bars=300, period="15")
         if r.get("available"):
             fresh[k] = {"symbol": r["symbol"], "bars": r["bars"]}
+            try:   # 日线最近几根：收盘后新浪马上有当天收盘价，页面/提醒用它把价格序列接到最新一天
+                d = fd.fetch_dce_daily_kline(code, max_rows=8)
+                if d.get("available") and d.get("bars"):
+                    fresh[k]["daily"] = [{"date": str(b["date"])[:10], "close": b["close"]} for b in d["bars"][-8:]]
+            except Exception as e:  # noqa: BLE001
+                print("⚠️ 日线", k, e)
         else:
             print("⚠️", k, code, r.get("reason"))
     old = None

@@ -96,7 +96,7 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
   eq('adjFrom：换月日没有缺口（调整价相邻日涨跌与指数一致）', Math.abs((a.c[150] / a.c[149]) / (idx[150] / idx[149]) - 1) < 1e-12, true);
   eq('adjFrom：不足200天/长度对不上/空 → null', [CL.adjFrom({ d: days.slice(0, 50), i: idx.slice(0, 50) }, hist), CL.adjFrom({ d: days, i: idx.slice(1) }, hist), CL.adjFrom(null, hist)], [null, null, null]);
   eq('adjFrom：没有原始主连也能给出（水平为指数本身）', CL.adjFrom({ d: days, i: idx }, null).c[0], 100);
-  eq('assemble：D.adj', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: null, adj: { d: days, i: idx }, now: Date.UTC(2026, 9, 11, 13), STATIC }).adj.d.length, 300); }
+  eq('assemble：D.adj', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: null, adj: { d: days, i: idx, k: days.map(() => 'm2599') }, now: Date.UTC(2026, 9, 11, 13), STATIC }).adj.d.length, 300); }
 
 {
   const bar = (dt, c) => ({ datetime: dt, open: c, high: c, low: c, close: c, volume: 1, hold: 1 });
@@ -106,5 +106,18 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
   eq('prices.json 比 latest 旧 → 用 latest 里的', A(lt, { contracts: { M01: { bars: [bar('2026-10-12 09:00:00', 3300)] } } }).live.jan.c, 3380);
   eq('没有 prices.json → 不报错，用 latest', A(lt, null).live.jan.c, 3380);
   eq('D.m15 的 d 字段是 月-日 时:分', A(lt, null).m15.jan[0].d, '10-12 10:00');
+}
+{
+  const adj = { d: ['2026-10-08', '2026-10-09'], c: [3000, 3060], k: ['m2701', 'm2701'] };
+  const bars = [{ d: '2026-10-09', c: 3402 }, { d: '2026-10-12', c: 3420 }, { d: '2026-10-13', c: 3500 }];
+  const at = (h, m) => Date.UTC(2026, 9, 12, h - 8, m);   // 北京时间
+  const e1 = CL.extendAdj(adj, bars, 'M2701', at(15, 30));
+  eq('extendAdj：15:30 当天已收盘 → 接上 10-12，按两边同一天收盘比折算（3420×3060/3402）', [e1.d, Math.round(e1.c[2] * 100) / 100, e1.extended], [['2026-10-08', '2026-10-09', '2026-10-12'], 3076.19, 1]);
+  eq('extendAdj：14:00 当天还没收盘 → 不接', CL.extendAdj(adj, bars, 'M2701', at(14, 0)).d.length, 2);
+  eq('extendAdj：15:00 整还不算（过 15:01 才接）', CL.extendAdj(adj, bars, 'M2701', at(15, 0)).d.length, 2);
+  eq('extendAdj：明天的占位（夜盘）不接', CL.extendAdj(adj, bars, 'M2701', at(23, 30)).d.length, 3);
+  eq('extendAdj：不是同一个合约（换月了）→ 不接', CL.extendAdj(adj, bars, 'M2705', at(15, 30)).d.length, 2);
+  eq('extendAdj：没有新日线 → 原样返回同一个对象', CL.extendAdj(adj, [{ d: '2026-10-09', c: 3402 }], 'M2701', at(15, 30)) === adj, true);
+  eq('extendAdj：空输入不报错', [CL.extendAdj(null, bars, 'x', 0), CL.extendAdj(adj, null, 'x', 0) === adj], [null, true]);
 }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

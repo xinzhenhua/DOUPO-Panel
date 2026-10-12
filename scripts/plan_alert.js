@@ -32,7 +32,16 @@ function compute(dataDir, opts) {
   const P = loadPlan(), TP = P.TPLAN, today = opts.today || beijingToday();
   const latest = readJson(path.join(dataDir, 'latest.json')) || {};
   const hist = CL.histFromCsv(readText(path.join(dataDir, 'raw', 'seasonal', 'M0_daily.csv')), '2015-04-03');
-  const adj = CL.adjFrom(readJson(path.join(dataDir, 'main_adj.json')), hist);
+  let adj = CL.adjFrom(readJson(path.join(dataDir, 'main_adj.json')), hist);
+  if (adj) {   // 和页面同一个逻辑：用刚收盘的日线（latest.json 的日K、prices.json 的 daily）把价格序列接到最新一天
+    const nowMs = opts.nowMs || Date.now(), pj = opts.prices || readJson(path.join(dataDir, 'prices.json')) || {};
+    const SRC = [['dceM09Daily', 'M09'], ['dceM05Daily', 'M05'], ['dceM01Daily', 'M01']];
+    for (const [lk, pk] of SRC) {
+      const lb = (latest[lk] || {}), sym = lb.symbol, pc = (pj.contracts || {})[pk] || {};
+      const bars = (lb.bars || []).map(b => ({ d: b.date, c: b.close })).concat(pc.symbol && sym && String(pc.symbol).toLowerCase() === String(sym).toLowerCase() ? (pc.daily || []).map(b => ({ d: b.date, c: b.close })) : []);
+      const nx = CL.extendAdj(adj, bars, sym, nowMs); if (nx !== adj) { adj = nx; break; }
+    }
+  }
   const h = adj || hist, cs = h.c;
   const F = P.planForeign(latest.marketCapital && latest.marketCapital.members);
   const lastD = h.d.length ? h.d[h.d.length - 1] : null;
@@ -95,7 +104,7 @@ function compute(dataDir, opts) {
 
 function main(argv) {
   const a = {}; for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) a[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true;
-  const dataDir = a.data || 'data', out = compute(dataDir, { today: a.today, position: readJson(a.position || path.join(dataDir, 'position.json')), prices: readJson(a.prices || path.join(dataDir, 'prices.json')), contract: a.contract });
+  const dataDir = a.data || 'data', out = compute(dataDir, { today: a.today, nowMs: a.now ? +a.now : undefined, position: readJson(a.position || path.join(dataDir, 'position.json')), prices: readJson(a.prices || path.join(dataDir, 'prices.json')), contract: a.contract });
   const txt = JSON.stringify(out, null, 1);
   if (a.out) fs.writeFileSync(a.out, txt); else console.log(txt);
   console.error(`[提醒] 价格日 ${out.priceDate} · ${out.gate.ok ? '数据可用' : '数据不足'} · 入场信号 ${out.side || '无'} · 持仓 ${out.position ? (out.position.side > 0 ? '多' : '空') + out.position.lots + '手' : '空仓'} · 事件 ${out.events.length} 个`);

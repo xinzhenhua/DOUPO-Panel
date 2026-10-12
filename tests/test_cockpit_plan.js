@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planHold,planEquity,planStats,planGate,planDataLine,planPartsText};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -135,4 +135,11 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('空单：最弱席位-2.5万但三家合计+0.5万 → 空单离场(外资回正，看合计)',P.planManage(Object.assign({fsum:-25000,fall:5000},base)).action,'空单离场');
   eq('空单：某席位回到≥0但合计仍<0 → 持有(看合计不看最弱)',P.planManage(Object.assign({fsum:0,fall:-5000},base)).action,'持有');
   eq('多单：最弱席位≤-2万 → 平多，不看合计',P.planManage({side:1,entry:3400,peak:3450,last:3420,ma20:3300,fsum:-25000,fall:5000}).action,'外资去杠杆·平多'); }
+{ const T=o=>Object.assign({side:1,lots:1,entryD:'2026-10-08',entryPx:3400},o);
+  const tr=[T({id:'a',contract:'M2701'})];
+  eq('持仓按合约：看 M2701 → 有',P.planOpenFor(tr,'M2701','M2701').id,'a'); eq('持仓按合约：看 M2705 → 没有',P.planOpenFor(tr,'M2705','M2701'),null);
+  eq('持仓按合约：代码大小写不敏感',P.planOpenFor(tr,'m2701','M2701').id,'a');
+  eq('持仓按合约：老记录没写合约 → 算自动合约的（看自动合约有，看别的没有）',[P.planOpenFor([T({id:'b'})],'M2701','M2701').id,P.planOpenFor([T({id:'b'})],'M2705','M2701')],['b',null]);
+  eq('持仓按合约：已平仓的不算',P.planOpenFor([T({id:'c',contract:'M2701',exitD:'2026-10-09'})],'M2701','M2701'),null);
+  eq('持仓按合约：两笔未平仓（不应出现）取各自合约的那笔',[P.planOpenFor([T({id:'d',contract:'M2701'}),T({id:'e',contract:'M2705'})],'M2705','M2701').id],['e']); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

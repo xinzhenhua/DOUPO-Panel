@@ -234,6 +234,8 @@ function planFee(t, perLot) {
   return (planNum(t.feeO) ? +t.feeO : half) + (t.exitD ? (planNum(t.feeC) ? +t.feeC : half) : 0);
 }
 function planPnl(t, px) { return (t.side >= 0 ? 1 : -1) * (px - t.entryPx) * t.lots * TPLAN.TON; }
+/* 持仓属于哪个合约：开仓时记下当时看的合约代码(t.contract)；没记的老记录算当前自动合约的 */
+function planOpenFor(trades, sym, legacySym) { for (let i = (trades || []).length - 1; i >= 0; i--) { const t = trades[i]; if (t.exitD) continue; const c = t.contract || legacySym; if (!sym || !c || String(c).toLowerCase() === String(sym).toLowerCase()) return t; } return null; }
 function planOpen(trades) { for (let i = (trades || []).length - 1; i >= 0; i--) if (!trades[i].exitD) return trades[i]; return null; }
 /* 持仓期间的最高/最低价：从主连日线 h={d:[],c:[]} 里取「开仓日起」的收盘价（和回测同口径）。
    开仓价和当天主连收盘差>2%（多半是非主力合约）时，按开仓日收盘折算，保证涨跌幅准确；返回 k=折算系数 */
@@ -288,16 +290,25 @@ const sdName = s => s > 0 ? '多' : '空';
 const yuan = n => (n >= 0 ? '+' : '−') + fmtD(Math.abs(n));
 const pc1 = x => (x * 100).toFixed(1) + '%';
 /* 一次算好：信号、持仓、自动判定、权益、建议手数。首页信号条和计划页共用，保证两处结论一致 */
+function curPos() { const A = acctGet(); return planOpenFor(A.trades, C().symbol, (D.contracts[autoKey()] || {}).symbol); }
+/* 某一笔持仓用哪条价格线算：开的就是 adj 那个主力合约 → 换月调整价；否则用它自己那个合约的日K */
+function holdSeries(t) {
+  const cs = String(t.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase(), ak = D.adj && D.adj.k && D.adj.k.length ? String(D.adj.k[D.adj.k.length - 1] || '').toLowerCase() : '';
+  if (D.adj && (!ak || !cs || ak === cs)) return { h: D.adj, own: false };
+  for (const k of ['sep', 'may', 'jan']) { const c = D.contracts[k]; if (c && String(c.symbol || '').toLowerCase() === cs && (c.kline || []).length >= 5) return { h: { d: c.kline.map(b => b.d), c: c.kline.map(b => b.c) }, own: true }; }
+  return { h: D.adj || (D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] }), own: false };
+}
 function planSnap() {
   const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), sig = planSignals(cs, F.min);
   const px = cs.length ? cs[cs.length - 1] : planLastPx(), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
-  const pos = planOpen(A.trades); let hold = null, mg = null;
-  if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.min, fall: F.sum }); }
-  const E = planEquity(A, hold ? hold.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
+  const any = planOpen(A.trades), pos = curPos(), other = any && !pos ? any : null; let hold = null, mg = null, holdAny = null;
+  if (any) { const hs = holdSeries(any), ho = planHold(hs.h, any), ma = hs.own ? (hs.h.c.length >= 20 ? hs.h.c.slice(-20).reduce((a, b) => a + b, 0) / 20 : null) : (sig.ma20 == null ? null : sig.ma20 * ho.k); holdAny = ho;
+    if (pos) { hold = ho; mg = planManage({ side: pos.side, entry: pos.entryPx, peak: ho.peak, last: ho.last, ma20: ma, fsum: F.min, fall: F.sum }); } }
+  const E = planEquity(A, holdAny ? holdAny.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
   const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
-  return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate, dl };
+  return { A, cs, F, sig, px, pos, other, hold, mg, E, base, side, size, gate, dl };
 }
 /* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
 function planSnapshotNow(s) {
@@ -307,10 +318,10 @@ function planSnapshotNow(s) {
 }
 /* ---- 首页：交易信号条 ---- */
 /* 交易计划面板：空仓时默认收起（首页信号格已经是结论），有持仓时默认展开；点信号格/「计划」按钮手动开关，记平仓后恢复自动 */
-function planShown() { if (S.planShow === true || S.planShow === false) return S.planShow; return !!planOpen(acctGet().trades); }
+function planShown() { if (S.planShow === true || S.planShow === false) return S.planShow; return !!curPos(); }
 function applyPlanVis() {
   const off = !planShown(), had = document.body.classList.contains('plan-off'); document.body.classList.toggle('plan-off', off);
-  document.body.classList.toggle('holding', !!planOpen(acctGet().trades));
+  document.body.classList.toggle('holding', !!curPos());
   const b = $('#planBtn'); if (b) b.setAttribute('aria-pressed', String(!off));
   if (off !== had || MULTI !== multiOn()) renderChart();
 }
@@ -325,13 +336,13 @@ function renderSig() {
   const el = $('#sigbar'); if (!el) return;
   const s = planSnap(), sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
   const blocked = !s.gate.ok, cls = blocked ? 'gate' : s.side > 0 ? 'long' : s.side < 0 ? 'short' : 'wait', head = blocked ? '数据不足，信号不可信' : s.side > 0 ? '做多信号' : s.side < 0 ? '做空信号' : '无入场信号';
-  let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 限价 ${s.side > 0 ? '≤' : '≥'} ${fmtD(s.px)} · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
+  let sub; if (blocked) sub = s.gate.reasons.join('；'); else if (s.pos) sub = s.side ? `已有${sdName(s.pos.side)}单，不加仓` : planWhy(sg); else if (s.other) sub = `持仓在 ${s.other.contract || '另一个合约'}，不加仓` + (s.side ? '（这个合约的信号仅供参考）' : ''); else if (s.size) sub = `建议 ${fmtD(s.size.lots)} 手 · 限价 ${s.side > 0 ? '≤' : '≥'} ${fmtD(s.px)} · 止损价 ${fmtD(s.size.stopPx)} · 占用 ${pc1(s.size.usage)}`; else if (s.side) sub = '权益不够开 1 手'; else sub = planWhy(sg);
   const dsl = `<div class="dsl ${s.dl.cls}" id="dataLine">${esc(s.dl.t)}</div>`;
   let left, right;
   if (!s.pos) {
     left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 收盘${lastBarD()} ${fmtD(s.px)}${liveTxt()}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>
     <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
-    right = `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
+    right = s.other ? (() => { const o = s.other, ck = ['sep', 'may', 'jan'].find(k => String((D.contracts[k] || {}).symbol || '').toLowerCase() === String(o.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase()); return `<button class="sg" ${ck ? `data-ck="${ck}"` : 'data-goplan="toggle"'} aria-label="持仓在另一个合约，点击切换过去"><div class="cl">持仓在另一个合约</div><div class="hd">${esc(o.contract || '—')}</div><div class="sb">${sdName(o.side)} ${fmtD(o.lots)} 手 · 点这里切过去看</div></button>`; })() : `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
   } else {
     const m = s.mg, ho = s.hold, t = s.pos, sd = t.side > 0, out = m.action !== '持有', fl = planPnl(t, ho.last), noF = !F.used.length;
     const stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), stopGap = Math.abs((stopPx / ho.last - 1) * 100);
@@ -365,13 +376,6 @@ function sizeHtml(z, side, m, mode, eq, px) {
   return h;
 }
 /* 离场提醒读的是仓库里的 data/position.json，不是浏览器里的账：到 Actions →「记录持仓」手动填一次 */
-function syncActionsUrl() { const m = location.hostname.match(/^([^.]+)\.github\.io$/), r = location.pathname.split('/')[1]; return m && r ? `https://github.com/${m[1]}/${r}/actions/workflows/record-position.yml` : null; }
-function syncHtml(pos) {
-  const u = syncActionsUrl(), ex = pos ? `动作 <b>open</b> · 方向 <b>${pos.side > 0 ? '多' : '空'}</b> · 手数 <b>${pos.lots}</b> · 日期 <b>${esc(pos.entryD)}</b> · 成交均价 <b>${fmtD(pos.entryPx)}</b>` : '动作 <b>open</b> · 方向 多/空 · 手数 · 开仓日期 · 成交均价';
-  return `<details id="pf-sync"><summary>同步持仓到提醒</summary>${patGet() ? '<div class="plh">✅ 已连接云端：记开仓/平仓后持仓会自动同步，下面的手动步骤用不着。</div>' : ''}<div class="plh">想收到「该平仓」提醒就要做这一步。页面里记的账只存在这台设备的浏览器里，服务器上的提醒不知道你有没有仓位。开仓后到 GitHub 点一次，平仓后再点一次（一年大约十次）：</div>
-   <div class="plh">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">GitHub → Actions → 记录持仓 → Run workflow</a>` : 'GitHub → Actions → 记录持仓 → Run workflow'}，填：${ex}；平仓后填 动作 <b>close</b>。</div>
-   <div class="plh">不同步也能用：入场提醒不需要持仓；离场判断页面首页每天仍会显示「继续持有 / 该平仓」。</div></details>`;
-}
 const qb = k => `<button class="q" data-about="${k}" aria-label="说明">?</button>`;
 function sigTableHtml(s) {
   const sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), pct1 = x => x == null ? '—' : x.toFixed(0) + '%';
@@ -395,10 +399,12 @@ function planBodyHtml(s) {
   /* ① 今日信号（页面分块：ps1..ps5，电脑端排成两列一屏放下） */
   h += `<div class="plt">今日入场信号 ${qb('plsig')}</div><div class="hl plhead"><b>${head}</b><br><span style="color:var(--ink2)">${esc(!s.gate.ok ? s.gate.reasons.join('；') + '。先别按这个信号操作' : planWhy(sg))}${s.pos && s.side ? '。你已有持仓，不加仓' : ''}</span>${s.gate.warn.length ? '<br><span class="plh">' + esc(s.gate.warn.join('；')) + '</span>' : ''}</div>
 `;
-  if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity, s.px) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
+  if (!s.pos && !s.other && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity, s.px) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
   /* ② 持仓管理 */
   h += `\u0001<div class="plt">持仓管理 ${qb('plpos')}</div>`;
-  if (!s.pos) {
+  if (!s.pos && s.other) {
+    h += `<div class="plh">你的持仓在 <b>${esc(s.other.contract || '另一个合约')}</b>：${sdName(s.other.side)} ${fmtD(s.other.lots)} 手 @ ${fmtD(s.other.entryPx)}。同一时间只持一笔，先在那个合约里平仓。</div>`;
+  } else if (!s.pos) {
     const ds = s.side || 1, lots = s.size ? s.size.lots : '';
     h += `<div class="plf">
       <label>开仓日期${inp('pf-od', todayBJ(), 'YYYY-MM-DD')}</label>
@@ -447,7 +453,7 @@ function planBodyHtml(s) {
   if (A.flows.length) h += `<details id="pf-fl"><summary>出入金记录（${A.flows.length} 笔）</summary><table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table></details>`;
   h += `<div class="plh" style="margin-top:8px">记录只存本机浏览器。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
   /* 折叠：阶梯、回测摘要 */
-  h += `\u0001${syncHtml(s.pos)}<details id="pf-mo"><summary>历史开仓月份</summary><div class="plh">背景参考：信号出现的频率有参考，盈亏没有。</div>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯</summary><div class="plh">权益越大，占用越低。</div>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要</summary><div class="plh">样本内结果，仅供参考。</div>${planBtHtml()}</details>`;
+  h += `\u0001<details id="pf-mo"><summary>历史开仓月份</summary><div class="plh">背景参考：信号出现的频率有参考，盈亏没有。</div>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯</summary><div class="plh">权益越大，占用越低。</div>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要</summary><div class="plh">样本内结果，仅供参考。</div>${planBtHtml()}</details>`;
   const q = h.split('\u0001');   // [入场信号, 持仓管理, 账户权益, 交易记录, 折叠项]：电脑端两列排版时按 入场/账户/记录 | 持仓 的顺序放，高度才平衡
   return pmsg + `<div class="plgrid"><div class="ps ps1">${s.pos ? '' : q[0]}</div><div class="ps ps3">${q[2]}</div><div class="ps ps4">${q[3]}</div><div class="ps ps2">${q[1]}</div><div class="ps ps5">${q[4]}</div></div>`;
 }
@@ -510,14 +516,14 @@ function planAct(act, el) {
   if (act === 'pat-save' || act === 'pat-clear' || act === 'pat-sync') return cloudAct(act);
   if (act === 'open') {
     const side = parseInt(v('pf-os'), 10) >= 0 ? 1 : -1, lots = Math.round(nm('pf-ol')), px = nm('pf-op'), d = v('pf-od'), fee = v('pf-of');
-    if (planOpen(A.trades)) return planAfter('已经有一笔持仓，先记平仓。');
+    { const o = planOpen(A.trades); if (o) return planAfter('已经有一笔持仓' + (o.contract ? '（' + o.contract + '）' : '') + '，先记平仓。'); }
     if (!okDate(d) || !(lots >= 1) || !(px > 0)) return planAfter('开仓没记：日期要写成 2026-10-12，手数≥1，价格>0。');
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('开仓没记：手续费要么留空，要么填数字。');
-    A.trades.push({ id: String(Date.now()), side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee), snap: planSnapshotNow(planSnap()) });
+    A.trades.push({ id: String(Date.now()), contract: C().symbol || null, side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee), snap: planSnapshotNow(planSnap()) });
     return save(`已记录开仓：${sdName(side)} ${lots} 手 @ ${fmtD(px)}。之后的最高/最低价、浮盈亏、离场判断都自动算。`);
   }
   if (act === 'close') {
-    const t = planOpen(A.trades), px = nm('pf-cp'), d = v('pf-cd'), fee = v('pf-cf');
+    const t = curPos(), px = nm('pf-cp'), d = v('pf-cd'), fee = v('pf-cf');
     if (!t) return planAfter('当前没有持仓。');
     if (!okDate(d) || d < t.entryD || !(px > 0)) return planAfter('平仓没记：日期要写成 2026-10-12 且不早于开仓日，价格>0。');
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('平仓没记：手续费要么留空，要么填数字。');
@@ -756,7 +762,7 @@ function renderChart() {
   drawChart();
 }
 function planChartLines() {   // 持仓时在K线上画开仓价、止损价、移动止盈触发价
-  try { const t = planOpen(acctGet().trades); if (!t) return []; const s = planSnap(), sd = t.side > 0 ? 1 : -1, L = [{ v: t.entryPx, n: '开仓', c: 'var(--ink)' }, { v: t.entryPx * (1 - sd * TPLAN.STOP / 100), n: '止损', c: 'var(--amber)' }];
+  try { const t = curPos(); if (!t) return []; const s = planSnap(), sd = t.side > 0 ? 1 : -1, L = [{ v: t.entryPx, n: '开仓', c: 'var(--ink)' }, { v: t.entryPx * (1 - sd * TPLAN.STOP / 100), n: '止损', c: 'var(--amber)' }];
     if (s.mg && s.mg.peakR >= TPLAN.ACT) L.push({ v: s.hold.peak * (1 - sd * TPLAN.TRAIL / 100), n: '移动止盈', c: 'var(--amber)' }); return L; } catch (_) { return []; }
 }
 function drawChart(box0) {
@@ -1016,7 +1022,13 @@ const cloudT = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 1
 function ghApi(method, path, body) { const g = ghCfg(); return fetch(`https://api.github.com/repos/${g.owner}/${g.repo}/contents/${path}`, { method, headers: { Authorization: 'Bearer ' + patGet(), Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' }); }
 function ghErr(status) { return 'HTTP ' + status + (status === 401 ? '（令牌无效或已过期）' : status === 403 || status === 404 ? '（令牌权限不够，或仓库名不对）' : ''); }
 function cloudShort() { if (!patGet()) return '未连接（账只在本机）'; return CLOUD.msg || '已连接'; }
-function cloudSet(m) { CLOUD.msg = m; $$('.cloudmsg').forEach(e => { e.textContent = cloudShort(); }); }
+function syncDotUpdate() {   // 页面顶部：绿点=云端已同步，黄点=上传/读取中，红点=没同步（没填令牌或失败）
+  const d = $('#syncDot'); if (!d) return; const has = !!patGet(), m = CLOUD.msg || '';
+  const st = has && m.startsWith('已同步') ? 'ok' : has && /中…$|待上传/.test(m) ? 'wait' : 'bad';
+  d.className = 'sdot ' + (st === 'bad' ? '' : st); d.innerHTML = `<i></i>${st === 'ok' ? '持仓已同步' : st === 'wait' ? '同步中…' : '未同步'}`;
+  d.title = has ? (m || '云端：已连接，等待同步') : '没填令牌：账只存在这台设备。点这里去填';
+}
+function cloudSet(m) { CLOUD.msg = m; $$('.cloudmsg').forEach(e => { e.textContent = cloudShort(); }); syncDotUpdate(); }
 function acctHasData(A) { return !!(A.trades.length || A.flows.length || +A.init !== 500000); }
 function adoptAcct(a, note) {
   ACCT = acctNorm(a); acctSave(true); PMSG = null; planUpdate(true); renderSig(); drawChart(); cloudSet('已同步 ' + cloudT() + (note || ''));
@@ -1028,7 +1040,7 @@ async function cloudFetch() {
   const j = await r.json(); CLOUD.sha = j.sha; let a = null; try { a = JSON.parse(b64d(j.content)); } catch (_) {}
   return { ok: true, acct: a && Array.isArray(a.trades) && Array.isArray(a.flows) ? a : null };
 }
-function posPayload() { const t = planOpen(acctGet().trades); return t ? { side: t.side >= 0 ? 1 : -1, lots: t.lots, entryD: t.entryD, entryPx: t.entryPx } : { flat: true }; }
+function posPayload() { const t = planOpen(acctGet().trades); return t ? { side: t.side >= 0 ? 1 : -1, lots: t.lots, entryD: t.entryD, entryPx: t.entryPx, contract: t.contract || (D.contracts[autoKey()] || {}).symbol || null } : { flat: true }; }
 async function cloudPushPos() {
   const want = posPayload(); let sha, cur = null;
   const r = await ghApi('GET', 'data/position.json');
@@ -1125,6 +1137,7 @@ document.addEventListener('click', e => {
   if (t.dataset.ck) { if (t.dataset.ck === 'auto') { S.auto = true; S.key = autoKey(); } else { S.key = t.dataset.ck; S.auto = S.key === autoKey(); } pop.classList.remove('on'); cb.setAttribute('aria-expanded', 'false'); renderAll(true); return; }
   if (t.id === 'exBtn') { S.ex = !S.ex; document.body.classList.toggle('ex', S.ex); t.setAttribute('aria-pressed', S.ex); layoutWall(false); return; }
   if (t.id === 'thBtn') { S.themePref = { auto: 'day', day: 'night', night: 'auto' }[S.themePref]; applyTheme(); try { localStorage.setItem('cockpit-theme', S.themePref); } catch (_) {} return; }
+  if (t.id === 'syncDot') { setMode('trade'); S.planShow = true; applyPlanVis(); const f = $('#pf-set'); if (f) { f.open = true; f.scrollIntoView && f.scrollIntoView({ block: 'center' }); } return; }
   if (t.id === 'fsX') { closeFull(); return; }
   if (t.dataset.full) { openFull(t.dataset.full); return; }
   if (t.id === 'abBtn') { openAbout(); return; }
@@ -1148,7 +1161,7 @@ $('#scrim').addEventListener('click', closeSheet);
 document.addEventListener('keydown', e => {
   if (e.target.matches && e.target.matches('input,textarea')) return;
   if (e.key === 'Escape' && FULL.kind) { closeFull(); return; }
-  if (e.key === 'Escape') { const sheetOn = $('#sheet').classList.contains('on'); closeSheet(); $('#cPop').classList.remove('on'); if (!sheetOn && S.mode === 'trade' && planShown() && !planOpen(acctGet().trades)) { S.planShow = false; applyPlanVis(); } return; }
+  if (e.key === 'Escape') { const sheetOn = $('#sheet').classList.contains('on'); closeSheet(); $('#cPop').classList.remove('on'); if (!sheetOn && S.mode === 'trade' && planShown() && !curPos()) { S.planShow = false; applyPlanVis(); } return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'e' || e.key === 'E') $('#exBtn').click(); else if (e.key === '?') openAbout(); else if (/^[1-6]$/.test(e.key)) openTab(TABS[+e.key - 1][0]);
 });
@@ -1164,7 +1177,7 @@ try { const t = localStorage.getItem('cockpit-theme'); if (t === 'day' || t === 
 try { const m = localStorage.getItem('cockpit-mode'); if (m === 'research' || m === 'trade') S.mode = m; } catch (_) {}
 setMode(S.mode, true); applyTheme(); renderAll(true); setMode(S.mode, true);
 setInterval(() => { const ae = document.activeElement; if (!document.hidden && patGet() && !CLOUD.busy && !CLOUD.timer && !(ae && ae.matches && ae.matches('input,select,textarea') && ae.closest('#planForm'))) cloudPull(); }, window.__CLOUD_POLL_MS || 2 * 60 * 1000);   // 页面开着：每2分钟拉一次云端（有人在填表单时不拉）
-cloudPull(); document.addEventListener('visibilitychange', () => { if (!document.hidden && !CLOUD.busy && !CLOUD.timer) cloudPull(); });
+syncDotUpdate(); cloudPull(); document.addEventListener('visibilitychange', () => { if (!document.hidden && !CLOUD.busy && !CLOUD.timer) cloudPull(); });
 function refreshed() {   // 后台重取数据后调用：不打断正在输入的表单
   if (S.auto) S.key = autoKey();
   const ae = document.activeElement, typing = ae && ae.closest && ae.closest('#planForm, .inp');
