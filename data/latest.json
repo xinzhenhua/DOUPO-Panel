@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-11T19:03:51.522844+00:00",
+  "generatedAt": "2026-10-12T02:10:23.734227+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 365.6,
-    "change": 4.9,
-    "changePct": 1.36,
-    "asOf": "2026-10-09T04:00:00+00:00",
+    "price": 363.8,
+    "change": -4.9,
+    "changePct": -1.33,
+    "asOf": "2026-10-12T02:00:21+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
@@ -914,8 +914,34 @@
   },
   "crushMargins": {
     "sep": {
-      "available": false,
-      "reason": "以下合约价格缺失，无法计算压榨利润: 豆粕M2709(akshare日K线接口调用失败: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
+      "available": true,
+      "contractMonth": 9,
+      "date": "2026-10-09",
+      "datesAligned": true,
+      "mealSymbol": "M2709",
+      "mealPrice": 3103.0,
+      "oilSymbol": "Y2709",
+      "oilPrice": 8740.0,
+      "beanSymbol": "B2709",
+      "beanPrice": 3902.0,
+      "grossMargin": 150.8,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 654,
+        "minPoints": 12,
+        "asOf": "2026-10-09",
+        "since": "2019-04-01",
+        "percentile": 57.0,
+        "min": 22.0,
+        "max": 229.4,
+        "median": 138.45,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     },
     "may": {
       "available": true,
@@ -1052,10 +1078,86 @@
     "available": true,
     "fx": 6.6921,
     "contracts": {
+      "sep": {
+        "cbotSymbol": "ZSN27.CBT",
+        "zsCents": 1323.0,
+        "zsDate": "2026-10-12",
+        "zsExact": true,
+        "zsNote": "",
+        "mealSymbol": "M2709",
+        "mealPrice": 3103.0,
+        "oilPrice": 8740.0,
+        "priceDate": "2026-10-09",
+        "primary": null,
+        "brazil": {
+          "beanPrice": 3902.0,
+          "breakeven": 3102.0,
+          "impliedPremium": 54.2,
+          "available": true,
+          "zsCents": 1323.0,
+          "fx": 6.6921,
+          "mealPrice": 3103.0,
+          "oilPrice": 8740.0,
+          "beanCost": 4207.8,
+          "mealCost": 3491.6,
+          "mealCostLow": 3315.8,
+          "mealCostHigh": 3667.5,
+          "gap": -388.6,
+          "gapPct": -11.1,
+          "position": "below",
+          "params": {
+            "asof": "2026-10-10",
+            "premium_step": 50,
+            "vat": 0.09,
+            "port_fee": 100,
+            "crush_fee": 150,
+            "label": "巴西豆",
+            "tariff": 0.03,
+            "premium_cents": 165,
+            "premium_confirmed": false,
+            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
+            "ship": "2027年6~7月船期(用2026年同月快照类推)",
+            "note": "巴西2026年6月155、7月175(对N合约)，平均165，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
+          },
+          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
+        },
+        "us": {
+          "beanPrice": 3902.0,
+          "breakeven": 3102.0,
+          "impliedPremium": -67.7,
+          "available": true,
+          "zsCents": 1323.0,
+          "fx": 6.6921,
+          "mealPrice": 3103.0,
+          "oilPrice": 8740.0,
+          "beanCost": 4918.6,
+          "mealCost": 4397.1,
+          "mealCostLow": 4204.2,
+          "mealCostHigh": 4590.0,
+          "gap": -1294.1,
+          "gapPct": -29.4,
+          "position": "below",
+          "params": {
+            "asof": "2026-10-10",
+            "premium_step": 50,
+            "vat": 0.09,
+            "port_fee": 100,
+            "crush_fee": 150,
+            "label": "美豆",
+            "tariff": 0.13,
+            "premium_cents": 268,
+            "premium_confirmed": false,
+            "source_note": "关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换",
+            "ship": "2027年7月船期(用2026年同月快照类推)",
+            "note": "美湾2026年7月265~272(对N合约)，取中值268，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
+          },
+          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
+        }
+      },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1318.75,
-        "zsDate": "2026-10-09",
+        "zsCents": 1308.75,
+        "zsDate": "2026-10-12",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2705",
@@ -1066,18 +1168,18 @@
         "brazil": {
           "beanPrice": 3833.0,
           "breakeven": 2990.1,
-          "impliedPremium": 33.5,
+          "impliedPremium": 43.5,
           "available": true,
-          "zsCents": 1318.75,
+          "zsCents": 1308.75,
           "fx": 6.6921,
           "mealPrice": 3012.0,
           "oilPrice": 8842.0,
-          "beanCost": 4069.1,
-          "mealCost": 3290.9,
-          "mealCostLow": 3115.0,
-          "mealCostHigh": 3466.7,
-          "gap": -278.9,
-          "gapPct": -8.5,
+          "beanCost": 4041.5,
+          "mealCost": 3255.7,
+          "mealCostLow": 3079.9,
+          "mealCostHigh": 3431.5,
+          "gap": -243.7,
+          "gapPct": -7.5,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1102,8 +1204,8 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1292.0,
-        "zsDate": "2026-10-09",
+        "zsCents": 1281.25,
+        "zsDate": "2026-10-12",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2701",
@@ -1114,19 +1216,19 @@
         "brazil": {
           "beanPrice": 4164.0,
           "breakeven": 3371.2,
-          "impliedPremium": 180.1,
+          "impliedPremium": 190.9,
           "available": true,
-          "zsCents": 1292.0,
+          "zsCents": 1281.25,
           "fx": 6.6921,
           "mealPrice": 3402.0,
           "oilPrice": 9014.0,
-          "beanCost": 4329.3,
-          "mealCost": 3581.8,
-          "mealCostLow": 3406.0,
-          "mealCostHigh": 3757.6,
-          "gap": -179.8,
-          "gapPct": -5.0,
-          "position": "below",
+          "beanCost": 4299.6,
+          "mealCost": 3544.0,
+          "mealCostLow": 3368.1,
+          "mealCostHigh": 3719.8,
+          "gap": -142.0,
+          "gapPct": -4.0,
+          "position": "within",
           "params": {
             "asof": "2026-10-10",
             "premium_step": 50,
@@ -1146,18 +1248,18 @@
         "us": {
           "beanPrice": 4164.0,
           "breakeven": 3371.2,
-          "impliedPremium": 49.8,
+          "impliedPremium": 60.6,
           "available": true,
-          "zsCents": 1292.0,
+          "zsCents": 1281.25,
           "fx": 6.6921,
           "mealPrice": 3402.0,
           "oilPrice": 9014.0,
-          "beanCost": 4861.1,
-          "mealCost": 4259.2,
-          "mealCostLow": 4066.3,
-          "mealCostHigh": 4452.1,
-          "gap": -857.2,
-          "gapPct": -20.1,
+          "beanCost": 4828.5,
+          "mealCost": 4217.7,
+          "mealCostLow": 4024.8,
+          "mealCostHigh": 4410.6,
+          "gap": -815.7,
+          "gapPct": -19.3,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1327,7 +1429,7 @@
     "sourceUrl": "https://droughtmonitor.unl.edu/",
     "debug": {
       "IA": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=19&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":55542.94,\"d0\":768.56,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IA\",\"none\":51520.52,\"d0\":4790.98,\"d1\":21.07,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IA\",\"none",
         "sampleRawRow": {
@@ -1346,7 +1448,7 @@
         "totalRowsReturned": 3
       },
       "IL": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=17&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":36769.91,\"d0\":19612.63,\"d1\":5407.29,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IL\",\"none\":36536.61,\"d0\":19845.94,\"d1\":5407.29,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"I",
         "sampleRawRow": {
@@ -1365,7 +1467,7 @@
         "totalRowsReturned": 3
       },
       "MN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=27&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":16863.28,\"d0\":67517.90,\"d1\":52816.10,\"d2\":22817.53,\"d3\":2128.32,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MN\",\"none\":16550.06,\"d0\":67831.13,\"d1\":53657.68,\"d2\":22817.53,\"d3\":2146.74,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1384,7 +1486,7 @@
         "totalRowsReturned": 3
       },
       "IN": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=18&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32145.07,\"d0\":4054.03,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"IN\",\"none\":32594.63,\"d0\":3604.48,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"IN\",\"none",
         "sampleRawRow": {
@@ -1403,7 +1505,7 @@
         "totalRowsReturned": 3
       },
       "NE": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=31&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":25568.59,\"d0\":51731.41,\"d1\":34239.80,\"d2\":17765.64,\"d3\":4971.55,\"d4\":719.43,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"NE\",\"none\":22158.61,\"d0\":55141.39,\"d1\":38471.78,\"d2\":17798.04,\"d3\":4971.55,\"d4\":719.43,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"s",
         "sampleRawRow": {
@@ -1422,7 +1524,7 @@
         "totalRowsReturned": 3
       },
       "OH": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=39&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":39734.75,\"d0\":1574.80,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\":41100.05,\"d0\":209.50,\"d1\":0.00,\"d2\":0.00,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbreviation\":\"OH\",\"none\"",
         "sampleRawRow": {
@@ -1441,7 +1543,7 @@
         "totalRowsReturned": 3
       },
       "MO": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=29&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":27378.77,\"d0\":42339.29,\"d1\":31218.96,\"d2\":17495.95,\"d3\":10648.16,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MO\",\"none\":26350.52,\"d0\":43367.54,\"d1\":31614.26,\"d2\":16399.50,\"d3\":9073.62,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stat",
         "sampleRawRow": {
@@ -1460,7 +1562,7 @@
         "totalRowsReturned": 3
       },
       "SD": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=46&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":11834.35,\"d0\":65292.71,\"d1\":47276.51,\"d2\":6901.73,\"d3\":251.34,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"SD\",\"none\":11772.75,\"d0\":65354.32,\"d1\":48408.48,\"d2\":8150.94,\"d3\":251.34,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbr",
         "sampleRawRow": {
@@ -1479,7 +1581,7 @@
         "totalRowsReturned": 3
       },
       "ND": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=38&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":20355.48,\"d0\":50350.81,\"d1\":37682.79,\"d2\":23144.23,\"d3\":5315.46,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"ND\",\"none\":20355.48,\"d0\":50350.81,\"d1\":41326.52,\"d2\":23686.96,\"d3\":5327.83,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"state",
         "sampleRawRow": {
@@ -1498,7 +1600,7 @@
         "totalRowsReturned": 3
       },
       "KS": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=20&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":42083.96,\"d0\":40203.45,\"d1\":25381.85,\"d2\":8560.41,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"KS\",\"none\":24392.35,\"d0\":57895.05,\"d1\":38191.65,\"d2\":18678.47,\"d3\":0.00,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbbrevi",
         "sampleRawRow": {
@@ -1517,7 +1619,7 @@
         "totalRowsReturned": 3
       },
       "MI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=26&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":21741.91,\"d0\":36415.62,\"d1\":14767.75,\"d2\":6371.12,\"d3\":992.65,\"d4\":71.73,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"MI\",\"none\":21846.30,\"d0\":36311.23,\"d1\":12120.89,\"d2\":2252.56,\"d3\":687.20,\"d4\":0.00,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00\",\"stateAbb",
         "sampleRawRow": {
@@ -1536,7 +1638,7 @@
         "totalRowsReturned": 3
       },
       "WI": {
-        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/27/2026&enddate=10/11/2026&statisticsType=1",
+        "url": "https://usdmdataservices.unl.edu/api/StateStatistics/GetDroughtSeverityStatisticsByArea?aoi=55&startdate=9/28/2026&enddate=10/12/2026&statisticsType=1",
         "httpStatus": 200,
         "rawSnippet": "[{\"mapDate\":\"2026-10-06T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":25326.92,\"d0\":30721.53,\"d1\":28366.25,\"d2\":22697.70,\"d3\":11451.02,\"d4\":2507.15,\"validStart\":\"2026-10-06T00:00:00\",\"validEnd\":\"2026-10-12T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-29T00:00:00\",\"stateAbbreviation\":\"WI\",\"none\":25650.72,\"d0\":30397.73,\"d1\":29690.12,\"d2\":22817.44,\"d3\":11357.95,\"d4\":1712.63,\"validStart\":\"2026-09-29T00:00:00\",\"validEnd\":\"2026-10-05T23:59:59\",\"statisticFormatID\":1},{\"mapDate\":\"2026-09-22T00:00:00",
         "sampleRawRow": {
@@ -3149,7 +3251,7 @@
   "dceM09Hourly": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 76,
+    "totalBarsReturned": 78,
     "bars": [
       {
         "datetime": "2026-09-14 22:00:00",
@@ -3834,6 +3936,24 @@
         "close": 3112.0,
         "volume": 2.0,
         "hold": 34923.0
+      },
+      {
+        "datetime": "2026-10-12 10:00:00",
+        "open": 3101.0,
+        "high": 3101.0,
+        "low": 3079.0,
+        "close": 3081.0,
+        "volume": 6.0,
+        "hold": 36393.0
+      },
+      {
+        "datetime": "2026-10-12 11:15:00",
+        "open": 3081.0,
+        "high": 3081.0,
+        "low": 3079.0,
+        "close": 3079.0,
+        "volume": 123.0,
+        "hold": 36485.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4811,24 +4931,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-20 14:15:00",
-        "open": 2939.0,
-        "high": 2944.0,
-        "low": 2925.0,
-        "close": 2930.0,
-        "volume": 21425.0,
-        "hold": 750453.0
-      },
-      {
-        "datetime": "2026-08-20 15:00:00",
-        "open": 2930.0,
-        "high": 2937.0,
-        "low": 2927.0,
-        "close": 2936.0,
-        "volume": 3015.0,
-        "hold": 753853.0
-      },
       {
         "datetime": "2026-08-20 22:00:00",
         "open": 2939.0,
@@ -6430,6 +6532,24 @@
         "close": 3023.0,
         "volume": 5.0,
         "hold": 845989.0
+      },
+      {
+        "datetime": "2026-10-12 10:00:00",
+        "open": 3007.0,
+        "high": 3007.0,
+        "low": 2988.0,
+        "close": 2990.0,
+        "volume": 31.0,
+        "hold": 853090.0
+      },
+      {
+        "datetime": "2026-10-12 11:15:00",
+        "open": 2991.0,
+        "high": 2991.0,
+        "low": 2988.0,
+        "close": 2988.0,
+        "volume": 1471.0,
+        "hold": 853586.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -8178,24 +8298,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-20 14:15:00",
-        "open": 3273.0,
-        "high": 3276.0,
-        "low": 3257.0,
-        "close": 3261.0,
-        "volume": 10698.0,
-        "hold": 2527872.0
-      },
-      {
-        "datetime": "2026-08-20 15:00:00",
-        "open": 3262.0,
-        "high": 3268.0,
-        "low": 3257.0,
-        "close": 3267.0,
-        "volume": 18202.0,
-        "hold": 2532036.0
-      },
-      {
         "datetime": "2026-08-20 22:00:00",
         "open": 3271.0,
         "high": 3280.0,
@@ -9796,6 +9898,24 @@
         "close": 3417.0,
         "volume": 168.0,
         "hold": 2504661.0
+      },
+      {
+        "datetime": "2026-10-12 10:00:00",
+        "open": 3398.0,
+        "high": 3398.0,
+        "low": 3364.0,
+        "close": 3366.0,
+        "volume": 1248.0,
+        "hold": 2438232.0
+      },
+      {
+        "datetime": "2026-10-12 11:15:00",
+        "open": 3366.0,
+        "high": 3366.0,
+        "low": 3364.0,
+        "close": 3365.0,
+        "volume": 12772.0,
+        "hold": 2436803.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -11510,7 +11630,7 @@
     "commodity": "Soybeans(大豆)",
     "weekEnding": "2026-10-01T00:00:00",
     "marketYearUsed": 2027,
-    "dataAgeDays": 10,
+    "dataAgeDays": 11,
     "isStale": false,
     "netSalesMT": 549377,
     "prevNetSalesMT": 1033545,
