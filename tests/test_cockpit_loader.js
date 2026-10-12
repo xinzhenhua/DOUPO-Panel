@@ -119,5 +119,12 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
   eq('extendAdj：不是同一个合约（换月了）→ 不接', CL.extendAdj(adj, bars, 'M2705', at(15, 30)).d.length, 2);
   eq('extendAdj：没有新日线 → 原样返回同一个对象', CL.extendAdj(adj, [{ d: '2026-10-09', c: 3402 }], 'M2701', at(15, 30)) === adj, true);
   eq('extendAdj：空输入不报错', [CL.extendAdj(null, bars, 'x', 0), CL.extendAdj(adj, null, 'x', 0) === adj], [null, true]);
+  { // 日线晚上才出：用 15:00 那根 15 分钟线当临时收盘价
+    const m15 = [{ datetime: '2026-10-12 14:45:00', close: 3382 }, { datetime: '2026-10-12 15:00:00', close: 3383 }, { datetime: '2026-10-12 21:15:00', close: 3390 }];
+    eq('provDaily：只取 15:00 那根', CL.provDaily(m15), [{ d: '2026-10-12', c: 3383 }]);
+    const nx = CL.extendAdj(adj, CL.provDaily(m15).concat([{ d: '2026-10-09', c: 3402 }]), 'M2701', at(16, 10));
+    eq('临时收盘价：16:10 接上 10-12，价格按 15:00 收盘', [nx.d[nx.d.length - 1], Math.round(nx.c[nx.c.length - 1] / adj.c[adj.c.length - 1] * 3402)], ['2026-10-12', 3383]);
+    eq('临时收盘价：日线出来后以日线为准', CL.extendAdj(adj, CL.provDaily(m15).concat([{ d: '2026-10-09', c: 3402 }, { d: '2026-10-12', c: 3380 }]), 'M2701', at(16, 10)).c.slice(-1)[0] < nx.c.slice(-1)[0], true);
+  }
 }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

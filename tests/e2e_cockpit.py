@@ -126,10 +126,11 @@ def main():
     ok('记录平仓后：空仓，权益 = 500000 + 5手×10吨×100 − 来回手续费115', (not snap['open']) and abs(snap['eq'] - 504885) < 1e-6, snap)
     ok('平仓后交易记录里有这一笔，净盈亏 +4,885', '+4,885' in pg.evaluate("document.getElementById('planBody').innerText"))
     ok('记录开仓时存了决策快照（基本面方向、外资5日等）', pg.evaluate("(() => { const t = window.__cockpit.planSnap().A.trades[0]; return !!t.snap && 'fund' in t.snap && 'fsum' in t.snap && t.snap.gateOk === false && !!t.snapX; })()"))
+    pg.evaluate("document.getElementById('flBtn').click()")
     with pg.expect_download() as dl2: pg.evaluate("document.querySelector('[data-act=\"csv\"]').click()")
     ok('能导出交易记录CSV（含决策快照）', dl2.value.suggested_filename.startswith('cockpit-trades-'))
     pg.evaluate("document.getElementById('tradePanel').offsetParent === null && document.getElementById('planBtn').click()")   # 平仓后回到空仓，计划面板自动收起：手动展开
-    pg.evaluate("document.getElementById('pf-set').open = true")   # 账户设置/出入金/校准默认折叠
+    pg.evaluate("document.getElementById('setBtn').click()")   # 账户设置/出入金/校准默认折叠
     pg.fill('#pf-fa', '200000'); pg.fill('#pf-fn', '年度追加'); pg.evaluate("document.querySelector('[data-act=\"flow\"]').click()")
     ok('入金20万后权益自动 = 704,885', abs(pg.evaluate("window.__cockpit.planSnap().E.equity") - 704885) < 1e-6)
     pg.fill('#pf-ca', '700000'); pg.evaluate("document.querySelector('[data-act=\"calib\"]').click()")
@@ -140,6 +141,7 @@ def main():
     pg.reload(); pg.wait_for_selector('#boot', state='detached', timeout=60000)
     ok('刷新后账户、交易记录、设置都还在（权益 699,800、保证金13、口径bt）', pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return Math.round(s.E.equity) === 699800 && s.A.margin === 13 && s.A.mode === 'bt' && s.A.trades.length === 1; })()"))
     pg.evaluate("document.querySelector('#sigbar [data-goplan]').click()")
+    pg.evaluate("(() => { const p = document.getElementById('acctPop'); if (p.hidden || !p.querySelector('[data-act=backup]')) document.getElementById('flBtn').click(); })()")
     with pg.expect_download() as dl: pg.evaluate("document.querySelector('[data-act=\"backup\"]').click()")
     ok('能下载备份文件', dl.value.suggested_filename.startswith('cockpit-account-'))
     pg.evaluate("document.querySelector('[data-act=\"delt\"]').click()")
@@ -276,13 +278,14 @@ def main():
     ok('云端：记平仓 → position.json 变成空仓', pos.get('flat') is True, pos)
     newer = dict(_json.loads(store['data/account.json']['raw'])); newer['rev'] = 99; newer['trades'] = []; newer['init'] = 777000
     store['data/account.json'] = {'sha': 'shaNEW', 'raw': _json.dumps(newer).encode()}
+    pg.evaluate("(() => { const p = document.getElementById('acctPop'); if (p.hidden) document.getElementById('setBtn').click(); })()")
     pg.evaluate("document.querySelector('[data-act=\"pat-sync\"]').click()"); pg.wait_for_timeout(800)
     ok('云端：云端的账更新（rev 99）→ 页面改用云端的账', pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init") == 777000, pg.evaluate("localStorage.getItem('cockpit-acct').slice(0,80)"))
     store['data/account.json'] = {'sha': 'shaNEW2', 'raw': _json.dumps(dict(newer, rev=150, init=888000)).encode()}
     pg.wait_for_timeout(2600)
     ok('云端：页面开着，2分钟后自动拉到云端更新的账', pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init") == 888000, pg.evaluate("JSON.parse(localStorage.getItem('cockpit-acct')).init"))
     pg.evaluate("document.querySelector('[data-act=\"pat-clear\"]').click()"); pg.wait_for_timeout(200)
-    n0 = len(calls); pg.evaluate("document.getElementById('pf-set').open = true")
+    n0 = len(calls)
     ok('云端：清除令牌后令牌不在本机', pg.evaluate("localStorage.getItem('cockpit-pat')") is None)
     ok('云端：整个过程没有 JS 错误', not e6, e6); ctx.close()
     # ---- 6. 手机宽度 ----

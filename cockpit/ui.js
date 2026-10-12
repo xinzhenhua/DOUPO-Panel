@@ -325,12 +325,13 @@ function applyPlanVis() {
   const b = $('#planBtn'); if (b) b.setAttribute('aria-pressed', String(!off));
   if (off !== had || MULTI !== multiOn()) renderChart();
 }
-function lastBarD() { try { const k = (C().kline || []).slice(-1)[0]; return k ? '（' + k.d.slice(5) + '）' : ''; } catch (_) { return ''; } }
+function lastDayD() { try { const k = (C().kline || []).slice(-1)[0], a = D.adj && D.adj.d && D.adj.d.length ? D.adj.d[D.adj.d.length - 1] : '', kd = k ? k.d : ''; return a > kd ? a : kd; } catch (_) { return ''; } }   // 收盘价最新一天：日线 或 刚收盘接上的临时收盘价
+function lastBarD() { const d = lastDayD(); return d ? '（' + d.slice(5) + '）' : ''; }
 function livePnl(t, ho) {   // 盘中参考浮盈（按最新15分钟/小时价），结论仍按收盘
-  try { const lv = D.live && D.live[S.key], kl = (C().kline || []).slice(-1)[0]; if (!lv || !kl || lv.dt.slice(0, 10) <= kl.d) return null; const px = lv.c * (ho.k || 1); return { px, fl: planPnl(t, px), r: (t.side >= 0 ? 1 : -1) * (px / t.entryPx - 1) * 100, dt: lv.dt.slice(5), src: lv.src }; } catch (_) { return null; }
+  try { const lv = D.live && D.live[S.key], kd = lastDayD(); if (!lv || !kd || lv.dt.slice(0, 10) <= kd) return null; const px = lv.c * (ho.k || 1); return { px, fl: planPnl(t, px), r: (t.side >= 0 ? 1 : -1) * (px / t.entryPx - 1) * 100, dt: lv.dt.slice(5), src: lv.src }; } catch (_) { return null; }
 }
 function liveTxt() {   // 盘中价（小时线），只在比日线新时显示
-  try { const lv = D.live && D.live[S.key], kl = (C().kline || []).slice(-1)[0]; if (!lv || !kl || lv.dt.slice(0, 10) <= kl.d) return ''; return ` · 盘中 ${fmtD(lv.c)}（${lv.dt.slice(5)}）`; } catch (_) { return ''; }
+  try { const lv = D.live && D.live[S.key], kd = lastDayD(); if (!lv || !kd || lv.dt.slice(0, 10) <= kd) return ''; return ` · 盘中 ${fmtD(lv.c)}（${lv.dt.slice(5)}）`; } catch (_) { return ''; }
 }
 function renderSig() {
   const el = $('#sigbar'); if (!el) return;
@@ -389,6 +390,7 @@ function sigTableHtml(s) {
   </tbody></table>
   <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div>`;
 }
+const POPH = { set: '', fl: '' };
 function planBodyHtml(s) {
   const A = s.A, sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), pct1 = x => x == null ? '—' : x.toFixed(0) + '%';
   const fwk = F => F.parts.length ? esc(F.minK.replace('期货', '')) + ' ' + f2(F.min) : '—', mk = (ok, y, n) => `<td class="${ok ? 'ok' : 'no'}">${ok ? '✓ ' + y : '✗ ' + n}</td>`, inp = (id, v, ph, extra) => `<input id="${id}" inputmode="decimal" value="${esc(v)}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
@@ -431,7 +433,8 @@ function planBodyHtml(s) {
   const E = s.E, st = planStats(A);
   h += `\u0001<div class="plt">账户权益（自动）${qb('placct')}</div><div class="hl"><b>${fmtD(E.equity)} 元</b>　<span style="color:var(--ink2)">= 初始 ${fmtD(E.init)} ${yuan(E.flows)}出入金 ${yuan(E.realized)}已平仓 ${yuan(E.floating)}持仓浮动 −${fmtD(E.fees)}手续费</span></div>
    <div class="plh">${st.n ? `已平仓 ${st.n} 笔，胜 ${st.wins} 笔（${(st.wins / st.n * 100).toFixed(0)}%），净盈亏 ${yuan(st.net)} 元（已扣手续费）。` : '还没有已平仓记录。'} 云端：<span class="cloudmsg">${esc(cloudShort())}</span></div>
-   <details id="pf-set"><summary>账户设置 · 出入金 · 对账校准</summary><div class="plf">
+`;
+  POPH.set = `<div class="pph">账户设置 · 出入金 · 对账校准<button class="xbtn" data-pop="x" aria-label="关闭">×</button></div><div class="plf">
     <label>初始资金（元）${inp('pf-init', A.init, '', 'data-set="init"')}</label>
     <label>期货公司保证金比例（%）${inp('pf-m', A.margin, '', 'data-set="margin"')}</label>
     <label>每手手续费，来回（元）${inp('pf-fee', A.fee, '', 'data-set="fee"')}</label>
@@ -443,15 +446,15 @@ function planBodyHtml(s) {
    <button class="pbtn" data-act="flow">记录出入金</button>
    <div class="plf" style="margin-top:8px"><label>期货公司账户实际权益（元）${inp('pf-ca', '', '对账后填，系统记一笔差额')}</label></div>
    <button class="pbtn" data-act="calib">按实际权益校准</button>
-   ${cloudHtml()}</details>`;
+   ${cloudHtml()}`;
   /* ④ 交易记录 */
   h += `\u0001<div class="plt">交易记录</div>`;
   if (!A.trades.length) h += `<div class="plh">暂无记录。</div>`;
   else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th>手数</th><th>开仓价</th><th>平仓</th><th>平仓价</th><th>手续费</th><th>净盈亏</th><th>价格涨跌</th><th>开仓时：基本面 · 外资5日</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
       const cl = !!t.exitD, fee = planFee(t, A.fee), net = cl ? planPnl(t, t.exitPx) - fee : null, ret = cl ? (t.side >= 0 ? 1 : -1) * (t.exitPx / t.entryPx - 1) * 100 : null;
       return `<tr><td>${esc(t.entryD)}</td><td>${sdName(t.side)}</td><td class="n">${fmtD(t.lots)}</td><td class="n">${fmtD(t.entryPx)}</td><td>${cl ? esc(t.exitD) : '持仓中'}</td><td class="n">${cl ? fmtD(t.exitPx) : '—'}</td><td class="n">${fmtD(fee)}</td><td class="n" style="color:${net == null ? 'inherit' : net >= 0 ? 'var(--bull)' : 'var(--bear)'}">${net == null ? '—' : yuan(net)}</td><td class="n">${ret == null ? '—' : (ret >= 0 ? '+' : '') + ret.toFixed(1) + '%'}</td><td>${t.snap ? esc((t.snap.fund || '—') + ' · ' + (t.snap.fsum >= 0 ? '+' : '') + t.snap.fsum) : '—'}</td><td><button class="xbtn" data-act="delt" data-id="${esc(t.id)}" aria-label="删除这笔记录">×</button></td></tr>`; }).join('')}</tbody></table></div>`;
-  if (A.flows.length) h += `<details id="pf-fl"><summary>出入金记录（${A.flows.length} 笔）</summary><table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table></details>`;
-  h += `<div class="plh" style="margin-top:8px">记录只存本机浏览器。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
+  POPH.fl = `<div class="pph">出入金记录（${A.flows.length} 笔）<button class="xbtn" data-pop="x" aria-label="关闭">×</button></div>${A.flows.length ? `<table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="plh">暂无出入金记录。</div>'}`;
+  POPH.fl += `<div class="plh" style="margin-top:8px">记录只存本机浏览器。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
   /* 折叠：阶梯、回测摘要 */
   h += `\u0001<details id="pf-mo"><summary>历史开仓月份</summary><div class="plh">背景参考：信号出现的频率有参考，盈亏没有。</div>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯</summary><div class="plh">权益越大，占用越低。</div>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要</summary><div class="plh">样本内结果，仅供参考。</div>${planBtHtml()}</details>`;
   const q = h.split('\u0001');   // [入场信号, 持仓管理, 账户权益, 交易记录, 折叠项]：电脑端两列排版时按 入场/账户/记录 | 持仓 的顺序放，高度才平衡
@@ -496,14 +499,16 @@ function monthHtml() {
   <div class="plh">「高发/平常/少发」按该月笔数相对平均（每月 ${(N / 12).toFixed(1)} 笔）划分：≥1.8 倍高发，≤0.6 倍少发。${MSTAT.note}</div>`;
 }
 function monthHint() { const r = MSTAT.rows[+todayBJ().slice(5, 7) - 1], x = r.n / MSTAT.n * 12, k = x >= 1.8 ? '高发月：历史上信号较常出现，提醒保持开启' : x <= 0.6 ? '少发月：历史上很少出信号' : '平常月份'; return `本月（${r.m}月）历史开仓 ${r.n} 笔（占 ${(r.n / MSTAT.n * 100).toFixed(0)}%）· ${k}`; }
-function planFormSnap() { const keep = {}; $$('#planBody [id^="pf-"]').forEach(e => { if (e.dataset.t) keep[e.id] = e.value; }); return { keep, opened: $$('#planBody details[open]').map(e => e.id) }; }
+function popRender() { const el = $('#acctPop'); if (!el) return; el.hidden = !S.pop; el.innerHTML = S.pop ? POPH[S.pop] || '' : ''; ['flBtn', 'setBtn'].forEach(id => { const b = $('#' + id); if (b) b.setAttribute('aria-pressed', String(S.pop === (id === 'flBtn' ? 'fl' : 'set'))); }); }
+function popSet(k) { S.pop = S.pop === k ? null : k; popRender(); if (S.pop) { const f = $('#acctPop input'); } }
+function planFormSnap() { const keep = {}; $$('#planBody [id^="pf-"], #acctPop [id^="pf-"]').forEach(e => { if (e.dataset.t) keep[e.id] = e.value; }); return { keep, opened: $$('#planBody details[open]').map(e => e.id) }; }
 let PLAN_BUSY = false;   // 正在重绘时不再重入：浏览器在拆掉有焦点的输入框时会同步触发 change/blur，里面又会调用重绘
 function planUpdate(reset, snap) {
   const box = $('#planBody'); if (!box || PLAN_BUSY) return;
   PLAN_BUSY = true;
   try {
     const sn = reset ? { keep: {}, opened: planFormSnap().opened } : (snap || planFormSnap());
-    box.innerHTML = planBodyHtml(planSnap());
+    box.innerHTML = planBodyHtml(planSnap()); popRender();
     Object.keys(sn.keep).forEach(id => { const e = document.getElementById(id); if (e) { e.value = sn.keep[id]; e.dataset.t = '1'; } });
     sn.opened.forEach(id => { const e = document.getElementById(id); if (e) e.open = true; });
   } finally { PLAN_BUSY = false; }
@@ -1137,7 +1142,9 @@ document.addEventListener('click', e => {
   if (t.dataset.ck) { if (t.dataset.ck === 'auto') { S.auto = true; S.key = autoKey(); } else { S.key = t.dataset.ck; S.auto = S.key === autoKey(); } pop.classList.remove('on'); cb.setAttribute('aria-expanded', 'false'); renderAll(true); return; }
   if (t.id === 'exBtn') { S.ex = !S.ex; document.body.classList.toggle('ex', S.ex); t.setAttribute('aria-pressed', S.ex); layoutWall(false); return; }
   if (t.id === 'thBtn') { S.themePref = { auto: 'day', day: 'night', night: 'auto' }[S.themePref]; applyTheme(); try { localStorage.setItem('cockpit-theme', S.themePref); } catch (_) {} return; }
-  if (t.id === 'syncDot') { setMode('trade'); S.planShow = true; applyPlanVis(); const f = $('#pf-set'); if (f) { f.open = true; f.scrollIntoView && f.scrollIntoView({ block: 'center' }); } return; }
+  if (t.id === 'syncDot') { S.pop = 'set'; popRender(); return; }
+  if (t.id === 'flBtn' || t.id === 'setBtn') { popSet(t.id === 'flBtn' ? 'fl' : 'set'); return; }
+  if (t.dataset.pop) { S.pop = null; popRender(); return; }
   if (t.id === 'fsX') { closeFull(); return; }
   if (t.dataset.full) { openFull(t.dataset.full); return; }
   if (t.id === 'abBtn') { openAbout(); return; }
@@ -1161,6 +1168,7 @@ $('#scrim').addEventListener('click', closeSheet);
 document.addEventListener('keydown', e => {
   if (e.target.matches && e.target.matches('input,textarea')) return;
   if (e.key === 'Escape' && FULL.kind) { closeFull(); return; }
+  if (e.key === 'Escape' && S.pop) { S.pop = null; popRender(); return; }
   if (e.key === 'Escape') { const sheetOn = $('#sheet').classList.contains('on'); closeSheet(); $('#cPop').classList.remove('on'); if (!sheetOn && S.mode === 'trade' && planShown() && !curPos()) { S.planShow = false; applyPlanVis(); } return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'e' || e.key === 'E') $('#exBtn').click(); else if (e.key === '?') openAbout(); else if (/^[1-6]$/.test(e.key)) openTab(TABS[+e.key - 1][0]);

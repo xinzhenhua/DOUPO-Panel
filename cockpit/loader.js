@@ -39,6 +39,12 @@
   /* 价格序列接上「刚收盘的日线」：main_adj.json 来自生意社 + 夜里 23:05 才累积一次的文件，一天只更新一次；而新浪日线在收盘后不久就有当天收盘价。
    这里把 adj 之后新出现的、已收盘的日线（同一个合约，按两边同一天的收盘比折到调整价水平）接在后面，信号和浮盈当天收盘后就能更新。
    bars: [{d,c}]；sym: 这些日线属于哪个合约；nowMs: 现在。当天的K线只有过了 15:01 才算已收盘；比今天还晚的（夜盘占位）一律不接。 */
+  /* 日线晚上才出：用 15:00 那根 15 分钟/小时线的收盘价当"临时收盘价"（日线出来后以日线为准） */
+  CL.provDaily = function () {
+    const m = {};
+    for (const arr of arguments) (arr || []).forEach(b => { const dt = String((b && b.datetime) || ''); if (b && b.close != null && /\s15:00(:00)?$/.test(dt)) m[dt.slice(0, 10)] = +b.close; });
+    return Object.keys(m).sort().map(d => ({ d, c: m[d] }));
+  };
   CL.extendAdj = function (adj, bars, sym, nowMs) {
     if (!adj || !adj.d || !adj.d.length || !bars || !bars.length) return adj;
     const n0 = adj.d.length, lastD = adj.d[n0 - 1], kEnd = adj.k && adj.k[n0 - 1] ? String(adj.k[n0 - 1]).toLowerCase() : '';
@@ -139,16 +145,17 @@
   /* 盘中价：prices.json(每15分钟) 和 latest.json 里的15分钟/小时线，谁新用谁；日线只到上一个收盘，信号用日线，盘中价只作参考 */
   CL.livePrices = function (L, prices) {
     L = L || {};
-    const live = {}, m15 = {};   // 盘中：15分钟线优先、小时线兜底；日线只到上一个收盘，信号用日线，盘中价只作参考
+    const live = {}, m15 = {}, rawM15 = {}, rawH = {};   // 盘中：15分钟线优先、小时线兜底；日线只到上一个收盘，信号用日线，盘中价只作参考
     const HR = { sep: 'dceM09Hourly', may: 'dceM05Hourly', jan: 'dceM01Hourly' }, MR = { sep: 'dceM09Min15', may: 'dceM05Min15', jan: 'dceM01Min15' };
     const PK = { sep: 'M09', may: 'M05', jan: 'M01' }, PR = (prices && prices.contracts) || {};
     for (const c of KEYS) { try {
       const pb = ((PR[PK[c]] || {}).bars || []).filter(b => b && b.close != null), mb0 = ((L[MR[c]] || {}).bars || []).filter(b => b && b.close != null), mb = pb.length && (!mb0.length || String(pb[pb.length - 1].datetime) >= String(mb0[mb0.length - 1].datetime)) ? pb : mb0;
       const hb = ((L[HR[c]] || {}).bars || []).filter(b => b && b.close != null), lb = (mb.length ? mb : hb).slice(-1)[0];
       if (mb.length) m15[c] = mb.map(b => ({ d: String(b.datetime || '').slice(5, 16), o: b.open, h: b.high, l: b.low, c: b.close, v: b.volume, oi: b.hold }));
+      rawM15[c] = ((L[MR[c]] || {}).bars || []); rawH[c] = hb;
       if (lb) live[c] = { dt: String(lb.datetime || '').slice(0, 16), c: +lb.close, src: mb.length ? '15分钟' : '小时' };
     } catch (_) { /* 没有盘中数据就不显示 */ } }
-    return { live, m15 };
+    return { live, m15, rawM15, rawH };
   };
   /* 把 D.adjBase 接上 K线/prices.json 里刚收盘的日线，结果放进 D.adj（每次从 adjBase 重算，可反复调用） */
   CL.extendFromSources = function (D, prices, now) {
@@ -156,8 +163,9 @@
     const PKd = { sep: 'M09', may: 'M05', jan: 'M01' }, PRd = (prices && prices.contracts) || {}; let out = D.adjBase;
     for (const c of ['sep', 'may', 'jan']) { try {
       const ct = D.contracts && D.contracts[c]; if (!ct || !ct.symbol) continue;
-      const pc = PRd[PKd[c]] || {}, extra = pc.symbol && String(pc.symbol).toLowerCase() === String(ct.symbol).toLowerCase() ? (pc.daily || []).map(b => ({ d: b.date, c: b.close })) : [];
-      const nx = CL.extendAdj(D.adjBase, (ct.kline || []).map(b => ({ d: b.d, c: b.c })).concat(extra), ct.symbol, now); if (nx !== D.adjBase) { out = nx; break; }
+      const pc = PRd[PKd[c]] || {}, same = pc.symbol && String(pc.symbol).toLowerCase() === String(ct.symbol).toLowerCase(), extra = same ? (pc.daily || []).map(b => ({ d: b.date, c: b.close })) : [];
+      const prov = CL.provDaily((D.rawM15 || {})[c], (D.rawH || {})[c], same ? pc.bars : null);
+      const nx = CL.extendAdj(D.adjBase, prov.concat((ct.kline || []).map(b => ({ d: b.d, c: b.c })), extra), ct.symbol, now); if (nx !== D.adjBase) { out = nx; break; }
     } catch (_) { /* 接不上就用原来的 */ } }
     D.adj = out;
   };
@@ -165,7 +173,7 @@
   CL.assemble = function (inp) {
     const S = inp.state, L = inp.latest || {}, H = inp.H || {}, ST = inp.STATIC, now = inp.now;
     const D = { polarity: ST.polarity, ctx: ST.ctx, contracts: {} };
-    { const lp = CL.livePrices(L, inp.prices); D.live = lp.live; D.m15 = lp.m15; }
+    { const lp = CL.livePrices(L, inp.prices); D.live = lp.live; D.m15 = lp.m15; D.rawM15 = lp.rawM15; D.rawH = lp.rawH; }
     for (const c of KEYS) {
       const s = S.contracts[c];
       D.contracts[c] = {
@@ -284,7 +292,7 @@
     CL.refreshPrices = async function () {
       try {
         if (!D || !lastSide) return; const p = await jget('data/prices.json'); if (!p || (lastSide.prices && lastSide.prices.updatedAt === p.updatedAt)) return;
-        lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; CL.extendFromSources(D, p, Date.now()); if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
+        lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; D.rawM15 = lp.rawM15; D.rawH = lp.rawH; CL.extendFromSources(D, p, Date.now()); if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 3 * 60 * 1000));

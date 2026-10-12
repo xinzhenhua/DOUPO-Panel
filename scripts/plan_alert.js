@@ -39,7 +39,9 @@ function compute(dataDir, opts) {
     for (const [lk, pk] of SRC) {
       const lb = (latest[lk] || {}), sym = lb.symbol, pc = (pj.contracts || {})[pk] || {};
       const bars = (lb.bars || []).map(b => ({ d: b.date, c: b.close })).concat(pc.symbol && sym && String(pc.symbol).toLowerCase() === String(sym).toLowerCase() ? (pc.daily || []).map(b => ({ d: b.date, c: b.close })) : []);
-      const nx = CL.extendAdj(adj, bars, sym, nowMs); if (nx !== adj) { adj = nx; break; }
+      const MK = { M09: 'dceM09Min15', M05: 'dceM05Min15', M01: 'dceM01Min15' }, HK = { M09: 'dceM09Hourly', M05: 'dceM05Hourly', M01: 'dceM01Hourly' }, same = pc.symbol && sym && String(pc.symbol).toLowerCase() === String(sym).toLowerCase();
+      const prov = CL.provDaily((latest[MK[pk]] || {}).bars, (latest[HK[pk]] || {}).bars, same ? pc.bars : null);
+      const nx = CL.extendAdj(adj, prov.concat(bars), sym, nowMs); if (nx !== adj) { adj = nx; break; }
     }
   }
   const h = adj || hist, cs = h.c;
