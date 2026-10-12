@@ -116,6 +116,8 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 body.mode-trade .tradepane{display:flex}
 body.mode-trade .wall,body.mode-trade .band,body.mode-trade .dock{display:none}
 body.mode-research .tradepane{display:none}
+.tbmo tr.cur td{background:rgba(80,140,230,.14)}.tbmo .mb{display:inline-block;height:8px;background:var(--ink2);opacity:.45;border-radius:2px;margin-right:6px;vertical-align:middle}
+.mk{font-size:11px;margin-left:6px;padding:0 5px;border-radius:8px;background:rgba(128,128,128,.18)}.mk.高发{background:rgba(224,160,40,.28)}.mk.少发{opacity:.7}.stars{color:#d9a21b;letter-spacing:1px}
 .dsl{margin-top:6px;font-size:12px;line-height:1.4;padding:3px 8px;border-radius:6px;display:inline-block}
 .dsl.ok{background:rgba(46,160,90,.14);color:var(--ink)}.dsl.part{background:rgba(224,160,40,.18);color:var(--ink)}.dsl.bad{background:rgba(220,60,60,.18);color:var(--ink);font-weight:600}
 .sg.gate{background:color-mix(in srgb,var(--amber) 10%,transparent)} .sg.gate .hd{color:var(--amber)}
@@ -849,6 +851,17 @@ body.ex .why{display:block}
     const d = [...seen.keys()].sort();
     return { d, c: d.map(k => seen.get(k)) };
   };
+  /* 换月调整后的主力连续价 data/main_adj.json {d,i,k} → {d,c,k}：按「最后一个与原始主连共有的日期」折算成价格水平（i 本身以100为基准）。
+   交易信号（价格分位/均线/反弹确认）和持仓涨跌必须用它：原始主连在换月日会跳一个合约价差（豆粕可到 7%），回测用的就是调整后的。 */
+  CL.adjFrom = function (j, hist) {
+    if (!j || !Array.isArray(j.d) || !Array.isArray(j.i) || j.d.length !== j.i.length) return null;
+    const d = [], v = [], k = [];
+    for (let n = 0; n < j.d.length; n++) { const x = +j.i[n]; if (j.d[n] && x > 0 && isFinite(x)) { d.push(String(j.d[n]).slice(0, 10)); v.push(x); k.push(j.k ? j.k[n] : null); } }
+    if (d.length < 200) return null;
+    let scale = 1;
+    if (hist && hist.d && hist.d.length) { const m = new Map(hist.d.map((x, n) => [x, hist.c[n]])); for (let n = d.length - 1; n >= 0; n--) if (m.has(d[n])) { scale = m.get(d[n]) / v[n]; break; } }
+    return { d, c: v.map(x => x * scale), k };
+  };
   const pt = p => ({ d: p.d, v: p.v });
   const tail = (a, n) => (n ? a.slice(-n) : a);
   /* 当前窗口内的连续一段：series 里按"推荐月份"截取最近一段（跨度超过 gapDays 视为另一个窗口） */
@@ -971,6 +984,7 @@ body.ex .why{display:block}
     D.seriesAsOf = { history: last(H.hog_ratio) || last(H.meal_stock) || '', systems: last(D.systems.sep) };
     D.pricePosition = L.pricePosition || {}; D.costAnchor = L.costAnchor || null;
     D.hist = inp.histCsv ? CL.histFromCsv(inp.histCsv, '2015-04-03') : { d: [], c: [] };
+    D.adj = CL.adjFrom(inp.adj, D.hist);
     D.sea = inp.seasonal || null;
     D.crush = CL.crushFrom(L);
     D.capitalCoverage = CL.coverageFrom(inp.report);
@@ -1001,12 +1015,13 @@ body.ex .why{display:block}
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
-      let latest = null, seasonal = null, histCsv = '', report = null;
+      let latest = null, seasonal = null, histCsv = '', report = null, adj = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
       try { histCsv = await tget('data/raw/seasonal/M0_daily.csv'); } catch (e) { fails.push('M0_daily.csv'); }
+      try { adj = await jget('data/main_adj.json'); } catch (e) { /* 可选文件：没有就退回原始主连，并在交易信号的数据状态里明说 */ }
       try { report = await jget('data/history/_backfill_report.json'); } catch (e) { /* 可选文件：没有就不显示覆盖表，不算缺文件 */ }
-      lastSide = { H, latest, seasonal, histCsv, report };
+      lastSide = { H, latest, seasonal, histCsv, report, adj };
       return lastSide;
     }
     async function waitReady(w, maxMs) {
@@ -1026,7 +1041,7 @@ body.ex .why{display:block}
         if (!(await waitReady(w, 30000))) throw new Error('评分引擎没有拿到 data/latest.json（引擎页同步失败）');
         await new Promise(r => setTimeout(r, first ? 2500 : 1500));   // 让引擎里的异步指标（汇率/天气/龙虎榜）落定
         const { state, now } = await build();
-        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC });
+        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC });
         if (!D) { D = nd; window.__DATA__ = D; runUI(); }
         else { const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); }
         status('', fails);
@@ -1035,7 +1050,7 @@ body.ex .why{display:block}
     }
     /* 只重新读引擎（不重载 iframe）：用来吃进启动后才返回的汇率/天气等异步指标 */
     async function cycleLight() {
-      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
+      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
     }
     CL.manualEdit = async function (key, value) {
       const w = frame && frame.contentWindow; if (!w) return false;
@@ -1265,15 +1280,16 @@ function planGate(used, lastD, today, opt) {
   else if (opt.fD) { const g = gapOf(opt.fD); if (g > 7) reasons.push('外资席位数据已 ' + g + ' 天没更新（最新 ' + opt.fD + '）'); else if (g > 4) warn.push('外资席位数据最新 ' + opt.fD); }
   if (!lastD) reasons.push('没有价格数据');
   else { const gap = gapOf(lastD); if (gap > 7) reasons.push('价格数据已 ' + gap + ' 天没更新（最新 ' + lastD + '）'); else if (gap > 4) warn.push('价格数据最新 ' + lastD); }
+  if (opt.adj === false) reasons.push('缺换月调整价文件 data/main_adj.json');
   const miss = opt.missing || [], ap = opt.approx || [];
   if (ap.length) warn.push(ap.join('、') + '为估算值（只进了一边前20，混有第20名的变动）');
   const level = reasons.length ? 'bad' : (miss.length || warn.length) ? 'part' : 'ok';
   return { ok: !reasons.length, level, reasons, warn, missing: miss, approx: ap };
 }
 /* 信号旁的「数据状态」一句话：让人一眼看出数据够不够 */
-function planDataLine(g, used, lastD, fD) {
-  const seats = (used && used.length ? used.join('+') : '无') + (fD ? ' ' + fD.slice(5) : ''), px = lastD ? '价格 ' + lastD.slice(5) : '价格无数据';
-  if (g.level === 'bad') return { cls: 'bad', t: '✗ 数据不足 · ' + g.reasons.join('；') };
+function planDataLine(g, used, lastD, fD, adjOn) {
+  const seats = (used && used.length ? used.join('+') : '无') + (fD ? ' ' + fD.slice(5) : ''), px = lastD ? '价格 ' + lastD.slice(5) + (adjOn === true ? '(换月调整)' : adjOn === false ? '(原始主连)' : '') : '价格无数据';
+  if (g.level === 'bad') return { cls: 'bad', t: '✗ 数据不足 · ' + g.reasons.join('；') + ' · ' + px };
   if (g.level === 'part') return { cls: 'part', t: '⚠ 数据基本够用 · ' + [g.missing.length ? g.missing.join('、') + '缺数据按0算' : '', g.warn.join('；')].filter(Boolean).join('；') + ' · 外资 ' + seats + ' · ' + px };
   return { cls: 'ok', t: '✓ 数据齐全 · 外资 ' + seats + ' · ' + px };
 }
@@ -1326,7 +1342,7 @@ function acctLoad() {
 }
 function acctGet() { if (!ACCT) ACCT = acctLoad(); return ACCT; }
 function acctSave() { try { localStorage.setItem('cockpit-acct', JSON.stringify(ACCT)); return true; } catch (_) { return false; } }
-function planCloses() { const hc = histCloses(); if (hc && hc.length >= 200) return hc; return (C().kline || []).map(b => b.c); }
+function planCloses() { if (D.adj && D.adj.c.length >= 200) return D.adj.c; const hc = histCloses(); if (hc && hc.length >= 200) return hc; return (C().kline || []).map(b => b.c); }
 function planLastPx() { const b = (C().kline || []).slice(-1)[0]; if (b && b.c) return b.c; const hc = histCloses(); return hc && hc.length ? hc[hc.length - 1] : 3000; }
 const todayBJ = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 const sdName = s => s > 0 ? '多' : '空';
@@ -1335,11 +1351,11 @@ const pc1 = x => (x * 100).toFixed(1) + '%';
 /* 一次算好：信号、持仓、自动判定、权益、建议手数。首页信号条和计划页共用，保证两处结论一致 */
 function planSnap() {
   const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), sig = planSignals(cs, F.sum);
-  const px = cs.length ? cs[cs.length - 1] : planLastPx(), h = D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
+  const px = cs.length ? cs[cs.length - 1] : planLastPx(), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
   const pos = planOpen(A.trades); let hold = null, mg = null;
   if (pos) { hold = planHold(h, pos); mg = planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.sum }); }
   const E = planEquity(A, hold ? hold.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
-  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD }), dl = planDataLine(gate, F.used, hl, F.lastD);
+  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
   return { A, cs, F, sig, px, pos, hold, mg, E, base, side, size, gate, dl };
@@ -1381,6 +1397,14 @@ function sizeHtml(z, side, m, mode, eq) {
   if (mode === 'bt' && m > TPLAN.BT_MARGIN + 1e-9) h += `<div class="plw">你选了按回测杠杆：手数按10%保证金算，实际占用 ${pc1(z.usage)}（比资金占比 ${Math.round(z.u * 100)}% 更高）。</div>`;
   return h;
 }
+/* 离场提醒读的是仓库里的 data/position.json，不是浏览器里的账：到 Actions →「记录持仓」手动填一次 */
+function syncActionsUrl() { const m = location.hostname.match(/^([^.]+)\.github\.io$/), r = location.pathname.split('/')[1]; return m && r ? `https://github.com/${m[1]}/${r}/actions/workflows/record-position.yml` : null; }
+function syncHtml(pos) {
+  const u = syncActionsUrl(), ex = pos ? `动作 <b>open</b> · 方向 <b>${pos.side > 0 ? '多' : '空'}</b> · 手数 <b>${pos.lots}</b> · 日期 <b>${esc(pos.entryD)}</b> · 成交均价 <b>${fmtD(pos.entryPx)}</b>` : '动作 <b>open</b> · 方向 多/空 · 手数 · 开仓日期 · 成交均价';
+  return `<details id="pf-sync"><summary>同步持仓到提醒系统（想收到「该平仓」提醒就要做）</summary><div class="plh">页面里记的账只存在这台设备的浏览器里，服务器上的提醒不知道你有没有仓位。开仓后到 GitHub 点一次，平仓后再点一次（一年大约十次）：</div>
+   <div class="plh">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">GitHub → Actions → 记录持仓 → Run workflow</a>` : 'GitHub → Actions → 记录持仓 → Run workflow'}，填：${ex}；平仓后填 动作 <b>close</b>。</div>
+   <div class="plh">不同步也能用：入场提醒不需要持仓；离场判断页面首页每天仍会显示「继续持有 / 该平仓」。</div></details>`;
+}
 function planBodyHtml(s) {
   const A = s.A, sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), pct1 = x => x == null ? '—' : x.toFixed(0) + '%';
   const mk = (ok, y, n) => `<td class="${ok ? 'ok' : 'no'}">${ok ? '✓ ' + y : '✗ ' + n}</td>`, inp = (id, v, ph, extra) => `<input id="${id}" inputmode="decimal" value="${esc(v)}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
@@ -1396,7 +1420,7 @@ function planBodyHtml(s) {
    <tr><td>做空①外资去杠杆（5日净变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${f2(F.sum)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
    <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
   </tbody></table>
-  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.basis === 'long' ? '(只算多单)' : q.basis === 'short' ? '(只算空单)' : q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（只算多单/空单 = 该席位只有一边进了前20，只用进榜那一边的真实变化，不把顶替的第20名算进去；估算 = 暂时拿不到多空明细，退回净持仓差，混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
+  <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div><div class="plh">${esc(monthHint())}</div><div class="plh">外资5日 = ${F.parts.length ? F.parts.map(q => esc(q.k) + ' ' + f2(q.v) + (q.basis === 'long' ? '(只算多单)' : q.basis === 'short' ? '(只算空单)' : q.approx ? '(估算)' : '')).join(' ； ') : '无数据'}${F.missing.length ? '；' + F.missing.map(esc).join('、') + '暂无5日数据，按0算（回测里缺数据日也按0）' : ''}。（只算多单/空单 = 该席位只有一边进了前20，只用进榜那一边的真实变化，不把顶替的第20名算进去；估算 = 暂时拿不到多空明细，退回净持仓差，混有第20名的变动）价格用主力连续价，现价 ${fmtD(s.px)}。</div>`;
   if (!s.pos && s.side) h += s.size ? `<div class="plt">建议这样开仓（权益 ${fmtD(s.base.equity)} 元，自动算）</div>` + sizeHtml(s.size, s.side, A.margin / 100, A.mode, s.base.equity) : `<div class="plw">权益 ${fmtD(s.base.equity)} 元不够开 1 手（1手保证金约 ${fmtD(s.px * TPLAN.TON * A.margin / 100)} 元）。</div>`;
   /* ② 持仓管理 */
   h += `<div class="plt">② 持仓管理</div>`;
@@ -1431,6 +1455,7 @@ function planBodyHtml(s) {
       <label>平仓手续费（元，留空=每手${fmtD(A.fee)}元的一半）${inp('pf-cf', '', '留空自动')}</label></div>
       <button class="pbtn${out ? ' warn' : ''}" data-act="close">记录平仓</button>`;
   }
+  h += syncHtml(s.pos);
   /* ③ 账户权益 */
   const E = s.E, st = planStats(A);
   h += `<div class="plt">③ 账户权益（自动）</div><div class="hl"><b>${fmtD(E.equity)} 元</b>　<span style="color:var(--ink2)">= 初始 ${fmtD(E.init)} ${yuan(E.flows)}出入金 ${yuan(E.realized)}已平仓 ${yuan(E.floating)}持仓浮动 −${fmtD(E.fees)}手续费</span></div>
@@ -1457,25 +1482,45 @@ function planBodyHtml(s) {
   if (A.flows.length) h += `<details id="pf-fl"><summary>出入金记录（${A.flows.length} 笔）</summary><table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table></details>`;
   h += `<div class="plh" style="margin-top:8px">记录只存在这台设备的浏览器里（换设备、清缓存会丢）。<button class="lnk" data-act="backup">备份下载</button> · <button class="lnk" data-act="csv">导出CSV（含决策快照）</button> · <label class="lnk">恢复备份<input id="pf-file" type="file" accept=".json,application/json" hidden></label></div>`;
   /* 折叠：阶梯、回测摘要 */
-  h += `<details id="pf-lad"><summary>仓位阶梯（权益越大占用越低）</summary>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要（样本内，仅供参考）</summary>${planBtHtml()}</details>`;
+  h += `<details id="pf-mo"><summary>历史开仓月份（背景参考 · 信号频率有参考，盈亏没有）</summary>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯（权益越大占用越低）</summary>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要（样本内，仅供参考）</summary>${planBtHtml()}</details>`;
   return h;
 }
 function tradeShell() { const t = $('#tradePanel'); if (t && !$('#planBody')) t.innerHTML = `<div class="ch-h"><span class="t">交易计划 · 持仓与账户</span><button class="q" data-about="plan" aria-label="这页怎么用">?</button></div><div id="planForm"><div id="planBody"></div></div>`; }
 function planBtHtml() {
-  return `<div class="plw">⚠️ 这些数字对价格数据的处理方式很敏感：同一套规则，只改主连换月跳空的处理，5年终值中位数就在 190万~807万 之间变（只有39笔交易）。把它当「这套规则在这段样本里的上限参考」，不要当预期。把这套规则搬到豆油、棕榈油、玉米、豆一上基本没有优势。</div><table class="tb3x tbpl"><tbody>
-    <tr><td>5年后终值（50万起、盈利再投、44个滚动窗口）</td><td class="n">中位 804万 · 差10% 495万 · 最差 214万</td></tr>
-    <tr><td>5年内最大回撤</td><td class="n">中位 −43% · 最差 −55%</td></tr>
-    <tr><td>每年收益中位（第1~5年）</td><td class="n">+34% · +93% · +135% · +108% · +42%</td></tr>
-    <tr><td>第1年</td><td class="n">差10% −6% · 最差 −37% · 年内回撤中位 −39%、最差 −49%</td></tr>
-    <tr><td>交易笔数</td><td class="n">8.9年共39笔（多27/空12），年均4.5笔；5年窗口中位18笔</td></tr>
-    <tr><td>胜率</td><td class="n">54%（多头56% · 空头50%）</td></tr>
-    <tr><td>盈亏比（平均盈÷平均亏）</td><td class="n">3.17（平均盈 +7.0% · 平均亏 −2.2%，价格涨跌幅）</td></tr>
-    <tr><td>利润因子 · 平均持仓</td><td class="n">5.1 · 21个交易日</td></tr>
-    <tr><td>夏普 · 卡玛（全程）</td><td class="n">1.10 · 1.00（无风险利率按0）</td></tr>
-    <tr><td>手续费+滑点敏感</td><td class="n">每手来回63元：中位 683万；103元：545万</td></tr>
+  return `<div class="plw">⚠️ 回测数字取决于「怎么成交、用什么价、外资数据什么时候知道」：同一套规则，5年终值中位数可以在 317万~895万 之间。下面把几种做法并排放，别只看最好的那个。</div>
+  <table class="tb3x tbpl"><thead><tr><th>做法（50万起、盈利再投、44个5年滚动窗口）</th><th>终值中位 · 差10% · 最差</th></tr></thead><tbody>
+    <tr><td>收盘价成交 + 当天龙虎榜（做不到：龙虎榜收盘后才公布）</td><td class="n">895万 · 396万 · 245万</td></tr>
+    <tr><td>14:58 下单（收盘价±2分钟波动模拟）+ 只能用前一天龙虎榜</td><td class="n">754万 · 317万 · 221万</td></tr>
+    <tr><td><b>★ 收盘后看信号，次日开盘价成交（本页的流程）</b></td><td class="n"><b>735万 · 379万 · 237万</b></td></tr>
+    <tr><td>信号用原始主连（换月日有价差跳空；本页早期版本的做法），次日开盘成交</td><td class="n">317万 · 113万 · 45万</td></tr>
   </tbody></table>
-  <div class="plh">2017-12~2026-10，只有39笔交易，窗口高度重叠（独立样本约2个），参数在同一段数据里选出，样本外要打折；不含涨跌停无法成交、盘中跳空和大资金冲击成本。</div>`;
+  <div class="plh">结论：14:58 抢跑并不比次日开盘明显好（模拟范围 703~803万 与 735万 重叠），却要盯盘、龙虎榜还没出；所以只在收盘后看一次。信号和盈亏必须用「换月调整价」（本页已改），否则会多出换月假信号。</div>
+  <table class="tb3x tbpl"><tbody>
+    <tr><td>★口径：年化 · 夏普（全程）</td><td class="n">+54% · 1.09</td></tr>
+    <tr><td>5年内最大回撤</td><td class="n">中位 −48% · 最差 −54%</td></tr>
+    <tr><td>交易笔数</td><td class="n">8.7年共43笔（多27/空16），年均约5笔；持仓中位14个自然日</td></tr>
+    <tr><td>胜率</td><td class="n">49%（多头52% · 空头44%）</td></tr>
+    <tr><td>盈亏比（平均盈÷平均亏）</td><td class="n">3.56（平均盈 +7.0% · 平均亏 −2.0%，价格涨跌幅）</td></tr>
+    <tr><td>手续费+滑点敏感</td><td class="n">每手来回23元：中位735万；63元：618万；103元：466万</td></tr>
+  </tbody></table>
+  <div class="plh">2017-12~2026-10，只有43笔交易，窗口高度重叠（独立样本约2个），参数在同一段数据里选出，样本外要打折；外资数据2022年起才有，之前的交易全是多单；不含涨跌停无法成交、盘中跳空和大资金冲击成本。</div>`;
 }
+/* ---- 历史开仓月份（回测：次日开盘成交口径，2018-01~2026-06，43笔）——背景参考，不是交易规则 ---- */
+const MSTAT = {"period":"2018-01~2026-06","n":43,"rows":[{"m":1,"n":10,"l":8,"s":2,"w":4,"a":4.2,"y":["2018","2019","2020","2022","2024","2025","2026"]},{"m":2,"n":7,"l":4,"s":3,"w":3,"a":2.3,"y":["2024","2026"]},{"m":3,"n":2,"l":2,"s":0,"w":1,"a":5.0,"y":["2019","2025"]},{"m":4,"n":1,"l":1,"s":0,"w":1,"a":22.5,"y":["2023"]},{"m":5,"n":2,"l":1,"s":1,"w":0,"a":-0.7,"y":["2025"]},{"m":6,"n":1,"l":0,"s":1,"w":1,"a":0.8,"y":["2026"]},{"m":7,"n":2,"l":1,"s":1,"w":1,"a":1.2,"y":["2024"]},{"m":8,"n":2,"l":1,"s":1,"w":2,"a":3.0,"y":["2024"]},{"m":9,"n":4,"l":2,"s":2,"w":1,"a":-1.7,"y":["2024","2025"]},{"m":10,"n":5,"l":3,"s":2,"w":2,"a":0.2,"y":["2021","2024","2025"]},{"m":11,"n":2,"l":1,"s":1,"w":2,"a":2.8,"y":["2021","2024"]},{"m":12,"n":5,"l":3,"s":2,"w":3,"a":1.4,"y":["2023","2024","2025"]}],"note":"样本小、每月只有个位数笔数，仅作背景。"};
+function monthHtml() {
+  const R = MSTAT.rows, N = MSTAT.n, mx = Math.max(...R.map(r => r.n)), cur = +todayBJ().slice(5, 7);
+  const kind = r => { const x = r.n / N * 12; return x >= 1.8 ? '高发' : x <= 0.6 ? '少发' : '平常'; };
+  return `<div class="plh">回测里一共 ${N} 笔开仓（${MSTAT.period}，次日开盘价成交）。看两件事：<b>哪些月份信号更常出现</b>，以及<b>哪些月份开的仓更赚钱</b>。</div>
+  <table class="tb3x tbcv tbmo"><thead><tr><th>开仓月</th><th>笔数</th><th>多/空</th><th>胜率</th><th>平均每笔</th><th>出现在几年</th></tr></thead><tbody>${R.map(r => `<tr${r.m === cur ? ' class="cur"' : ''}><td>${r.m}月${r.m === cur ? '（本月）' : ''}<span class="mk ${kind(r)}">${kind(r)}</span></td><td class="n"><span class="mb" style="width:${Math.round(r.n / mx * 60)}px"></span>${r.n}</td><td class="n">${r.l}/${r.s}</td><td class="n">${r.n ? Math.round(r.w / r.n * 100) + '%' : '—'}</td><td class="n">${r.a == null ? '—' : (r.a >= 0 ? '+' : '−') + Math.abs(r.a).toFixed(1) + '%'}</td><td class="n" title="${esc(r.y.join('、'))}">${r.y.length}</td></tr>`).join('')}</tbody></table>
+  <div class="plt" style="margin-top:10px">这个规律有多重要？</div>
+  <table class="tb3x tbpl"><tbody>
+   <tr><td><b>信号出现的频率</b><br><span class="stars">★★★☆☆</span></td><td>有参考价值。1、2月合计 17 笔，占 40%（随机期望约 17%，不是巧合）；1月在 9 个年份里有 7 年出现过信号。<b>怎么用：</b>这两个月提醒要开着、每天的数据别断，别一两周没看就以为「没信号」。</td></tr>
+   <tr><td><b>开仓的盈亏</b><br><span class="stars">★☆☆☆☆</span></td><td>基本没有参考价值。各月平均每笔收益的差别，把月份随机打乱重算有 70% 的概率出现同样大的差距（统计上分不出来）；月份样本只有 1~10 笔，1月的好成绩主要来自 3 笔大赢单（2018、2020、2022）。<b>怎么用：</b>不要因为「这个月历史上好」而加仓，也不要因为「这个月历史上差」而放弃一个合格的信号。</td></tr>
+   <tr><td><b>原因</b></td><td>没有验证。回测只能说「过去信号常出现在年初」，没有检验是什么原因；规则本身并不看月份。</td></tr>
+  </tbody></table>
+  <div class="plh">「高发/平常/少发」按该月笔数相对平均（每月 ${(N / 12).toFixed(1)} 笔）划分：≥1.8 倍高发，≤0.6 倍少发。${MSTAT.note}</div>`;
+}
+function monthHint() { const r = MSTAT.rows[+todayBJ().slice(5, 7) - 1], x = r.n / MSTAT.n * 12, k = x >= 1.8 ? '高发月：历史上信号较常出现，提醒保持开启' : x <= 0.6 ? '少发月：历史上很少出信号' : '平常月份'; return `本月（${r.m}月）历史开仓 ${r.n} 笔（占 ${(r.n / MSTAT.n * 100).toFixed(0)}%）· ${k}`; }
 function planFormSnap() { const keep = {}; $$('#planBody [id^="pf-"]').forEach(e => { if (e.dataset.t) keep[e.id] = e.value; }); return { keep, opened: $$('#planBody details[open]').map(e => e.id) }; }
 function planUpdate(reset, snap) {
   const box = $('#planBody'); if (!box) return;
@@ -1906,6 +1951,10 @@ ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」�
 <p><b>移动止盈为什么是「最高浮盈 ≥8% 后回落4%」</b>：按「最高浮盈到过4%就开始跟踪」回测，反而更差——小利润的单子被早早洗出；「≥8%后回落4%」和原先回测的写法等价。回落幅度不要收紧。</p>
 <p><b>数据不足时</b>：外资5日数据一个席位都没取到、或价格数据超过7天没更新，信号格会显示「数据不足，信号不可信」，不给开仓建议（回测里缺外资数据按0算，等于去杠杆过滤失效）。</p>
 <p><b>决策快照</b>：每次记开仓/平仓，会同时存下当时的基本面方向、技术面、资金面、市场状态和信号条件；交易记录里能看到开仓时的基本面和外资，「导出CSV」带全部快照字段。基本面目前没有被回测证明有用（见项目文档），快照是为了以后用你自己的实盘去检验它。</p>
+<p><b>提醒（邮件 + 微信）</b>：每天夜盘收盘后的那次同步会用同一套逻辑检查：出现新的入场信号、你的持仓该平了、数据不足，就发提醒——GitHub Issue（自动发邮件）、Server酱 / PushPlus（微信）、SMTP 邮件，哪个配了密钥发哪个。入场信号只在「从无到有」时发一次；离场提醒在你平仓并「记录持仓」之前每个交易日提醒一次。提醒里的操作都是<b>下一个交易日开盘</b>。</p>
+<p><b>为什么不是14:58下单</b>：回测对比过。龙虎榜收盘后才公布，14:58 只能用前一天的外资数据，加上价格波动，5年终值中位 754万；收盘后看、次日开盘成交 735万，差别在噪声之内，却要盯盘。所以只在收盘后看一次。</p>
+<p><b>历史开仓月份</b>：交易计划页底部「历史开仓月份」。信号出现频率有一定参考（1、2月最多，★★★☆☆），盈亏没有参考（★☆☆☆☆），不要因为月份加仓或放弃信号。</p>
+<p><b>价格口径</b>：信号、持仓涨跌用「换月调整价」（data/main_adj.json），原始主连在换月日会跳一个合约价差，拿它算会多出假信号（同样次日开盘成交，回测对比：317万 vs 735万）。缺这个文件时信号格会写明并作废信号。</p>
 <p><b>记录存在哪</b>：只存在这台设备的浏览器里，换设备或清缓存会丢，所以页面底部有「备份下载 / 恢复备份」。</p>
 <p><b>局限</b>：39笔交易、样本内；外资信号只有2022年以后；不含涨跌停无法成交、大资金冲击成本和持仓限额。</p>`];
 function openAbout(k) {

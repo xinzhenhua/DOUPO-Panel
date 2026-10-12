@@ -1,0 +1,57 @@
+name: 记录持仓
+
+# 手动触发(Actions标签页 → 记录持仓 → Run workflow)：把你的真实持仓写进仓库 data/position.json，「离场提醒」才知道你有仓位。
+# 开仓后填：动作=open，方向、手数、开仓日期、成交均价；平仓后填：动作=close。持仓只有这一个来源，页面里记的账不会自动同步到这里。
+# 开仓/平仓各点一次，一年大约十次。
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "open=记录开仓；close=记录平仓(清空持仓)"
+        type: choice
+        options: [open, close]
+        default: open
+      side:
+        description: "方向：多 或 空（open 时填）"
+        default: "多"
+      lots:
+        description: "手数（open 时填）"
+        default: ""
+      date:
+        description: "开仓日期 YYYY-MM-DD（open 时填）"
+        default: ""
+      price:
+        description: "成交均价，元/吨（open 时填）"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 写入 data/position.json
+        env:
+          ACTION: ${{ github.event.inputs.action }}
+          SIDE: ${{ github.event.inputs.side }}
+          LOTS: ${{ github.event.inputs.lots }}
+          DATE: ${{ github.event.inputs.date }}
+          PRICE: ${{ github.event.inputs.price }}
+        run: python3 record_position.py "$ACTION" --side "$SIDE" --lots "$LOTS" --date "$DATE" --price "$PRICE"
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/position.json
+          git diff --staged --quiet || git commit -m "记录持仓 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push

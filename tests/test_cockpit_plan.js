@@ -116,5 +116,8 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   g=P.planGate(['摩根大通','高盛期货'],'2026-10-09','2026-10-12',{missing:[],approx:['高盛期货'],fD:'2026-10-09'}); eq('分级 有估算席位 → 部分(仍可用)并点名',[g.ok,g.level,/高盛期货为估算值/.test(g.warn[0])],[true,'part',true]);
   eq('planForeign 带出口径',P.planForeign({a:{foreign:1,history:{change5:{change:5,to:'2026-10-09',basis:'long'}}}}).parts[0].basis,'long');
   eq('planForeign 带出估算席位',P.planForeign({a:{foreign:1,history:{change5:{change:5,to:'2026-10-09',approx:1}}},b:{foreign:1,history:{change5:{change:-2,to:'2026-10-08'}}}}).approx,['a']);
+  g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{adj:false,fD:'2026-10-09'}); eq('缺换月调整价 → 不可用并点名文件',[g.ok,/main_adj/.test(g.reasons[0])],[false,true]);
+  g=P.planGate(['摩根大通'],'2026-10-09','2026-10-12',{adj:true,fD:'2026-10-09'}); eq('有换月调整价 → 通过',g.ok,true);
+  eq('数据行带价格口径',/换月调整/.test(P.planDataLine(g,['摩根大通'],'2026-10-09','2026-10-09',true).t),true);
   l=P.planDataLine(P.planGate([],'2026-10-09','2026-10-12',{}),[],'2026-10-09',null); eq('数据行 不足',[l.cls,/数据不足/.test(l.t)],['bad',true]); }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

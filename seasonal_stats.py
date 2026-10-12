@@ -317,10 +317,25 @@ def recent_trend(spot_rows, fut_idx, basis_rows=None):
     return out
 
 
+def write_main_adj(fidx, path, source):
+    """v101.31：换月调整后的主力连续价指数 {d:[],i:[],k:[]}（i 以 100 为基准，页面按最新主连价折算成价格水平）。
+    原始主连（M0）在换月日会跳一个合约价差，拿它算分位/均线/反弹确认会出假信号；回测一直用的是调整后的，页面必须同口径。"""
+    try:
+        rows = [r for r in fidx if r.get("i") is not None]
+        out = {"builtAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), "source": source,
+               "d": [r["d"] for r in rows], "i": [round(float(r["i"]), 5) for r in rows], "k": [r.get("k") for r in rows]}
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(out, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    except Exception as e:  # noqa: BLE001 - 不影响季节性主输出
+        print(f"[季节性] 写 main_adj.json 失败(不影响 seasonal.json)：{type(e).__name__}: {e}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="生成季节性统计 data/seasonal.json")
     ap.add_argument("--raw", default=os.path.join("data", "raw", "seasonal"))
     ap.add_argument("--out", default=os.path.join("data", "seasonal.json"))
+    ap.add_argument("--adj-out", default=os.path.join("data", "main_adj.json"), help="换月调整后的主力连续价（驾驶舱算入场信号用；回测的信号和盈亏都是这个口径）")
     a = ap.parse_args(argv)
     base = os.path.join(a.raw, "meal_spot_futures_10y.csv")
     if not os.path.exists(base):
@@ -356,6 +371,7 @@ def main(argv=None):
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    write_main_adj(fidx, a.adj_out, source)
     print(f"[季节性] {source}：{note}；{res['meta']['firstDate']}~{res['meta']['lastDate']} → {a.out}")
     return {"source": source, "note": note, "out": a.out}
 

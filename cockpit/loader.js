@@ -25,6 +25,17 @@
     const d = [...seen.keys()].sort();
     return { d, c: d.map(k => seen.get(k)) };
   };
+  /* 换月调整后的主力连续价 data/main_adj.json {d,i,k} → {d,c,k}：按「最后一个与原始主连共有的日期」折算成价格水平（i 本身以100为基准）。
+   交易信号（价格分位/均线/反弹确认）和持仓涨跌必须用它：原始主连在换月日会跳一个合约价差（豆粕可到 7%），回测用的就是调整后的。 */
+  CL.adjFrom = function (j, hist) {
+    if (!j || !Array.isArray(j.d) || !Array.isArray(j.i) || j.d.length !== j.i.length) return null;
+    const d = [], v = [], k = [];
+    for (let n = 0; n < j.d.length; n++) { const x = +j.i[n]; if (j.d[n] && x > 0 && isFinite(x)) { d.push(String(j.d[n]).slice(0, 10)); v.push(x); k.push(j.k ? j.k[n] : null); } }
+    if (d.length < 200) return null;
+    let scale = 1;
+    if (hist && hist.d && hist.d.length) { const m = new Map(hist.d.map((x, n) => [x, hist.c[n]])); for (let n = d.length - 1; n >= 0; n--) if (m.has(d[n])) { scale = m.get(d[n]) / v[n]; break; } }
+    return { d, c: v.map(x => x * scale), k };
+  };
   const pt = p => ({ d: p.d, v: p.v });
   const tail = (a, n) => (n ? a.slice(-n) : a);
   /* 当前窗口内的连续一段：series 里按"推荐月份"截取最近一段（跨度超过 gapDays 视为另一个窗口） */
@@ -147,6 +158,7 @@
     D.seriesAsOf = { history: last(H.hog_ratio) || last(H.meal_stock) || '', systems: last(D.systems.sep) };
     D.pricePosition = L.pricePosition || {}; D.costAnchor = L.costAnchor || null;
     D.hist = inp.histCsv ? CL.histFromCsv(inp.histCsv, '2015-04-03') : { d: [], c: [] };
+    D.adj = CL.adjFrom(inp.adj, D.hist);
     D.sea = inp.seasonal || null;
     D.crush = CL.crushFrom(L);
     D.capitalCoverage = CL.coverageFrom(inp.report);
@@ -177,12 +189,13 @@
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
-      let latest = null, seasonal = null, histCsv = '', report = null;
+      let latest = null, seasonal = null, histCsv = '', report = null, adj = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
       try { histCsv = await tget('data/raw/seasonal/M0_daily.csv'); } catch (e) { fails.push('M0_daily.csv'); }
+      try { adj = await jget('data/main_adj.json'); } catch (e) { /* 可选文件：没有就退回原始主连，并在交易信号的数据状态里明说 */ }
       try { report = await jget('data/history/_backfill_report.json'); } catch (e) { /* 可选文件：没有就不显示覆盖表，不算缺文件 */ }
-      lastSide = { H, latest, seasonal, histCsv, report };
+      lastSide = { H, latest, seasonal, histCsv, report, adj };
       return lastSide;
     }
     async function waitReady(w, maxMs) {
@@ -202,7 +215,7 @@
         if (!(await waitReady(w, 30000))) throw new Error('评分引擎没有拿到 data/latest.json（引擎页同步失败）');
         await new Promise(r => setTimeout(r, first ? 2500 : 1500));   // 让引擎里的异步指标（汇率/天气/龙虎榜）落定
         const { state, now } = await build();
-        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC });
+        const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC });
         if (!D) { D = nd; window.__DATA__ = D; runUI(); }
         else { const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); }
         status('', fails);
@@ -211,7 +224,7 @@
     }
     /* 只重新读引擎（不重载 iframe）：用来吃进启动后才返回的汇率/天气等异步指标 */
     async function cycleLight() {
-      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
+      try { if (!frame || !D) return; const { state, now } = await build(); const side = lastSide || await fetchSide(); const nd = CL.assemble({ state, latest: side.latest, H: side.H, seasonal: side.seasonal, histCsv: side.histCsv, report: side.report, adj: side.adj, now, STATIC }); const ser = D.series, con = D.contracts; CL.fill(ser, nd.series); delete nd.series; CL.fill(con, nd.contracts); delete nd.contracts; CL.fill(D, nd); D.series = ser; D.contracts = con; if (window.__cockpit) window.__cockpit.refreshed(); } catch (e) { /* 静默：下一轮再试 */ }
     }
     CL.manualEdit = async function (key, value) {
       const w = frame && frame.contentWindow; if (!w) return false;

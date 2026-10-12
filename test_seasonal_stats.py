@@ -2,6 +2,7 @@
 """季节性统计(v101.14)：换月修正指数、月度收益/上冲/下探、各月统计与分级、年内路径带。运行：python3 test_seasonal_stats.py
 ★期望值全部手算；真实数据回归值来自用户 2026-10-09 提供的 10 年 CSV(data/raw/seasonal/meal_spot_futures_10y.csv)，
   已用另一套独立实现(pandas)交叉核对过：换月修正后 12月均值 −0.12%、7月上涨 8/10、现货 8月均值 +4.36% 等。"""
+import json
 import os, sys, json, math, traceback, tempfile, shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import seasonal_stats as ss
@@ -159,8 +160,11 @@ def test_cli_builds_from_a_raw_dir_and_prefers_contract_files_when_present():
         os.makedirs(os.path.join(d, "raw"))      # 只拷基线CSV(线上 data/raw/seasonal 现在已有真实 contracts/ 目录，整个拷会干扰"合约文件太少"这一步)
         shutil.copy(os.path.join(RAW, "meal_spot_futures_10y.csv"), os.path.join(d, "raw", "meal_spot_futures_10y.csv"))
         out = os.path.join(d, "seasonal.json")
-        r = ss.main(["--raw", os.path.join(d, "raw"), "--out", out])
+        adj = os.path.join(d, "main_adj.json")
+        r = ss.main(["--raw", os.path.join(d, "raw"), "--out", out, "--adj-out", adj])
         assert r["source"] == "baseline_csv" and os.path.exists(out)
+        j = json.load(open(adj, encoding="utf-8"))
+        assert len(j["d"]) == len(j["i"]) == len(j["k"]) > 1000 and j["i"][0] == 100.0 and j["source"] == "baseline_csv" and all(x > 0 for x in j["i"]), "v101.31：换月调整价文件（交易信号用）"
         os.makedirs(os.path.join(d, "raw", "contracts"))
         # 两个很短的合约文件 → 数据太少，应回退基线并说明原因
         for code in ("M1701", "M1705"):

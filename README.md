@@ -3585,3 +3585,13 @@ pageSize=20、platform=pc、sortType=complex，已逐项写进测试对照。
 - 页面：外资5日逐席位显示（只算多单/只算空单/估算）。
 - 回测（豆粕完整规则，5年窗口中位）：摩根净口径 783万 → 真实一边 895万；三家 785万 → 860万；差10%分位 375→396万，最差 233→245万；两种口径去杠杆判定只差 15~23 天，别当成证明。
 - 用真实数据（10-09）：摩根 +8,143（净），高盛 −15,392（只算多单），瑞银缺 → 合计 −7,249 手（之前含顶替的 −3,744）。
+
+
+## v101.31（信号口径对齐回测 + 历史开仓月份 + 邮件/微信提醒）
+- ★修正：页面的入场信号原来用「原始主连」算（换月日有合约价差跳空，豆粕最大约 7%），回测用的是「换月调整价」。同样次日开盘成交，原始主连 317万（差10% 113万、最差 45万、回撤 −61%）vs 调整价 735万（379万、237万、−54%）。现在 seasonal_stats.py 每次输出 data/main_adj.json，页面（loader.adjFrom）和提醒都用它；缺这个文件时信号格写「缺换月调整价」并作废信号。持仓涨跌/最高最低价也用调整价。
+- 成交时点回测（豆粕完整规则，5年窗口，中位/差10%/最差）：收盘价成交+当天龙虎榜 895/396/245（做不到）；外资滞后1天 807；14:58 下单(±2分钟波动 σ0.11%，12次模拟)+前一天龙虎榜 754/317/221（范围 703~803）；★收盘后看、次日开盘成交 735/379/237。14:58 不比次日开盘明显好，所以只做「收盘后看一次」。回测摘要重写为这张对照表。
+- 历史开仓月份（交易计划页「历史开仓月份」，默认折叠；①里有「本月」一行）：43笔，1+2月 17笔(40%，随机期望17%)；信号频率★★★☆☆（1月 9年里 7年有信号）、盈亏★☆☆☆☆（月份随机打乱有 70% 概率出现同样大的差距）。明确写了「怎么用/不要怎么用」。
+- 提醒：update-data.yml 新增「交易提醒」步骤（scripts/plan_alert.js 用 ui.js 同一份 PLAN 函数算；notify_alert.py 发送并记账 data/alert_state.json）。渠道：GitHub Issue（@你→邮件，无需密钥）、Server酱 SERVERCHAN_KEY、PushPlus PUSHPLUS_TOKEN、SMTP（SMTP_HOST/PORT/USER/PASS/TO）。入场信号从无到有才发；离场/数据不足按价格日去重，没记平仓次日再催；3天前的事件不补发；发送失败不记账下一小时重试。
+- 持仓同步：.github/workflows/record-position.yml（Actions → 记录持仓 → Run workflow：open 填方向/手数/日期/均价；close 清空）写 data/position.json，离场提醒读它。页面「持仓管理」下有说明和链接。
+- 测试：test_notify_alert.py(11)、tests/e2e_cockpit.py(92，含缺 main_adj.json、月份卡片、同步说明、夹具里加了 main_adj.json)、test_cockpit_loader.js(55)、test_cockpit_plan.js(120)。
+- 一次性设置：①点一次「更新豆粕基本面数据」生成 data/main_adj.json；②（要微信/邮件才需要）仓库 Settings → Secrets 添加 SERVERCHAN_KEY / PUSHPLUS_TOKEN / SMTP_*；③ Settings → Actions → General → Workflow permissions 选 Read and write。

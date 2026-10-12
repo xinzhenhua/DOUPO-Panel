@@ -88,4 +88,14 @@ eq('coverageFrom：报告缺失/结构不对 → null', [CL.coverageFrom(null), 
 eq('assemble：把报告里的覆盖放进 D.capitalCoverage', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: REP, now: Date.UTC(2026, 9, 11, 13), STATIC }).capitalCoverage.seats['高盛期货'].absent, 960);
 eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null);
 
+// ---- 换月调整价 ----
+{ const days = []; const d0 = Date.UTC(2025, 0, 1); for (let n = 0; n < 300; n++) days.push(new Date(d0 + n * 86400e3).toISOString().slice(0, 10));
+  const idx = days.map((_, n) => 100 + n * 0.1), raw = days.map((_, n) => (n < 150 ? 3000 : 3150) + n * 5);   // 原始主连在第150天换月，跳了+150
+  const hist = { d: days, c: raw }, a = CL.adjFrom({ d: days, i: idx, k: days.map(() => 'm') }, hist);
+  eq('adjFrom：最后一天折算后等于原始主连最后一天', Math.abs(a.c[a.c.length - 1] - raw[raw.length - 1]) < 1e-9, true);
+  eq('adjFrom：换月日没有缺口（调整价相邻日涨跌与指数一致）', Math.abs((a.c[150] / a.c[149]) / (idx[150] / idx[149]) - 1) < 1e-12, true);
+  eq('adjFrom：不足200天/长度对不上/空 → null', [CL.adjFrom({ d: days.slice(0, 50), i: idx.slice(0, 50) }, hist), CL.adjFrom({ d: days, i: idx.slice(1) }, hist), CL.adjFrom(null, hist)], [null, null, null]);
+  eq('adjFrom：没有原始主连也能给出（水平为指数本身）', CL.adjFrom({ d: days, i: idx }, null).c[0], 100);
+  eq('assemble：D.adj', CL.assemble({ state: mkState(), latest: {}, H: {}, seasonal: null, histCsv: '', report: null, adj: { d: days, i: idx }, now: Date.UTC(2026, 9, 11, 13), STATIC }).adj.d.length, 300); }
+
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
