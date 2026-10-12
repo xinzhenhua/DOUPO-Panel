@@ -97,9 +97,10 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 .sg.long .hd{color:var(--bull)} .sg.short .hd{color:var(--bear)} .sg.wait .hd{color:var(--ink2)}
 .sg.pos.exit{background:color-mix(in srgb,var(--amber) 16%,transparent);box-shadow:inset 4px 0 0 var(--amber)}
 .sg.pos.exit .hd{color:var(--amber)}
+.sg.pos.hold{background:var(--bearS);box-shadow:inset 4px 0 0 var(--bear)}.sg.pos.hold .hd{color:var(--bear)}
 .scs{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:2px}
 .sc{font-size:12px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--ink3);white-space:nowrap}
-.sc.y{color:var(--ink);border-color:var(--ink3)} .sc.sep{border:0;padding:0 2px;color:var(--ink3)}
+.sc.y{color:var(--bear);border-color:color-mix(in srgb,var(--bear) 55%,transparent);background:var(--bearS)} .sc.n{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 60%,transparent);background:color-mix(in srgb,var(--amber) 10%,transparent)} .sc.sep{border:0;padding:0 2px;color:var(--ink3)}
 .vd{padding:8px 12px;border-radius:6px;border:1px solid var(--line)}
 .vd.exit{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
 .pbtn{margin:6px 0 4px;padding:7px 16px;border:1px solid var(--ink3);border-radius:4px;background:var(--sunk);color:var(--ink);font:inherit;cursor:pointer}
@@ -272,7 +273,7 @@ body.ex .why{display:block}
 .tb3x{width:100%;border-collapse:collapse;font-size:13px}
 .tb3x td,.tb3x th{padding:8px 6px;border-bottom:1px solid var(--line2);text-align:left}
 .tb3x th{font-weight:500;color:var(--ink3);font-size:12.5px}
-.tb3x td.n{font-family:var(--num);white-space:nowrap}
+.tb3x td,.tb3x th{vertical-align:middle;line-height:1.35}.tb3x td.n,.tb3x th.n{text-align:right;font-variant-numeric:tabular-nums}.tb3x td.n{font-family:var(--num);white-space:nowrap}
 .dbig{position:relative;height:210px;margin:6px 0 14px}.dbig svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .inp{display:grid;grid-template-columns:1fr 116px;gap:3px 10px;padding:9px 0;border-bottom:1px solid var(--line2);align-items:center}
 .inp input{width:100%;padding:6px 9px;border:1px solid var(--line);border-radius:4px;background:var(--sunk);color:var(--ink);font:inherit;font-family:var(--num);text-align:right}
@@ -400,6 +401,8 @@ body.multi .mgc .hl{margin:2px 0 6px}
 /* ---------- 持仓页：无K线、极简、大数字（v101.41） ---------- */
 .hv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;margin:6px 0 14px}
 .hvk{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.hvk{border-left:3px solid var(--line)}.hvk.tg{border-left-color:var(--bear);background:var(--bearS)}.hvk.tr{border-left-color:var(--bull);background:var(--bullS)}.hvk.ta{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 9%,transparent)}.hvk.tg b{color:var(--bear)}.hvk.tr b{color:var(--bull)}.hvk.ta b{color:var(--amber)}
+.plt{display:flex;align-items:center;gap:8px}.plt::before{content:"";width:3px;height:14px;border-radius:2px;background:var(--focus)}
 .hvk i{font-style:normal;font-size:12px;color:var(--ink3)}.hvk b{font-family:var(--num);font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}.hvk em{font-style:normal;font-size:12px;color:var(--ink3)}
 .sg .hd.big{font-family:var(--num);font-size:34px;line-height:1.1;letter-spacing:-.02em}.sg .hd.big small{font-size:14px;font-weight:400;color:var(--ink3)}
 .sgw.rt>.sg{border-right:0}
@@ -1633,8 +1636,9 @@ function planBodyHtml(s) {
     const why2 = !out ? '没有触发止损、移动止盈或外资离场。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `${esc(s.F.minK)} 5日变化 ${f2(s.F.min)} 手，≤ ${f2(TPLAN.DELEV)}。` : `外资三家合计5日变化 ${f2(s.F.sum)} 手（≥0），或价格已站上MA20。`;
     const trigPx = sd ? ho.peak * (1 - TPLAN.TRAIL / 100) : ho.peak * (1 + TPLAN.TRAIL / 100), stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), actPx = t.entryPx * (1 + (sd ? 1 : -1) * TPLAN.ACT / 100);
     const trailTxt = m.peakR >= TPLAN.ACT ? `已启动：${sd ? '跌破' : '涨过'} ${fmtD(trigPx)} 平仓（距现价 ${Math.abs((trigPx / ho.last - 1) * 100).toFixed(1)}%）` : `未启动（最高浮盈 ${m.peakR.toFixed(1)}% < ${TPLAN.ACT}%）；价格到 ${fmtD(actPx)} 后启动`;
-    const dist = x => Math.abs((x / ho.last - 1) * 100).toFixed(1) + '%', card = (l, v, sub) => `<div class="hvk"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
-    h += `<div class="hv">${card('现价', fmtD(ho.last), '截至 ' + (ho.lastD ? esc(ho.lastD.slice(5)) : '开仓日'))}${card('止损价', fmtD(stopPx), '距现价 ' + dist(stopPx))}${card('移动止损', m.peakR >= TPLAN.ACT ? fmtD(trigPx) : '未启动', m.peakR >= TPLAN.ACT ? '止损已改到此价 · 距 ' + dist(trigPx) : '到 ' + fmtD(actPx) + ' 改成移动止损')}${card(sd ? '持仓最高价' : '持仓最低价', fmtD(ho.peak), '最高浮盈 ' + m.peakR.toFixed(1) + '%')}${card('持有', ho.days + ' 天', '风险度 ' + pc1(usage))}${card(sd ? '外资最弱席位' : '外资三家合计', (sd ? f2(s.F.min) : f2(s.F.sum)) + ' 手', sd ? esc(s.F.parts.length ? s.F.minK.replace('期货', '') : '5日变化') : '5日变化')}</div>
+    const dist = x => Math.abs((x / ho.last - 1) * 100).toFixed(1) + '%', card = (l, v, sub, tone) => `<div class="hvk${tone ? ' t' + tone : ''}"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
+    const rtr = Math.max(0, sd ? (1 - ho.last / ho.peak) * 100 : (ho.last / ho.peak - 1) * 100), stGap = Math.abs((stopPx / ho.last - 1) * 100), fTone = sd ? (s.F.min > 0 ? 'g' : s.F.min > TPLAN.DELEV ? 'a' : 'r') : (s.F.sum < 0 ? 'g' : 'r'), uTone = usage < 0.5 ? 'g' : usage < 0.8 ? 'a' : 'r';
+    h += `<div class="hv">${card('现价', fmtD(ho.last), '截至 ' + (ho.lastD ? esc(ho.lastD.slice(5)) : '开仓日'), fl >= 0 ? 'r' : 'g')}${card('止损价', fmtD(stopPx), '距现价 ' + dist(stopPx), stGap < 1 ? 'r' : 'a')}${card('移动止损', m.peakR >= TPLAN.ACT ? fmtD(trigPx) : '未启动', m.peakR >= TPLAN.ACT ? '止损已改到此价 · 距 ' + dist(trigPx) : '到 ' + fmtD(actPx) + ' 改成移动止损', m.peakR >= TPLAN.ACT ? 'g' : '')}${card('回撤', rtr.toFixed(1) + '%', (sd ? '最高 ' : '最低 ') + fmtD(ho.peak) + ' · 最高浮盈 ' + m.peakR.toFixed(1) + '%', m.peakR >= TPLAN.ACT ? (rtr >= TPLAN.TRAIL * 0.75 ? 'r' : 'a') : (rtr > 0 ? 'a' : 'g'))}${card('持有', ho.days + ' 天', '风险度 ' + pc1(usage), uTone)}${card(sd ? '外资最弱席位' : '外资三家合计', (sd ? f2(s.F.min) : f2(s.F.sum)) + ' 手', sd ? esc(s.F.parts.length ? s.F.minK.replace('期货', '') : '5日变化') : '5日变化', fTone)}</div>
     ${ho.covered ? '' : `<div class="plh">开仓日晚于已有价格数据，最高/最低价暂按开仓价，数据更新后自动补上。</div>`}
     <div class="plt hvc">${out ? '已平仓？记一笔' : '平仓'}</div><div class="plf">
       <label>平仓日期${inp('pf-cd', todayBJ(), 'YYYY-MM-DD')}</label>
@@ -1663,7 +1667,7 @@ function planBodyHtml(s) {
   /* ④ 交易记录 */
   h += `\u0001<div class="plt">交易记录</div>`;
   if (!A.trades.length) h += `<div class="plh">暂无记录。</div>`;
-  else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th>手数</th><th>开仓价</th><th>平仓</th><th>平仓价</th><th>手续费</th><th>净盈亏</th><th>价格涨跌</th><th>开仓时：基本面 · 外资5日</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
+  else h += `<div style="overflow-x:auto"><table class="tb3x tbcv"><thead><tr><th>开仓</th><th>方向</th><th class="n">手数</th><th class="n">开仓价</th><th>平仓</th><th class="n">平仓价</th><th class="n">手续费</th><th class="n">净盈亏</th><th class="n">价格涨跌</th><th>开仓时：基本面 · 外资5日</th><th></th></tr></thead><tbody>${A.trades.slice().reverse().map(t => {
       const cl = !!t.exitD, fee = planFee(t, A.fee), net = cl ? planPnl(t, t.exitPx) - fee : null, ret = cl ? (t.side >= 0 ? 1 : -1) * (t.exitPx / t.entryPx - 1) * 100 : null;
       return `<tr><td>${esc(t.entryD)}</td><td>${sdName(t.side)}</td><td class="n">${fmtD(t.lots)}</td><td class="n">${fmtD(t.entryPx)}</td><td>${cl ? esc(t.exitD) : '持仓中'}</td><td class="n">${cl ? fmtD(t.exitPx) : '—'}</td><td class="n">${fmtD(fee)}</td><td class="n" style="color:${net == null ? 'inherit' : net >= 0 ? 'var(--bull)' : 'var(--bear)'}">${net == null ? '—' : yuan(net)}</td><td class="n">${ret == null ? '—' : (ret >= 0 ? '+' : '') + ret.toFixed(1) + '%'}</td><td>${t.snap ? esc((t.snap.fund || '—') + ' · ' + (t.snap.fsum >= 0 ? '+' : '') + t.snap.fsum) : '—'}</td><td><button class="xbtn" data-act="delt" data-id="${esc(t.id)}" aria-label="删除这笔记录">×</button></td></tr>`; }).join('')}</tbody></table></div>`;
   POPH.fl = `<div class="pph">出入金记录（${A.flows.length} 笔）<button class="xbtn" data-pop="x" aria-label="关闭">×</button></div>${A.flows.length ? `<table class="tb3x tbcv"><tbody>${A.flows.map((f, i) => `<tr><td>${esc(f.d)}</td><td class="n">${yuan(+f.amt)}</td><td>${esc(f.note || '')}</td><td><button class="xbtn" data-act="delf" data-i="${i}" aria-label="删除这笔出入金">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="plh">暂无出入金记录。</div>'}`;
