@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -142,4 +142,42 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('持仓按合约：老记录没写合约 → 算自动合约的（看自动合约有，看别的没有）',[P.planOpenFor([T({id:'b'})],'M2701','M2701').id,P.planOpenFor([T({id:'b'})],'M2705','M2701')],['b',null]);
   eq('持仓按合约：已平仓的不算',P.planOpenFor([T({id:'c',contract:'M2701',exitD:'2026-10-09'})],'M2701','M2701'),null);
   eq('持仓按合约：两笔未平仓（不应出现）取各自合约的那笔',[P.planOpenFor([T({id:'d',contract:'M2701'}),T({id:'e',contract:'M2705'})],'M2705','M2701').id],['e']); }
+
+{ // 持仓预期（蒙特卡洛）
+  const rg=P.planRng(7), rets=[]; for(let i=0;i<800;i++){ let z=0; for(let k=0;k<12;k++) z+=rg(); rets.push((z-6)*0.012); }
+  const closes=[]; for(let i=0;i<30;i++) closes.push(3400+i*0.5);
+  const base={side:1,entry:3400,peak:3400,last:3400,closes,rets};
+  const a=P.planExpect(Object.assign({n:800},base)), a2=P.planExpect(Object.assign({n:800},base));
+  eq('推演：同样输入同样结果（固定随机种子）',a.win,a2.win);
+  eq('推演：未来20个交易日的区间，分位单调',a.fan.length===20&&a.fan.every(f=>f.p10<=f.p25&&f.p25<=f.p50&&f.p50<=f.p75&&f.p75<=f.p90),true);
+  eq('推演：各种结局概率加起来=1',Math.abs(a.stopP+a.trailP+a.maP+a.holdP-1)<1e-9,true);
+  const z=P.planExpect(Object.assign({n:800,edge:0},base)), e=P.planExpect(Object.assign({n:800,edge:0.003},base));
+  eq('推演：优势越大胜率越高（无优势<有优势）',z.win<e.win,true);
+  eq('推演：无优势时新开仓胜率低于50%（有止损的随机游走）',z.win<.5,true);
+  const near=P.planExpect(Object.assign({n:800,edge:0},base,{last:3270})), far=P.planExpect(Object.assign({n:800,edge:0},base));
+  eq('推演：离止损越近，触发止损概率越高',near.stopP>far.stopP,true);
+  const sh=P.planExpect({side:-1,entry:3400,peak:3400,last:3400,closes,rets,n:800,edge:0});
+  eq('推演：空单对称，价格上涨先站上MA20离场',sh.maP>0.3&&sh.fan[19].p90>3400,true);
+  eq('推演：数据太少返回null',P.planExpect({side:1,entry:1,peak:1,last:1,closes:[1],rets:[0.01]}),null);
+  const w=P.planWilson(9,14); eq('置信区间：14笔赢9笔，90%区间覆盖64%',w[0]<.643&&w[1]>.643&&w[1]<.95,true);
+}
+
+{ // 开仓来源 + 平仓建议
+  const sn=(o)=>Object.assign({gateOk:true,pct:30,confirm:true,delev:false,trendDn:false},o);
+  eq('来源：明确写了 own 就是 own',P.planSrc({side:1,src:'own',snap:sn({})}),'own');
+  eq('来源：旧记录，做多+低位+反弹+没去杠杆 → 系统信号',P.planSrc({side:1,snap:sn({})}),'sys');
+  eq('来源：旧记录，做空但外资没去杠杆 → 自主',P.planSrc({side:-1,snap:sn({delev:false,trendDn:true})}),'own');
+  eq('来源：旧记录，做空+去杠杆+趋势向下 → 系统信号',P.planSrc({side:-1,snap:sn({delev:true,trendDn:true})}),'sys');
+  eq('来源：数据不足时开的 → 自主',P.planSrc({side:1,snap:sn({gateOk:false})}),'own');
+  const A=(o)=>P.planAdvice(Object.assign({src:'sys',side:1,r:3,rr:1.0,ev:0.5,gain:2,loss:2,act:'持有',against:false,entry:3400,entryTxt:'3,400'},o));
+  eq('建议：规则已触发离场 → exit，不管怎么开的',[A({act:'止损'}).lv,A({act:'止损',src:'own'}).lv],['exit','exit']);
+  eq('建议：系统单、有浮盈、盈亏比<1.5 → 保本止损（不是直接平仓）',[A({}).lv,A({}).L.join('').includes('保本止损')],['protect',true]);
+  eq('建议：系统单、盈亏比1.8（≥1.5）→ 持有',A({rr:1.8}).lv,'hold');
+  eq('建议：自主单阈值是2:1，1.8 也要保本',A({src:'own',rr:1.8}).lv,'protect');
+  eq('建议：自主单、盈亏比2.5 → 可持有（观察）',A({src:'own',rr:2.5}).lv,'watch');
+  eq('建议：自主单、方向和系统相反 → 及时平仓',A({src:'own',against:true,rr:3}).lv,'exit');
+  eq('建议：自主单、浮亏、盈亏比低 → 减仓/止损',A({src:'own',r:-1,rr:1.2}).lv,'exit');
+  eq('建议：系统单、浮亏、盈亏比低 → 仍按规则持有（不自己砍）',A({r:-1,rr:1.0}).lv,'watch');
+  eq('建议：系统单盈亏比高 → 持有',A({rr:3}).head.includes('按规则持有'),true);
+}
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

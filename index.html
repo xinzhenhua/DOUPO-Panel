@@ -402,6 +402,16 @@ body.multi .mgc .hl{margin:2px 0 6px}
 .hv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;margin:6px 0 14px}
 .hvk{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
 .hvk{border-left:3px solid var(--line)}.hvk.tg{border-left-color:var(--bear);background:var(--bearS)}.hvk.tr{border-left-color:var(--bull);background:var(--bullS)}.hvk.ta{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 9%,transparent)}.hvk.tg b{color:var(--bear)}.hvk.tr b{color:var(--bull)}.hvk.ta b{color:var(--amber)}
+.exc{grid-template-columns:repeat(4,minmax(0,1fr));margin:2px 0 8px}.exc .hvk{padding:9px 11px}.exc .hvk b{font-size:19px}.exc .hvk em{line-height:1.3;white-space:normal}
+.exadv{padding:9px 14px;border-radius:10px;margin:2px 0 8px;border-left:4px solid var(--line);background:var(--sunk);font-size:12.5px;color:var(--ink2);line-height:1.5}.exadv b{display:block;font-size:15px;color:var(--ink);margin-bottom:2px}
+.exadv.hold{border-left-color:var(--bear);background:var(--bearS)}.exadv.hold b{color:var(--bear)}.exadv.watch{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 9%,transparent)}.exadv.watch b{color:var(--amber)}.exadv.protect{border-left-color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,transparent)}.exadv.protect b{color:var(--amber)}.exadv.exit{border-left-color:var(--bull);background:var(--bullS)}.exadv.exit b{color:var(--bull)}
+.exsrc{font-size:12px;color:var(--ink2);text-decoration:underline dotted}
+.exchips{display:flex;flex-wrap:wrap;gap:4px 6px;margin:0 0 6px}.exw{position:relative}.exsv{width:100%;height:auto;display:block}
+.exh{fill:none;stroke:var(--ink2);stroke-width:1.6}.exm{fill:none;stroke:var(--focus);stroke-width:2;stroke-dasharray:5 3}.exb1{fill:var(--focus);opacity:.22}.exb2{fill:var(--focus);opacity:.1}
+.exl,.exs,.ext{stroke-width:1;stroke-dasharray:3 3}.exl{stroke:var(--ink3)}.exs{stroke:var(--bull)}.ext{stroke:var(--bear)}.exlt,.exst,.extt,.exa{font-size:10.5px;fill:var(--ink3)}.exst{fill:var(--bull)}.extt{fill:var(--bear)}.exn{stroke:var(--line);stroke-width:1}.exd{fill:var(--ink)}
+.exleg{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:11.5px;color:var(--ink3)}.exleg span[class^=lg]{display:inline-block;width:14px;height:8px;border-radius:2px;background:var(--focus)}.exleg .lg2{opacity:.4}.exleg .lg3{opacity:.2}.exn2{font-size:11.5px;margin-top:6px}
+@media(max-width:899px){.exc{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:900px) and (max-height:920px){.exn2{display:none}.exadv{padding:6px 12px;margin-bottom:4px}.exadv div:nth-of-type(n+2){display:none}.exsv{max-height:150px}.exc .hvk{padding:6px 10px}.exc .hvk b{font-size:17px}}
 .plt{display:flex;align-items:center;gap:8px}.plt::before{content:"";width:3px;height:14px;border-radius:2px;background:var(--focus)}
 .hvk i{font-style:normal;font-size:12px;color:var(--ink3)}.hvk b{font-family:var(--num);font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}.hvk em{font-style:normal;font-size:12px;color:var(--ink3)}
 .sg .hd.big{font-family:var(--num);font-size:34px;line-height:1.1;letter-spacing:-.02em}.sg .hd.big small{font-size:14px;font-weight:400;color:var(--ink3)}
@@ -1478,6 +1488,66 @@ function planStats(a) {
   const wins = cl.filter(x => x.net > 0).length;
   return { n: cl.length, wins, net: cl.reduce((s, x) => s + x.net, 0), rows: cl };
 }
+
+/* ---- 持仓预期（v101.48）：回测经验值 + 从现在起的价格推演（蒙特卡洛）。不是预测，是把"回测里的平均优势"套到当前持仓上 ---- */
+const TBT = {   // 回测（2017-12~2026-10，信号收盘价、止损/移动止盈按收盘判断，40笔）里同方向的统计；脚本见 scratchpad/mp/bt4.py
+  long: { n: 26, win: .538, avgWin: 9.1, avgLoss: -2.6, avg: 3.7, days: 29 },
+  short: { n: 14, win: .643, avgWin: 2.4, avgLoss: -1.3, avg: 1.0, days: 5 },
+  EDGE: .0009, H: 60, FAN: 20     // 每天顺着持仓方向的平均优势 0.09%（让推演的平均收益≈回测的平均单笔收益）；推演60个交易日，画未来20个交易日
+};
+function planWilson(k, n) { if (!n) return [0, 1]; const z = 1.645, p = k / n, d = 1 + z * z / n, c = p + z * z / (2 * n), w = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)); return [Math.max(0, (c - w) / d), Math.min(1, (c + w) / d)]; }
+function planRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function planExpect(o) {   // o: {side,entry,peak,last,closes(真实价，至少20个),rets(日收益，去均值),edge,n,seed}；退出规则同 planManage：止损、移动止盈、空单站上MA20
+  const side = o.side >= 0 ? 1 : -1, n = o.n || 1500, H = TBT.H, FAN = TBT.FAN, rets = o.rets || [], R = rets.length, edge = (o.edge == null ? TBT.EDGE : o.edge) * side, rng = planRng(o.seed || 12345), base = (o.closes || []).slice(-30);
+  if (R < 50 || base.length < 20) return null;
+  const fin = [], fnow = [], days = [], fan = []; for (let d = 0; d < FAN; d++) fan.push([]);
+  let st = 0, tr = 0, ma = 0, hz = 0;
+  for (let i = 0; i < n; i++) {
+    let px = o.last, pk = o.peak, d = 0, out = null; const ctx = base.slice(-19);
+    while (d < H) {
+      const j = Math.floor(rng() * (R - 5));
+      for (let b = 0; b < 5 && d < H; b++) {
+        px *= 1 + rets[j + b] + edge; d++; ctx.push(px); if (ctx.length > 20) ctx.shift();
+        if (d <= FAN) fan[d - 1].push(px);
+        if (out) continue;
+        pk = side > 0 ? Math.max(pk, px) : Math.min(pk, px);
+        const r = side * (px / o.entry - 1) * 100, pr = side * (pk / o.entry - 1) * 100;
+        if (r <= -TPLAN.STOP) out = ['s', px, d]; else if (pr >= TPLAN.ACT && (side > 0 ? px <= pk * (1 - TPLAN.TRAIL / 100) : px >= pk * (1 + TPLAN.TRAIL / 100))) out = ['t', px, d];
+        else if (side < 0 && ctx.length >= 20 && px > ctx.reduce((a, c) => a + c, 0) / 20) out = ['m', px, d];
+      }
+    }
+    if (!out) out = ['h', px, H];
+    if (out[0] === 's') st++; else if (out[0] === 't') tr++; else if (out[0] === 'm') ma++; else hz++;
+    fin.push(side * (out[1] / o.entry - 1) * 100); fnow.push(side * (out[1] / o.last - 1) * 100); days.push(out[2]);
+  }
+  const q = (a, p) => { const b = a.slice().sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.max(0, Math.round(p * (b.length - 1))))]; };
+  const gn = fnow.filter(x => x > 0), ls = fnow.filter(x => x < 0), avg = a => a.length ? a.reduce((p, c) => p + c, 0) / a.length : 0, gainNow = avg(gn), lossNow = -avg(ls);
+  return { n, gainNow, lossNow, rrNow: lossNow > 0 ? gainNow / lossNow : (gainNow > 0 ? 99 : 0), evNow: avg(fnow), winNow: gn.length / n, win: fin.filter(x => x > 0).length / n, stopP: st / n, trailP: tr / n, maP: ma / n, holdP: hz / n, mean: fin.reduce((a, c) => a + c, 0) / n, p10: q(fin, .1), p50: q(fin, .5), p90: q(fin, .9), medDays: q(days, .5),
+    fan: fan.map(a => ({ p10: q(a, .1), p25: q(a, .25), p50: q(a, .5), p75: q(a, .75), p90: q(a, .9) })) };
+}
+
+/* 开仓来源：按系统信号开的（sys）还是自己开的、当时系统没给信号（own）。旧记录没有这个字段，用开仓当天存的快照推断 */
+function planSrc(t) {
+  if (!t) return 'sys'; if (t.src === 'sys' || t.src === 'own') return t.src;
+  const sn = t.snap; if (!sn) return 'sys'; if (sn.gateOk === false) return 'own';
+  const longOK = sn.pct != null && sn.pct <= TPLAN.LO && !!sn.confirm && !sn.delev, shortOK = !!sn.delev && !!sn.trendDn;
+  return (t.side > 0 ? longOK : shortOK) ? 'sys' : 'own';
+}
+/* 平仓建议：按系统信号开的单，回测只验证过「按规则持有」；自己开的单没有入场优势，建议更紧。rr=从现在起继续持有的预计盈亏比 */
+function planAdvice(o) {   // o: {src, side, r(浮盈%), rr, ev(从现在起的期望%), act(planManage.action), against(与系统方向相反), entry}
+  const own = o.src === 'own', th = own ? 2 : 1.5, rr = o.rr == null ? null : o.rr, rrT = rr == null ? '—' : (rr >= 10 ? '10+' : rr.toFixed(1)) + ':1', profit = o.r > 0.5, L = [];
+  if (o.act && o.act !== '持有') return { lv: 'exit', head: '按规则该平仓：' + o.act, rrT, th, L: ['这是系统的离场规则，不管这单是怎么开的，都按这个走。'] };
+  if (own && o.against) return { lv: 'exit', head: '方向和系统相反，建议及时平仓', rrT, th, L: ['这单没有系统信号，而且' + (o.side > 0 ? '外资正在去杠杆' : '外资三家合计已回正') + '——回测里的优势站在另一边。', '不想马上平：至少把止损收紧到开仓价附近。'] };
+  if (rr == null) return { lv: 'hold', head: own ? '自主开仓：按止损和移动止盈管理' : '按规则持有', rrT, th, L };
+  if (profit && rr < th) {
+    L.push('现在平仓 = 落袋 ' + o.r.toFixed(1) + '%；继续拿，平均再赚 ' + o.gain.toFixed(1) + '% / 再亏 ' + o.loss.toFixed(1) + '%，赔率不到 ' + th + ':1。');
+    L.push(own ? '自己开的单没有回测优势，赚到的别等回吐：建议保本平仓，或把止损上移到开仓价 ' + o.entryTxt + '。' : '建议把止损上移到开仓价 ' + o.entryTxt + '（保本止损）：回测里浮盈≥3~6%后保本，5年终值中位 927万（基线 895万）、差10% 374万（基线 396万），基本持平，不吃亏；提前直接平仓没有回测支持。');
+    return { lv: 'protect', head: '盈亏比 ' + rrT + '，低于 ' + th + ':1：建议保本', rrT, th, L };
+  }
+  if (!profit && (rr < th || o.ev < 0) && own) return { lv: 'exit', head: '盈亏比 ' + rrT + '，偏低：建议减仓或及时止损', rrT, th, L: ['自己开的单没有回测优势，浮亏时盈亏比还不到 ' + th + ':1，不值得等。'] };
+  if (!profit && rr < th) return { lv: 'watch', head: '盈亏比 ' + rrT + '，偏低，但仍按系统规则持有', rrT, th, L: ['这单有系统信号：回测只验证过「按规则持有」，止损 4% 之前不建议自己提前砍。'] };
+  return { lv: own ? 'watch' : 'hold', head: own ? '自主开仓：盈亏比 ' + rrT + '，可持有，建议保本止损' : '按规则持有 · 盈亏比 ' + rrT, rrT, th, L };
+}
 /* PLAN_END */
 
 function planState() { let s = {}; try { s = JSON.parse(localStorage.getItem('cockpit-plan') || '{}') || {}; } catch (_) {} return s; }   // v101.25 旧版手填，只用来迁移
@@ -1675,7 +1745,52 @@ function planBodyHtml(s) {
   /* 折叠：阶梯、回测摘要 */
   h += `\u0001<details id="pf-mo"><summary>历史开仓月份</summary><div class="plh">背景参考：信号出现的频率有参考，盈亏没有。</div>${monthHtml()}</details><details id="pf-lad"><summary>仓位阶梯</summary><div class="plh">权益越大，占用越低。</div>${ladderHtml(s.base.equity)}</details><details id="pf-bt"><summary>回测摘要</summary><div class="plh">样本内结果，仅供参考。</div>${planBtHtml()}</details>`;
   const q = h.split('\u0001');   // [入场信号, 持仓管理, 账户权益, 交易记录, 折叠项]：电脑端两列排版时按 入场/账户/记录 | 持仓 的顺序放，高度才平衡
-  return pmsg + `<div class="plgrid"><div class="ps ps1">${s.pos ? '' : q[0]}</div><div class="ps ps3">${q[2]}</div><div class="ps ps4">${q[3]}</div><div class="ps ps2">${q[1]}</div><div class="ps ps5">${q[4]}</div></div>`;
+  return pmsg + `<div class="plgrid"><div class="ps ps1">${s.pos ? '' : q[0]}</div><div class="ps ps3">${q[2]}</div><div class="ps ps4">${q[3]}${s.pos ? `<div class="exp">${expectHtml(s)}</div>` : ''}</div><div class="ps ps2">${q[1]}</div><div class="ps ps5">${q[4]}</div></div>`;
+}
+
+const EXP_CACHE = {};
+function expectCalc(s) {   // 当前持仓的推演（缓存：同一个持仓和同一根价格不重复算）
+  const t = s.pos, ho = s.hold; if (!t || !ho) return null;
+  const hs = holdSeries(t).h, c = hs && hs.c ? hs.c : []; if (c.length < 300) return null;
+  const own = planSrc(t) === 'own', key = [t.id, t.side, t.entryPx, ho.last, ho.peak, c.length, own].join('|'); if (EXP_CACHE.k === key) return EXP_CACHE.v;
+  const rets = []; for (let i = Math.max(1, c.length - 1500); i < c.length; i++) rets.push(c[i] / c[i - 1] - 1); const mu = rets.reduce((a, b) => a + b, 0) / rets.length, r0 = rets.map(x => x - mu);
+  const closes = c.slice(-30).map(x => x * ho.k), v = planExpect({ side: t.side, entry: t.entryPx, peak: ho.peak, last: ho.last, closes, rets: r0, n: 2000, edge: own ? 0 : TBT.EDGE });
+  EXP_CACHE.k = key; EXP_CACHE.v = v ? Object.assign(v, { hist: c.slice(-40).map(x => x * ho.k), histD: hs.d.slice(-40) }) : null; return EXP_CACHE.v;
+}
+function expectChart(x, t, ho, stopPx, trigPx) {
+  const W = 640, Hh = 230, L = 8, Rr = 84, T = 10, B = 18, hist = x.hist, nh = hist.length, nf = x.fan.length, tot = nh + nf - 1;
+  const vals = hist.concat(x.fan.map(f => f.p10), x.fan.map(f => f.p90), [t.entryPx, stopPx]); if (trigPx) vals.push(trigPx);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * .06 || 5; lo -= pad; hi += pad;
+  const X = i => L + (W - L - Rr) * i / tot, Y = v => T + (Hh - T - B) * (1 - (v - lo) / (hi - lo)), f1 = v => Math.round(v * 10) / 10;
+  const line = a => a.map((v, i) => `${i ? 'L' : 'M'}${f1(X(i))},${f1(Y(v))}`).join('');
+  const band = (u, l2) => { const up = x.fan.map((f, i) => `${f1(X(nh - 1 + i + 1))},${f1(Y(f[u]))}`), dn = x.fan.map((f, i) => `${f1(X(nh - 1 + i + 1))},${f1(Y(f[l2]))}`).reverse(); return `M${f1(X(nh - 1))},${f1(Y(hist[nh - 1]))}L` + up.join('L') + 'L' + dn.join('L') + 'Z'; };
+  const med = [hist[nh - 1]].concat(x.fan.map(f => f.p50)), hl = (v, cls, lab) => `<line x1="${L}" x2="${W - Rr}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" class="${cls}"/><text x="${W - Rr + 4}" y="${f1(Y(v)) + 3.5}" class="${cls}t">${lab} ${fmtD(v)}</text>`;
+  return `<svg class="exsv" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="日K线收盘价与未来20个交易日的推演区间">
+    <path d="${band('p10', 'p90')}" class="exb2"/><path d="${band('p25', 'p75')}" class="exb1"/>
+    ${hl(t.entryPx, 'exl', '开仓')}${hl(stopPx, 'exs', '止损')}${trigPx ? hl(trigPx, 'ext', '移动止损') : ''}
+    <path d="${line(hist)}" class="exh"/><path d="${med.map((v, i) => `${i ? 'L' : 'M'}${f1(X(nh - 1 + i))},${f1(Y(v))}`).join('')}" class="exm"/>
+    <line x1="${f1(X(nh - 1))}" x2="${f1(X(nh - 1))}" y1="${T}" y2="${Hh - B}" class="exn"/>
+    <text x="${f1(X(nh - 1)) - 4}" y="${Hh - 4}" text-anchor="end" class="exa">${esc(String(x.histD[nh - 1] || '').slice(5))} 现在</text><text x="${W - Rr}" y="${Hh - 4}" text-anchor="end" class="exa">+${nf} 个交易日</text>
+    <circle cx="${f1(X(nh - 1))}" cy="${f1(Y(hist[nh - 1]))}" r="3.5" class="exd"/></svg>`;
+}
+function expectHtml(s) {
+  const t = s.pos, ho = s.hold, x = expectCalc(s); if (!t || !ho) return '';
+  const sd = t.side > 0, src = planSrc(t), own = src === 'own', bt = sd ? TBT.long : TBT.short, not = t.lots * TPLAN.TON * t.entryPx, A = s.A, fee = (+A.fee || 0) * t.lots, yv = v => yuan(Math.round(v)), w = planWilson(Math.round(bt.win * bt.n), bt.n);
+  const win = own && x ? x.win : bt.win, exp = (own && x ? x.mean : bt.avg) * not / 100 - fee, loss = -TPLAN.STOP * not / 100 - fee, rrBt = Math.abs(bt.avgWin / bt.avgLoss);
+  const gainY = own && x ? x.gainNow : bt.avgWin, lossY = own && x ? x.lossNow : Math.abs(bt.avgLoss);
+  const card = (l, v, sub, tone) => `<div class="hvk${tone ? ' t' + tone : ''}"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
+  const F = s.F, tail = F.used && F.used.length ? (sd ? F.min > TPLAN.DELEV : F.sum < 0) : null, ma = s.sig && s.sig.ma20 != null ? ho.last < s.sig.ma20 * ho.k : null, against = tail === false;
+  const chip = (ok, txt) => ok == null ? '' : `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${txt}</span>`;
+  const rr = x ? x.rrNow : null, adv = planAdvice({ src, side: t.side, r: s.mg ? s.mg.r : 0, rr, ev: x ? x.evNow : 0, gain: x ? x.gainNow : 0, loss: x ? x.lossNow : 0, act: s.mg ? s.mg.action : '持有', against, entry: t.entryPx, entryTxt: fmtD(t.entryPx) });
+  const rrTone = rr == null ? '' : rr >= adv.th ? 'g' : rr >= 1 ? 'a' : 'r';
+  const cards = `<div class="hv exc">${card('预计胜率', Math.round(win * 100) + '%', own ? '无入场优势：按随机推演' : `回测同方向 ${bt.n} 笔，90% 区间 ${Math.round(w[0] * 100)}–${Math.round(w[1] * 100)}%`, win >= .55 ? 'g' : win < .45 ? 'a' : '')}${card('预计盈利', yv(exp) + ' 元', `平均赚 ${yv(gainY * not / 100 - fee)} · 平均亏 ${yv(-lossY * not / 100 - fee)}`, exp >= 0 ? 'r' : 'g')}${card('预计盈亏比', rr == null ? '—' : adv.rrT, `继续持有的再赚/再亏 · 回测 ${rrBt.toFixed(1)}:1`, rrTone)}${card('止损亏损', yv(loss) + ' 元', x ? `触发止损概率 ${(x.stopP * 100).toFixed(1)}%` : '到止损价平仓', 'a')}</div>`;
+  const stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), trig = s.mg && s.mg.peakR >= TPLAN.ACT ? (sd ? ho.peak * (1 - TPLAN.TRAIL / 100) : ho.peak * (1 + TPLAN.TRAIL / 100)) : null;
+  const chart = x ? expectChart(x, t, ho, stopPx, trig) : '<div class="plh">价格历史不足，画不出推演。</div>';
+  const out = x ? `预计持有 约 ${x.medDays} 天 · ${x.maP > .5 ? `站上MA20离场 ${(x.maP * 100).toFixed(0)}%` : x.trailP > .3 ? `移动止盈离场 ${(x.trailP * 100).toFixed(0)}%` : `到期未离场 ${(x.holdP * 100).toFixed(0)}%`} · 止损 ${(x.stopP * 100).toFixed(1)}%` : '';
+  const advH = `<div class="exadv ${adv.lv}"><b>${esc(adv.head)}</b>${adv.L.map(l => `<div>${esc(l)}</div>`).join('')}</div>`;
+  return `<div class="plt">预期与建议 · 回测经验，不是预测</div>${advH}<div class="exchips"><button class="lnk exsrc" data-act="src" title="点一下切换：按系统信号开的 / 自己开的（开仓时系统没给信号）">${own ? '自主开仓（没有系统信号）' : '按系统信号开仓'} · 点此切换</button>${chip(tail, sd ? '外资未去杠杆' : '外资合计未回正')}${sd ? '' : chip(ma, '在MA20下方')}<span class="sc">基本面 回测无预测力，不计入</span></div>${cards}
+  <div class="exw">${chart}<div class="exleg"><span class="lg1"></span>中位 <span class="lg2"></span>25–75% <span class="lg3"></span>10–90% · ${out}</div></div>
+  <div class="plh exn2">推演：${own ? '自己开的单没有入场优势，所以按「无优势」随机推演' : '每天顺持仓方向的平均优势 0.09%（让平均收益≈回测单笔平均 ' + bt.avg.toFixed(1) + '%）'}，2,000 条路径，沿用同样的止损 / 移动止盈 / ${sd ? '外资去杠杆（不计翻转）' : '站上MA20'} 规则；外资翻转未建模，只当参考。盈亏比 = 从现在起平均再赚 ÷ 平均再亏；样本只有 ${bt.n} 笔，误差很大。</div>`;
 }
 function tradeShell() { const t = $('#tradePanel'); if (t && !$('#planBody')) t.innerHTML = `<div class="ch-h"><span class="t">交易计划 · 持仓与账户</span><button class="tb" id="planHide" aria-label="收起交易计划，回到首页">收起 ✕</button><button class="q" data-about="plan" aria-label="这页怎么用">?</button></div><div id="planForm"><div id="planBody"></div></div>`; }
 function planBtHtml() {
@@ -1741,9 +1856,10 @@ function planAct(act, el) {
     { const o = planOpen(A.trades); if (o) return planAfter('已经有一笔持仓' + (o.contract ? '（' + o.contract + '）' : '') + '，先记平仓。'); }
     if (!okDate(d) || !(lots >= 1) || !(px > 0)) return planAfter('开仓没记：日期要写成 2026-10-12，手数≥1，价格>0。');
     if (fee !== '' && !(parseFloat(fee) >= 0)) return planAfter('开仓没记：手续费要么留空，要么填数字。');
-    A.trades.push({ id: String(Date.now()), contract: C().symbol || null, side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee), snap: planSnapshotNow(planSnap()) });
+    A.trades.push({ id: String(Date.now()), contract: C().symbol || null, side, lots, entryD: d, entryPx: px, feeO: fee === '' ? null : parseFloat(fee), snap: planSnapshotNow(planSnap()), src: planSnap().side === side ? 'sys' : 'own' });
     return save(`已记录开仓：${sdName(side)} ${lots} 手 @ ${fmtD(px)}。之后的最高/最低价、浮盈亏、离场判断都自动算。`);
   }
+  if (act === 'src') { const t = curPos(); if (!t) return planAfter('当前没有持仓。'); t.src = planSrc(t) === 'own' ? 'sys' : 'own'; return save('已标记为：' + (t.src === 'own' ? '自主开仓（开仓时系统没给信号）' : '按系统信号开仓') + '。'); }
   if (act === 'close') {
     const t = curPos(), px = nm('pf-cp'), d = v('pf-cd'), fee = v('pf-cf');
     if (!t) return planAfter('当前没有持仓。');
