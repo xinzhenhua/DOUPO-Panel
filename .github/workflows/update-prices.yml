@@ -1,7 +1,7 @@
 name: 盘中价格（每15分钟）
 
 # 只抓三个合约的 15 分钟线 → data/prices.json，几秒完成。公开仓库 Actions 免费不限额。
-# 北京时间：日盘 09:00–15:00（周一至周五，UTC 01:00–07:00）；夜盘 21:00–23:00（周日至周四，UTC 13:00–15:00）。
+# 北京时间：日盘 09:00–15:00（周一至周五，UTC 01:00–07:00）；夜盘 21:00–23:00（周一至周五，UTC 13:00–15:00）。
 # v101.49：改为每5分钟。GitHub 定时任务高峰期会延迟或漏跑（实测 15–30 分钟才来一次），所以页面另外在交易时段每分钟直连新浪15分钟线，不依赖这个任务。
 on:
   schedule:
@@ -23,6 +23,7 @@ concurrency:
 jobs:
   prices:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -60,5 +61,4 @@ jobs:
           git add data/alert_state.json 2>/dev/null || true
           git add data/push_subs.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "盘中价格 $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push
+          bash scripts/git_push_retry.sh

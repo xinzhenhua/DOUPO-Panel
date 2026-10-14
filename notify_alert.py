@@ -111,6 +111,30 @@ def send_test(env, today, senders=None):
         except Exception as ex:  # noqa: BLE001
             rep["failed"].append(f"{name}: {type(ex).__name__}: {str(ex)[:200]}"); continue
         (rep["none"] if r is None else rep["ok"] if r else rep["failed"]).append(name if r is not False else f"{name}: 发送失败")
+    # 网页推送：平时没配就安静跳过，但「测试提醒」就是来验证它的——静默跳过会让人以为“发了”，这里必须说清原因
+    if "webpush" in senders and "webpush" not in rep["ok"]:
+        try:
+            import webpush_send as wp
+            base = os.path.dirname(os.path.abspath(__file__))
+            subs = env.get("PUSH_SUBS") or os.path.join(base, "data", "push_subs.json")
+            vap = env.get("PUSH_VAPID") or os.path.join(base, "data", "push_vapid.json")
+            diag = wp.diagnose(env.get("VAPID_PRIVATE_KEY"), vap, subs)
+        except Exception as ex:  # noqa: BLE001
+            diag = [f"网页推送诊断本身出错：{type(ex).__name__}: {str(ex)[:100]}（多半是 Actions 里没装上 cryptography）"]
+        if "webpush" in rep["none"]:
+            rep["none"].remove("webpush")
+            rep["failed"].append("webpush: 没发出去——" + ("；".join(diag) if diag else "配置检查没发现问题，但没有可发的设备"))
+        elif diag:
+            rep["failed"].append("webpush 诊断：" + "；".join(diag))
+        if diag or "webpush" in " ".join(rep["failed"]):
+            rep["push_diag"] = diag
+            msg = "网页推送这次没发出去，原因：\n" + "\n".join(f"{i + 1}. {d}" for i, d in enumerate(diag or ["没有可发的设备"]))
+            for name, fn in senders.items():                       # 通过已经通的渠道把原因直接发给你（不用翻 Actions 日志）
+                if name in rep["ok"] and name != "webpush":
+                    try:
+                        fn(env, "【豆粕提醒】网页推送没发出去", msg)
+                    except Exception:  # noqa: BLE001
+                        pass
     return rep
 
 
@@ -197,6 +221,8 @@ def main(argv=None):
     with open(a.state, "w", encoding="utf-8") as f:
         json.dump(st, f, ensure_ascii=False, indent=1)
     print("[提醒发送]", json.dumps(rep, ensure_ascii=False))
+    for f in rep["failed"]:
+        print("::warning title=提醒渠道发送失败::" + f)   # Actions 页面顶部会显示黄色警告
     return 0
 
 

@@ -47,6 +47,8 @@ from datetime import date as _date_cls
 
 import cn_calendar
 import history_store
+import net_timeout
+net_timeout.install()  # akshare/requests 默认无超时，补上
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "")
 NASS_API_KEY = os.environ.get("NASS_API_KEY", "")  # 单独申请：quickstats.nass.usda.gov/api（跟FAS的密钥是两套系统）
@@ -5086,6 +5088,40 @@ def fetch_noaa_drought_outlook():
     }
 
 
+
+# ---------------------------------------------------------------------------
+# 抓取失败时沿用上次成功的值（v101.55）
+# 起因：latest.json 每次整体重写，只要某一次网络超时（例如 akshare 连不上 xt.yangzhu.vip），这个指标就整个丢掉、
+#   页面报“无数据”、这一票不计分——哪怕上一次（几小时前）刚抓成功。历史序列里那个点是好的，页面两边对不上。
+# 做法：本次 available=False 而上次 available=True 时，把上次的整段结果带过来，打 carried 标记并写明本次失败原因；
+#   值自己带着数据日期，页面按各指标原有的新鲜度规则（晚一期降权 / 过期不计分）自动判断，不另设期限。
+CARRY_KEYS = ("hogRatio", "mysteelArrivalForecast", "mysteelCrushRate", "mysteelFeedDays", "mysteelMealStock", "mysteelMealStu",
+              "mysteelPoultryProfit", "mysteelReserveAuction", "mysteelRmSpread", "mysteelSoyImport", "ndrcPoultryProfit",
+              "sowInventory", "spotBasis")
+
+
+def carry_forward(result, prev, keys=CARRY_KEYS):
+    """返回被沿用的 key 列表。prev 是上一次的 latest.json（dict，可为空）。"""
+    carried = []
+    if not isinstance(prev, dict):
+        return carried
+    for k in keys:
+        new, old = result.get(k), prev.get(k)
+        if k not in result or not isinstance(old, dict):
+            continue
+        if isinstance(new, dict) and new.get("available"):
+            continue
+        if not old.get("available") or old.get("value") is None:
+            continue
+        reason = (new or {}).get("reason") or (new or {}).get("error") or "本次抓取失败"
+        merged = dict(old)
+        merged["carried"] = True
+        merged["carriedReason"] = str(reason)[:300]
+        merged["carriedFrom"] = old.get("carriedFrom") or prev.get("generatedAt")
+        result[k] = merged
+        carried.append(k)
+    return carried
+
 # ---------------------------------------------------------------------------
 # 主流程
 # ---------------------------------------------------------------------------
@@ -5197,6 +5233,19 @@ def main():
     except Exception as e:  # noqa: BLE001
         print(f"⚠️ marketCapital生成失败(不影响其他数据): {type(e).__name__}: {e}")
         result["marketCapital"] = {"available": False, "error": f"{type(e).__name__}: {str(e)[:120]}"}
+
+    # ★抓取失败的指标沿用上次成功值（见 carry_forward）；任何错都不影响写 latest.json
+    try:
+        try:
+            prev_latest = json.load(open(OUTPUT_PATH, encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            prev_latest = {}
+        carried = carry_forward(result, prev_latest)
+        if carried:
+            print(f"[WARN] 本次抓取失败，沿用上次成功的值: {', '.join(carried)}", file=sys.stderr)
+        result["carriedKeys"] = carried
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] 沿用上次成功值失败(不影响其它数据): {type(e).__name__}: {e}", file=sys.stderr)
 
     # ★历史序列：把各指标最新值追加进data/history/*.json，并给对应结果挂上history(历史分位摘要)。
     #   出任何错都只打印警告——历史是锦上添花，绝不能让latest.json写不出来。

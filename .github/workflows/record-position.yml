@@ -27,13 +27,15 @@ on:
 permissions:
   contents: write
 
+# 单独一组：手动记账不能被定时任务的“排队只留最新一个”挤掉（同组里排队的任务会被后来者取消）；推送冲突由 git_push_retry.sh 兜底
 concurrency:
-  group: data-writes
+  group: data-writes-manual
   cancel-in-progress: false
 
 jobs:
   record:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,5 +55,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/position.json
           git diff --staged --quiet || git commit -m "记录持仓 $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push
+          bash scripts/git_push_retry.sh

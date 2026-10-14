@@ -1214,7 +1214,7 @@ def test_main_fetches_all_three_contracts(monkeypatch_fetch):
     def fake_daily(symbol, max_rows=260):
         daily_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"date": "2026-01-01", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
-    def fake_hourly(symbol, max_bars=180):
+    def fake_hourly(symbol, max_bars=180, period="60"):
         hourly_calls.append(symbol)
         return {"available": True, "symbol": symbol, "totalBarsReturned": 1, "bars": [{"datetime": "2026-01-01 10:00:00", "open": 1, "high": 1, "low": 1, "close": 1}], "source": "测试"}
     def fake_position_rank(symbols, max_attempts=6, categories=None):

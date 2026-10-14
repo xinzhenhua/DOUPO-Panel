@@ -81,12 +81,17 @@ def _http_post(url, data, headers, timeout=20):
         return e.code, e.read().decode("utf-8", "replace")
 
 
-def send_one(sub, payload, priv_b64, subject, post=_http_post, now=None):
-    """给一个订阅发一条。返回 HTTP 状态码（201 成功；404/410 = 订阅已失效应删除）。"""
+def send_one_ex(sub, payload, priv_b64, subject, post=_http_post, now=None):
+    """给一个订阅发一条。返回 (HTTP 状态码, 响应正文)：201 成功；404/410 = 订阅已失效应删除；其它的正文里有推送服务给的原因。"""
     body = encrypt(json.dumps(payload, ensure_ascii=False).encode("utf-8"), sub["keys"]["p256dh"], sub["keys"]["auth"])
-    st, _ = post(sub["endpoint"], body, {"Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "TTL": "86400", "Urgency": "high",
-                                         "Authorization": vapid_auth(sub["endpoint"], priv_b64, subject, now)})
-    return st
+    st, txt = post(sub["endpoint"], body, {"Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "TTL": "86400", "Urgency": "high",
+                                           "Authorization": vapid_auth(sub["endpoint"], priv_b64, subject, now)})
+    return st, txt
+
+
+def send_one(sub, payload, priv_b64, subject, post=_http_post, now=None):
+    """同 send_one_ex，只返回状态码（兼容旧调用）。"""
+    return send_one_ex(sub, payload, priv_b64, subject, post, now)[0]
 
 
 def load_subs(path):
@@ -102,7 +107,7 @@ def send_all(path, payload, priv_b64, subject, post=_http_post):
     subs = load_subs(path); ok, bad, dead = 0, [], []
     for s in subs:
         try:
-            st = send_one(s, payload, priv_b64, subject, post)
+            st, txt = send_one_ex(s, payload, priv_b64, subject, post)
         except Exception as ex:  # noqa: BLE001
             bad.append(f"{type(ex).__name__}: {str(ex)[:80]}"); continue
         if 200 <= st < 300:
@@ -110,11 +115,45 @@ def send_all(path, payload, priv_b64, subject, post=_http_post):
         elif st in (404, 410):
             dead.append(s["endpoint"])
         else:
-            bad.append(f"HTTP {st}（{urllib.parse.urlparse(s['endpoint']).netloc}）")
+            bad.append(f"HTTP {st}（{urllib.parse.urlparse(s['endpoint']).netloc}）{str(txt or '').strip()[:120]}")
     if dead:
         keep = [s for s in subs if s["endpoint"] not in dead]
         json.dump({"subs": keep, "updated": time.strftime("%Y-%m-%d %H:%M", time.gmtime()) + " UTC"}, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return ok, bad, len(dead)
+
+
+def diagnose(priv_b64, vapid_path, subs_path):
+    """逐项检查网页推送为什么发不出去，返回「问题说明」列表（空列表 = 配置没毛病）。
+    检查：私钥在不在、格式对不对；仓库里有没有公钥；私钥和公钥是不是一对；有没有登记的设备；设备登记时用的公钥是不是现在这一把。"""
+    out = []
+    pub = None
+    try:
+        pub = (json.load(open(vapid_path, encoding="utf-8")) or {}).get("publicKey")
+    except Exception:  # noqa: BLE001
+        pub = None
+    mine = None
+    if not (priv_b64 or "").strip():
+        out.append("Actions 里没有拿到私钥：GitHub 仓库 → Settings → Secrets and variables → Actions → 「Repository secrets」里要有名字恰好是 VAPID_PRIVATE_KEY 的一项（不是 Variables，也不是 Environment/Dependabot 里的）。已经有同名的就点它右边的铅笔改值（Update），不能再新建。")
+    else:
+        try:
+            raw = b64d(priv_b64)
+            if len(raw) != 32:
+                raise ValueError(f"长度 {len(raw)} 字节，应是 32 字节")
+            mine = vapid_public_b64(priv_b64)
+        except Exception as ex:  # noqa: BLE001
+            out.append(f"Secret 里的私钥格式不对（{type(ex).__name__}: {str(ex)[:60]}）：应该是页面生成时显示的那一整串（约 43 个字符），前后不能有空格、引号或换行。")
+    if not pub:
+        out.append("仓库里没有 data/push_vapid.json（页面还没生成过推送密钥，或写入仓库失败）。")
+    elif mine and mine != pub:
+        out.append("Secret 里的私钥和仓库里的公钥不是一对（多半是在两台设备上各生成了一次密钥，后一次覆盖了公钥）。解决：只留一对——在页面点「重新生成密钥」，把新私钥更新进 Secret，再让每台设备重新「开启本设备推送」。")
+    subs = load_subs(subs_path)
+    if not subs:
+        out.append("data/push_subs.json 里没有登记任何设备：在每台设备的页面上点「开启本设备推送」并看到“已开启并登记到云端”；iPhone 要先「添加到主屏幕」再从图标打开。")
+    else:
+        stale = [x for x in subs if x.get("pub") and pub and x.get("pub") != pub]
+        if stale and len(stale) == len(subs):
+            out.append(f"已登记的 {len(subs)} 台设备都是用旧公钥订阅的，现在的公钥换过了，它们收不到：每台设备先「关闭本设备推送」再「开启本设备推送」。")
+    return out
 
 
 if __name__ == "__main__":

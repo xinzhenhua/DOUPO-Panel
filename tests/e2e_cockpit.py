@@ -347,10 +347,11 @@ def main():
     kl = pg.evaluate("document.getElementById('kl').textContent")
     ok('K线默认：不画铁顶/铁底/10年铁顶/近20日高低/平衡价，只有本月高低和持仓量', all(k not in kl for k in ('铁顶', '铁底', '20日高', '20日低', '平衡')) and '本月高' in kl and '万' in kl, kl)
     pg.evaluate("document.querySelector('.lybtn').click()")
-    ok('点「图层」展开菜单，6个开关，默认3开3关', pg.evaluate("(() => { const m = document.querySelector('.lym'); return !m.hidden && m.querySelectorAll('input').length === 6 && m.querySelectorAll('input:checked').length === 3; })()"))
-    pg.evaluate("document.querySelector('[data-ly=iron]').click(); document.querySelector('[data-ly=oi]').click()")
+    ok('点「图层」展开菜单，8个开关，默认5开3关', pg.evaluate("(() => { const m = document.querySelector('.lym'); return !m.hidden && m.querySelectorAll('input').length === 8 && m.querySelectorAll('input:checked').length === 5; })()"))
+    pg.evaluate("document.querySelector('[data-ly=iron]').click(); document.querySelector('[data-ly=oi]').click(); document.querySelector('[data-ly=vol]').click()")
     kl2 = pg.evaluate("document.getElementById('kl').textContent")
     ok('打开「铁顶/底」、关掉「持仓量」后K线立即变化，设置存进本机', '260天铁' in kl2 and '万' not in kl2 and pg.evaluate("JSON.parse(localStorage.getItem('cockpit-ly')).iron === true && JSON.parse(localStorage.getItem('cockpit-ly')).oi === false"), kl2)
+    pg.evaluate("document.querySelector('[data-ly=vol]').click()")   # 恢复成交量柱
     pg.evaluate("document.querySelectorAll('[data-ly]').forEach(c => { if (!c.checked) c.click(); })")
     ys = pg.evaluate("[...document.querySelectorAll('#kl text.lv')].map(t => +t.getAttribute('y')).sort((a, b) => a - b)")
     ok('全部图层打开：右侧标签互相不重叠（间距≥11px）', len(ys) >= 6 and all(ys[i + 1] - ys[i] >= 11 for i in range(len(ys) - 1)), ys)
@@ -370,7 +371,46 @@ def main():
       D.m15[k] = [{ d: '01-02 09:15', o: c0 + 5, h: c0 + 30, l: c0 - 4, c: c0 + 10, v: 5, oi: 9 }, { d: '01-02 14:45', o: c0 + 10, h: c0 + 12, l: c0 - 20, c: c0 - 15, v: 5, oi: 9 }, { d: '01-02 15:00', o: c0 - 15, h: c0 - 10, l: c0 - 18, c: c0 + 77, v: 5, oi: 10 }];
       const kn = window.__cockpit.klineNow(), b = kn[kn.length - 1]; window.__cockpit.renderBand(); const txt = document.querySelector('#band .px').innerText;
       return { n: kn.length - kl.length, d: b.d, c: b.c, h: b.h, l: b.l, o: b.o, prov: b.prov, c0, txt }; })()""")
-    ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并标注“临时”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '临时' in r['txt'], r)
+    ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并显示“收盘”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '收盘' in r['txt'] and '临时' not in r['txt'], r)
+    # v101.57：实时价条（D.tick 由 loader 每2秒更新）
+    r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, k = C.S.key, c0 = C.klineNow().slice(-1)[0].c, el = () => document.getElementById('tick');
+      D.tick = { key: k, sym: 'x', c: c0 + 13, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: true }; C.tickPaint(); const a = { txt: el().innerText, disp: el().style.display, cls: el().querySelector('.tp').className };
+      D.tick.at = Date.now() - 60000; C.tickPaint(); const b = el().style.display;
+      D.tick = { key: k === 'sep' ? 'may' : 'sep', c: c0, dt: '2099-01-03 21:30:05', at: Date.now() }; C.tickPaint(); const c = el().style.display; D.tick = null; C.tickPaint();
+      return { a, b, c, base: c0 }; })()""")
+    ok('实时价条：显示实时价、涨跌点数、百分比、数据时间，红涨', r['a']['disp'] == 'flex' and ('%d' % (r['base'] + 13)) in r['a']['txt'].replace(',', '') and '▲ +13' in r['a']['txt'] and '21:30:05' in r['a']['txt'] and 'bull' in r['a']['cls'], r['a'])
+    ok('实时价条：数据超过20秒没更新就隐藏；切到别的合约时不显示旧合约价', r['b'] == 'none' and r['c'] == 'none', r)
+    # v101.58：当天未收盘的日K线 + 成交量 + MACD
+    r = pg.evaluate("""(() => { const C = window.__cockpit, td = C.tradeDayOf, lb = C.liveBar;
+      const k = [{ d: '2026-10-14', o: 1, h: 2, l: 0, c: 1, v: 1, oi: 5 }];
+      const m = [{ d: '10-14 21:00', o: 3000, h: 3010, l: 2995, c: 3005, v: 10, oi: 100 }, { d: '10-14 21:15', o: 3005, h: 3020, l: 3000, c: 3015, v: 7, oi: 101 }, { d: '10-15 09:00', o: 3015, h: 3018, l: 3001, c: 3010, v: 5, oi: 102 }];
+      const a = lb(k, m, null), b = lb(k, m, { dt: '2026-10-15 09:01:02', c: 3030 }), c0 = lb(k, [], { dt: '2026-10-15 09:00:01', c: 3040 }), d0 = lb(k, [{ d: '10-14 09:00', o: 1, h: 1, l: 1, c: 1, v: 1 }], null);
+      const mm = C.macdOf(Array.from({ length: 60 }, () => 100)), up = C.macdOf(Array.from({ length: 60 }, (_, i) => 100 + i));
+      return { td: [td('2026-10-16 21:30'), td('2026-10-16 10:00'), td('10-16 21:30', 2026), td('2026-10-17 10:00'), td('2026-12-31 21:30')], a, b, c0, d0, flat: Math.max(...mm.dif.map(Math.abs), ...mm.bar.map(Math.abs)), up: [up.dif[59] > 0, up.dif[59] > up.dea[59], up.bar[59] > 0] }; })()""")
+    ok('实时日K线：夜盘归下一交易日（周五夜盘→周一）', r['td'] == ['2026-10-19', '2026-10-16', '2026-10-19', '2026-10-19', '2027-01-01'], r['td'])
+    ok('实时日K线：夜盘+日盘分钟线拼成一根（开=夜盘首根，高低量累加，收=最后一根），没有实时价时标盘中', r['a'] and r['a']['d'] == '2026-10-15' and r['a']['o'] == 3000 and r['a']['h'] == 3020 and r['a']['l'] == 2995 and r['a']['c'] == 3010 and r['a']['v'] == 22 and r['a']['live'] and not r['a']['prov'], r['a'])
+    ok('实时日K线：实时价当收盘，并扩展最高/最低；只有实时价没有分钟线也能出一根', r['b']['c'] == 3030 and r['b']['h'] == 3030 and r['c0']['o'] == 3040 and r['c0']['c'] == 3040 and r['c0']['d'] == '2026-10-15', [r['b'], r['c0']])
+    ok('实时日K线：已有当天日线/只有旧分钟线时不重复造', r['d0'] is None, r['d0'])
+    ok('MACD：价格不动全为0；一路上涨 DIF>0、DIF>DEA、柱>0', r['flat'] < 1e-9 and all(r['up']), [r['flat'], r['up']])
+    pg.evaluate("document.querySelector('[data-view=px]').click()"); pg.wait_for_timeout(300)
+    r = pg.evaluate("""(() => { const C = window.__cockpit; const box = document.getElementById('kl'); return { macd: /MACD/.test(box.textContent) && /DIF/.test(box.textContent) && /DEA/.test(box.textContent), vol: /量 /.test(box.textContent), rects: box.querySelectorAll('rect').length }; })()""")
+    ok('K线图：下方有成交量柱（量标签）和 MACD（红绿柱、DIF、DEA）', r['macd'] and r['vol'] and r['rects'] > 100, r)
+    # v101.55：数据灯 ↔ 趋势墙对账 / 失败原因 / 展开页最新日期 / 沿用上次成功值
+    r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+      D.series.hog.pts.push({ d: today, v: 4.28 }); const rc = C.reconcile().filter(x => x.issue === 'hist_fresh').map(x => x.row.key);
+      C.openLamp('hlth'); const pop = document.getElementById('shB') ? document.getElementById('shB').innerText : document.body.innerText; C.closeSheet();
+      C.openTile('hog'); const tile = document.getElementById('shB') ? document.getElementById('shB').innerText : ''; C.closeSheet();
+      return { rc, pop: pop.slice(0, 3000), tile: tile.slice(0, 600), why: C.missWhy('豆菜粕价差(x)'), why2: C.missWhy('巴西大豆播种进度'), age: [C.ageTxt(today), C.ageTxt('2020-01-01').includes('天前'), C.ageTxt('2026-09')] }; })()""")
+    ok('对账：数据灯说“无数据”的猪粮比，趋势墙却有今天的点 → 被识别出来', 'hogratio' in r['rc'], r['rc'])
+    ok('数据灯弹窗：写明趋势墙里最近的点（4.28）和“本次没参与评分”', '趋势墙里这一项最近的点' in r['pop'] and '4.28' in r['pop'], r['pop'][:400])
+    ok('展开页：每个指标都写“数据日期 + 距今多久”', '数据日期 20' in r['tile'] and ('（今天）' in r['tile'] or '天前）' in r['tile']), r['tile'])
+    ok('缺席投票逐条写原因：豆菜粕“不是没数据”，其它给出通用说明', '不是没数据' in r['why'] and '播种' in r['why2'], [r['why'], r['why2']])
+    ok('年龄文字：今天 / N 天前 / 月度', r['age'][0] == '（今天）' and r['age'][1] is True and '月' in r['age'][2], r['age'])
+    r2 = pg.evaluate("""(() => { const w = document.getElementById('engineFrame').contentWindow, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+      const old = w._syncedData; w._syncedData = Object.assign({}, old, { brazilPlantingProgress: { available: false, reason: 'CONAB接口超时' }, hogRatio: { available: true, value: 4.28, date: today, carried: true, carriedReason: 'akshare连不上', carriedFrom: '2026-10-14T08:48:00+00:00' } });
+      w.refreshHogRatio(); const st = w._indState.hogratio, why = w.signalFailReason('巴西大豆播种进度'), h = w.computeDataHealth().rows.find(x => x.key === 'hogratio'); const out = { carried: st.carried, mode: st.mode, why, hs: h.state, hd: h.detail }; w._syncedData = old; w.refreshHogRatio(); return out; })()""")
+    ok('抓取失败沿用上次成功值：这一票照常计分（状态正常）并写明本次失败原因', r2['mode'] == 'auto' and 'akshare连不上' in r2['carried'] and r2['hs'] in ('ok', 'degraded') and '沿用上次成功' in r2['hd'], r2)
+    ok('信号型指标无数据：带出抓取任务写的真实失败原因', 'CONAB接口超时' in r2['why'], r2['why'])
     ok('月振幅：没有 JS 错误', not e8, e8); ctx.close()
     # ---- 6. 手机宽度 ----
     for w in (390, 360):

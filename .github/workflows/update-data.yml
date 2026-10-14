@@ -6,11 +6,9 @@ name: 更新豆粕基本面数据
 #
 # 大商所豆粕交易时段(北京时间)：
 #   日盘：9:00-10:15、10:30-11:30、13:30-15:00
-#   夜盘：21:00-23:00(周日到周四晚上，对应周一到周五的交易日——
-#         周日夜盘算的是"周一"这个交易日，所以周日晚上也要跑)
+#   夜盘：21:00-23:00(周一到周五晚上；周五晚上的夜盘属于下一个周一的交易日，周日晚上没有夜盘)
 #
-# 日盘时段用周一至周五(cron的1-5)，夜盘时段单独用周日至周四(cron的0-4)，
-# 两者day-of-week不一样，不能合并成一条cron表达式。
+# 日盘和夜盘的星期都是周一至周五(cron的1-5)；UTC 和北京时间在这些时段同一天，所以不用错开星期。
 #
 # ⚠️GitHub Actions排程最短间隔是5分钟，写"每分钟"技术上会被通过验证但根本
 # 不会按这个频率触发(官方文档："The shortest interval you can run scheduled
@@ -26,9 +24,9 @@ on:
     - cron: "35 5 * * 1-5"  # 北京时间13:35(下午盘开盘后)，UTC 05:35
     - cron: "35 6 * * 1-5"  # 北京时间14:35，UTC 06:35
     - cron: "5 7 * * 1-5"   # 北京时间15:05(下午盘刚收盘，当天K线基本定型)，UTC 07:05
-    - cron: "5 13 * * 0-4"  # 北京时间21:05(夜盘开盘后)，UTC 13:05，周日至周四(周日夜盘=周一交易日)
-    - cron: "5 14 * * 0-4"  # 北京时间22:05，UTC 14:05
-    - cron: "5 15 * * 0-4"  # 北京时间23:05(夜盘刚收盘)，UTC 15:05——也覆盖持仓排名/USDA出口销售等数据更新
+    - cron: "5 13 * * 1-5"  # 北京时间21:05(夜盘开盘后)，UTC 13:05，周一至周五(周五夜盘属下周一交易日；周日晚上没有夜盘)
+    - cron: "5 14 * * 1-5"  # 北京时间22:05，UTC 14:05
+    - cron: "5 15 * * 1-5"  # 北京时间23:05(夜盘刚收盘)，UTC 15:05——也覆盖持仓排名/USDA出口销售等数据更新
   workflow_dispatch: {}
 
 permissions:
@@ -43,6 +41,7 @@ concurrency:
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
+    timeout-minutes: 30    # 某个数据源卡死时不能把整个并发队列堵上几个小时（默认是 360 分钟）
     steps:
       - name: 拉取仓库代码
         uses: actions/checkout@v4
@@ -89,7 +88,7 @@ jobs:
       #   只在夜盘收盘后的那一次(UTC 15:05，北京23:05，生意社18:30后已出当天数据)和手动运行时做，免得每小时白跑。
       #   continue-on-error：失败不影响基本面主数据；失败原因看这一步的日志。
       - name: 季节性数据每日累积(现货+期货)
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '5 15 * * 0-4' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '5 15 * * 1-5' }}
         continue-on-error: true
         run: |
           python3 fetch_seasonal_raw.py --only spot_daily,refresh,multi --out data/raw/seasonal
@@ -154,5 +153,4 @@ jobs:
           git add data/raw/seasonal/ data/seasonal.json 2>/dev/null || true
           # 如果数据没变化就不产生空提交
           git diff --staged --quiet || git commit -m "自动更新豆粕基本面数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true   # 页面记账/15分钟价格任务可能在这期间提交过
-          git push
+          bash scripts/git_push_retry.sh

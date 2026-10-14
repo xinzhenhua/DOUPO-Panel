@@ -287,6 +287,44 @@ def test_webpush_rfc8291_vector():
     ok("网页推送加密：和 RFC 8291 附录A的标准向量逐字节一致")
 
 
+def test_webpush_diagnose_and_test_message():
+    import json, tempfile, os
+    import webpush_send as wp
+    d = tempfile.mkdtemp(); subs = os.path.join(d, "subs.json"); vap = os.path.join(d, "vapid.json")
+    priv, pub = wp.gen_vapid(); priv2, pub2 = wp.gen_vapid()
+    ua = __import__("cryptography.hazmat.primitives.asymmetric.ec", fromlist=["x"]).generate_private_key(__import__("cryptography.hazmat.primitives.asymmetric.ec", fromlist=["x"]).SECP256R1())
+    sub = {"endpoint": "https://push.example.com/a", "keys": {"p256dh": wp.b64u(wp._pub_raw(ua.public_key())), "auth": wp.b64u(b"0123456789abcdef")}, "pub": pub}
+    # 1 什么都没有：私钥缺、公钥缺、没设备——三条都要说
+    r = wp.diagnose("", vap, subs); assert len(r) == 3 and "VAPID_PRIVATE_KEY" in r[0] and "push_vapid.json" in r[1] and "push_subs.json" in r[2], r
+    json.dump({"publicKey": pub}, open(vap, "w")); json.dump({"subs": [sub]}, open(subs, "w"))
+    assert wp.diagnose(priv, vap, subs) == [], "配对、有设备 → 没问题"
+    r = wp.diagnose(priv2, vap, subs); assert len(r) == 1 and "不是一对" in r[0], r          # 两台设备各生成一次的典型事故
+    r = wp.diagnose("not-a-key!!", vap, subs); assert any("格式不对" in x for x in r), r
+    json.dump({"publicKey": pub2}, open(vap, "w")); r = wp.diagnose(priv2, vap, subs); assert len(r) == 1 and "旧公钥" in r[0], r   # 设备用旧公钥订阅
+    ok("网页推送诊断：缺私钥/缺公钥/没设备/私钥公钥不配对/格式错/设备用旧公钥，逐条说清")
+    # 2 测试提醒：网页推送没发时不能静默——报 failed（Actions 变红）并通过已通的渠道把原因发出去
+    json.dump({"publicKey": pub}, open(vap, "w")); sent = []
+    env = {"VAPID_PRIVATE_KEY": priv2, "PUSH_SUBS": subs, "PUSH_VAPID": vap}
+    senders = {"pushplus": lambda e, t, b: (sent.append((t, b)) or True), "webpush": na.send_webpush}
+    rep = na.send_test(env, "2026-10-14", senders)
+    assert rep["ok"] == ["pushplus"] and any("webpush" in x and "不是一对" in x for x in rep["failed"]), rep
+    assert any("网页推送没发出去" in t and "不是一对" in b for t, b in sent), sent
+    env2 = {"PUSH_SUBS": subs, "PUSH_VAPID": vap}; sent.clear()
+    rep = na.send_test(env2, "2026-10-14", senders)
+    assert "webpush" not in rep["none"] and any("VAPID_PRIVATE_KEY" in x for x in rep["failed"]), rep
+    ok("测试提醒：网页推送被跳过时报 failed（不再静默），并把原因发到微信/邮箱")
+    # 3 配好了就是 ok，不多发诊断
+    sent.clear(); env3 = {"VAPID_PRIVATE_KEY": priv, "PUSH_SUBS": subs, "PUSH_VAPID": vap}
+    senders3 = {"pushplus": senders["pushplus"], "webpush": lambda e, t, b: na.send_webpush(e, t, b, send_all=lambda *a, **k: (1, [], 0))}
+    rep = na.send_test(env3, "2026-10-14", senders3); assert rep["ok"] == ["pushplus", "webpush"] and not rep["failed"] and len(sent) == 1, (rep, sent)
+    ok("配置正确时网页推送算成功，没有多余诊断")
+    # 4 推送服务返回的原因要带进错误里
+    bad_post = lambda url, data, headers, timeout=20: (403, "invalid JWT provided")
+    nok, bad, nd = wp.send_all(subs, {"title": "T", "body": "b", "url": "u"}, priv, "mailto:a@b.c", bad_post)
+    assert nok == 0 and "403" in bad[0] and "invalid JWT" in bad[0], bad
+    ok("推送服务的拒绝原因（HTTP 状态 + 返回正文）会写进失败信息")
+
+
 if __name__ == "__main__":
     import traceback
     fails = []

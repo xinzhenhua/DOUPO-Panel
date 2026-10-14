@@ -4,6 +4,8 @@
 文件很小（约 100KB），且只有K线真的变了才改写，避免每次产生无意义的提交。
 页面读它来显示「盘中价、盘中浮盈亏、15分K线」；信号和平仓结论仍按日线收盘。"""
 import datetime, json, os, sys, urllib.request
+import net_timeout
+net_timeout.install()
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "prices.json")
 

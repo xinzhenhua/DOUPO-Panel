@@ -990,7 +990,7 @@ function refreshAutoIndicator(key){
   const input = document.getElementById(cfg.inputId);
   if(!data || !ai || !input) return;
   const st = window._indState[key] = window._indState[key] || {};
-  st.stale = false; st.autoValue = null; st.failReason = ''; st.suppressed = ''; st.mild = ''; st.pendingReason = ''; st.holidayDiscount = ''; st.history = null;
+  st.stale = false; st.carried = ''; st.autoValue = null; st.failReason = ''; st.suppressed = ''; st.mild = ''; st.pendingReason = ''; st.holidayDiscount = ''; st.history = null;
   let src = data[cfg.dataKey];
   const fbPick = pickFallback(cfg, data, key);
   st.fallbackWhy = '';
@@ -1031,6 +1031,8 @@ function refreshAutoIndicator(key){
   st.stale = fr.state === 'stale';
   st.late = fr.state === 'late';
   st.freshDetail = fr.detail;
+  st.carried = src.carried ? ('本次抓取失败（' + String(src.carriedReason || '原因不明').slice(0, 80) + '），沿用上次成功的值') : '';
+  if(st.carried) st.freshDetail = st.carried + '；' + st.freshDetail;
   st.dataDate = String(ex.date || '').slice(0,10);
   st.history = src.history || null;              // 分位类指标(饲料库存天数)的规则要读它
   st.holidayDiscount = ex.holidayDiscount || '';  // 长假备货窗口：读数被提前备货抬高，票权×0.5
@@ -1047,6 +1049,7 @@ function refreshAutoIndicator(key){
   else if(st.estimated) setBadge(key, `🟡 估算值 · 降权 · ${shortDate}`, 'badge-manual');
   else if(st.mild) setBadge(key, `🎆 ${st.mild.slice(0,2)}扰动月 · 降权`, 'badge-manual');
   else if(st.holidayDiscount) setBadge(key, `🎆 长假备货窗口 · 降权 · ${shortDate}`, 'badge-manual');
+  else if(st.carried) setBadge(key, `🔁 沿用上次成功值 · ${shortDate}`, 'badge-manual');
   else setBadge(key, `🟢 自动 · ${shortDate}`, 'badge-auto');
 
   ai.className = 'ai-suggest ' + (st.stale ? 'stale' : 'fresh');
@@ -1343,6 +1346,7 @@ async function loadSaWeather(){
     badge.textContent = '🟢 实时自动';
     badge.className = 'badge badge-auto';
   }catch(e){
+    (window._liveFail = window._liveFail || {}).saWeather = String(e && e.message || e);
     el.innerHTML = `<div class="alert-box neutral"><span class="at">南美天气数据拉取失败</span>${e.message}</div>`;
     badge.textContent = '❌ 拉取失败';
     badge.className = 'badge badge-offline';
@@ -2574,6 +2578,7 @@ async function loadFxRate(){
   }catch(e){
     badge.textContent = '❌ 拉取失败';
     badge.className = 'badge badge-offline';
+    (window._liveFail = window._liveFail || {}).fx = String(e && e.message || e);
     el.innerHTML = `<div class="alert-box neutral"><span class="at">汇率拉取失败</span>${e.message}</div>`;
   }
   updateOverallAlert();
@@ -3533,6 +3538,20 @@ function indicatorHealth(cfg){
   return {state:'ok', icon:'🟢', label:'正常', detail: [date, st.freshDetail].filter(Boolean).join('；'), votes:true};
 }
 /** 这个合约当前要用的"实时/API信号"(没有抓取日期的)：有信号=正常，没有=无数据 */
+/** 信号型指标没有数据时，把抓取任务写进 latest.json 的真实失败原因带出来（不再只写“或接口拉取失败”） */
+const SIGNAL_SRC = {'美豆库存消费比(USDA)':'supplyDemand', '出口销售(USDA)':'exportSales', '南美产量(PSD)':'southAmericaPsd', '美豆播种进度':'usPlantingProgress',
+  '美豆收获进度':'usHarvestProgress', '巴西大豆播种进度':'brazilPlantingProgress', 'NOAA展望':'noaaOutlook', '干旱监测':'droughtMonitor', '美豆优良率':'soybeanCondition'};
+function signalFailReason(name){
+  const LF = window._liveFail || {};
+  if(name === '人民币汇率') return LF.fx ? '浏览器直连汇率接口(frankfurter)失败：' + LF.fx.slice(0, 120) : '汇率接口还没返回（页面刚打开或网络慢），稍后刷新';
+  if(name === '南美天气') return LF.saWeather ? '浏览器直连天气接口(Open-Meteo)失败：' + LF.saWeather.slice(0, 120) : '南美天气还没返回（页面刚打开或网络慢），稍后刷新';
+  const k = SIGNAL_SRC[name], d = window._syncedData, o = k && d ? d[k] : null;
+  if(!d) return '同步数据(data/latest.json)还没有读到';
+  if(!k) return '这一票没有算出信号（输入数据缺失或还没加载）';
+  if(!o) return `latest.json 里没有 ${k} 这一项（抓取任务没写出来）`;
+  if(o.available === false || o.error) return '抓取失败：' + String(o.reason || o.error || '原因不明').slice(0, 160);
+  return `latest.json 里有 ${k}（available=${o.available}），但页面没算出信号——可能是非播种/收获季或样本不足，不是接口失败`;
+}
 function signalHealthRows(contract, month){
   const has = v => v !== null && v !== undefined;
   const wr = window._weatherRisk;
@@ -3541,7 +3560,7 @@ function signalHealthRows(contract, month){
   const add = (name, val, extra, pending)=> rows.push(Object.assign({key:'sig:'+name, name, kind:'signal', votes:true}, has(val)
     ? {state:'ok', icon:'🟢', label:'有信号', detail:''}
     : pending ? {state:'pending', icon:'⏳', label:'暂不计分', detail:pending, votes:false}
-    : {state:'nodata', icon:'⚪', label:'无数据', detail:'数据还没有加载出来，或接口拉取失败'}, extra||{}));
+    : {state:'nodata', icon:'⚪', label:'无数据', detail:signalFailReason(name)}, extra||{}));
   add('美豆库存消费比(USDA)', window._psdSignal);
   // 出口销售：带新鲜度
   const eq = window._esrQuality;
