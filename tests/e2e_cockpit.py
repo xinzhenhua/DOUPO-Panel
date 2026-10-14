@@ -371,7 +371,7 @@ def main():
       D.m15[k] = [{ d: '01-02 09:15', o: c0 + 5, h: c0 + 30, l: c0 - 4, c: c0 + 10, v: 5, oi: 9 }, { d: '01-02 14:45', o: c0 + 10, h: c0 + 12, l: c0 - 20, c: c0 - 15, v: 5, oi: 9 }, { d: '01-02 15:00', o: c0 - 15, h: c0 - 10, l: c0 - 18, c: c0 + 77, v: 5, oi: 10 }];
       const kn = window.__cockpit.klineNow(), b = kn[kn.length - 1]; window.__cockpit.renderBand(); const txt = document.querySelector('#band .px').innerText;
       return { n: kn.length - kl.length, d: b.d, c: b.c, h: b.h, l: b.l, o: b.o, prov: b.prov, c0, txt }; })()""")
-    ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并显示“收盘”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '收盘' in r['txt'] and '临时' not in r['txt'], r)
+    ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并显示“日盘收”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '日盘收' in r['txt'] and '临时' not in r['txt'], r)
     # v101.57：实时价条（D.ticks 由 loader 每0.7秒更新）
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, k = C.S.key, c0 = C.klineNow().slice(-1)[0].c, el = () => document.getElementById('tick');
       D.ticks = { [k]: { key: k, sym: 'x', c: c0 + 13, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: true } }; C.tickPaint(); const a = { txt: el().innerText, disp: el().style.display, cls: el().querySelector('.tp').className };
@@ -395,6 +395,33 @@ def main():
     pg.evaluate("document.querySelector('[data-view=px]').click()"); pg.wait_for_timeout(300)
     r = pg.evaluate("""(() => { const C = window.__cockpit; const box = document.getElementById('kl'); return { macd: /MACD/.test(box.textContent) && /DIF/.test(box.textContent) && /DEA/.test(box.textContent), vol: /量 /.test(box.textContent), rects: box.querySelectorAll('rect').length }; })()""")
     ok('K线图：下方有成交量柱（量标签）和 MACD（红绿柱、DIF、DEA）', r['macd'] and r['vol'] and r['rects'] > 100, r)
+    # v101.61：每个交易时段结束时的最新价都显示在价格卡里（不是只显示昨日收盘价）
+    r = pg.evaluate("""(() => { const C = window.__cockpit, lb = C.liveBar, k = [{ d: '2026-10-14', o: 1, h: 2, l: 0, c: 3400, v: 1, oi: 5 }];
+      const bar = (d, c) => ({ d, o: c, h: c + 3, l: c - 3, c, v: 5, oi: 9 }), N = [bar('10-14 21:00', 3410), bar('10-14 21:15', 3412), bar('10-14 23:00', 3415)];
+      const D1 = [bar('10-15 09:15', 3418), bar('10-15 10:15', 3420)], D2 = D1.concat([bar('10-15 11:30', 3425)]), D3 = D2.concat([bar('10-15 15:00', 3430)]);
+      const lab = b => b ? C.pxLabel({ last: b }) : null, one = (m, tk) => { const b = lb(k, m, tk); return b ? [b.c, lab(b)] : null; };
+      return { night: one(N, null), nightEnd: one(N.slice(0, 3), null), am: one(N.concat(D1), null), noon: one(N.concat(D2), null), close: one(N.concat(D3), null),
+        tick: one(N.concat(D1), { dt: '2026-10-15 10:05:30', c: 3422 }), closedDay: (() => { const k2 = [{ d: '2026-10-15', c: 3430, o: 1, h: 2, l: 0, v: 1, oi: 5 }]; return lb(k2, N.concat(D3), null); })(),
+        mon: (() => { const kf = [{ d: '2026-10-16', c: 3400, o: 1, h: 2, l: 0, v: 1, oi: 5 }]; const b = lb(kf, [bar('10-16 21:00', 3440), bar('10-16 23:00', 3445)], null); return b ? [b.d, b.c, lab(b)] : null; })() }; })()""")
+    ok('价格卡：夜盘收盘后显示夜盘最后一根（23:00 夜盘收），不是昨日收盘价', r['nightEnd'] == [3415, '10-15 夜盘收 23:00'], r['nightEnd'])
+    ok('价格卡：夜盘中间有分钟线没有实时价 → 显示最近一根并标盘中', r['night'] is not None, r['night'])
+    ok('价格卡：早盘休息(10:15)、上午收(11:30)、日盘收(15:00) 各显示该时段最后价和说明', r['am'] == [3420, '10-15 早盘收 10:15'] and r['noon'] == [3425, '10-15 上午收 11:30'] and r['close'] == [3430, '10-15 日盘收 15:00'], [r['am'], r['noon'], r['close']])
+    ok('价格卡：有实时价时显示实时价并标盘中；日线已含当天时不重复造', r['tick'] == [3422, '10-15 盘中'] and r['closedDay'] is None, [r['tick'], r['closedDay']])
+    ok('价格卡：周五夜盘结束后显示周一(10-19)那根的夜盘收价', r['mon'] == ['2026-10-19', 3445, '10-19 夜盘收 23:00'], r['mon'])
+    # v101.62b：收盘那一刻直接用新浪实时价（1分钟线最后一笔），不等15分钟线
+    r = pg.evaluate("""(() => { const C = window.__cockpit, lb = C.liveBar, k = [{ d: '2026-10-14', o: 1, h: 2, l: 0, c: 3400, v: 1, oi: 5 }];
+      const bar = (d, c) => ({ d, o: c, h: c + 3, l: c - 3, c, v: 5, oi: 9 }), m = [bar('10-15 09:15', 3418), bar('10-15 14:45', 3428)];   // 15分钟线还没出 15:00 那根
+      const one = (tk, mm) => { const b = lb(k, mm || m, tk); return b ? [b.c, C.pxLabel({ last: b }), b.prov, b.h] : null; };
+      const D = window.__DATA__, key = C.S.key, saved = D.ticks;
+      D.ticks = { [key]: { key, c: 3431, dt: '2026-10-15 15:00:00', at: Date.now() - 36e5 } }; const keep1 = (C.curTick() || {}).c;
+      D.ticks = { [key]: { key, c: 3419, dt: '2026-10-15 10:05:00', at: Date.now() - 36e5 } }; const keep2 = (C.curTick() || {}).c || null;
+      D.ticks = saved;
+      return { day: one({ dt: '2026-10-15 15:00:00', c: 3431 }), night: one({ dt: '2026-10-15 23:00:00', c: 3440 }, []), am: one({ dt: '2026-10-15 10:15:00', c: 3422 }), mid: one({ dt: '2026-10-15 10:05:00', c: 3422 }),
+        so: ['10:14', '10:15', '10:29', '10:30', '11:29', '11:30', '13:29', '13:30', '14:59', '15:00', '20:59', '21:00', '22:59', '23:00', '08:59', '09:00'].map(C.sessOf), keep1, keep2 }; })()""")
+    ok('收盘那一刻：1分钟线最后一笔(15:00)直接当日盘收盘价，高点同步扩展，不等15分钟线', r['day'] == [3431, '10-15 日盘收 15:00', True, 3431] , r['day'])
+    ok('夜盘 23:00 最后一笔直接当夜盘收价（归下一交易日10-16）；早盘10:15=早盘收；时段内的实时价标盘中', r['night'][:2] == [3440, '10-16 夜盘收 23:00'] and r['am'][1] == '10-15 早盘收 10:15' and r['mid'][1] == '10-15 盘中', [r['night'], r['am'], r['mid']])
+    ok('时段划分边界：休息/收盘/夜盘/开盘前', r['so'] == [None, '早盘收', '早盘收', None, None, '上午收', '上午收', None, None, '日盘收', '日盘收', None, None, '夜盘收', '夜盘收', None], r['so'])
+    ok('已结束时段的最后价一直保留（一小时前的15:00价仍显示）；时段中间过期的价120秒后丢弃', r['keep1'] == 3431 and r['keep2'] is None, [r['keep1'], r['keep2']])
     # v101.55：数据灯 ↔ 趋势墙对账 / 失败原因 / 展开页最新日期 / 沿用上次成功值
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
       D.series.hog.pts.push({ d: today, v: 4.28 }); const rc = C.reconcile().filter(x => x.issue === 'hist_fresh').map(x => x.row.key);

@@ -1331,9 +1331,10 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     let tkFails = 0;
     CL.tickOnce = async function () {
       try {
-        if (D && !CL.tradingNow(Date.now()) && D.ticks && Object.keys(D.ticks).length) { D.ticks = {}; if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint(); }
-        if (!D || doc.hidden || window.__NO_SINA || !CL.tradingNow(Date.now())) return null;
+        if (!D || doc.hidden || window.__NO_SINA) return null;
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
+        // 不在交易时段：每个时段结束那一刻的最后成交价就是该时段的收盘价，保留下来（不清掉）；页面刚打开、手里没有时取一次，之后每分钟核对一次
+        if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const r = await tickOne(sym);
         if (!r) { tkFails++; return null; }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
@@ -1342,7 +1343,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         return r;
       } catch (_) { tkFails++; return null; }
     };
-    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0))); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
+    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
 
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };
@@ -1810,16 +1811,31 @@ function liveBar(k, m, tk) {   // 纯函数：k=已有日线(含刚收盘的临�
   let o, h, l, c, v = 0, oi = last.oi;
   if (bs.length) { o = bs[0].o; h = Math.max(...bs.map(x => x.h)); l = Math.min(...bs.map(x => x.l)); c = bs[bs.length - 1].c; v = bs.reduce((a, x) => a + (x.v || 0), 0); oi = bs[bs.length - 1].oi != null ? bs[bs.length - 1].oi : oi; }
   if (tkOk) { if (o == null) { o = h = l = tk.c; } c = tk.c; h = Math.max(h, tk.c); l = Math.min(l, tk.c); }
-  const closed = !tkOk && bs.length && bs[bs.length - 1].d.slice(6) === '15:00';
-  return { d: T, o, h, l, c, v, oi, prov: !!closed, live: !closed };
+  const hm = bs.length ? bs[bs.length - 1].d.slice(6, 11) : '', closed = !!(tkOk ? sessOf(tk.dt.slice(11, 16)) === '日盘收' : bs.length && hm === '15:00');
+  // 每个交易时段结束时的最新价：没有实时价时，用最后一根分钟线说明是哪个时段收的（早盘10:15、上午11:30、日盘15:00、夜盘23:00）
+  const sess = tkOk ? sessOf(tk.dt.slice(11, 16)) : ({ '10:15': '早盘收', '11:30': '上午收', '15:00': '日盘收', '23:00': '夜盘收' })[hm] || null;
+  const hmShow = tkOk ? tk.dt.slice(11, 16) : hm;
+  return { d: T, o, h, l, c, v, oi, hm: hmShow, sess, prov: !!closed, live: !closed };
 }
-function curTick(maxAge) { const t = D && D.ticks && D.ticks[S.key]; return t && Date.now() - t.at < (maxAge || 120000) ? t : null; }   // 实时价保留120秒：新浪偶尔失败/限流时不会立刻退回收盘价
+function sessOf(hm) {   // 最新成交的分钟 → 这是哪个时段收的价（时段结束到下个时段开始之间）；时段内部返回 null
+  if (!hm) return null; if (hm >= '10:15' && hm < '10:30') return '早盘收'; if (hm >= '11:30' && hm < '13:30') return '上午收'; if (hm >= '15:00' && hm < '21:00') return '日盘收'; if (hm >= '23:00' || hm < '09:00') return '夜盘收'; return null;
+}
+function curTick(maxAge) {   // 实时价：交易中保留120秒（新浪偶尔失败不闪回）；时段已结束（休息/收盘）的最后成交价一直保留，它就是该时段的收盘价
+  const t = D && D.ticks && D.ticks[S.key]; if (!t) return null;
+  return Date.now() - t.at < (maxAge || 120000) || sessOf(t.dt.slice(11, 16)) ? t : null;
+}   // 实时价保留120秒：新浪偶尔失败/限流时不会立刻退回收盘价
 function klineNow() {
   const k = klineBase();
   try {
     const t = curTick(120000), b = liveBar(k, D.m15 && D.m15[S.key], t);
     return b ? k.concat([b]) : k;
   } catch (_) { return k; }
+}
+function pxLabel(ps) {   // 价格卡上价格旁边的小字：说明这个价是哪一刻的
+  if (!ps) return '';
+  const l = ps.last, md = l.d.slice(5);
+  if (l.live) return md + ' ' + (l.sess ? l.sess + (l.hm ? ' ' + l.hm : '') : '盘中');
+  return md + (l.prov ? ' 日盘收' + (l.hm ? ' ' + l.hm : '') : ' 收盘');
 }
 function lastBarD() { const d = lastDayD(); return d ? '（' + d.slice(5) + '）' : ''; }
 function livePnl(t, ho) {   // 盘中参考浮盈（按最新15分钟/小时价），结论仍按收盘
@@ -1871,7 +1887,7 @@ function renderSig() {
   const dsl = `<span class="dsw ${s.dl.cls}" id="dataLine"><span class="dsb" role="button" tabindex="0" data-dsl="1" aria-expanded="${dsOpen}" aria-label="数据状态：${esc({ ok: '齐全', part: '基本够用', bad: '不足' }[s.dl.cls])}，点开看详情"><i>${dsIc}</i><u>${dsOpen ? '收起' : '数据'}</u></span>${dsOpen ? `<span class="dst">${esc(s.dl.t)}<br><small>判定：缺外资数据/价格或超过7天没更新=不足；4–7天没更新、缺个别席位、席位只有估算值=基本够用；其余=齐全。</small></span>` : ''}</span>`;
   let left, right;
   if (!s.pos) {
-    left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 收盘${lastBarD()} ${fmtD(s.px)}${liveTxt()}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
+    left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 最近收盘${lastBarD()} ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
     <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
     right = s.other ? (() => { const o = s.other, ck = ['sep', 'may', 'jan'].find(k => String((D.contracts[k] || {}).symbol || '').toLowerCase() === String(o.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase()); return `<button class="sg" ${ck ? `data-ck="${ck}"` : 'data-goplan="toggle"'} aria-label="持仓在另一个合约，点击切换过去"><div class="cl">持仓在另一个合约</div><div class="hd">${esc(o.contract || '—')}</div><div class="sb">${sdName(o.side)} ${fmtD(o.lots)} 手 · 点这里切过去看</div></button>`; })() : `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
   } else {
@@ -2370,7 +2386,7 @@ function renderBand() {
   const capTop = cap.verdict && cap.verdict.short ? cap.verdict.short : cap.state.label.replace(/[（(].*$/, '');
   $('#band').innerHTML = `
     <div class="cell pv"><div class="cl">${esc(c.symbol)} 价格与量价<button class="q" data-about="vp" aria-label="量价怎么看">?</button></div>
-      <div class="px"><span class="p">${ps ? ab(ps.last.c) : '—'}</span><span class="c ${ps && ps.chg > 0 ? 'bull' : ps && ps.chg < 0 ? 'bear' : ''}">${ps ? pc(ps.chg, 2) : ''}</span><span class="dim pxl" style="font-size:11.5px;margin-left:6px"${ps && ps.last.prov ? ' title="今天的收盘价已定；日K线文件晚上才更新，这里先用日盘最后一根15分钟线的收盘价"' : ''}>${ps ? esc(ps.last.d.slice(5)) + (ps.last.live ? ' 盘中' : ' 收盘') : ''}</span></div><div class="tick" id="tick"></div>${seqHtml}</div>
+      <div class="px"><span class="p">${ps ? ab(ps.last.c) : '—'}</span><span class="c ${ps && ps.chg > 0 ? 'bull' : ps && ps.chg < 0 ? 'bear' : ''}">${ps ? pc(ps.chg, 2) : ''}</span><span class="dim pxl" style="font-size:11.5px;margin-left:6px"${ps && ps.last.prov ? ' title="今天的收盘价已定；日K线文件晚上才更新，这里先用日盘最后一根15分钟线的收盘价"' : ''}>${esc(pxLabel(ps))}</span></div><div class="tick" id="tick"></div>${seqHtml}</div>
     <div class="cell half"><div class="cl">基本面<button class="q" data-about="fund" aria-label="基本面怎么算">?</button></div>
       <div class="fund"><div><div class="big" style="color:${f.dir === '偏空' ? 'var(--bear)' : f.dir === '偏多' ? 'var(--bull)' : 'var(--ink)'}">${fdir}<small class="num">${f.ratio == null ? '' : pc(f.ratio, 0)}</small></div></div>${fspark}</div>
       <div class="sub">${esc(frTrend)}</div></div>
@@ -2385,7 +2401,7 @@ function tickInfo() {
   const t = curTick(120000); if (!t) return null;
   const ps = priceStats(); if (!ps) return null;
   const kd = lastDayD(), newer = t.dt.slice(0, 10) > kd, base = ps.last.live ? ps.prev.c : newer ? ps.last.c : ps.prev.c;   // 比最近一根日线更新 → 对比最近收盘；否则就是刚收盘当天，对比前一日
-  return { c: t.c, d: t.c - base, r: t.c / base - 1, t: t.dt.slice(11, 19), dir: t.dir, flash: t.flash, lag: Math.round((Date.now() - t.at) / 1000) };
+  return { c: t.c, d: t.c - base, r: t.c / base - 1, t: t.dt.slice(11, 19), sess: sessOf(t.dt.slice(11, 16)), dir: t.dir, flash: t.flash, lag: Math.round((Date.now() - t.at) / 1000) };
 }
 function tickPaint() {
   try { pxPaint(); tickChart(); } catch (_) {}
@@ -2394,7 +2410,7 @@ function tickPaint() {
   if (!x) { el.innerHTML = ''; el.style.display = 'none'; return; }
   const k = x.d > 0 ? 'bull' : x.d < 0 ? 'bear' : '';
   el.style.display = 'flex';
-  el.innerHTML = `<span class="tl">实时</span><b class="tp ${k}${x.flash ? ' fl' + (x.dir > 0 ? 'u' : 'd') : ''}">${fmtD(x.c)}</b><span class="${k}">${x.d > 0 ? '▲ +' : x.d < 0 ? '▼ ' + MINUS : ''}${Math.abs(Math.round(x.d))} · ${pc(x.r, 2)}</span><span class="dim">${x.t}${x.lag >= 5 ? ' · ' + x.lag + '秒前' : ''}</span>`;
+  el.innerHTML = `<span class="tl">${x.sess || '实时'}</span><b class="tp ${k}${x.flash ? ' fl' + (x.dir > 0 ? 'u' : 'd') : ''}">${fmtD(x.c)}</b><span class="${k}">${x.d > 0 ? '▲ +' : x.d < 0 ? '▼ ' + MINUS : ''}${Math.abs(Math.round(x.d))} · ${pc(x.r, 2)}</span><span class="dim">${x.t}${x.lag >= 5 && !x.sess ? ' · ' + x.lag + '秒前' : ''}</span>`;
   if (x.flash) { const t = curTick(); if (t) t.flash = false; }
 }
 function pxPaint() {   // 实时价到来时只改价格卡上三个字段（不重画整张卡，避免打断点击）
@@ -2402,7 +2418,7 @@ function pxPaint() {   // 实时价到来时只改价格卡上三个字段（不
     const ps = priceStats(), b = $('#band'); if (!ps || !b) return;
     const p = b.querySelector('.px .p'), c = b.querySelector('.px .c'), l = b.querySelector('.px .pxl'); if (!p || !c) return;
     p.textContent = ab(ps.last.c); c.textContent = pc(ps.chg, 2); c.className = 'c ' + (ps.chg > 0 ? 'bull' : ps.chg < 0 ? 'bear' : '');
-    if (l) l.textContent = ps.last.d.slice(5) + (ps.last.live ? ' 盘中' : ' 收盘');
+    if (l) l.textContent = pxLabel(ps);
   } catch (_) {}
 }
 function tickChart() {   // 实时价到来：K线图重画（手指/鼠标正在图上看数据时不重画，免得提示框消失）
@@ -2999,7 +3015,7 @@ function refreshed() {   // 后台重取数据后调用：不打断正在输入�
   if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); }
   else renderAll(false);
 }
-window.__cockpit = { tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+window.__cockpit = { curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 </script>
 <script>

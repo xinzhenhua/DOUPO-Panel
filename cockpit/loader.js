@@ -382,9 +382,10 @@
     let tkFails = 0;
     CL.tickOnce = async function () {
       try {
-        if (D && !CL.tradingNow(Date.now()) && D.ticks && Object.keys(D.ticks).length) { D.ticks = {}; if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint(); }
-        if (!D || doc.hidden || window.__NO_SINA || !CL.tradingNow(Date.now())) return null;
+        if (!D || doc.hidden || window.__NO_SINA) return null;
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
+        // 不在交易时段：每个时段结束那一刻的最后成交价就是该时段的收盘价，保留下来（不清掉）；页面刚打开、手里没有时取一次，之后每分钟核对一次
+        if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const r = await tickOne(sym);
         if (!r) { tkFails++; return null; }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
@@ -393,7 +394,7 @@
         return r;
       } catch (_) { tkFails++; return null; }
     };
-    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0))); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
+    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
 
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };
