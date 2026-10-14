@@ -1810,6 +1810,56 @@ def test_brazil_planting_progress_extracts_national_row(monkeypatch_fetch):
             agrobr.conab = old_conab
 
 
+def test_brazil_planting_progress_semeadura_and_fractions(monkeypatch_fetch):
+    """★v101.61 线上真实故障：agrobr 1.1.0 解析出来的 operacao 是葡语 'Semeadura'(播种)/'Colheita'，从来没有 'Plantio'；
+    之前传 operacao='Plantio' 把 59 条全筛没 → 页面一直报'空数据'。另外 Excel 百分比是小数(0.206=20.6%)，要换成百分数。"""
+    import agrobr
+    mock_df = _make_conab_mock_df([
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Semeadura", "estado": "MT", "semana_atual": "2026-10-11",
+         "pct_ano_anterior": 0.305, "pct_semana_anterior": 0.41, "pct_semana_atual": 0.52, "pct_media_5_anos": 0.40},
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Colheita", "estado": "BR", "semana_atual": "2026-10-11",
+         "pct_ano_anterior": 0.9, "pct_semana_anterior": 0.9, "pct_semana_atual": 0.9, "pct_media_5_anos": 0.9},
+        {"cultura": "Soja", "safra": "2026/27", "operacao": "Semeadura", "estado": "BR", "semana_atual": "2026-10-11",
+         "pct_ano_anterior": 0.118, "pct_semana_anterior": 0.152, "pct_semana_atual": 0.206, "pct_media_5_anos": 0.15},
+    ])
+    calls = []
+    async def fake_progresso_safra(**kwargs):
+        calls.append(kwargs)
+        df = mock_df
+        if kwargs.get("operacao"):
+            df = df[df["operacao"] == kwargs["operacao"].title()].reset_index(drop=True)   # 模拟 agrobr 的真实筛选
+        return df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake_progresso_safra)})
+    try:
+        r = fd.fetch_brazil_planting_progress()
+        assert r["available"] is True, r
+        assert "operacao" not in calls[0], "不能再传 operacao='Plantio'(agrobr 的值是 Semeadura)"
+        assert (r["pctCurrent"], r["pctYearAgo"], r["pctPrevWeek"], r["pctFiveYearAvg"]) == (20.6, 11.8, 15.2, 15.0), r
+        print("✅ 巴西播种：认 Semeadura 行(不取Colheita的90%)，小数换成百分数 20.6/11.8/15.2/15.0，不再传 operacao='Plantio'")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
+def test_brazil_planting_progress_only_harvest_rows_says_why(monkeypatch_fetch):
+    import agrobr
+    mock_df = _make_conab_mock_df([
+        {"cultura": "Soja", "safra": "2025/26", "operacao": "Colheita", "estado": "BR", "semana_atual": "2026-04-05",
+         "pct_ano_anterior": 80.0, "pct_semana_anterior": 85.0, "pct_semana_atual": 90.0, "pct_media_5_anos": 88.0}])
+    async def fake(**kwargs):
+        return mock_df
+    old_conab = getattr(agrobr, "conab", None)
+    agrobr.conab = type("obj", (), {"progresso_safra": staticmethod(fake)})
+    try:
+        r = fd.fetch_brazil_planting_progress()
+        assert r["available"] is False and "没有播种" in r["reason"] and r["debug"]["actualOperacoes"] == ["Colheita"], r
+        print("✅ 巴西播种：只剩收获数据时，说明'有N条但没有播种行'并列出实际操作类型")
+    finally:
+        if old_conab is not None:
+            agrobr.conab = old_conab
+
+
 def test_brazil_planting_progress_no_national_row_found(monkeypatch_fetch):
     """如果返回数据里完全没有estado='BR'的行(比如CONAB改了全国汇总行的标记方式)，
     应该诚实报告，并且debug信息里要列出实际看到的estado值，方便排查"""
@@ -4046,7 +4096,7 @@ if __name__ == "__main__":
               test_cftc_history_percentile_calculation, test_cftc_history_percentile_none_when_insufficient_data,
               test_get_current_contract_code_prefix_param, test_crush_margin_calculation,
               test_crush_margin_missing_one_contract_reports_all_missing, test_crush_margin_all_three_missing_lists_all,
-              test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_no_national_row_found,
+              test_brazil_planting_progress_extracts_national_row, test_brazil_planting_progress_semeadura_and_fractions, test_brazil_planting_progress_only_harvest_rows_says_why, test_brazil_planting_progress_no_national_row_found,
               test_brazil_planting_progress_missing_columns, test_brazil_planting_progress_exception_handled_gracefully,
               test_brazil_planting_progress_empty_dataframe,
               test_noaa_outlook_url_uses_urlencode_no_raw_special_chars,

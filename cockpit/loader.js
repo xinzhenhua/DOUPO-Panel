@@ -171,10 +171,10 @@
     }
     out._sina = n; return out;
   };
-  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；每 2 秒取一次，失败逐级放慢 */
+  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；每 0.7 秒取一次，失败逐级放慢 */
   CL.tickUrl = function (sym, cb) { return 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getFewMinLine?symbol=' + encodeURIComponent(String(sym).toUpperCase()) + '&type=1'; };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume }; };
-  CL.tickDelay = function (fails) { return fails <= 0 ? 2000 : fails < 3 ? 3000 : fails < 6 ? 10000 : 30000; };
+  CL.tickDelay = function (fails) { return fails <= 0 ? 700 : fails < 3 ? 3000 : fails < 6 ? 10000 : 30000; };
   CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
     return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
@@ -251,7 +251,8 @@
     return D;
   };
   /* 把 src 的内容就地灌进 dst（界面代码里持有 D 和 D.series 的引用，刷新时不能换对象） */
-  CL.fill = function (dst, src) { for (const k of Object.keys(dst)) if (!(k in src)) delete dst[k]; for (const k of Object.keys(src)) dst[k] = src[k]; return dst; };
+  CL.LIVE_KEYS = ['ticks', 'priceCheck', 'priceSrc'];   // 浏览器自己维护的实时字段：整体重算时不能被清掉（否则实时价/价格源会每5分钟消失一次）
+  CL.fill = function (dst, src) { for (const k of Object.keys(dst)) if (!(k in src) && !CL.LIVE_KEYS.includes(k)) delete dst[k]; for (const k of Object.keys(src)) dst[k] = src[k]; return dst; };
 
   /* ---------- 浏览器启动流程 ---------- */
   CL.boot = function (opts) {
@@ -368,7 +369,7 @@
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 60 * 1000));
-    /* 实时价条：只在交易时段+页面可见时，每2秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
+    /* 实时价条：只在交易时段+页面可见时，每0.7秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
     const tickOne = (sym) => new Promise(res => {
       try {
         const cb = '__tk' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
@@ -381,17 +382,18 @@
     let tkFails = 0;
     CL.tickOnce = async function () {
       try {
-        if (!D || doc.hidden || window.__NO_SINA || !CL.tradingNow(Date.now())) { if (D && D.tick) { D.tick = null; if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint(); } return null; }
+        if (D && !CL.tradingNow(Date.now()) && D.ticks && Object.keys(D.ticks).length) { D.ticks = {}; if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint(); }
+        if (!D || doc.hidden || window.__NO_SINA || !CL.tradingNow(Date.now())) return null;
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
         const r = await tickOne(sym);
         if (!r) { tkFails++; return null; }
-        tkFails = 0; const old = D.tick && D.tick.key === key ? D.tick : null;
-        D.tick = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
+        tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
+        D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
         return r;
       } catch (_) { tkFails++; return null; }
     };
-    (function tickLoop() { CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tickDelay(tkFails)); }); })();
+    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0))); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
 
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };

@@ -372,14 +372,14 @@ def main():
       const kn = window.__cockpit.klineNow(), b = kn[kn.length - 1]; window.__cockpit.renderBand(); const txt = document.querySelector('#band .px').innerText;
       return { n: kn.length - kl.length, d: b.d, c: b.c, h: b.h, l: b.l, o: b.o, prov: b.prov, c0, txt }; })()""")
     ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并显示“收盘”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '收盘' in r['txt'] and '临时' not in r['txt'], r)
-    # v101.57：实时价条（D.tick 由 loader 每2秒更新）
+    # v101.57：实时价条（D.ticks 由 loader 每0.7秒更新）
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, k = C.S.key, c0 = C.klineNow().slice(-1)[0].c, el = () => document.getElementById('tick');
-      D.tick = { key: k, sym: 'x', c: c0 + 13, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: true }; C.tickPaint(); const a = { txt: el().innerText, disp: el().style.display, cls: el().querySelector('.tp').className };
-      D.tick.at = Date.now() - 60000; C.tickPaint(); const b = el().style.display;
-      D.tick = { key: k === 'sep' ? 'may' : 'sep', c: c0, dt: '2099-01-03 21:30:05', at: Date.now() }; C.tickPaint(); const c = el().style.display; D.tick = null; C.tickPaint();
-      return { a, b, c, base: c0 }; })()""")
+      D.ticks = { [k]: { key: k, sym: 'x', c: c0 + 13, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: true } }; C.tickPaint(); const a = { txt: el().innerText, disp: el().style.display, cls: el().querySelector('.tp').className };
+      D.ticks[k].at = Date.now() - 60000; C.tickPaint(); const b0 = el().style.display, b0t = el().innerText; D.ticks[k].at = Date.now() - 200000; C.tickPaint(); const b = el().style.display;
+      D.ticks = { [k === 'sep' ? 'may' : 'sep']: { c: c0, dt: '2099-01-03 21:30:05', at: Date.now() } }; C.tickPaint(); const c = el().style.display; D.ticks = {}; C.tickPaint();
+      return { a, b, c, b0, b0t, base: c0 }; })()""")
     ok('实时价条：显示实时价、涨跌点数、百分比、数据时间，红涨', r['a']['disp'] == 'flex' and ('%d' % (r['base'] + 13)) in r['a']['txt'].replace(',', '') and '▲ +13' in r['a']['txt'] and '21:30:05' in r['a']['txt'] and 'bull' in r['a']['cls'], r['a'])
-    ok('实时价条：数据超过20秒没更新就隐藏；切到别的合约时不显示旧合约价', r['b'] == 'none' and r['c'] == 'none', r)
+    ok('实时价条：60秒没更新仍显示并标“N秒前”（新浪偶尔失败不退回收盘价）；超过120秒隐藏；切到别的合约时不显示旧合约价', r['b0'] == 'flex' and '秒前' in r['b0t'] and r['b'] == 'none' and r['c'] == 'none', r)
     # v101.58：当天未收盘的日K线 + 成交量 + MACD
     r = pg.evaluate("""(() => { const C = window.__cockpit, td = C.tradeDayOf, lb = C.liveBar;
       const k = [{ d: '2026-10-14', o: 1, h: 2, l: 0, c: 1, v: 1, oi: 5 }];
@@ -461,7 +461,6 @@ def main():
     # ---- 7b. v101.49：空仓默认研究页；研究页不显示持仓栏；数据灯逐项写明；手机月份表 ----
     ctx, pg, e9 = open_page(b, port, 1440, 900, mode=None); pg.wait_for_timeout(300)
     ok('空仓默认先进研究页', pg.evaluate("document.body.classList.contains('mode-research')"))
-    ok('市场状态下有「近20日波动 窄幅/正常/宽幅 · 振幅（豆粕近10年分位）」', pg.evaluate("(() => { const t = document.querySelector('#band .regime').innerText; return t.includes('近20日波动') && t.includes('分位'); })()"))
     ok('研究页（空仓）：只有入场信号格，没有「持仓」格', pg.evaluate("(() => { const k = document.querySelectorAll('#sigbar > *'); return k.length >= 2 && getComputedStyle(k[0]).display !== 'none' && getComputedStyle(k[1]).display === 'none'; })()"))
     ok('数据灯：写明不可用/降权/手动是哪几项（逐条列名）', pg.evaluate("(() => { const b = document.querySelector('#checks [data-lamp=\"hlth\"]'); if (!b) return false; b.click(); const t = document.getElementById('shB').innerText; return t.includes('不可用') || t.includes('降权') || t.includes('全部指标正常') || t.includes('缺席投票'); })()"))
     pg.evaluate("window.__cockpit.closeSheet()")

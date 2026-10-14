@@ -4683,6 +4683,9 @@ COLUNAS_ESPERADAS_CONAB = {"cultura", "safra", "operacao", "estado",
                            "pct_ano_anterior", "pct_semana_anterior", "pct_semana_atual", "pct_media_5_anos"}
 
 
+OPERACOES_PLANTIO_CONAB = {"semeadura", "plantio"}   # agrobr 1.1.0 用 Semeadura；旧版/测试数据用 Plantio
+
+
 def fetch_brazil_planting_progress():
     """查询CONAB每周发布的巴西大豆播种进度(全国汇总)，包含本周/上周/去年同期/
     近五年均值——CONAB自己的报告格式本来就是这四个数字放在一起发布的，比
@@ -4694,7 +4697,10 @@ def fetch_brazil_planting_progress():
         return {"available": False, "reason": f"agrobr库未安装(需要 pip install agrobr pandas): {e}"}
 
     try:
-        df = asyncio.run(conab.progresso_safra(cultura="Soja", operacao="Plantio"))
+        # ★v101.61：agrobr 1.1.0 解析出来的 operacao 是葡语 "Semeadura"(播种)/"Colheita"(收获)，从来没有 "Plantio"，
+        #   之前传 operacao="Plantio" 会把 59 条记录全筛没 → 页面一直报"空数据"（日志里下载、解析都成功）。
+        #   现在只按作物筛选，操作类型自己认（兼容旧版的 Plantio）。
+        df = asyncio.run(conab.progresso_safra(cultura="Soja"))
     except Exception as e:
         # agrobr内部可能抛出各种网络/解析异常，这里统一兜底成"不可用+具体报错"，
         # 不让这一项的失败影响main()里其他数据的抓取。
@@ -4702,6 +4708,14 @@ def fetch_brazil_planting_progress():
 
     if df is None or len(df) == 0:
         return {"available": False, "reason": "CONAB返回空数据(可能当周报告还没发布，或播种季尚未开始)"}
+
+    if "operacao" in df.columns:
+        n_all = len(df)
+        sown = df[df["operacao"].astype(str).str.strip().str.lower().isin(OPERACOES_PLANTIO_CONAB)]
+        if len(sown) == 0:
+            return {"available": False, "reason": f"CONAB返回了{n_all}条记录，但没有播种(Semeadura/Plantio)类的行(可能只剩收获数据，或agrobr改了字段值)",
+                    "debug": {"actualOperacoes": sorted(df["operacao"].astype(str).unique().tolist())}}
+        df = sown.reset_index(drop=True)
 
     missing_cols = COLUNAS_ESPERADAS_CONAB - set(df.columns)
     if missing_cols:
@@ -4724,10 +4738,22 @@ def fetch_brazil_planting_progress():
     row = national_rows.iloc[-1]  # 万一有多条(理论上不该发生)，取最后一条(通常是最新)
     try:
         import pandas as pd
-        pct_atual = float(row["pct_semana_atual"])
-        pct_ano_anterior = float(row["pct_ano_anterior"])
-        pct_semana_anterior = float(row["pct_semana_anterior"]) if pd.notna(row["pct_semana_anterior"]) else None
-        pct_media_5_anos = float(row["pct_media_5_anos"]) if pd.notna(row["pct_media_5_anos"]) else None
+        # ★Excel 里的百分比单元格存的是小数(0.082=8.2%)，agrobr 不转换。判断办法：整张表(所有州、四列)最大值≤1 → 是小数，乘100；
+        #   否则已经是百分数(旧版/测试数据)。
+        _cols = ["pct_semana_atual", "pct_ano_anterior", "pct_semana_anterior", "pct_media_5_anos"]
+        _mx = pd.to_numeric(df[_cols].stack(), errors="coerce").max()
+        k = 100.0 if pd.notna(_mx) and _mx <= 1.0 else 1.0
+        def _pc(c, must=False):
+            v = row[c]
+            if pd.isna(v):
+                if must:
+                    raise ValueError(f"{c} 为空")
+                return None
+            return round(float(v) * k, 2)
+        pct_atual = _pc("pct_semana_atual", True)
+        pct_ano_anterior = _pc("pct_ano_anterior")        # 去年同期可能为空(引擎里有 None 分支)
+        pct_semana_anterior = _pc("pct_semana_anterior")
+        pct_media_5_anos = _pc("pct_media_5_anos")
     except (ValueError, TypeError) as e:
         return {
             "available": False,
