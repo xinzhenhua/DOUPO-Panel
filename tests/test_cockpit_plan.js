@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -150,7 +150,8 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   const a=P.planExpect(Object.assign({n:800},base)), a2=P.planExpect(Object.assign({n:800},base));
   eq('推演：同样输入同样结果（固定随机种子）',a.win,a2.win);
   eq('推演：未来20个交易日的区间，分位单调',a.fan.length===20&&a.fan.every(f=>f.p10<=f.p25&&f.p25<=f.p50&&f.p50<=f.p75&&f.p75<=f.p90),true);
-  eq('推演：各种结局概率加起来=1',Math.abs(a.stopP+a.trailP+a.maP+a.holdP-1)<1e-9,true);
+  eq('推演：各种结局概率加起来=1',Math.abs(a.stopP+a.trailP+a.maP+a.flipP+a.holdP-1)<1e-9,true);
+  eq('推演：多单/没传flipHeld时不会有外资翻转离场',a.flipP,0);
   const z=P.planExpect(Object.assign({n:800,edge:0},base)), e=P.planExpect(Object.assign({n:800,edge:0.003},base));
   eq('推演：优势越大胜率越高（无优势<有优势）',z.win<e.win,true);
   eq('推演：无优势时新开仓胜率低于50%（有止损的随机游走）',z.win<.5,true);
@@ -158,8 +159,45 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('推演：离止损越近，触发止损概率越高',near.stopP>far.stopP,true);
   const sh=P.planExpect({side:-1,entry:3400,peak:3400,last:3400,closes,rets,n:800,edge:0});
   eq('推演：空单对称，价格上涨先站上MA20离场',sh.maP>0.3&&sh.fan[19].p90>3400,true);
+  const sf=P.planExpect({side:-1,entry:3400,peak:3400,last:3400,closes,rets,n:1500,edge:0,flipHeld:0}), sn=P.planExpect({side:-1,entry:3400,peak:3400,last:3400,closes,rets,n:1500,edge:0});
+  eq('空单外资翻转：开启后有相当比例路径因翻转离场、中位持有天数大幅缩短',[sf.flipP>.25,sf.medDays<=sn.medDays,sf.medDays<=6],[true,true,true]);
+  eq('空单外资翻转：已持有很多天，今天的翻转概率更高（第6天起20%/天）→ 离场更快',P.planExpect({side:-1,entry:3400,peak:3400,last:3400,closes,rets,n:1500,edge:0,flipHeld:8}).medDays<=sf.medDays,true);
+  eq('空单外资翻转：常量齐全',[P.TBT.SEDGE>P.TBT.EDGE,P.TBT.FLIPH.length,P.TBT.FLIPH.every(x=>x>0&&x<1)],[true,6,true]);
   eq('推演：数据太少返回null',P.planExpect({side:1,entry:1,peak:1,last:1,closes:[1],rets:[0.01]}),null);
   const w=P.planWilson(9,14); eq('置信区间：14笔赢9笔，90%区间覆盖64%',w[0]<.643&&w[1]>.643&&w[1]<.95,true);
+}
+
+{ // 实盘记录：路径/极值/滑点/复盘
+  const h={d:['2026-10-08','2026-10-09','2026-10-12','2026-10-13','2026-10-14'],c:[3300,3400,3360,3300,3380]};
+  const sh={side:-1,entryD:'2026-10-09',entryPx:3400,lots:10};
+  const pa=P.planPath(h,sh);
+  eq('路径：空单从开仓日起 4 个价、持有 3 天',[pa.path.length,pa.days],[4,3]);
+  eq('路径：空单最大浮盈=最低价3300→+2.94%，最大浮亏=最高价3400→0%',[+pa.mfe.toFixed(2),+pa.mae.toFixed(2)],[2.94,0]);
+  const cl=Object.assign({},sh,{exitD:'2026-10-13',exitPx:3300}), pc=P.planPath(h,cl);
+  eq('路径：已平仓只算到平仓日',[pc.path.length,pc.days,pc.path[pc.path.length-1][0]],[3,2,'2026-10-13']);
+  eq('路径：开仓日晚于已有数据 → null',P.planPath(h,{side:1,entryD:'2026-11-01',entryPx:3300,lots:1}),null);
+  eq('滑点：多单买高了 +0.3%；空单卖低了 +0.3%；买得更好为负',[+P.planSlip(1,3000,3009).toFixed(2),+P.planSlip(-1,3000,2991).toFixed(2),+P.planSlip(1,3000,2991).toFixed(2)],[0.3,0.3,-0.3]);
+  eq('滑点：平仓多单卖低了为正（传入 -side）',+P.planSlip(-1,3000,2991).toFixed(2),0.3);
+  eq('平仓原因：按系统动作映射',[P.planReasonOf('止损'),P.planReasonOf('移动止盈'),P.planReasonOf('空单离场'),P.planReasonOf('持有')],['stop','trail','foreign','feel']);
+  const T=(o)=>Object.assign({id:'x',side:1,lots:10,entryD:'2026-01-05',entryPx:3000,exitD:'2026-01-20',exitPx:3100,src:'sys'},o);
+  const R=P.planReview([T({pred:{win:.6,ev:2,rr:2},res:{mfe:5,mae:-1,days:10,slipX:.2},slipO:.1}),T({id:'y',exitPx:2900,src:'own',pred:{win:.5,ev:1,rr:1.5},res:{mfe:1,mae:-4,days:5,slipX:.4},slipO:.3}),T({id:'z',side:-1,exitPx:2950,src:'sys'}),{id:'o',side:1,lots:1,entryD:'2026-02-01',entryPx:3000}],23);
+  eq('复盘：只统计已平仓（3笔），分来源/方向',[R.n,R.sys.n,R.own.n,R.long.n,R.short.n],[3,2,1,2,1]);
+  eq('复盘：预计vs实际只用有预计的2笔',[R.predN,+R.predWin.toFixed(2),R.actWinOfPred],[2,.55,.5]);
+  eq('复盘：平均滑点/极值/捕获率',[+R.slipO.toFixed(2),+R.slipX.toFixed(2),R.mfe,R.mae,+R.capture.toFixed(2)],[.2,.3,3,-2.5,.67]);
+  eq('复盘：没有已平仓 → n=0',P.planReview([],23).n,0);
+}
+
+{ // 月振幅
+  const d=[],c=[]; let px=3000, dt=new Date(Date.UTC(2020,0,1));
+  while(dt<=new Date(Date.UTC(2026,9,3))){ const w=dt.getUTCDay(); if(w>0&&w<6){ d.push(dt.toISOString().slice(0,10)); px*=1+Math.sin(d.length*1.3)*0.006; c.push(px); } dt=new Date(dt.getTime()+86400000); }
+  const M=P.monthAmpCalc(d,c,'2026-10');
+  eq('月振幅：6年多共 81 个完整月，本月没走完（只走了2个交易日）',[M.nDone,M.cur.m,M.cur.n],[81,'2026-10',2]);
+  const jan=d.map((x,i)=>[x,c[i]]).filter(a=>a[0].startsWith('2021-03')).map(a=>a[1]), want=(Math.max(...jan)-Math.min(...jan))/jan[jan.length-1]*100;
+  eq('月振幅：2021-03 = (最高收盘−最低收盘)/月末收盘',+M.rows.find(r=>r.m==='2021-03').amp.toFixed(6),+want.toFixed(6));
+  eq('月振幅：分位单调且在0~100，同月历史（10月）有6个完整年+同样走2天的对比',[M.cur.pctAll>=0&&M.cur.pctAll<=100,M.cur.sameN,M.byMonth[9].n],[true,6,6]);
+  eq('月振幅：按月统计 q25<=中位<=q75，min<=q25',M.byMonth.every(b=>b&&b.min<=b.q25&&b.q25<=b.med&&b.med<=b.q75&&b.q75<=b.max),true);
+  eq('月振幅：历史太短(<200天)或长度不一致 → null',[P.monthAmpCalc(d.slice(0,100),c.slice(0,100),'2026-10'),P.monthAmpCalc(d,c.slice(1),'2026-10')],[null,null]);
+  eq('月振幅：今天所在月之后没有数据时 cur=null（最后一个月算完整月）',P.monthAmpCalc(d,c,'2026-12').cur,null);
 }
 
 { // 开仓来源 + 平仓建议

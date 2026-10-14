@@ -206,7 +206,7 @@ def test_alert_uses_just_closed_daily_bar():
 
 def test_send_test_and_failure_reason():
     env = {"PUSHPLUS_TOKEN": "tok"}
-    assert na.configured(env) == (["pushplus"], ["issue", "serverchan", "smtp"]), na.configured(env)
+    assert na.configured(env) == (["pushplus"], ["issue", "serverchan", "webpush", "smtp"]), na.configured(env)
     # 正常：测试消息发到 pushplus，其余渠道没配=none
     post = lambda url, data=None, js=None, headers=None: (200, '{"code":200,"msg":"请求成功"}')
     senders = {n: (lambda e, t, b, f=f: f(e, t, b, post)) for n, f in (("pushplus", na.send_pushplus), ("serverchan", na.send_serverchan))}
@@ -227,13 +227,65 @@ def test_send_test_and_failure_reason():
 def test_workflows_wired():
     root = os.path.dirname(os.path.abspath(__file__))
     w = open(os.path.join(root, ".github", "workflows", "update-data.yml"), encoding="utf-8").read()
-    assert "issues: write" in w and "scripts/plan_alert.js" in w and "notify_alert.py" in w and "SERVERCHAN_KEY" in w and "PUSHPLUS_TOKEN" in w and "SMTP_PASS" in w
+    assert "issues: write" in w and "scripts/plan_alert.js" in w and "notify_alert.py" in w and "SERVERCHAN_KEY" in w and "PUSHPLUS_TOKEN" in w and "SMTP_PASS" in w and "VAPID_PRIVATE_KEY" in w
     assert "data/main_adj.json" in w and "data/alert_state.json" in w and w.index("plan_alert.js") < w.index("提交更新后的数据文件")
     t = open(os.path.join(root, ".github", "workflows", "test-alert.yml"), encoding="utf-8").read()
     assert "workflow_dispatch" in t and "notify_alert.py --test" in t and "PUSHPLUS_TOKEN" in t and "SERVERCHAN_KEY" in t
     r = open(os.path.join(root, ".github", "workflows", "record-position.yml"), encoding="utf-8").read()
     assert "workflow_dispatch" in r and "record_position.py" in r and "group: data-writes" in r and "data/position.json" in r
     ok("工作流接线：提醒步骤在提交之前、有 issues 权限和各渠道密钥；记录持仓工作流共用并发组")
+
+def test_webpush_roundtrip_and_cleanup():
+    import os, tempfile, json
+    import webpush_send as wp
+    from cryptography.hazmat.primitives.asymmetric import ec
+    ua = ec.generate_private_key(ec.SECP256R1()); auth = os.urandom(16)
+    sub = {"endpoint": "https://push.example.com/a", "keys": {"p256dh": wp.b64u(wp._pub_raw(ua.public_key())), "auth": wp.b64u(auth)}}
+    dead = {"endpoint": "https://push.example.com/dead", "keys": sub["keys"]}
+    d = tempfile.mkdtemp(); path = os.path.join(d, "push_subs.json"); json.dump({"subs": [sub, dead]}, open(path, "w"))
+    priv, pub = wp.gen_vapid(); got = []
+    def post(url, data, headers):
+        got.append((url, data, headers)); return (410, "") if url.endswith("dead") else (201, "")
+    nok, bad, nd = wp.send_all(path, {"title": "T", "body": "内容", "url": "u"}, priv, "mailto:a@b.c", post)
+    assert (nok, bad, nd) == (1, [], 1)
+    body = [g for g in got if g[0].endswith("/a")][0]
+    assert json.loads(wp.decrypt(body[1], ua, wp.b64u(auth)).decode()) == {"title": "T", "body": "内容", "url": "u"}
+    assert body[2]["Authorization"].startswith("vapid t=") and body[2]["Authorization"].endswith("k=" + pub) and body[2]["Content-Encoding"] == "aes128gcm"
+    assert [s["endpoint"] for s in wp.load_subs(path)] == [sub["endpoint"]], "410 的订阅要从文件里删掉"
+    # 通过 notify_alert 渠道：没私钥/没订阅 → None；有 → True；全失败 → 抛错
+    env = {"PUSH_SUBS": path}
+    assert na.send_webpush(env, "t", "b") is None
+    env["VAPID_PRIVATE_KEY"] = priv
+    assert na.send_webpush(env, "t", "b", send_all=lambda *a, **k: (1, [], 0)) is True
+    try:
+        na.send_webpush(env, "t", "b", send_all=lambda *a, **k: (0, ["HTTP 500"], 0)); assert False
+    except RuntimeError as e:
+        assert "全部失败" in str(e)
+    json.dump({"subs": []}, open(path, "w")); assert na.send_webpush(env, "t", "b") is None
+    ok("网页推送：加密可被订阅方解开、VAPID头正确、410订阅自动清理、渠道在无密钥/无订阅时跳过")
+
+
+def test_vapid_jwt_signature_valid():
+    import webpush_send as wp
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+    from cryptography.hazmat.primitives import hashes
+    priv, pub = wp.gen_vapid(); a = wp.vapid_auth("https://web.push.apple.com/xyz", priv, "https://github.com/o/r", now=1000)
+    t = a.split("t=")[1].split(",")[0]; h, c, sg = t.split("."); raw = wp.b64d(sg)
+    wp_pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), wp.b64d(pub))
+    wp_pub.verify(encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big")), f"{h}.{c}".encode(), ec.ECDSA(hashes.SHA256()))
+    import json; cl = json.loads(wp.b64d(c)); assert cl["aud"] == "https://web.push.apple.com" and cl["exp"] == 1000 + 43200 and cl["sub"].startswith("https://")
+    ok("VAPID：JWT 签名可用公钥验证、aud 是推送服务域名")
+
+
+def test_webpush_rfc8291_vector():
+    import webpush_send as wp
+    from cryptography.hazmat.primitives.asymmetric import ec
+    eph = ec.derive_private_key(int.from_bytes(wp.b64d("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"), "big"), ec.SECP256R1())
+    body = wp.encrypt(wp.b64d("V2hlbiBJIGdyb3cgdXAsIEkgd2FudCB0byBiZSBhIHdhdGVybWVsb24"), "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4", "BTBZMqHH6r4Tts7J_aSIgg", salt=wp.b64d("DGv6ra1nlYgDCS1FRnbzlw"), eph=eph)
+    assert wp.b64u(body).startswith("DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN")
+    ok("网页推送加密：和 RFC 8291 附录A的标准向量逐字节一致")
+
 
 if __name__ == "__main__":
     import traceback

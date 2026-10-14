@@ -4,6 +4,7 @@
   GitHub Issue   不用配任何密钥：在本仓库开一个 Issue 并 @你，GitHub 会给你发邮件（和 GitHub 手机 App 推送）。ALERT_ISSUE=0 可关
   Server酱       SERVERCHAN_KEY（sct.ftqq.com 的 SendKey）→ 推到微信
   PushPlus       PUSHPLUS_TOKEN（pushplus.plus 的 token）→ 推到微信
+  网页推送       VAPID_PRIVATE_KEY（页面设置里「生成推送密钥」）+ data/push_subs.json（各设备在页面里点「开启本设备推送」登记）→ 手机/电脑浏览器系统通知
   邮件(SMTP)     SMTP_HOST / SMTP_PORT(默认465) / SMTP_USER / SMTP_PASS / SMTP_TO(默认=SMTP_USER)
 防重复规则：
   入场信号 —— 只在「信号从无变有、或方向变了」时发一次；信号一直持续不重复发，信号消失后再出现会再发
@@ -71,10 +72,30 @@ def send_smtp(env, title, body, smtp=smtplib.SMTP_SSL):
     return True
 
 
+def send_webpush(env, title, body, send_all=None):
+    """网页推送：给 data/push_subs.json 里登记的每台设备发一条系统通知。没配私钥或没人订阅返回 None；全部失败抛错。"""
+    priv = env.get("VAPID_PRIVATE_KEY")
+    if not priv:
+        return None
+    import webpush_send as wp
+    path = env.get("PUSH_SUBS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "push_subs.json")
+    if not wp.load_subs(path):
+        return None
+    repo = env.get("GITHUB_REPOSITORY") or ""
+    owner, name = (repo.split("/") + [""])[:2]
+    url = env.get("PAGES_URL") or (f"https://{owner}.github.io/{name}/" if owner and name else "./")
+    subject = env.get("VAPID_SUBJECT") or (f"https://github.com/{repo}" if repo else "mailto:noreply@example.com")
+    ok, bad, dead = (send_all or wp.send_all)(path, {"title": title[:80], "body": body[:240], "url": url}, priv, subject)
+    if bad and not ok:
+        raise RuntimeError("网页推送全部失败：" + "；".join(bad[:3]))
+    return True
+
+
 def configured(env):
     """哪些渠道的密钥这次运行真的拿到了（Secrets 名字拼错/没加时这里就是空的）。"""
     ok = {"issue": bool(env.get("GITHUB_REPOSITORY") and env.get("GITHUB_TOKEN")) and env.get("ALERT_ISSUE", "1") != "0",
           "serverchan": bool(env.get("SERVERCHAN_KEY")), "pushplus": bool(env.get("PUSHPLUS_TOKEN")),
+          "webpush": bool(env.get("VAPID_PRIVATE_KEY")),
           "smtp": bool(env.get("SMTP_HOST") and env.get("SMTP_USER") and env.get("SMTP_PASS"))}
     return [k for k, v in ok.items() if v], [k for k, v in ok.items() if not v]
 
@@ -93,7 +114,7 @@ def send_test(env, today, senders=None):
     return rep
 
 
-CHANNELS = {"issue": send_issue, "serverchan": send_serverchan, "pushplus": send_pushplus, "smtp": send_smtp}
+CHANNELS = {"issue": send_issue, "serverchan": send_serverchan, "pushplus": send_pushplus, "webpush": send_webpush, "smtp": send_smtp}
 
 
 def select_events(alert, state, today):

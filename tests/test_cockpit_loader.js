@@ -126,5 +126,23 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
     eq('临时收盘价：16:10 接上 10-12，价格按 15:00 收盘', [nx.d[nx.d.length - 1], Math.round(nx.c[nx.c.length - 1] / adj.c[adj.c.length - 1] * 3402)], ['2026-10-12', 3383]);
     eq('临时收盘价：日线出来后以日线为准', CL.extendAdj(adj, CL.provDaily(m15).concat([{ d: '2026-10-09', c: 3402 }, { d: '2026-10-12', c: 3380 }]), 'M2701', at(16, 10)).c.slice(-1)[0] < nx.c.slice(-1)[0], true);
   }
+  { // 新浪15分钟线直连：解析 + 并进 prices.json
+    const bars=CL.parseSinaMin([{d:'2026-10-14 10:15:00',o:'3380',h:'3390',l:'3378',c:'3385',v:'120',p:'2400000'},{d:'',c:1},null]);
+    eq('parseSinaMin：字段映射，丢掉坏行',bars,[{datetime:'2026-10-14 10:15:00',open:3380,high:3390,low:3378,close:3385,volume:120,hold:2400000}]);
+    const base={updatedAt:'x',contracts:{M01:{symbol:'M2701',bars:[{datetime:'2026-10-14 10:00:00',close:3380},{datetime:'2026-10-14 10:15:00',close:3381}],daily:[]}}};
+    const mg=CL.mergeSina(base,{jan:{symbol:'M2701',bars:[{datetime:'2026-10-14 10:15:00',close:3385},{datetime:'2026-10-14 10:30:00',close:3390}]}});
+    eq('mergeSina：新浪更新的并进去，重叠的以新浪为准',mg.contracts.M01.bars.map(b=>b.close),[3380,3385,3390]);
+    eq('mergeSina：新浪没有更新就不动',CL.mergeSina(base,{jan:{symbol:'M2701',bars:[{datetime:'2026-10-14 10:00:00',close:1}]}})._sina,0);
+    eq('mergeSina：合约不一致（换月）不并',CL.mergeSina(base,{jan:{symbol:'M2705',bars:[{datetime:'2026-10-14 11:00:00',close:1}]}})._sina,0);
+    eq('mergeSina：不改原对象',base.contracts.M01.bars.length,2);
+    const em=CL.parseEmKlines({data:{klines:['2026-10-14 10:15,3380,3390,3395,3378,1200,4e6','2026-10-14 10:30,3390,3385,3392,3383,900,3e6','bad','2026-10-14 10:45,x,1,2,3,4,5']}});
+    eq('parseEmKlines：东方财富开/收顺序和新浪不同，字段映射正确、丢坏行、补秒',em,[{datetime:'2026-10-14 10:15:00',open:3380,close:3390,high:3395,low:3378,volume:1200,hold:null},{datetime:'2026-10-14 10:30:00',open:3390,close:3385,high:3392,low:3383,volume:900,hold:null}]);
+    eq('parseEmKlines：空/异常返回[]',[CL.parseEmKlines(null),CL.parseEmKlines({data:null}),CL.parseEmKlines({data:{klines:null}})],[[],[],[]]);
+    eq('emUrl：大商所市场代码114、合约小写、15分钟',/secid=114\.m2701&.*klt=15.*cb=cbx$/.test(CL.emUrl('M2701','cbx')),true);
+    const ca=[{datetime:'2026-10-14 10:30:00',close:3386}], ok1=CL.priceCheck(ca,em), bad=CL.priceCheck([{datetime:'2026-10-14 10:30:00',close:3300}],em);
+    eq('两个价格源核对：差0.03%算一致；差2.5%不一致；没有共有时间/只有一个源→null',[ok1.ok,bad.ok,CL.priceCheck(ca,[]).ok,CL.priceCheck([{datetime:'z',close:1}],em).ok],[true,false,null,null]);
+    const at=(h,m,dow)=>Date.UTC(2026,9,12+((dow+6)%7),h-8,m);
+    eq('交易时段：周三10:00是，周三12:00（午休也照常刷，无害）是，周三15:30否，周三21:30是，周六10:00否',[CL.tradingNow(at(10,0,3)),CL.tradingNow(at(12,0,3)),CL.tradingNow(at(15,30,3)),CL.tradingNow(at(21,30,3)),CL.tradingNow(at(10,0,6))],[true,true,false,true,false]);
+  }
 }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

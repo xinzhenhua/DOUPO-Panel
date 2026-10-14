@@ -142,6 +142,39 @@
     if (prev && prev !== KEYS[KEYS.length - 1]) { try { w.selectContract(prev); w.updateOverallAlert(); } catch (e) { /* 还原失败不影响读数 */ } }
     return out;
   };
+  /* 新浪 15 分钟线（浏览器直连，JSONP）：不用等 GitHub 定时任务；失败就静默回退到 prices.json */
+  CL.parseSinaMin = function (arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(x => x && ({ datetime: String(x.d || '').slice(0, 19), open: +x.o, high: +x.h, low: +x.l, close: +x.c, volume: x.v == null ? null : +x.v, hold: x.p == null ? null : +x.p })).filter(b => b && b.datetime && b.close > 0);
+  };
+  /* 东方财富 15 分钟线（备用源，浏览器 JSONP 直连）：data.klines 每行 "时间,开,收,高,低,量,额"。注意开收顺序和新浪不同 */
+  CL.parseEmKlines = function (o) {
+    const k = o && o.data && Array.isArray(o.data.klines) ? o.data.klines : null; if (!k) return [];
+    return k.map(r => { const f = String(r).split(','); if (f.length < 6) return null; return { datetime: (f[0].length === 16 ? f[0] + ':00' : f[0]).slice(0, 19), open: +f[1], close: +f[2], high: +f[3], low: +f[4], volume: +f[5], hold: null }; }).filter(b => b && b.datetime && isFinite(b.open) && b.close > 0 && b.high > 0 && b.low > 0);
+  };
+  CL.emUrl = function (sym, cb) { return 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=114.' + encodeURIComponent(String(sym).toLowerCase()) + '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=15&fqt=0&end=20500101&lmt=300&cb=' + cb; };
+  CL.priceCheck = function (a, b, tol) {   // 两个源最新一根 15 分钟线的收盘价是否对得上：取两边共有的最新一根时间比较
+    tol = tol == null ? 0.005 : tol; if (!a || !a.length || !b || !b.length) return { ok: null, text: '只有一个价格源可用，没法互相核对' };
+    const mb = {}; b.forEach(x => { mb[x.datetime] = x; }); let hit = null; for (let i = a.length - 1; i >= 0; i--) if (mb[a[i].datetime]) { hit = [a[i], mb[a[i].datetime]]; break; }
+    if (!hit) return { ok: null, text: '两个价格源没有同一时间的K线可比' };
+    const d = Math.abs(hit[0].close / hit[1].close - 1); return { ok: d <= tol, diff: d, dt: hit[0].datetime, text: `新浪 ${hit[0].close} · 东方财富 ${hit[1].close}（${hit[0].datetime.slice(5, 16)}，差 ${(d * 100).toFixed(2)}%）` };
+  };
+  CL.mergeSina = function (p, sx) {   // sx: {sep|may|jan: {symbol, bars}}；比 prices.json 新的 15 分钟线并进去
+    const PK = { sep: 'M09', may: 'M05', jan: 'M01' }, out = JSON.parse(JSON.stringify(p || { contracts: {} })); out.contracts = out.contracts || {}; let n = 0;
+    for (const c of Object.keys(PK)) {
+      const x = sx && sx[c]; if (!x || !x.bars || !x.bars.length) continue;
+      const cur = out.contracts[PK[c]] || { symbol: x.symbol, bars: [], daily: [] }, old = (cur.bars || []).filter(b => b && b.datetime);
+      if (cur.symbol && x.symbol && String(cur.symbol).toLowerCase() !== String(x.symbol).toLowerCase()) continue;
+      const first = x.bars[0].datetime, lastOld = old.length ? old[old.length - 1].datetime : '';
+      if (x.bars[x.bars.length - 1].datetime <= lastOld && old.length) continue;   // 没有更新的就不动
+      cur.symbol = cur.symbol || x.symbol; cur.bars = old.filter(b => b.datetime < first).concat(x.bars); out.contracts[PK[c]] = cur; n++;
+    }
+    out._sina = n; return out;
+  };
+  CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
+    const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
+    return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
+  };
   /* 盘中价：prices.json(每15分钟) 和 latest.json 里的15分钟/小时线，谁新用谁；日线只到上一个收盘，信号用日线，盘中价只作参考 */
   CL.livePrices = function (L, prices) {
     L = L || {};
@@ -287,16 +320,51 @@
     };
     CL.reload = () => cycle(false);
     cycle(true);
-    timers.push(setInterval(() => { if (!doc.hidden) cycle(false); }, 10 * 60 * 1000));
-    /* 每3分钟只读 prices.json（几十KB）：有新的15分钟价就更新盘中价，不重载评分引擎 */
+    timers.push(setInterval(() => { if (!doc.hidden) cycle(false); }, 5 * 60 * 1000));
+    /* 每1分钟：读 prices.json（几十KB）+ 交易时段直连新浪15分钟线，有新价就更新盘中价和收盘价，不重载评分引擎 */
+    const sinaOne = (sym) => new Promise(res => {
+      try {
+        const cb = '__sx' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
+        const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
+        const tm = setTimeout(() => fin(null), 8000);
+        sc.onload = () => fin(CL.parseSinaMin(window[cb])); sc.onerror = () => fin(null);
+        sc.src = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getFewMinLine?symbol=' + encodeURIComponent(String(sym).toUpperCase()) + '&type=15';
+        doc.head.appendChild(sc);
+      } catch (_) { res(null); }
+    });
+    const emOne = (sym) => new Promise(res => {   // 东方财富备用源：JSONP，回调直接给对象
+      try {
+        const cb = '__em' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false, tm = null;
+        const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
+        tm = setTimeout(() => fin(null), 8000); window[cb] = o => fin(CL.parseEmKlines(o)); sc.onerror = () => fin(null);
+        sc.src = CL.emUrl(sym, cb); doc.head.appendChild(sc);
+      } catch (_) { res(null); }
+    });
+    let pcN = 0;
     CL.refreshPrices = async function () {
       try {
-        if (!D || !lastSide) return; const p = await jget('data/prices.json'); if (!p || (lastSide.prices && lastSide.prices.updatedAt === p.updatedAt)) return;
+        if (!D || !lastSide) return;
+        let p = null; try { p = await jget('data/prices.json'); } catch (_) { p = lastSide.prices || null; }
+        if (!window.__NO_SINA && CL.tradingNow(Date.now())) {
+          const sx = {}, ks = ['sep', 'may', 'jan'], used = {}, check = (pcN++ % 5 === 0);   // 每5分钟让两个源互相核对一次
+          const rs = await Promise.all(ks.map(async c => { const sym = D.contracts && D.contracts[c] && D.contracts[c].symbol; if (!sym) return null;
+            let r = await sinaOne(sym), em = null; used[c] = 'sina';
+            if (!r || !r.length || check) { em = window.__NO_EM ? null : await emOne(sym); }
+            if ((!r || !r.length) && em && em.length) { r = em; used[c] = 'em'; }
+            else if (check && r && r.length && em && em.length) { const ck = CL.priceCheck(r, em); if (c === (window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep') || ck.ok === false) D.priceCheck = Object.assign(ck, { at: Date.now(), key: c }); }
+            return r; }));
+          ks.forEach((c, i) => { if (rs[i] && rs[i].length) sx[c] = { symbol: D.contracts[c].symbol, bars: rs[i] }; });
+          D.priceSrc = { used, at: Date.now() };
+          if (Object.keys(sx).length) p = CL.mergeSina(p || { contracts: {} }, sx);
+        }
+        if (!p) return;
+        const key = (p.updatedAt || '') + '|' + ['M09', 'M05', 'M01'].map(k => { const b = ((p.contracts || {})[k] || {}).bars || []; return b.length ? b[b.length - 1].datetime + ':' + b[b.length - 1].close : ''; }).join(',');
+        if (lastSide.pkey === key) return; lastSide.pkey = key;
         lastSide.prices = p; const lp = CL.livePrices(lastSide.latest, p); D.live = lp.live; D.m15 = lp.m15; D.rawM15 = lp.rawM15; D.rawH = lp.rawH; CL.extendFromSources(D, p, Date.now()); if (window.__cockpit && window.__cockpit.refreshed) window.__cockpit.refreshed();
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
-    timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 3 * 60 * 1000));
-    doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 10 * 60 * 1000) cycle(false); });
+    timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 60 * 1000));
+    doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = CL; else root.CockpitData = CL;

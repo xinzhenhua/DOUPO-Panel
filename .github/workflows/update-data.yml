@@ -133,7 +133,9 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           SMTP_TO: ${{ secrets.SMTP_TO }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
+          pip install -q cryptography || true   # 网页推送加密用
           node scripts/plan_alert.js --data data --out /tmp/alert.json
           python3 notify_alert.py --alert /tmp/alert.json --state data/alert_state.json
 
@@ -145,6 +147,7 @@ jobs:
           # 历史序列(data/history/)：首次运行前目录可能不存在，所以单独add，失败不影响主数据的提交
           git add data/history/ 2>/dev/null || true
           git add data/main_adj.json data/alert_state.json 2>/dev/null || true
+          git add data/push_subs.json 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)
           git add data/raw/dce_rank_live/ data/raw/dce_rank_auto/ 2>/dev/null || true
           # 现货/期货每日累积文件、刷新后的合约日K、重新生成的季节统计(v101.20)

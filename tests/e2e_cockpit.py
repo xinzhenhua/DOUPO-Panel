@@ -18,7 +18,7 @@ def ok(name, cond, detail=''):
 
 def make_site(mutate=None):
     d = tempfile.mkdtemp(prefix='cockpit_site_')
-    for f in ('index.html', 'engine.html'): shutil.copy(os.path.join(ROOT, f), d)
+    for f in ('index.html', 'engine.html', 'sw.js', 'manifest.webmanifest', 'icon.svg'): shutil.copy(os.path.join(ROOT, f), d)
     zipfile.ZipFile(os.path.join(HERE, 'data', 'cockpit_fixture_20261011.zip')).extractall(os.path.join(d, 'data'))
     if mutate: mutate(d)
     return d
@@ -29,13 +29,16 @@ def serve(d):
     h = functools.partial(Quiet, directory=d); s = socketserver.ThreadingTCPServer(('127.0.0.1', 0), h); s.daemon_threads = True
     threading.Thread(target=s.serve_forever, daemon=True).start(); return s, s.server_address[1]
 
-def open_page(b, port, w=1440, h=900, path='index.html', wait_boot=True):
+def open_page(b, port, w=1440, h=900, path='index.html', wait_boot=True, mode='trade'):
     ctx = b.new_context(viewport={'width': w, 'height': h}); pg = ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
     pg.route('**/*', lambda r: r.continue_() if r.request.url.startswith('http://127.0.0.1:%d' % port) else r.abort())
     pg.goto('http://127.0.0.1:%d/%s' % (port, path))
     if wait_boot:
         try: pg.wait_for_selector('#boot', state='detached', timeout=60000)
+        except Exception: pass
+    if mode == 'trade' and wait_boot and path == 'index.html':   # 空仓默认进研究页（v101.49）；旧测试按交易页写的，这里先切过去
+        try: pg.evaluate("(() => { const b = document.querySelector('[data-mode=trade]'); if (b && !document.body.classList.contains('mode-trade')) b.click(); })()"); pg.wait_for_timeout(150)
         except Exception: pass
     return ctx, pg, errs
 
@@ -88,7 +91,7 @@ def main():
     pg.evaluate("document.querySelector('#sigbar [data-goplan]').click()")
     ok('点首页信号条切到交易模式并看到交易计划', pg.evaluate("document.body.classList.contains('mode-trade') && document.getElementById('planBody') !== null"))
     ok('测试数据里外资5日数据缺失：信号格显示「数据不足，信号不可信」且不给建议手数', '数据不足' in pg.evaluate("document.getElementById('sigbar').innerText") and '建议' not in pg.evaluate("document.getElementById('sigbar').innerText"))
-    ok('信号格有明确的数据状态行（数据不足时红色并写原因）', pg.evaluate("(()=>{const e=document.getElementById('dataLine');return !!e&&e.classList.contains('bad')&&e.innerText.includes('数据不足')})()"))
+    ok('信号格有明确的数据状态行：默认只有一个叹号按钮（折叠），点开才写原因（数据不足时红色）', pg.evaluate("(()=>{const c=document.querySelector('#dataLine .dst'); const col=!c; const b=document.querySelector('#dataLine [data-dsl]'); if(b&&b.getAttribute('aria-expanded')!=='true') b.click(); const e=document.getElementById('dataLine');return col&&!!e&&e.classList.contains('bad')&&e.innerText.includes('数据不足')})()"))
     body = pg.evaluate("document.getElementById('planBody').innerText")
     ok('计划页：有今日信号、持仓管理、账户权益、交易记录四块', all(k in body for k in ('今日入场信号', '持仓管理', '账户权益', '交易记录')), body[:200])
     ok('计划页：历史开仓月份卡片在，默认折叠，写明两类重要程度和本月标记', pg.evaluate("(()=>{const d=document.getElementById('pf-mo');if(!d||d.open)return false;const t=d.innerText+d.innerHTML;return /信号出现的频率/.test(t)&&/开仓的盈亏/.test(t)&&/★★★☆☆/.test(t)&&/★☆☆☆☆/.test(t)&&/（本月）/.test(t)&&d.querySelectorAll('tbody tr').length>=12})()"))
@@ -103,10 +106,10 @@ def main():
     pg.evaluate("window.__cockpit.closeSheet()")
     ok('计划页：仓位阶梯和回测摘要默认折叠', pg.evaluate("[...document.querySelectorAll('#planBody details')].every(d => !d.open)"))
     ok("夹具里有换月调整价，页面读到了（交易信号用它）", pg.evaluate("!!window.__DATA__.adj && window.__DATA__.adj.d.length > 1000"))
-    ok("数据状态行写明价格口径是换月调整价", "换月调整" in pg.evaluate("document.getElementById('dataLine').innerText"))
+    ok("数据状态行写明价格口径是换月调整价", "换月调整" in pg.evaluate("(()=>{const b=document.querySelector('#dataLine [data-dsl]'); if(b&&b.getAttribute('aria-expanded')!=='true') b.click(); return document.getElementById('dataLine').innerText})()"))
     hd = pg.evaluate("(() => { const a = window.__DATA__.adj; return {d: a.d.slice(-12), c: a.c.slice(-12)}; })()")
     d0, p0 = hd['d'][0], hd['c'][0]; mx = max(hd['c']); last = hd['c'][-1]
-    pg.fill('#pf-od', d0); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(p0)); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
+    pg.fill('#pf-od', d0); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', str(p0)); pg.evaluate("document.getElementById('pf-more-o').open = true"); pg.fill('#pf-on', '测试备注'); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
     body = pg.evaluate("document.getElementById('planBody').textContent")
     sgt = pg.evaluate("document.getElementById('sigbar').innerText")
     ok('有持仓时首页：左格是「持仓信号」(继续持有/该平仓)，右格显示浮盈亏金额(元)，不再显示入场信号', ('继续持有' in sgt or '该平仓' in sgt) and '账户权益' in sgt and '元' in sgt and '入场信号（收盘后看一次）' not in sgt, sgt[:300])
@@ -121,7 +124,13 @@ def main():
     sig = pg.evaluate("document.getElementById('sigbar').innerText")
     ok('首页持仓格同步显示持仓和判定', '多 5 手' in sig and '账户权益' in sig and ('继续持有' in sig or '该平仓' in sig), sig)
     ok('已有持仓时不再显示开仓表单', pg.evaluate("document.getElementById('pf-ol') === null"))
-    pg.fill('#pf-cd', hd['d'][-1]); pg.fill('#pf-cp', str(p0 + 100)); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()")
+    tr0 = pg.evaluate("(() => { const t = window.__cockpit.planSnap().A.trades[0]; return { n: t.note, ref: t.refPx, slip: t.slipO, pred: t.pred }; })()")
+    ok('开仓时存了备注、信号日收盘价、开仓滑点、系统预计（胜率/期望/盈亏比）', tr0['n'] == '测试备注' and tr0['ref'] > 0 and tr0['slip'] is not None and tr0['pred'] is not None and 0 < tr0['pred']['win'] < 1, tr0)
+    ok('持仓中的交易表格行已经显示实时最大浮盈/浮亏', '最大浮盈' in pg.evaluate("document.getElementById('planBody').innerText"))
+    pg.fill('#pf-cd', hd['d'][-1]); pg.fill('#pf-cp', str(p0 + 100)); pg.evaluate("document.getElementById('pf-more-c').open = true"); pg.select_option('#pf-cr', 'protect'); pg.fill('#pf-cn', '怕回吐'); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()")
+    rs0 = pg.evaluate("window.__cockpit.planSnap().A.trades[0].res")
+    ok('平仓时存了原因/备注/持有天数/最大浮盈浮亏/价格路径', rs0 and rs0['reason'] == 'protect' and rs0['note'] == '怕回吐' and rs0['days'] >= 1 and rs0['mfe'] is not None and rs0['mae'] is not None and len(rs0['path']) >= 2, rs0)
+    ok('交易表格显示来源/备注/平仓原因，并出现「实盘复盘」', all(k in pg.evaluate("document.getElementById('planBody').innerText") for k in ('手动保本', '测试备注', '实盘复盘')))
     snap = pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return { eq: s.E.equity, fees: s.E.fees, open: !!s.pos }; })()")
     ok('记录平仓后：空仓，权益 = 500000 + 5手×10吨×100 − 来回手续费115', (not snap['open']) and abs(snap['eq'] - 504885) < 1e-6, snap)
     ok('平仓后交易记录里有这一笔，净盈亏 +4,885', '+4,885' in pg.evaluate("document.getElementById('planBody').innerText"))
@@ -267,6 +276,7 @@ def main():
     pg.route('**/*', lambda r: r.continue_() if r.request.url.startswith('http://127.0.0.1:%d' % port) else r.abort())
     pg.route('https://api.github.com/**', gh)
     pg.goto('http://127.0.0.1:%d/index.html' % port); pg.wait_for_selector('#boot', state='detached', timeout=60000); pg.wait_for_timeout(800)
+    pg.evaluate("document.querySelector('[data-mode=trade]').click()"); pg.wait_for_timeout(150)
     ok('云端：有令牌启动时去读 account.json（404=还没有账，不报错）', ('GET', 'data/account.json') in calls and not e6, calls)
     pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
     pg.fill('#pf-od', '2026-10-12'); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '5'); pg.fill('#pf-op', '3400'); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()")
@@ -276,6 +286,27 @@ def main():
     ok('云端：记开仓 → 自动上传 account.json（1笔、rev≥1）', len(acc.get('trades', [])) == 1 and acc.get('rev', 0) >= 1, acc.get('rev'))
     ok('云端：同时写 position.json（多5手@3400）', pos.get('side') == 1 and pos.get('lots') == 5 and pos.get('entryPx') == 3400, pos)
     ok('云端：页面显示「已同步」', pg.evaluate("document.querySelector('.cloudmsg').textContent.includes('已同步')"), pg.evaluate("document.querySelector('.cloudmsg').textContent"))
+    # ---- 5e. 网页推送：设置里的推送区块、生成密钥（私钥只显示一次、公钥存进仓库）、sw.js/manifest 可访问 ----
+    pg.evaluate("(() => { const p = document.getElementById('acctPop'); if (p.hidden) document.getElementById('setBtn').click(); })()")
+    ptxt = pg.evaluate("document.getElementById('acctPop').innerText")
+    ok('推送：设置里有「网页推送」区块', '网页推送' in ptxt, ptxt[-300:])
+    ok('推送：sw.js 和 manifest 能访问', pg.evaluate("Promise.all([fetch('sw.js').then(r=>r.status), fetch('manifest.webmanifest').then(r=>r.status), fetch('icon.svg').then(r=>r.status)])") == [200, 200, 200])
+    if pg.evaluate("'PushManager' in window && 'serviceWorker' in navigator"):
+        pg.wait_for_timeout(1800)
+        if pg.evaluate("!!document.querySelector('[data-act=\"push-gen\"]')"):
+            pg.evaluate("document.querySelector('[data-act=\"push-gen\"]').click()"); pg.wait_for_timeout(1200)
+            vp = _json.loads(store['data/push_vapid.json']['raw']) if 'data/push_vapid.json' in store else {}
+            privt = pg.evaluate("(document.querySelector('#acctPop textarea')||{}).value || ''")
+            ok('推送：生成密钥 → 公钥存进 data/push_vapid.json（65字节）、页面显示私钥（32字节）', len(vp.get('publicKey', '')) == 87 and len(privt) == 43, (vp, privt))
+            try:
+                sys.path.insert(0, ROOT); import webpush_send as _wp
+                ok('推送：页面生成的私钥/公钥配对（服务端用私钥能推出同一个公钥）', _wp.vapid_public_b64(privt) == vp.get('publicKey'))
+            except Exception as _e: ok('推送：页面生成的私钥/公钥配对', False, _e)
+        else: ok('推送：未登记公钥时出现「生成推送密钥」按钮', False, ptxt[-200:])
+    else: print('⚠️ 跳过：这个浏览器环境没有 PushManager')
+    pg.evaluate("document.getElementById('acctPop').querySelector('[data-pop=x]').click()")
+    pg.evaluate("document.body.classList.contains('plan-off') && document.getElementById('planBtn').click()"); pg.wait_for_timeout(150)
+    ok('多品种回测：计划页有折叠块，写明豆粕之外没有优势', pg.evaluate("(() => { const d = document.getElementById('pf-mv'); return !!d && !d.open && d.textContent.includes('豆油') && d.textContent.includes('不能直接套'); })()"))
     pg.fill('#pf-cd', '2026-10-12'); pg.fill('#pf-cp', '3450'); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()"); pg.wait_for_timeout(2600)
     pos = _json.loads(store['data/position.json']['raw'])
     ok('云端：记平仓 → position.json 变成空仓', pos.get('flat') is True, pos)
@@ -291,6 +322,41 @@ def main():
     n0 = len(calls)
     ok('云端：清除令牌后令牌不在本机', pg.evaluate("localStorage.getItem('cockpit-pat')") is None)
     ok('云端：整个过程没有 JS 错误', not e6, e6); ctx.close()
+    # ---- 5f. 空单持仓：推演里计入外资翻转；交易表格每笔下面有明细行；复盘块 ----
+    ctx, pg, e7 = open_page(b, port); hd = pg.evaluate("(() => { const a = window.__DATA__.adj; return {d: a.d.slice(-30), c: a.c.slice(-30)}; })()")
+    acct = {"init": 500000, "margin": 10, "fee": 23, "mode": "real", "flows": [], "rev": 2, "trades": [
+        {"id": "1", "side": 1, "lots": 5, "entryD": hd['d'][0], "entryPx": hd['c'][0], "exitD": hd['d'][8], "exitPx": hd['c'][8] + 30, "src": "sys", "refPx": hd['c'][0] + 3, "slipO": -0.1, "note": "系统信号", "pred": {"win": 0.54, "ev": 3.7, "rr": 2.1, "stopP": 0.12, "med": 20}, "res": {"reason": "trail", "days": 8, "mfe": 3.2, "mae": -1.1, "slipX": 0.05, "path": []}},
+        {"id": "2", "side": -1, "lots": 10, "entryD": hd['d'][12], "entryPx": hd['c'][12], "src": "sys", "refPx": hd['c'][12], "slipO": 0.0, "pred": {"win": 0.62, "ev": 1.0, "rr": 1.8, "stopP": 0.06, "med": 4, "flipP": 0.7}}]}
+    pg.evaluate("a => localStorage.setItem('cockpit-acct', JSON.stringify(a))", acct); pg.reload(); pg.wait_for_selector('#boot', state='detached', timeout=60000); pg.wait_for_timeout(1500)
+    pg.evaluate("document.querySelector('[data-mode=trade]').click()"); pg.wait_for_timeout(600)
+    body = pg.evaluate("document.getElementById('planBody').textContent")
+    ok('空单持仓：预期里写「外资翻转离场 x%」，说明里写外资翻转的历史概率（页面没报错）', '外资翻转离场' in body and '外资三家合计翻回' in body and not e7, (e7, body[-400:]))
+    ok('空单持仓：每笔交易下面有明细行（来源/最大浮盈浮亏/滑点/开仓时预计）和「实盘复盘」', all(k in body for k in ('最大浮盈', '滑点', '开仓时预计', '实盘复盘', '系统信号')), body[:600])
+    ctx.close()
+    # ---- 5g. v101.51：K线图层开关（默认只留彩带/本月高低/持仓量）+ 月振幅视图 ----
+    ctx, pg, e8 = open_page(b, port); pg.wait_for_timeout(300)
+    kt = pg.evaluate("document.getElementById('kl').innerText + document.querySelector('#kl svg').innerHTML.length")
+    kl = pg.evaluate("document.getElementById('kl').textContent")
+    ok('K线默认：不画铁顶/铁底/10年铁顶/近20日高低/平衡价，只有本月高低和持仓量', all(k not in kl for k in ('铁顶', '铁底', '20日高', '20日低', '平衡')) and '本月高' in kl and '万' in kl, kl)
+    pg.evaluate("document.querySelector('.lybtn').click()")
+    ok('点「图层」展开菜单，6个开关，默认3开3关', pg.evaluate("(() => { const m = document.querySelector('.lym'); return !m.hidden && m.querySelectorAll('input').length === 6 && m.querySelectorAll('input:checked').length === 3; })()"))
+    pg.evaluate("document.querySelector('[data-ly=iron]').click(); document.querySelector('[data-ly=oi]').click()")
+    kl2 = pg.evaluate("document.getElementById('kl').textContent")
+    ok('打开「铁顶/底」、关掉「持仓量」后K线立即变化，设置存进本机', '260天铁' in kl2 and '万' not in kl2 and pg.evaluate("JSON.parse(localStorage.getItem('cockpit-ly')).iron === true && JSON.parse(localStorage.getItem('cockpit-ly')).oi === false"), kl2)
+    pg.evaluate("document.querySelectorAll('[data-ly]').forEach(c => { if (!c.checked) c.click(); })")
+    ys = pg.evaluate("[...document.querySelectorAll('#kl text.lv')].map(t => +t.getAttribute('y')).sort((a, b) => a - b)")
+    ok('全部图层打开：右侧标签互相不重叠（间距≥11px）', len(ys) >= 6 and all(ys[i + 1] - ys[i] >= 11 for i in range(len(ys) - 1)), ys)
+    pg.evaluate("document.body.click()")
+    ok('点图层菜单外面，菜单收起', pg.evaluate("document.querySelector('.lym').hidden"))
+    pg.reload(); pg.wait_for_selector('#boot', state='detached', timeout=60000); pg.wait_for_timeout(500)
+    ok('刷新后图层选择还在', '铁' in pg.evaluate("document.getElementById('kl').textContent"))
+    pg.evaluate("document.querySelector('[data-view=amp]').click()"); pg.wait_for_timeout(200)
+    at = pg.evaluate("document.getElementById('chart').innerText")
+    ok('月振幅视图：有本月至今/同月历史/分位卡片、两张图（逐月柱状、日历月区间）', all(k in at for k in ('本月至今', '历史同月前', '近 3 年逐月振幅', '10 年振幅')) and pg.evaluate("document.querySelectorAll('#chart svg.amsv').length") == 2, at[:300])
+    ok('月振幅视图：柱子 37 根、12 个日历月都有方框', pg.evaluate("document.querySelectorAll('#chart svg.amsv')[0].querySelectorAll('rect[class^=am]').length") == 37 and pg.evaluate("document.querySelectorAll('#chart svg.amsv')[1].querySelectorAll('rect.amx').length") == 12)
+    pg.evaluate("document.querySelector('#chart [data-about=amp]').click()"); pg.wait_for_timeout(150)
+    ok('月振幅「?」说明能打开', '月振幅怎么看' in pg.evaluate("document.getElementById('shT').textContent")); pg.evaluate("window.__cockpit.closeSheet()")
+    ok('月振幅：没有 JS 错误', not e8, e8); ctx.close()
     # ---- 6. 手机宽度 ----
     for w in (390, 360):
         ctx, pg, e2 = open_page(b, port, w, 800)
@@ -319,7 +385,7 @@ def main():
     d6 = make_site(lambda x: os.remove(os.path.join(x, 'data', 'main_adj.json'))); s6, p6 = serve(d6)
     ctx, pg, e6 = open_page(b, p6)
     ok('缺 main_adj.json：照常启动，不弹缺文件提示（可选文件）', pg.evaluate("!document.getElementById('boot') && !document.querySelector('.bootwarn')"), e6)
-    ok('缺 main_adj.json：信号格明确写「缺换月调整价」并作废信号', pg.evaluate("(()=>{const e=document.getElementById('dataLine'), g=document.querySelector('#sigbar .sg');return !!e&&e.classList.contains('bad')&&e.innerText.includes('换月调整价')&&g.innerText.includes('数据不足')})()"))
+    ok('缺 main_adj.json：信号格明确写「缺换月调整价」并作废信号', pg.evaluate("(()=>{const b=document.querySelector('#dataLine [data-dsl]'); if(b&&b.getAttribute('aria-expanded')!=='true') b.click(); const e=document.getElementById('dataLine'), g=document.querySelector('#sigbar .sg');return !!e&&e.classList.contains('bad')&&e.innerText.includes('换月调整价')&&g.innerText.includes('数据不足')})()"))
     ctx.close(); s6.shutdown(); shutil.rmtree(d6, ignore_errors=True)
     # ---- 7b. 席位覆盖表 ----
     ctx, pg, _e = open_page(b, port)
@@ -337,6 +403,21 @@ def main():
     ok('有覆盖报告时不弹缺文件提示（可选文件）', pg.evaluate("!document.querySelector('.bootwarn')"))
     ok('覆盖表：手机宽度不横向溢出', (lambda: (pg.set_viewport_size({'width': 390, 'height': 800}), pg.wait_for_timeout(300), pg.evaluate("(()=>{const b=document.getElementById('shB');return b.scrollWidth-b.clientWidth})()"))[2] <= 0)())
     ok('覆盖表全程无 JS 错误', not e7, e7); ctx.close(); s5.shutdown(); shutil.rmtree(d5, ignore_errors=True)
+    # ---- 7b. v101.49：空仓默认研究页；研究页不显示持仓栏；数据灯逐项写明；手机月份表 ----
+    ctx, pg, e9 = open_page(b, port, 1440, 900, mode=None); pg.wait_for_timeout(300)
+    ok('空仓默认先进研究页', pg.evaluate("document.body.classList.contains('mode-research')"))
+    ok('市场状态下有「近20日波动 窄幅/正常/宽幅 · 振幅（豆粕近10年分位）」', pg.evaluate("(() => { const t = document.querySelector('#band .regime').innerText; return t.includes('近20日波动') && t.includes('分位'); })()"))
+    ok('研究页（空仓）：只有入场信号格，没有「持仓」格', pg.evaluate("(() => { const k = document.querySelectorAll('#sigbar > *'); return k.length >= 2 && getComputedStyle(k[0]).display !== 'none' && getComputedStyle(k[1]).display === 'none'; })()"))
+    ok('数据灯：写明不可用/降权/手动是哪几项（逐条列名）', pg.evaluate("(() => { const b = document.querySelector('#checks [data-lamp=\"hlth\"]'); if (!b) return false; b.click(); const t = document.getElementById('shB').innerText; return t.includes('不可用') || t.includes('降权') || t.includes('全部指标正常') || t.includes('缺席投票'); })()"))
+    pg.evaluate("window.__cockpit.closeSheet()")
+    pg.evaluate("document.querySelector('[data-mode=trade]').click()"); pg.wait_for_timeout(200); pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
+    pg.fill('#pf-od', '2026-10-08'); pg.select_option('#pf-os', '1'); pg.fill('#pf-ol', '2'); pg.fill('#pf-op', '3400'); pg.evaluate("document.querySelector('[data-act=\"open\"]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.querySelector('[data-mode=research]').click()"); pg.wait_for_timeout(300)
+    ok('研究页（有持仓）：不显示持仓状态栏', pg.evaluate("getComputedStyle(document.getElementById('sigbar')).display === 'none'"))
+    ctx.close()
+    ctx, pg, e10 = open_page(b, port, 390, 800); pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200); pg.evaluate("(() => { const d = document.getElementById('pf-mo'); if (d) d.open = true; })()"); pg.wait_for_timeout(200)
+    ok('手机390：历史开仓月份表不横向溢出', pg.evaluate("(() => { const t = document.querySelector('#pf-mo .tbmo'); return !!t && t.getBoundingClientRect().right <= window.innerWidth + 1 && document.documentElement.scrollWidth <= window.innerWidth + 1; })()"), pg.evaluate("document.documentElement.scrollWidth"))
+    ctx.close()
     # ---- 8. file:// ----
     ctx = b.new_context(); pg = ctx.new_page(); pg.goto('file://' + os.path.join(d, 'index.html'))
     ok('file:// 打开：提示要用网址打开，不空白', '网址' in pg.evaluate("document.getElementById('boot').innerText"))
