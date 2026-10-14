@@ -5,7 +5,7 @@ self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: '豆粕提醒', body: e.data ? e.data.text() : '' }; }
   const title = d.title || '豆粕提醒';
-  e.waitUntil(self.registration.showNotification(title, { body: d.body || '', tag: d.tag || title, renotify: true, icon: 'icon.svg', badge: 'icon.svg', data: { url: d.url || './' } }));
+  e.waitUntil(self.registration.showNotification(title, { body: d.body || '', tag: d.tag || title, renotify: true, icon: 'icon-192.png', data: { url: d.url || './' } }));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();

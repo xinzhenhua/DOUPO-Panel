@@ -108,6 +108,8 @@ function trendBlock() {
     <tr><td>基差(现货−期货)</td><td class="n">${b.last == null ? '—' : (b.last > 0 ? '+' : '') + Math.round(b.last)}</td>${yc(b.w1)}${yc(b.m1)}${yc(b.q1)}</tr></tbody></table>
     <div class="mleg"><span>基差处在近一年 ${b.pct == null ? '—' : b.pct + '%'} 分位（越高=现货越强于期货）；基差栏是元/吨的变化</span><span>数据到 ${last || '—'}${am && am.autoRows ? '，含自动累积' : '，自动累积尚未开始'}</span></div>`;
 }
+const vmoreOpen = k => { const v = (S.vm || {})[k]; return v != null ? v : (innerWidth < 900); };   // 电脑端默认收起「更多明细」，保证一屏放下；手机上本来就能滚动，默认展开
+const vmoreHtml = (k, inner) => inner && inner.trim() ? `<details class="vmore" data-vm="${k}"${vmoreOpen(k) ? ' open' : ''}><summary>更多明细</summary>${inner}</details>` : '';
 function viewSea() {
   const sea = D.sea, m = BJ(D.snapshotMs).getUTCMonth() + 1, kind = S.seaKind || 'spot', K = kind === 'spot' ? 'spot' : 'futures', G = kind === 'spot' ? 'gradeSpot' : 'gradeFutures';
   const tog = `<div class="ch-r" style="justify-content:flex-start"><div class="seg" role="group" aria-label="现货或期货">${[['spot', '现货价格'], ['fut', '期货价格']].map(([k, n]) => `<button data-sea="${k}" aria-pressed="${kind === k}">${n}</button>`).join('')}</div></div>`;
@@ -119,11 +121,10 @@ function viewSea() {
   const cols = sea.months.map(z => { const zz = z[K], u = zz.upPct, now = z.month === m, col = u > 50 ? 'var(--bull)' : u < 50 ? 'var(--bear)' : 'var(--ink3)';
     return `<div class="mc${now ? ' now' : ''}"><span class="mv">${Math.round(u)}</span><div class="mb"><i style="height:${u}%;background:${col};opacity:${op(z[G].label)}"></i></div><span class="mm">${z.month}月</span><span class="mr" style="color:${zz.mean >= 0 ? 'var(--bull)' : 'var(--bear)'}">${zz.mean > 0.049 ? "+" : ""}${(Math.abs(zz.mean) < .05 ? 0 : zz.mean).toFixed(1)}</span></div>`; }).join('');
   const stable = sea.months.filter(z => z[G].label === '较稳').map(z => `${z.month}月${z[K].mean >= 0 ? '涨' : '跌'}`);
-  return viewHdr('同期规律 · 各月上涨概率', 'sea') + tog + `<div class="hl"><b>${m}月</b>${kind === 'spot' ? '现货' : '期货'}：近 ${f.n} 年 <b>${upN} 年上涨（${Math.round(f.upPct)}%）</b>，平均 ${sgn(f.mean)}，中位 ${sgn(f.median)}<br><span style="color:${g.label === '不稳' ? 'var(--ink3)' : 'var(--amber)'}">稳定性：${esc(g.label)} → ${verdict}</span>${stable.length ? `<br><span style="color:var(--ink2);font-size:13px">较稳的月份：${stable.join('、')}</span>` : ''}</div>
+  return viewHdr('同期规律 · 各月上涨概率', 'sea') + tog + `<div class="hl"><b>${m}月</b>${kind === 'spot' ? '现货' : '期货'}：近 ${f.n} 年 <b>${upN} 年上涨（${Math.round(f.upPct)}%）</b>，平均 ${sgn(f.mean)}，中位 ${sgn(f.median)}<br><span style="color:${g.label === '不稳' ? 'var(--ink3)' : 'var(--amber)'}">稳定性：${esc(g.label)} → ${verdict}</span>${stable.length ? `<br><span class="stm" style="color:var(--ink2);font-size:13px">较稳的月份：${stable.join('、')}</span>` : ''}</div>
     <div class="mbars">${cols}<div class="m50"></div></div>
     <div class="mleg"><span>柱子=该月上涨年份占比(%)，虚线=50%</span><span>下方数字=平均涨跌(%)；越淡=越不稳</span></div>
-    ${trendBlock()}
-    ${ex ? `<div class="rng"><div class="l1"><span>${m}月内最大波动（平均）</span><span><b class="bull">冲高 +${ex.upMean.toFixed(1)}%</b>　<b class="bear">回撤 ${ex.dnMean.toFixed(1)}%</b></span></div></div>` : ''}`;
+    ${vmoreHtml('sea', trendBlock() + (ex ? `<div class="rng"><div class="l1"><span>${m}月内最大波动（平均）</span><span><b class="bull">冲高 +${ex.upMean.toFixed(1)}%</b>　<b class="bear">回撤 ${ex.dnMean.toFixed(1)}%</b></span></div></div>` : ''))}`;
 }
 
 /* ---- 成本锚：结论 + 一把标尺 ---- */
@@ -140,7 +141,7 @@ function viewCost() {
   const tbl = ['sep', 'may', 'jan'].map(k => { const c = D.crush && D.crush[k]; if (!c || !c.available) return ''; const b = beOf(k), g = c.mealPrice - b; return `<tr${k === key ? ' style="font-weight:600"' : ''}><td>${CM[k].name}</td><td class="n">${fmtD(c.mealPrice)}</td><td class="n">${fmtD(b)}</td><td class="n" style="color:${g > 0 ? 'var(--bull)' : 'var(--bear)'}">${g > 0 ? '+' : '−'}${fmtD(Math.abs(g))}</td></tr>`; }).join('');
   return viewHdr(`${esc(CM[key].name)} · 豆粕成本锚（元/吨）`, 'cost') + `<div class="hl">盘面 <b>${fmtD(meal)}</b>，盈亏平衡价 <b>${fmtD(be)}</b>：${gap >= 0 ? '高' : '低'} ${fmtD(Math.abs(gap))}（${gp > 0 ? '+' : ''}${gp.toFixed(1)}%）<br><span style="color:var(--ink2)">${verdict}</span></div>
     <div class="ruler"><i class="vline" style="left:${p(meal)}%"></i>${rowsH}</div>
-    <table class="tb3x" style="margin-top:10px"><thead><tr><th>合约</th><th>盘面</th><th>平衡价</th><th>差</th></tr></thead><tbody>${tbl}</tbody></table>`;
+    ${vmoreHtml('cost', `<table class="tb3x" style="margin-top:6px"><thead><tr><th>合约</th><th>盘面</th><th>平衡价</th><th>差</th></tr></thead><tbody>${tbl}</tbody></table>`)}`;
 }
 
 /* ---- 交易计划：规则 + 信号 + 仓位计算器 + 回测摘要（v101.25） ---- */
@@ -427,6 +428,14 @@ function applyPlanVis() {
   if (off !== had || MULTI !== multiOn()) renderChart();
 }
 function lastDayD() { try { const k = (C().kline || []).slice(-1)[0], a = D.adj && D.adj.d && D.adj.d.length ? D.adj.d[D.adj.d.length - 1] : '', kd = k ? k.d : ''; return a > kd ? a : kd; } catch (_) { return ''; } }   // 收盘价最新一天：日线 或 刚收盘接上的临时收盘价
+function klineNow() {   // 日K线（latest.json 晚上才更新一次）+ 刚收盘当天的「临时日线」：用当天日盘 15 分钟线拼出开高低收，日线出来后自动以日线为准
+  const k = C().kline || [];
+  try {
+    const kd = k.length ? k[k.length - 1].d : '', day = lastDayD(), m = D.m15 && D.m15[S.key]; if (!kd || !day || day <= kd || !m || !m.length) return k;
+    const md = day.slice(5), bs = m.filter(x => x.d.slice(0, 5) === md && x.d.slice(6) >= '09:00' && x.d.slice(6) <= '15:00'); if (!bs.length || bs[bs.length - 1].d.slice(6) !== '15:00') return k;
+    return k.concat([{ d: day, o: bs[0].o, h: Math.max(...bs.map(x => x.h)), l: Math.min(...bs.map(x => x.l)), c: bs[bs.length - 1].c, v: bs.reduce((a, x) => a + (x.v || 0), 0), oi: bs[bs.length - 1].oi, prov: true }]);
+  } catch (_) { return k; }
+}
 function lastBarD() { const d = lastDayD(); return d ? '（' + d.slice(5) + '）' : ''; }
 function livePnl(t, ho) {   // 盘中参考浮盈（按最新15分钟/小时价），结论仍按收盘
   try { const lv = D.live && D.live[S.key], kd = lastDayD(); if (!lv || !kd || lv.dt.slice(0, 10) <= kd) return null; const px = lv.c * (ho.k || 1); return { px, fl: planPnl(t, px), r: (t.side >= 0 ? 1 : -1) * (px / t.entryPx - 1) * 100, dt: lv.dt.slice(5), src: lv.src }; } catch (_) { return null; }
@@ -436,14 +445,17 @@ function liveTxt() {   // 盘中价（小时线），只在比日线新时显示
 }
 const limPx = s => Math.round(s.px * (1 - s.side * TBT.LIM.pct / 100));
 const LIMNOTE = () => `挂回调${TBT.LIM.pct}%：成交率约 ${TBT.LIM.fill}%（没成交就作废、不追），但回测收益更高——5年终值中位 ${TBT.LIM.med.toLocaleString('en-US')}万，高于挂收盘价 ${TBT.LIM.close}万、次日开盘市价 ${TBT.LIM.open}万。`;
+const MISSW = [[/豆菜粕/, () => { const i = (D.indicators || []).find(z => z.key === 'rmspread'); return `${i && i.input ? '其实有数据，现在读数 ' + i.input + ' ' + (i.unit || '') + '，' : ''}但 2026-06 起口径换成三城市单值平均（约 800~900），旧阈值 400/700 不适用，会天天误判偏空，所以这一票暂不计分。不是没数据。`; }],
+  [/巴西.*播种/, () => '播种进度只在巴西播种季（约 10~12 月）才有 CONAB 数据，每周发布一次；现在如果还是空，多半是这一期还没发布或抓取失败，可在 Actions「更新数据」日志里看。']];
+const missWhy = x => { const n = String(x); for (const [r, f] of MISSW) if (r.test(n)) return f(); return '这一票现在没有可用数据。'; };
 function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动是哪几项、为什么，逐条写出来
   const rows = (h.rows || []).filter(r => r.votes), li = r => `<li>${esc(r.icon || '')} <b>${esc(r.name)}</b>：${esc(r.label || '')}${r.detail ? '——' + esc(r.detail) : ''}</li>`;
   const bad = rows.filter(r => r.state === 'stale' || r.state === 'nodata'), soft = rows.filter(r => r.state === 'degraded' || r.state === 'suppressed'), man = rows.filter(r => r.state === 'manual');
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
-  const pLine = ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
+  const pLine = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +
-    (h.missing.length ? `<p><b>缺席投票（${h.missing.length}）</b><span style="color:var(--ink3)"> 完全没有数据，没参与评分</span></p><ul>${h.missing.map(x => `<li>${esc(String(x).split('(')[0])}</li>`).join('')}</ul>` : '') +
+    (h.missing.length ? `<p><b>没参与评分的投票（${h.missing.length}）</b><span style="color:var(--ink3)"> 原因逐条写在后面：有的是没数据，有的是有数据但暂不计分</span></p><ul>${h.missing.map(x => `<li><b>${esc(String(x).split('(')[0])}</b>：${esc(missWhy(x))}</li>`).join('')}</ul>` : '') +
     (!bad.length && !soft.length && !man.length && !h.missing.length ? '<p>全部指标正常。</p>' : '');
 }
 function renderSig() {
@@ -791,14 +803,14 @@ function monthAmpNow() {
   MAMP.k = k; MAMP.v = monthAmpCalc(h.d, h.c, todayBJ().slice(0, 7)); if (MAMP.v) MAMP.v.raw = h !== D.adj; return MAMP.v;
 }
 const MAMP = {};
-function ampChartHtml(M) {
-  const R = M.rows.slice(-37), W = 640, Hh = 112, L = 30, Rr = 8, T = 10, B = 24, n = R.length, mx = Math.max(...R.map(r => r.amp), M.q75 * 1.3), bw = (W - L - Rr) / n, Y = v => T + (Hh - T - B) * (1 - v / mx), f1 = v => Math.round(v * 10) / 10;
+function ampChartHtml(M, nb) {
+  const R = M.rows.slice(-(nb || 37)), W = 640, Hh = 112, L = 30, Rr = 8, T = 10, B = 24, n = R.length, mx = Math.max(...R.map(r => r.amp), M.q75 * 1.3), bw = (W - L - Rr) / n, Y = v => T + (Hh - T - B) * (1 - v / mx), f1 = v => Math.round(v * 10) / 10;
   let g = ''; [0, 5, 10, 15, 20].filter(v => v < mx).forEach(v => { g += `<line x1="${L}" x2="${W - Rr}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" class="amg"/><text x="${L - 4}" y="${f1(Y(v)) + 3.5}" class="amt" text-anchor="end">${v}%</text>`; });
   g += `<line x1="${L}" x2="${W - Rr}" y1="${f1(Y(M.med))}" y2="${f1(Y(M.med))}" class="amm"/>`;
   R.forEach((r, i) => { const x0 = L + i * bw + bw * .18, w = bw * .64, y0 = Y(r.amp), cls = r.part ? 'amcur' : r.amp >= M.q75 ? 'amhi' : r.amp <= M.q25 ? 'amlo' : 'amb';
     g += `<rect x="${f1(x0)}" y="${f1(y0)}" width="${f1(w)}" height="${f1(Hh - B - y0)}" class="${cls}"><title>${r.m}  振幅 ${r.amp.toFixed(1)}%${r.part ? '（本月还没走完，已 ' + r.n + ' 个交易日）' : ''}</title></rect>`;
     if (r.mo === 1) g += `<text x="${f1(L + i * bw + bw / 2)}" y="${Hh - 8}" class="amt" text-anchor="middle" style="font-weight:700;fill:var(--ink2)">${r.m.slice(2, 4)}年</text>`; else if (r.mo % 3 === 1 || i === n - 1) g += `<text x="${f1(L + i * bw + bw / 2)}" y="${Hh - 8}" class="amt" text-anchor="middle">${r.mo}月</text>`; });
-  return `<div class="amw2"><svg class="amsv" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="近3年逐月振幅柱状图">${g}</svg></div>`;
+  return `<div class="amw2"><svg class="amsv" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="逐月振幅柱状图">${g}</svg></div>`;
 }
 function ampSeasonHtml(M) {
   const W = 640, Hh = 128, L = 30, Rr = 8, T = 8, B = 20, mx = Math.max(...M.byMonth.filter(Boolean).map(b => b.max)) * 1.05, cw = (W - L - Rr) / 12, Y = v => T + (Hh - T - B) * (1 - v / mx), f1 = v => Math.round(v * 10) / 10, yr = +todayBJ().slice(0, 4), cm = M.cur ? M.cur.mo : -1;
@@ -814,12 +826,14 @@ function ampSeasonHtml(M) {
 function viewAmp() {
   const hd = `<div class="ch-h"><span class="t">月振幅</span><button class="q" data-about="amp" aria-label="这页怎么看">?</button></div>${viewTabs()}`, M = monthAmpNow();
   if (!M) return hd + '<div class="dim2" style="padding:20px 0">历史价格不足 2 年，算不出月振幅。</div>';
-  const c = M.cur, pc = v => v == null ? '—' : Math.round(v) + '%', tag = v => v == null ? '' : v >= 75 ? '偏宽' : v <= 25 ? '偏窄' : '正常';
-  const head = c ? `<div class="amh"><div><i>本月至今</i><b>${c.amp.toFixed(1)}%</b><em>已 ${c.n} 个交易日</em></div><div><i>历史同月前 ${c.n} 天</i><b>${c.sameMed == null ? '—' : c.sameMed.toFixed(1) + '%'}</b><em>中位 · ${c.sameN} 年</em></div><div><i>本月 vs 同月历史</i><b>${pc(c.pctSameN)}</b><em>${tag(c.pctSameN)}（分位）</em></div><div><i>本月 vs 全部 ${M.nDone} 个月</i><b>${pc(c.pctAll)}</b><em>${tag(c.pctAll)}（分位）</em></div></div>` : '';
-  return hd + head + `<div class="plt" style="margin-top:8px">近 3 年逐月振幅（金=本月没走完；红=最宽25%，绿=最窄25%；虚线=10年所有月份中位 ${M.med.toFixed(1)}%）</div>${ampChartHtml(M)}
-   <div class="plt">每个日历月的 10 年振幅（方框=中间50% · 细线=最小~最大 · 横杠=中位 · 点=去年同月）</div>${ampSeasonHtml(M)}
-   <div class="plh">振幅 = 月内最高收盘 − 最低收盘，除以月末收盘（${M.raw ? '用的是未换月调整的主连价，换月月份会偏大' : '用换月调整价，不含换月跳空'}）。${M.nDone} 个完整月：中位 ${M.med.toFixed(1)}%，中间一半在 ${M.q25.toFixed(1)}%~${M.q75.toFixed(1)}%，最大 ${M.max.toFixed(1)}%。${c ? '本月还没走完，所以拿「同月历史上同样走了 ' + c.n + ' 个交易日」的振幅来比，不拿整月比。' : ''}</div>
-   <div class="plh">⚠️ 这张图描述“已经发生的波动”，回测显示近20日振幅对未来20日<b>振幅</b>有预测力（相关 +0.25），但对<b>方向</b>没有；各月份的振幅差别样本只有 ${Math.round(M.nDone / 12)} 年左右，只当背景参考。</div>`;
+  const c = M.cur, lv = v => v == null ? null : v >= 75 ? 'wide' : v <= 25 ? 'narrow' : 'mid';
+  const L = { wide: ['偏宽', 'var(--bull)', '波动比往年同期大，4% 止损更容易被正常波动碰到（回测里入场时振幅最宽的那三分之一，止损占比偏高，但只有 6 笔，别当规律）。仓位别拉满，仅供参考。'], mid: ['正常', 'var(--ink2)', '波动和往年同期差不多，按计划的仓位和止损做就行。'], narrow: ['偏窄', 'var(--bear)', '波动比往年同期小。止损被误碰的可能小，但行情也可能走不远，别指望大波段。'] };
+  const lvl = c ? lv(c.pctSameN) : null, I = lvl ? L[lvl] : null;
+  const head = c && I ? `<div class="hl"><b>本月振幅 ${c.amp.toFixed(1)}%</b>（已 ${c.n} 个交易日），和往年同月同样走了 ${c.n} 天相比：<b style="color:${I[1]}">${I[0]}</b>${c.pctSameN == null ? '' : '（比 ' + Math.round(c.pctSameN) + '% 的年份大）'}<br><span style="color:var(--ink2)">${I[2]}</span></div>` : '';
+  const more = `<div class="plt">每个日历月历史上的振幅范围（方框=中间一半的年份 · 细线=最小~最大 · 横杠=中位 · 点=去年同月）</div>${ampSeasonHtml(M)}
+   <div class="plh">${M.nDone} 个完整月：中位 ${M.med.toFixed(1)}%，中间一半在 ${M.q25.toFixed(1)}%~${M.q75.toFixed(1)}%，最大 ${M.max.toFixed(1)}%。振幅 = 月内最高收盘 − 最低收盘，再除以月末收盘（${M.raw ? '用的是未换月调整的主连价，换月月份会偏大' : '换月调整价，不含换月跳空'}）。</div>`;
+  return hd + head + `<div class="plt" style="margin-top:4px">近 2 年逐月振幅（金=本月 · 红=最宽25% · 绿=最窄25% · 虚线=中位 ${M.med.toFixed(1)}%）</div>${ampChartHtml(M, 25)}
+   <div class="plh">⚠️ 只说波动大小，<b>不说多空</b>，不是开仓条件：回测里它能预测未来的振幅（相关 +0.25），但对方向和开仓胜率没有可用规律（40 笔按入场振幅分三档，看不出差别）。</div>${vmoreHtml('amp', more)}`;
 }
 function monthLines(bars) {   // K线上的「本月高低」：本月至今的最高收盘/最低收盘（和月振幅页同一口径）
   if (!bars || !bars.length) return null; const last = bars[bars.length - 1], k = String(last.d || '').slice(0, 7); if (!k) return null;
@@ -855,7 +869,7 @@ const vpClass = r => !r || r.gate ? 'na' : r.quad === '增仓上涨' ? 'sb' : r.
 
 /* ---------- 价格统计 ---------- */
 function priceStats() {
-  const b = C().kline || []; if (b.length < 2) return null;
+  const b = klineNow(); if (b.length < 2) return null;
   const last = b[b.length - 1], prev = b[b.length - 2], s = { last, prev, chg: last.c / prev.c - 1, n: b.length };
   if (b.length >= 20) { const w = b.slice(-20); s.hi = Math.max(...w.map(x => x.h)); s.lo = Math.min(...w.map(x => x.l)); s.pos = (last.c - s.lo) / ((s.hi - s.lo) || 1); s.ma20 = w.reduce((a, x) => a + x.c, 0) / 20; }
   return s;
@@ -941,6 +955,12 @@ function tileHtml(t, i, anim) {
 }
 
 /* ---------- 渲染：状态带 ---------- */
+function renderSess() {
+  const trd = !closed() && !!(window.CockpitData && window.CockpitData.tradingNow && window.CockpitData.tradingNow(Date.now()));
+  $('#sess').className = 'sess' + (trd ? ' open' : '');
+  $('#sess').innerHTML = closed() ? `<i></i>休市中<span>${mmdd(D.closure.reopenMs)} ${hhmm(D.closure.reopenMs)} 恢复</span>` : trd ? `<i></i>交易时段` : `<i></i>已收盘`;
+}
+setInterval(() => { try { if (D) renderSess(); } catch (_) {} }, 60000);
 function renderBand() {
   const rg = regimeNow(), f = fundamentals(), cap = capital(), ps = priceStats(), vp = vpInfo(), c = C();
   const cls = { trend_up: 'trend_up', trend_down: 'trend_down', capital: 'capital', range: 'range', unclear: 'unclear', na: 'na' }[rg.code];
@@ -960,15 +980,14 @@ function renderBand() {
     <div class="cell regime ${cls}"><div class="cl">市场状态<button class="q" data-about="regime" aria-label="这一块怎么判断">?</button></div>
       <div class="big">${esc(rg.label)}</div><div class="sub">${esc(rg.reason)}</div>${(() => { const v = volState(); return v ? `<div class="sub" style="margin-top:2px">近20日波动 <b>${v.tag}</b> · 振幅 ${v.cur.toFixed(1)}%（豆粕近10年 ${Math.round(v.pct)}% 分位）</div>` : ''; })()}</div>
     <div class="cell pv"><div class="cl">${esc(c.symbol)} 价格与量价<button class="q" data-about="vp" aria-label="量价怎么看">?</button></div>
-      <div class="px"><span class="p">${ps ? ab(ps.last.c) : '—'}</span><span class="c ${ps && ps.chg > 0 ? 'bull' : ps && ps.chg < 0 ? 'bear' : ''}">${ps ? pc(ps.chg, 2) : ''}</span></div>${seqHtml}</div>
+      <div class="px"><span class="p">${ps ? ab(ps.last.c) : '—'}</span><span class="c ${ps && ps.chg > 0 ? 'bull' : ps && ps.chg < 0 ? 'bear' : ''}">${ps ? pc(ps.chg, 2) : ''}</span>${ps && ps.last.prov ? `<span class="dim" style="font-size:11.5px;margin-left:6px" title="日K线晚上才更新，这是用今天日盘15分钟线拼出来的临时收盘价">${esc(ps.last.d.slice(5))} 收盘（临时）</span>` : (ps ? `<span class="dim" style="font-size:11.5px;margin-left:6px">${esc(ps.last.d.slice(5))} 收盘</span>` : '')}</div>${seqHtml}</div>
     <div class="cell half"><div class="cl">基本面<button class="q" data-about="fund" aria-label="基本面怎么算">?</button></div>
       <div class="fund"><div><div class="big" style="color:${f.dir === '偏空' ? 'var(--bear)' : f.dir === '偏多' ? 'var(--bull)' : 'var(--ink)'}">${fdir}<small class="num">${f.ratio == null ? '' : pc(f.ratio, 0)}</small></div></div>${fspark}</div>
       <div class="sub">${esc(frTrend)}</div></div>
     <div class="cell half"><div class="cl">资金面<button class="q" data-about="capital" aria-label="资金面怎么看">?</button></div>
       <div class="big cap-top" style="font-size:clamp(20px,3.1vh,28px)">${esc(capTop)}</div>
       <div class="sub">${cap.verdict && cap.verdict.label ? esc(cap.verdict.label) + '。' : (cap.gsNet == null ? '高盛未进榜' : '高盛' + (cap.gsNet > 0 ? '净多' : '净空') + ab(cap.gsNet) + '手') + '，'}CFTC ${cap.cf ? '近' + cap.cf.weeks + '周' + Math.round(cap.cf.percentile) + '%分位，连续' + cap.cf.streak + '周' + (cap.cf.dir === 'up' ? '增加' : '减少') : '暂无'}</div></div>`;
-  $('#sess').className = 'sess' + (closed() ? '' : ' open');
-  $('#sess').innerHTML = closed() ? `<i></i>休市中<span>${mmdd(D.closure.reopenMs)} ${hhmm(D.closure.reopenMs)} 恢复</span>` : `<i></i>交易时段`;
+  renderSess();
 }
 
 /* ---------- 渲染：检查条 ---------- */
@@ -1034,7 +1053,7 @@ function planChartLines() {   // 持仓时在K线上画开仓价、止损价、�
 }
 function drawChart(box0) {
   const box = box0 || $('#kl'); if (!box) return;
-  const intra = !!(S.intra && D.m15 && D.m15[S.key]), bars = intra ? D.m15[S.key] : (C().kline || []), N = Math.min(intra ? 120 : S.range, bars.length), b = bars.slice(-N), off = bars.length - N;
+  const intra = !!(S.intra && D.m15 && D.m15[S.key]), bars = intra ? D.m15[S.key] : klineNow(), N = Math.min(intra ? 120 : S.range, bars.length), b = bars.slice(-N), off = bars.length - N;
   const W = box.clientWidth || 560, H = box.clientHeight || 220, mr = 98, ml = 4, step = (W - mr - ml) / N, cw = Math.max(1.4, step * .62);
   const oiOn = lyOn('oi'), volH = oiOn ? Math.max(30, H * .2) : 0, pH = H - volH - (oiOn ? 6 : 2);
   const ois = b.map(x => x.oi), oHi = Math.max(...ois), oLo = Math.min(...ois);
@@ -1168,7 +1187,7 @@ function tabBody(k) {
     const chk = L.selfCheck({ series: SER, cftcHasHistoryField: !!(D.cftc && 'history' in D.cftc), scoring: D.scoring, basisSame: D.basisSame, now: D.snapshotMs, latestDate: Date.parse(D.generatedAt || '') || null });
     const ST = { ok: ['ok', '通过'], todo: ['warn', '需要你做'], wait: ['note', '累积中'], note: ['note', '留意'], unknown: ['na', '这里查不了'] };
     const selfHtml = `<h3>部署自检（每一项都由数据判定）</h3>` + chk.map(x => `<div class="cd">${lampSvg(ST[x.status][0])}<span><b style="font-weight:500">${esc(x.title)}</b> <span class="dim" style="font-size:12px">${ST[x.status][1]}</span></span><span class="s">${esc(x.detail)}</span>${x.action ? `<span class="s" style="color:var(--ink);font-weight:500">你要做：${esc(x.action)}</span>` : ''}</div>`).join('');
-    return selfHtml + `<h3>同步</h3><p>${esc(h.sync.label)}</p><p>缺席的投票：${esc(h.missing.join('、') || '无')}。</p>
+    return selfHtml + `<h3>同步</h3><p>${esc(h.sync.label)}</p><p>没参与评分的投票：${h.missing.length ? h.missing.map(x => esc(String(x).split('(')[0]) + '（' + esc(missWhy(x)) + '）').join('；') : '无'}。</p>
       <h3>历史累积情况（趋势墙每一格有多少个点）</h3>${Object.entries(SER).filter(([, s]) => !s.ctx || s.ctx === S.key).map(([id, s]) => { const n = s.freq === 'seasonal-daily' ? L.currentRun(s.pts, 10).length : s.pts.length; return `<div class="cd">${lampSvg(n >= 8 ? 'ok' : n >= 2 ? 'note' : 'warn')}<span>${esc(s.name)}<span class="dim">，${s.freq === 'seasonal-daily' ? '当前窗口' : s.freq}</span></span><span class="s">${n} 个点，最新 ${esc(s.pts[s.pts.length - 1].d)}${n < 3 ? '，趋势还画不出来' : ''}</span></div>`; }).join('')}
       <h3>每个指标的新鲜度</h3>${rows.map(r => `<div class="cd">${lampSvg(ico[r.state] || 'na')}<span><b style="font-weight:500">${esc(r.name)}</b>，${esc(r.label)}</span><span class="s">${esc((r.detail || '').slice(0, 110))}</span></div>`).join('')}
       <h3>数据时间与来源</h3><p>趋势墙和基本面净倾向来自 data/history（序列到 ${D.seriesAsOf ? D.seriesAsOf.history.slice(5) : '—'}，每日系统记录到 ${D.seriesAsOf ? D.seriesAsOf.systems.slice(5) : '—'}）；投票明细、徽标、龙虎榜、健康度来自 data/latest.json（${(D.generatedAt || '').slice(5, 16).replace('T', ' ')} UTC），由后台的评分引擎（engine.html，即原来的完整页面）算出，评分逻辑只有这一份；汇率、天气等指标由引擎在打开页面时联网取。页面每 10 分钟自动重取一次，切回标签页时如果数据超过 10 分钟也会重取。每日系统记录里 v100 起的值是“供需均衡”之后的口径，和 v99 及更早的值不是同一把尺子，趋势只看同口径的相邻几天。</p>`;
@@ -1202,7 +1221,7 @@ const ABOUT = {
   vp: ['量价怎么看', `<p>量价关系看最近 5 个交易日的价格变化和持仓量变化，沿用现有页面的同一套算法，不另造。</p><ul><li><b>增仓上涨</b>：新多头进场，上涨有增量资金确认，偏多。</li><li><b>增仓下跌</b>：新空头进场，下跌有增量资金确认，偏空。</li><li><b>减仓上涨</b>：更多是空头回补，上涨缺乏新资金确认，不判方向。</li><li><b>减仓下跌</b>：多头离场为主，下跌缺乏新空头，动能在衰减，不判方向。</li></ul><p>顶部那排小方块是最近 5 天，从左到右从旧到新：深红增仓上涨，深绿增仓下跌，浅红减仓上涨，浅绿减仓下跌，灰色没有明显变化。</p><p>持仓量在合约临近交割时会机械地下降，所以现有算法设了三道门槛（持仓不低于 50 万手、不低于近 120 日峰值的 60%、距合约月至少 45 天），没过就不计分。</p>`],
   fund: ['基本面怎么算', `<p>每个供需指标投一票（红偏多、绿偏空），按权重加权得到“净倾向”。净倾向进入 ±22% 的区间才算有方向，否则是“信号混合”。权重含天气开关和数据质量折扣。</p><p>市场结构（基差、月差、量价）来自价格本身，不计入这个净倾向。</p><p>这里的方向和数字取自每日系统记录的最新一天，和线上页面一致；小曲线是最近每天的记录。</p>`],
   capital: ['资金面怎么看', `<p>龙虎榜是收盘后才发布的前一日数据；固定看主力合约（净空头榜持仓合计最大的合约），不跟你选的合约走，因为非主力合约几乎没人持仓。</p><p>高盛净多 ≥ 12 万手算高位；CFTC 管理基金净多的近 156 周分位 ≥ 90 算拥挤；两者都满足是“外资多头拥挤”。高盛当日净多减少 ≥ 2 万手，优先显示“撤退预警”。数据缺失时写“数据不足”，不写中性。</p><p><b>这些阈值没法回测，并且能检验的部分不支持“撤退=看空、拥挤=风险”：</b>高盛只有 2026-04 起 113 天数据（净多≥12万只出现过 1 段）；CFTC 只有 157 周（≥90 分位只有 2 段独立事件）。能用的替身是摩根大通（2022 起 1025 天）：单日净减仓 ≤ −2万手有 11 次，之后 5/10 日平均 +0.67%/+1.56%（高于基准 +0.28%/+0.58%），没有下跌；净多高位（≥80 分位）9 次，之后 10 日 +2.5%。样本都很小，结论只有一条：<b>历史没有支持把外资撤退当看空信号</b>，所以页面只把它们当“描述外资在做什么”，不进入开平仓规则（规则里用的只有外资 5 日变化 ≤ −2万 这一条，已回测）。</p>`],
-  amp: ['月振幅怎么看', `<p>每个日历月的<b>振幅</b> = 月内最高收盘价 − 最低收盘价，再除以月末收盘价，用换月调整价算，不含换月跳空。</p><ul><li><b>上面的柱状图</b>：最近3年逐月的振幅。金色是本月（还没走完），红色是历史上最宽的 25%，绿色是最窄的 25%，虚线是 10 年所有月份的中位数。</li><li><b>下面的区间图</b>：把 10 年里同一个日历月放在一起（比如所有的 10 月），方框是中间 50%，细线是最小到最大，横杠是中位，圆点是去年同月，本月高亮。</li><li><b>本月没走完</b>：只拿本月至今去比整月会偏窄，所以和「历史上同月同样走了 n 个交易日」的振幅比，给出分位。</li></ul><p>K线上的金色虚线框就是本月至今的最高/最低收盘，标签里写着本月振幅。</p><p>⚠️ 回测里近20日振幅对未来20日<b>振幅</b>有预测力（相关 +0.25，前后半段一致），但对<b>方向</b>没有预测力；各个月份之间振幅的差别只有 10 年左右的样本，12 个月里没有哪个月的“天然趋势/震荡”达到统计显著，只当背景参考。</p>`],
+  amp: ['月振幅怎么看', `<p><b>振幅</b> = 月内最高收盘价 − 最低收盘价，再除以月末收盘价，用换月调整价算（不含换月跳空）。</p><ul><li><b>最上面一行</b>：本月振幅，和「往年同月、同样走了 n 个交易日」比，分成偏宽 / 正常 / 偏窄（本月没走完，所以不能拿整月去比）。</li><li><b>柱状图</b>：最近 2 年逐月振幅。金色是本月，红色是历史最宽的 25%，绿色是最窄的 25%，虚线是中位数。</li><li><b>更多明细</b>（点开）：把历史上同一个日历月放在一起（比如所有的 10 月）看波动范围。</li></ul><p>K线上的金色虚线框就是本月至今的最高/最低收盘。</p><p><b>怎么用</b>：只用来掂量「4% 止损会不会被正常波动碰到」和仓位大小，<b>不决定做多还是做空</b>。回测里近20日振幅能预测未来20日振幅（相关 +0.25，前后半段一致），但对方向、对开仓胜率都没有可用的规律；各月份之间的差别只有 10 年左右的样本，只当背景参考。</p>`],
   price: ['图怎么看', `<p>红涨绿跌的 K 线，细线是 20 日均线，虚线是最近 20 个交易日的最高和最低。图下方金色的线是持仓量。</p><p>“最近 20 个交易日的高低之间”这条带：把近 20 天的最低价当作 0%，最高价当作 100%，今天的收盘价落在中间哪个位置。越靠右越贴近近期高点，越靠左越贴近近期低点。</p>`],
   wall: ['趋势墙怎么看', `<p>每一格是一个指标。<b>曲线</b>是最近一段时间的走势，<b>箭头</b>是数值升还是降，<b>颜色</b>是这个变化对价格意味着什么（库存升是偏空，所以是绿色）。左边的竖条是它现在的信号。</p><p>三个周期（周、月、季）都同向的格子会有“同升/同降”的标记和更深的底色；长期涨、最近一周跌是“回落”，长期跌、最近一周涨是“反弹”。</p><p>周期按日历时间算，缺了几周也不会算错；周度出口销售波动很大，用 4 周均值；压榨毛利和月差只在建议交易窗口内有数据，只看当前这一段。</p><p>右上角“短/中/长”切换曲线显示多久。有的指标历史还在累积，会写“历史累积中”，不会画假线。</p>`]
 };
@@ -1407,20 +1426,25 @@ function pushHtml() {
   else if (perm === 'denied') st = '浏览器已拒绝本站的通知权限：点地址栏左边的图标 → 网站设置 → 通知 → 允许，然后刷新本页。';
   else if (!on) { st = '密钥已配好。第 2 步（每台设备各做一次）：开启本设备推送。'; btn = '<button class="pbtn" data-act="push-on">开启本设备推送</button>'; }
   else { st = '本设备已开启：有入场信号、该平仓、止损线逼近时会弹系统通知。'; btn = '<button class="pbtn" data-act="push-test">发本机测试通知</button> <button class="lnk" data-act="push-off">关闭本设备推送</button>'; }
-  const priv = PUSH.priv ? `<div class="plw">⚠️ 私钥只显示这一次：复制它 → GitHub 仓库 Settings → Secrets and variables → Actions → New repository secret，名字填 <b>VAPID_PRIVATE_KEY</b>。不要发给别人。公钥已自动存进仓库。<textarea readonly rows="2" style="width:100%;margin-top:4px" onclick="this.select()">${esc(PUSH.priv)}</textarea></div>` : '';
-  return `<div class="plt" style="margin-top:8px">网页推送（手机/电脑系统通知，页面关着也能收到）</div><div class="plh">${esc(st)}${PUSH.msg ? ' <b>' + esc(PUSH.msg) + '</b>' : ''}</div>${priv}${btn}<div class="plh">服务端发送在 GitHub Actions 里跑（信号/平仓/止损线提醒同时推到这里）。设好后到 Actions → 测试提醒 点 Run workflow，能收到测试通知才算通。</div>`;
+  const priv = PUSH.priv ? `<div class="plw">⚠️ 私钥只显示这一次：复制它 → GitHub 仓库 Settings → Secrets and variables → Actions → New repository secret，名字填 <b>VAPID_PRIVATE_KEY</b>（已存在就点它右边的铅笔「Update」改成新私钥，不要再新建）。不要发给别人。公钥已自动存进仓库。<textarea readonly rows="2" style="width:100%;margin-top:4px" onclick="this.select()">${esc(PUSH.priv)}</textarea></div>` : '';
+  return `<div class="plt" style="margin-top:8px">网页推送（手机/电脑系统通知，页面关着也能收到）</div><div class="plh">${esc(st)}${PUSH.msg ? ' <b>' + esc(PUSH.msg) + '</b>' : ''}</div>${priv}${btn}${PUSH.pub && has && !PUSH.priv ? ' <button class="lnk" data-act="push-regen">重新生成密钥</button>' : ''}<div class="plh">服务端发送在 GitHub Actions 里跑（信号/平仓/止损线提醒同时推到这里）。设好后到 Actions → 测试提醒 点 Run workflow，能收到测试通知才算通。</div>`;
 }
 async function pushAct(act) {
   if (PUSH.busy) return; PUSH.busy = true; PUSH.msg = '处理中…'; pushRefresh();
   try {
-    if (act === 'push-gen') {
+    if (act === 'push-gen' || act === 'push-regen') {
+      const force = act === 'push-regen';
+      if (!force) { const r0 = await ghApi('GET', 'data/push_vapid.json'); if (r0.ok) { try { const j0 = JSON.parse(b64d((await r0.json()).content)); if (j0 && j0.publicKey) { PUSH.pub = String(j0.publicKey); return pushSet('云端已经有推送密钥了（别的设备生成过），不要重复生成。直接点「开启本设备推送」。'); } } catch (_) {} } }
+      else if (!confirm('重新生成会让旧私钥和所有已登记设备失效：需要在 Secrets 里把 VAPID_PRIVATE_KEY 改成新私钥，并且每台设备重新开启推送。确定吗？')) return pushSet('已取消。');
       const k = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']), jw = await crypto.subtle.exportKey('jwk', k.privateKey);
       const pub = b64uFromU8(Uint8Array.from([4, ...u8FromB64u(jw.x), ...u8FromB64u(jw.y)]));
       await ghMerge('data/push_vapid.json', () => ({ publicKey: pub, created: todayBJ() }), '推送公钥 ' + todayBJ());
+      if (force) { try { await ghMerge('data/push_subs.json', () => ({ subs: [], updated: todayBJ() }), '换密钥，清空旧设备 ' + todayBJ()); } catch (_) {} try { localStorage.removeItem('cockpit-push'); } catch (_) {} }
       PUSH.pub = pub; PUSH.priv = jw.d; return pushSet('已生成。请马上复制私钥。');
     }
     if (act === 'push-on') {
       if (!PUSH.pub) return pushSet('还没有推送密钥，先生成。');
+      try { const r1 = await ghApi('GET', 'data/push_vapid.json'); if (r1.ok) { const j1 = JSON.parse(b64d((await r1.json()).content)); if (j1 && j1.publicKey) PUSH.pub = String(j1.publicKey); } } catch (_) {}   // 以仓库里最新的公钥为准，不用网页缓存
       const perm = await Notification.requestPermission(); if (perm !== 'granted') return pushSet('没有拿到通知权限（' + perm + '）。');
       const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription(); if (sub) { const cur = sub.options && sub.options.applicationServerKey ? b64uFromU8(new Uint8Array(sub.options.applicationServerKey)) : null; if (cur && cur !== PUSH.pub) { await sub.unsubscribe(); sub = null; } }
@@ -1428,7 +1452,7 @@ async function pushAct(act) {
       const j = sub.toJSON(); await ghMerge('data/push_subs.json', c => { const a = (c.subs || []).filter(x => x.endpoint !== j.endpoint); a.push({ endpoint: j.endpoint, keys: j.keys, ua: (navigator.userAgent || '').slice(0, 80), added: todayBJ() }); return { subs: a, updated: todayBJ() }; }, '登记推送设备 ' + todayBJ());
       try { localStorage.setItem('cockpit-push', '1'); } catch (_) {} return pushSet('已开启并登记到云端。');
     }
-    if (act === 'push-test') { const reg = await navigator.serviceWorker.ready; await reg.showNotification('豆粕驾驶舱 · 测试通知', { body: '看到这条说明本设备的通知权限没问题。服务端推送请用 Actions →「测试提醒」验证。', tag: 'doupo-test', icon: 'icon.svg' }); return pushSet('已发出本机测试通知。'); }
+    if (act === 'push-test') { const reg = await navigator.serviceWorker.ready; await reg.showNotification('豆粕驾驶舱 · 测试通知', { body: '看到这条说明本设备的通知权限没问题。服务端推送请用 Actions →「测试提醒」验证。', tag: 'doupo-test', icon: 'icon-192.png' }); return pushSet('已发出本机测试通知。'); }
     if (act === 'push-off') {
       const reg = await navigator.serviceWorker.getRegistration('sw.js'), sub = reg && await reg.pushManager.getSubscription(), ep = sub && sub.endpoint;
       if (sub) await sub.unsubscribe(); try { localStorage.removeItem('cockpit-push'); } catch (_) {}
@@ -1465,6 +1489,7 @@ function closeFull() { const o = $('#fsv'); if (o) o.classList.remove('on'); doc
 function renderAll(anim) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderChart(); renderWall(anim); tradeShell(); planUpdate(); }
 
 /* ---------- 事件 ---------- */
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('vmore')) { S.vm = S.vm || {}; S.vm[d.dataset.vm] = d.open; } }, true);
 document.addEventListener('click', e => {
   const dz = e.target.closest('[data-dsl]'); if (dz) { e.preventDefault(); e.stopPropagation(); S.dslOpen = !S.dslOpen; renderSig(); return; }
   if (!e.target.closest('.lyw')) $$('.lym').forEach(m => { m.hidden = true; });
@@ -1528,6 +1553,6 @@ function refreshed() {   // 后台重取数据后调用：不打断正在输入�
   if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); }
   else renderAll(false);
 }
-window.__cockpit = { S, L, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, regimeNow, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+window.__cockpit = { S, L, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, regimeNow, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 

@@ -18,7 +18,7 @@ def ok(name, cond, detail=''):
 
 def make_site(mutate=None):
     d = tempfile.mkdtemp(prefix='cockpit_site_')
-    for f in ('index.html', 'engine.html', 'sw.js', 'manifest.webmanifest', 'icon.svg'): shutil.copy(os.path.join(ROOT, f), d)
+    for f in ('index.html', 'engine.html', 'sw.js', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png'): shutil.copy(os.path.join(ROOT, f), d)
     zipfile.ZipFile(os.path.join(HERE, 'data', 'cockpit_fixture_20261011.zip')).extractall(os.path.join(d, 'data'))
     if mutate: mutate(d)
     return d
@@ -195,6 +195,14 @@ def main():
         ov = pg.evaluate(JS_OV)
         ok('电脑 %dx%d 有持仓：一屏放下，没有上下滚动' % (w, h), max(ov) <= 1, ov)
         ok('电脑 %dx%d 有持仓：没有页面 JS 错误' % (w, h), not e7, e7); ctx.close()
+    # ---- 5b3. v101.52：研究模式下 5 个视图（持仓/月振幅/价格位置/同期规律/成本锚）在常见电脑分辨率下都一屏放下 ----
+    for (w, h) in ((1920, 1080), (1440, 900), (1366, 768), (1280, 720)):
+        ctx, pg, e9 = open_page(b, port, w, h); pg.wait_for_timeout(300)
+        for v in ('px', 'amp', 'pos', 'sea', 'cost'):
+            pg.evaluate("v => { const b = document.querySelector('[data-view=\"' + v + '\"]'); if (b) b.click(); }", v); pg.wait_for_timeout(250)
+            ov = pg.evaluate(JS_OV)
+            ok('电脑 %dx%d 视图 %s：一屏放下，没有上下滚动' % (w, h, v), max(ov) <= 1, ov)
+        ok('电脑 %dx%d 各视图：没有页面 JS 错误' % (w, h), not e9, e9); ctx.close()
     # ---- 5e. 持仓页极简：不显示左边K线、权益和浮盈在右上角、权益公式在「?」里；所有图可放大全屏 ----
     ctx, pg, e8 = open_page(b, port, 1440, 900); pg.wait_for_timeout(300)
     pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200)
@@ -290,7 +298,7 @@ def main():
     pg.evaluate("(() => { const p = document.getElementById('acctPop'); if (p.hidden) document.getElementById('setBtn').click(); })()")
     ptxt = pg.evaluate("document.getElementById('acctPop').innerText")
     ok('推送：设置里有「网页推送」区块', '网页推送' in ptxt, ptxt[-300:])
-    ok('推送：sw.js 和 manifest 能访问', pg.evaluate("Promise.all([fetch('sw.js').then(r=>r.status), fetch('manifest.webmanifest').then(r=>r.status), fetch('icon.svg').then(r=>r.status)])") == [200, 200, 200])
+    ok('推送：sw.js 和 manifest 能访问', pg.evaluate("Promise.all([fetch('sw.js').then(r=>r.status), fetch('manifest.webmanifest').then(r=>r.status), fetch('icon.svg').then(r=>r.status), fetch('icon-180.png').then(r=>r.status), fetch('icon-192.png').then(r=>r.status), fetch('icon-512.png').then(r=>r.status)])") == [200] * 6)
     if pg.evaluate("'PushManager' in window && 'serviceWorker' in navigator"):
         pg.wait_for_timeout(1800)
         if pg.evaluate("!!document.querySelector('[data-act=\"push-gen\"]')"):
@@ -352,10 +360,17 @@ def main():
     ok('刷新后图层选择还在', '铁' in pg.evaluate("document.getElementById('kl').textContent"))
     pg.evaluate("document.querySelector('[data-view=amp]').click()"); pg.wait_for_timeout(200)
     at = pg.evaluate("document.getElementById('chart').innerText")
-    ok('月振幅视图：有本月至今/同月历史/分位卡片、两张图（逐月柱状、日历月区间）', all(k in at for k in ('本月至今', '历史同月前', '近 3 年逐月振幅', '10 年振幅')) and pg.evaluate("document.querySelectorAll('#chart svg.amsv').length") == 2, at[:300])
-    ok('月振幅视图：柱子 37 根、12 个日历月都有方框', pg.evaluate("document.querySelectorAll('#chart svg.amsv')[0].querySelectorAll('rect[class^=am]').length") == 37 and pg.evaluate("document.querySelectorAll('#chart svg.amsv')[1].querySelectorAll('rect.amx').length") == 12)
+    ok('月振幅视图：一句结论（本月振幅/偏宽正常偏窄）+ 逐月柱状图，更多明细里才有日历月区间图', all(k in at for k in ('本月振幅', '往年同月', '近 2 年逐月振幅', '不说多空')) and pg.evaluate("document.querySelectorAll('#chart svg.amsv').length") == 2 and pg.evaluate("!document.querySelector('#chart details.vmore').open"), at[:300])
+    ok('月振幅视图：柱子 25 根、12 个日历月都有方框', pg.evaluate("document.querySelectorAll('#chart svg.amsv')[0].querySelectorAll('rect[class^=am]').length") == 25 and pg.evaluate("document.querySelectorAll('#chart svg.amsv')[1].querySelectorAll('rect.amx').length") == 12)
     pg.evaluate("document.querySelector('#chart [data-about=amp]').click()"); pg.wait_for_timeout(150)
     ok('月振幅「?」说明能打开', '月振幅怎么看' in pg.evaluate("document.getElementById('shT').textContent")); pg.evaluate("window.__cockpit.closeSheet()")
+    # v101.52：日K线晚上才更新，收盘后量价卡要接上今天的临时收盘价（用今天日盘15分钟线拼）
+    r = pg.evaluate("""(() => { const D = window.__DATA__, k = window.__cockpit.S.key, kl = D.contracts[k].kline, kd = kl[kl.length - 1].d, c0 = kl[kl.length - 1].c;
+      D.adj = Object.assign({}, D.adj, { d: D.adj.d.concat(['2099-01-02']), c: D.adj.c.concat([c0]) }); D.m15 = D.m15 || {};
+      D.m15[k] = [{ d: '01-02 09:15', o: c0 + 5, h: c0 + 30, l: c0 - 4, c: c0 + 10, v: 5, oi: 9 }, { d: '01-02 14:45', o: c0 + 10, h: c0 + 12, l: c0 - 20, c: c0 - 15, v: 5, oi: 9 }, { d: '01-02 15:00', o: c0 - 15, h: c0 - 10, l: c0 - 18, c: c0 + 77, v: 5, oi: 10 }];
+      const kn = window.__cockpit.klineNow(), b = kn[kn.length - 1]; window.__cockpit.renderBand(); const txt = document.querySelector('#band .px').innerText;
+      return { n: kn.length - kl.length, d: b.d, c: b.c, h: b.h, l: b.l, o: b.o, prov: b.prov, c0, txt }; })()""")
+    ok('量价卡：收盘后接上今天临时日线（15:00 价、日盘最高最低），并标注“临时”', r['n'] == 1 and r['d'] == '2099-01-02' and r['c'] == r['c0'] + 77 and r['h'] == r['c0'] + 30 and r['l'] == r['c0'] - 20 and r['o'] == r['c0'] + 5 and r['prov'] and '临时' in r['txt'], r)
     ok('月振幅：没有 JS 错误', not e8, e8); ctx.close()
     # ---- 6. 手机宽度 ----
     for w in (390, 360):
