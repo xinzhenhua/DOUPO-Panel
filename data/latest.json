@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-15T18:13:44.368267+00:00",
+  "generatedAt": "2026-10-15T19:05:06.265622+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 360.1,
-    "change": -10.0,
-    "changePct": -2.7,
+    "price": 359.8,
+    "change": -10.3,
+    "changePct": -2.78,
     "asOf": "2026-10-15T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -868,7 +868,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fb82f011810>, 'Connection to x",
+    "carriedFrom": "2026-10-15T18:13:44.368267+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1084,7 +1087,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1303.25,
+        "zsCents": 1302.75,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
@@ -1096,17 +1099,17 @@
         "brazil": {
           "beanPrice": 3827.0,
           "breakeven": 3025.4,
-          "impliedPremium": 47.0,
+          "impliedPremium": 47.5,
           "available": true,
-          "zsCents": 1303.25,
+          "zsCents": 1302.75,
           "fx": 6.691,
           "mealPrice": 3043.0,
           "oilPrice": 8660.0,
-          "beanCost": 4152.6,
-          "mealCost": 3440.2,
-          "mealCostLow": 3264.4,
-          "mealCostHigh": 3616.0,
-          "gap": -397.2,
+          "beanCost": 4151.3,
+          "mealCost": 3438.4,
+          "mealCostLow": 3262.6,
+          "mealCostHigh": 3614.2,
+          "gap": -395.4,
           "gapPct": -11.5,
           "position": "below",
           "params": {
@@ -1128,18 +1131,18 @@
         "us": {
           "beanPrice": 3827.0,
           "breakeven": 3025.4,
-          "impliedPremium": -72.5,
+          "impliedPremium": -72.0,
           "available": true,
-          "zsCents": 1303.25,
+          "zsCents": 1302.75,
           "fx": 6.691,
           "mealPrice": 3043.0,
           "oilPrice": 8660.0,
-          "beanCost": 4858.0,
-          "mealCost": 4338.7,
-          "mealCostLow": 4145.8,
-          "mealCostHigh": 4531.6,
-          "gap": -1295.7,
-          "gapPct": -29.9,
+          "beanCost": 4856.5,
+          "mealCost": 4336.8,
+          "mealCostLow": 4143.9,
+          "mealCostHigh": 4529.7,
+          "gap": -1293.8,
+          "gapPct": -29.8,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1160,7 +1163,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1288.75,
+        "zsCents": 1288.0,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
@@ -1172,18 +1175,18 @@
         "brazil": {
           "beanPrice": 3748.0,
           "breakeven": 2912.9,
-          "impliedPremium": 32.9,
+          "impliedPremium": 33.7,
           "available": true,
-          "zsCents": 1288.75,
+          "zsCents": 1288.0,
           "fx": 6.691,
           "mealPrice": 2943.0,
           "oilPrice": 8710.0,
-          "beanCost": 3985.6,
-          "mealCost": 3215.7,
-          "mealCostLow": 3039.9,
-          "mealCostHigh": 3391.5,
-          "gap": -272.7,
-          "gapPct": -8.5,
+          "beanCost": 3983.6,
+          "mealCost": 3213.0,
+          "mealCostLow": 3037.2,
+          "mealCostHigh": 3388.8,
+          "gap": -270.0,
+          "gapPct": -8.4,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1208,7 +1211,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1264.75,
+        "zsCents": 1264.25,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
@@ -1220,18 +1223,18 @@
         "brazil": {
           "beanPrice": 4053.0,
           "breakeven": 3267.5,
-          "impliedPremium": 167.4,
+          "impliedPremium": 167.9,
           "available": true,
-          "zsCents": 1264.75,
+          "zsCents": 1264.25,
           "fx": 6.691,
           "mealPrice": 3316.0,
           "oilPrice": 8854.0,
-          "beanCost": 4253.4,
-          "mealCost": 3522.8,
-          "mealCostLow": 3347.0,
-          "mealCostHigh": 3698.6,
-          "gap": -206.8,
-          "gapPct": -5.9,
+          "beanCost": 4252.0,
+          "mealCost": 3521.0,
+          "mealCostLow": 3345.2,
+          "mealCostHigh": 3696.8,
+          "gap": -205.0,
+          "gapPct": -5.8,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1252,18 +1255,18 @@
         "us": {
           "beanPrice": 4053.0,
           "breakeven": 3267.5,
-          "impliedPremium": 40.7,
+          "impliedPremium": 41.2,
           "available": true,
-          "zsCents": 1264.75,
+          "zsCents": 1264.25,
           "fx": 6.691,
           "mealPrice": 3316.0,
           "oilPrice": 8854.0,
-          "beanCost": 4777.8,
-          "mealCost": 4190.8,
-          "mealCostLow": 3997.9,
-          "mealCostHigh": 4383.7,
-          "gap": -874.8,
-          "gapPct": -20.9,
+          "beanCost": 4776.2,
+          "mealCost": 4188.8,
+          "mealCostLow": 3996.0,
+          "mealCostHigh": 4381.7,
+          "gap": -872.8,
+          "gapPct": -20.8,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -2413,6 +2416,7 @@
           "lat": 43.1548,
           "lon": -93.201,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.201%2C+%22y%22%3A+43.1548%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
@@ -21253,5 +21257,7 @@
       ]
     }
   },
-  "carriedKeys": []
+  "carriedKeys": [
+    "hogRatio"
+  ]
 }
