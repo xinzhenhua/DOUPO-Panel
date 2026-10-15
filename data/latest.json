@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-15T07:13:49.788168+00:00",
+  "generatedAt": "2026-10-15T08:12:21.500691+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 364.3,
-    "change": -5.8,
-    "changePct": -1.57,
+    "price": 365.5,
+    "change": -4.6,
+    "changePct": -1.24,
     "asOf": "2026-10-15T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -166,30 +166,27 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "接口返回异常(resultCode=None)",
-    "carriedFrom": "2026-10-15T05:49:18.846768+00:00"
+    }
   },
   "mysteelRmSpread": {
     "available": true,
     "value": 810.0,
-    "date": "2026-10-13",
-    "matchedText": "2026年10月13日，国内主要市场豆菜粕价差如下：广东豆粕3320元/吨，菜粕2540元/吨，价差780元/吨；广西豆粕3320元/吨，菜粕2560元/吨，价差760元/吨；南通豆粕3310元/吨，菜粕2420元/吨，价差890元/吨。数据来源于钢联数据。",
+    "date": "2026-10-15",
+    "matchedText": "2026年10月15日，国内主要市场豆菜粕价差如下：广东豆粕3280元/吨，菜粕2490元/吨，价差790元/吨；广西豆粕3290元/吨，菜粕2510元/吨，价差780元/吨；南通豆粕3270元/吨，菜粕2410元/吨，价差860元/吨。数据来源于钢联数据。",
     "source": "Mysteel文章(豆菜粕价差)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
     "citySamples": [
+      790.0,
       780.0,
-      760.0,
-      890.0
+      860.0
     ],
     "formatUsed": "多城市单值平均",
     "history": {
-      "n": 626,
+      "n": 627,
       "minPoints": 12,
-      "asOf": "2026-10-13",
+      "asOf": "2026-10-15",
       "since": "2024-01-08",
-      "percentile": 85.0,
+      "percentile": 84.9,
       "min": 280.0,
       "max": 1215.0,
       "median": 665.0,
@@ -923,14 +920,14 @@
     "sep": {
       "available": true,
       "contractMonth": 9,
-      "date": "2026-10-14",
+      "date": "2026-10-15",
       "datesAligned": true,
       "mealSymbol": "M2709",
-      "mealPrice": 3082.0,
+      "mealPrice": 3043.0,
       "oilSymbol": "Y2709",
-      "oilPrice": 8846.0,
+      "oilPrice": 8660.0,
       "beanSymbol": "B2709",
-      "beanPrice": 3892.0,
+      "beanPrice": 3827.0,
       "grossMargin": 163.9,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
@@ -938,7 +935,7 @@
       "history": {
         "n": 654,
         "minPoints": 12,
-        "asOf": "2026-10-14",
+        "asOf": "2026-10-15",
         "since": "2019-04-01",
         "percentile": 65.0,
         "min": 22.0,
@@ -954,14 +951,14 @@
       "available": true,
       "contractMonth": 5,
       "date": "2026-10-14",
-      "datesAligned": true,
+      "datesAligned": false,
       "mealSymbol": "M2705",
-      "mealPrice": 2985.0,
+      "mealPrice": 2943.0,
       "oilSymbol": "Y2705",
       "oilPrice": 8891.0,
       "beanSymbol": "B2705",
       "beanPrice": 3813.0,
-      "grossMargin": 175.1,
+      "grossMargin": 142.1,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
@@ -970,7 +967,7 @@
         "minPoints": 12,
         "asOf": "2026-10-14",
         "since": "2018-12-03",
-        "percentile": 81.7,
+        "percentile": 51.4,
         "min": 39.0,
         "max": 238.2,
         "median": 140.85,
@@ -984,14 +981,14 @@
       "available": true,
       "contractMonth": 1,
       "date": "2026-10-14",
-      "datesAligned": true,
+      "datesAligned": false,
       "mealSymbol": "M2701",
       "mealPrice": 3373.0,
       "oilSymbol": "Y2701",
       "oilPrice": 9026.0,
       "beanSymbol": "B2701",
-      "beanPrice": 4139.0,
-      "grossMargin": 178.6,
+      "beanPrice": 4053.0,
+      "grossMargin": 264.6,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
@@ -1000,14 +997,14 @@
         "minPoints": 12,
         "asOf": "2026-10-14",
         "since": "2019-08-01",
-        "percentile": 78.4,
+        "percentile": 100.0,
         "min": -2.9,
         "max": 241.2,
         "median": 139.9,
         "seasonal": {
           "month": 10,
           "n": 118,
-          "percentile": 74.6,
+          "percentile": 100.0,
           "median": 147.7
         },
         "cohort": null,
@@ -1025,20 +1022,20 @@
       "available": true,
       "contractMonth": 5,
       "date": "2026-10-14",
-      "datesAligned": true,
+      "datesAligned": false,
       "nearSymbol": "M2705",
       "nearPrice": 2985.0,
       "farSymbol": "M2709",
-      "farPrice": 3082.0,
-      "spread": -97.0,
-      "spreadPct": -3.25,
+      "farPrice": 3043.0,
+      "spread": -58.0,
+      "spreadPct": -1.94,
       "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
       "history": {
         "n": 638,
         "minPoints": 12,
         "asOf": "2026-10-14",
         "since": "2018-12-03",
-        "percentile": 22.7,
+        "percentile": 48.4,
         "min": -6.53,
         "max": 4.74,
         "median": -1.87,
@@ -1052,27 +1049,27 @@
       "available": true,
       "contractMonth": 1,
       "date": "2026-10-14",
-      "datesAligned": true,
+      "datesAligned": false,
       "nearSymbol": "M2701",
       "nearPrice": 3373.0,
       "farSymbol": "M2705",
-      "farPrice": 2985.0,
-      "spread": 388.0,
-      "spreadPct": 11.5,
+      "farPrice": 2943.0,
+      "spread": 430.0,
+      "spreadPct": 12.75,
       "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
       "history": {
         "n": 611,
         "minPoints": 12,
         "asOf": "2026-10-14",
         "since": "2019-08-01",
-        "percentile": 82.9,
+        "percentile": 89.8,
         "min": -2.27,
         "max": 15.36,
         "median": 6.71,
         "seasonal": {
           "month": 10,
           "n": 118,
-          "percentile": 83.9,
+          "percentile": 92.4,
           "median": 6.31
         },
         "cohort": null,
@@ -1087,30 +1084,30 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1306.5,
+        "zsCents": 1307.75,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2709",
-        "mealPrice": 3082.0,
-        "oilPrice": 8846.0,
-        "priceDate": "2026-10-14",
+        "mealPrice": 3043.0,
+        "oilPrice": 8660.0,
+        "priceDate": "2026-10-15",
         "primary": null,
         "brazil": {
-          "beanPrice": 3892.0,
-          "breakeven": 3064.3,
-          "impliedPremium": 67.0,
+          "beanPrice": 3827.0,
+          "breakeven": 3025.4,
+          "impliedPremium": 42.2,
           "available": true,
-          "zsCents": 1306.5,
+          "zsCents": 1307.75,
           "fx": 6.6927,
-          "mealPrice": 3082.0,
-          "oilPrice": 8846.0,
-          "beanCost": 4162.6,
-          "mealCost": 3409.1,
-          "mealCostLow": 3233.2,
-          "mealCostHigh": 3584.9,
-          "gap": -327.1,
-          "gapPct": -9.6,
+          "mealPrice": 3043.0,
+          "oilPrice": 8660.0,
+          "beanCost": 4166.1,
+          "mealCost": 3457.3,
+          "mealCostLow": 3281.5,
+          "mealCostHigh": 3633.2,
+          "gap": -414.3,
+          "gapPct": -12.0,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1129,20 +1126,20 @@
           "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
         },
         "us": {
-          "beanPrice": 3892.0,
-          "breakeven": 3064.3,
-          "impliedPremium": -54.6,
+          "beanPrice": 3827.0,
+          "breakeven": 3025.4,
+          "impliedPremium": -77.3,
           "available": true,
-          "zsCents": 1306.5,
+          "zsCents": 1307.75,
           "fx": 6.6927,
-          "mealPrice": 3082.0,
-          "oilPrice": 8846.0,
-          "beanCost": 4869.0,
-          "mealCost": 4309.0,
-          "mealCostLow": 4116.0,
-          "mealCostHigh": 4501.9,
-          "gap": -1227.0,
-          "gapPct": -28.5,
+          "mealPrice": 3043.0,
+          "oilPrice": 8660.0,
+          "beanCost": 4872.8,
+          "mealCost": 4357.6,
+          "mealCostLow": 4164.7,
+          "mealCostHigh": 4550.6,
+          "gap": -1314.6,
+          "gapPct": -30.2,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1163,30 +1160,30 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1291.75,
+        "zsCents": 1293.0,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2705",
-        "mealPrice": 2985.0,
+        "mealPrice": 2943.0,
         "oilPrice": 8891.0,
         "priceDate": "2026-10-14",
         "primary": "brazil",
         "brazil": {
           "beanPrice": 3813.0,
           "breakeven": 2953.1,
-          "impliedPremium": 53.1,
+          "impliedPremium": 51.9,
           "available": true,
-          "zsCents": 1291.75,
+          "zsCents": 1293.0,
           "fx": 6.6927,
-          "mealPrice": 2985.0,
+          "mealPrice": 2943.0,
           "oilPrice": 8891.0,
-          "beanCost": 3994.9,
-          "mealCost": 3184.8,
-          "mealCostLow": 3009.0,
-          "mealCostHigh": 3360.7,
-          "gap": -199.8,
-          "gapPct": -6.3,
+          "beanCost": 3998.4,
+          "mealCost": 3189.2,
+          "mealCostLow": 3013.4,
+          "mealCostHigh": 3365.1,
+          "gap": -246.2,
+          "gapPct": -7.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1211,7 +1208,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1268.5,
+        "zsCents": 1269.75,
         "zsDate": "2026-10-15",
         "zsExact": true,
         "zsNote": "",
@@ -1221,20 +1218,20 @@
         "priceDate": "2026-10-14",
         "primary": "us",
         "brazil": {
-          "beanPrice": 4139.0,
-          "breakeven": 3336.5,
-          "impliedPremium": 194.4,
+          "beanPrice": 4053.0,
+          "breakeven": 3227.0,
+          "impliedPremium": 162.0,
           "available": true,
-          "zsCents": 1268.5,
+          "zsCents": 1269.75,
           "fx": 6.6927,
           "mealPrice": 3373.0,
           "oilPrice": 9026.0,
-          "beanCost": 4264.8,
-          "mealCost": 3496.8,
-          "mealCostLow": 3320.9,
-          "mealCostHigh": 3672.6,
-          "gap": -123.8,
-          "gapPct": -3.5,
+          "beanCost": 4268.2,
+          "mealCost": 3501.2,
+          "mealCostLow": 3325.3,
+          "mealCostHigh": 3677.0,
+          "gap": -128.2,
+          "gapPct": -3.7,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1253,20 +1250,20 @@
           "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
         },
         "us": {
-          "beanPrice": 4139.0,
-          "breakeven": 3336.5,
-          "impliedPremium": 65.0,
+          "beanPrice": 4053.0,
+          "breakeven": 3227.0,
+          "impliedPremium": 35.3,
           "available": true,
-          "zsCents": 1268.5,
+          "zsCents": 1269.75,
           "fx": 6.6927,
           "mealPrice": 3373.0,
           "oilPrice": 9026.0,
-          "beanCost": 4790.3,
-          "mealCost": 4166.2,
-          "mealCostLow": 3973.3,
-          "mealCostHigh": 4359.2,
-          "gap": -793.2,
-          "gapPct": -19.0,
+          "beanCost": 4794.1,
+          "mealCost": 4171.0,
+          "mealCostLow": 3978.1,
+          "mealCostHigh": 4364.0,
+          "gap": -798.0,
+          "gapPct": -19.1,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -6907,7 +6904,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 99,
+    "totalBarsReturned": 100,
     "bars": [
       {
         "date": "2026-05-20",
@@ -7898,6 +7895,16 @@
         "volume": 227552.0,
         "hold": 823588.0,
         "settle": 2987.0
+      },
+      {
+        "date": "2026-10-15",
+        "open": 2982.0,
+        "high": 2985.0,
+        "low": 2940.0,
+        "close": 2943.0,
+        "volume": 267536.0,
+        "hold": 831378.0,
+        "settle": 2955.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -18345,119 +18352,119 @@
   "dceM09PositionRank": {
     "available": true,
     "symbol": "M2709",
-    "date": "2026-10-14",
+    "date": "2026-10-15",
     "tables": {
       "netLong": [
         {
           "rank": 1,
-          "name": "大越期货",
-          "value": 7044,
-          "change": -40,
+          "name": "盛达期货",
+          "value": 8430,
+          "change": 3861,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "盛达期货",
-          "value": 4569,
-          "change": 3991,
+          "name": "大越期货",
+          "value": 8136,
+          "change": 1092,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "浙商期货",
-          "value": 2198,
-          "change": 265,
+          "value": 2218,
+          "change": 20,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "中财期货",
-          "value": 1740,
-          "change": -31,
+          "value": 1691,
+          "change": -49,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "南华期货",
-          "value": 968,
-          "change": -21,
+          "value": 903,
+          "change": -65,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "中州期货",
-          "value": 929,
-          "change": -272,
+          "name": "广发期货",
+          "value": 782,
+          "change": 57,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "大地期货",
-          "value": 886,
-          "change": -206,
-          "isForeign": false
-        },
-        {
-          "rank": 8,
-          "name": "兴证期货",
-          "value": 749,
-          "change": -35,
-          "isForeign": false
-        },
-        {
-          "rank": 9,
-          "name": "广发期货",
-          "value": 725,
-          "change": 66,
-          "isForeign": false
-        },
-        {
-          "rank": 10,
-          "name": "徽商期货",
-          "value": 454,
+          "name": "中州期货",
+          "value": 770,
           "change": -159,
           "isForeign": false
         },
         {
-          "rank": 11,
+          "rank": 8,
+          "name": "大地期货",
+          "value": 710,
+          "change": -176,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "兴证期货",
+          "value": 699,
+          "change": -50,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
           "name": "华泰期货",
-          "value": 414,
-          "change": 211,
+          "value": 500,
+          "change": 86,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "苏豪弘业",
+          "value": 317,
+          "change": -78,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "苏豪弘业",
-          "value": 395,
-          "change": 107,
+          "name": "宝城期货",
+          "value": 115,
+          "change": 56,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "宝城期货",
-          "value": 59,
-          "change": -130,
+          "name": "国投期货",
+          "value": 109,
+          "change": 131,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "银河期货",
-          "value": 26,
-          "change": null,
+          "name": "徽商期货",
+          "value": 95,
+          "change": -359,
           "isForeign": false
         },
         {
           "rank": 15,
-          "name": "佛山金控",
-          "value": 24,
-          "change": -45,
+          "name": "广州期货",
+          "value": 41,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 16,
-          "name": "建信期货",
-          "value": 16,
-          "change": null,
+          "name": "银河期货",
+          "value": 33,
+          "change": 7,
           "isForeign": false
         }
       ],
@@ -18465,120 +18472,106 @@
         {
           "rank": 1,
           "name": "高盛期货",
-          "value": 8995,
-          "change": 1663,
+          "value": 12324,
+          "change": 3329,
           "isForeign": true
         },
         {
           "rank": 2,
           "name": "中粮期货",
-          "value": 5052,
-          "change": 274,
+          "value": 6041,
+          "change": 989,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "五矿期货",
-          "value": 3943,
-          "change": 602,
+          "name": "宏源期货",
+          "value": 5386,
+          "change": 1811,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "宏源期货",
-          "value": 3575,
-          "change": 1136,
+          "name": "五矿期货",
+          "value": 4352,
+          "change": 409,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "国泰君安",
-          "value": 2215,
-          "change": 65,
+          "value": 1669,
+          "change": -546,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "正信期货",
-          "value": 1327,
-          "change": 8,
+          "value": 1260,
+          "change": -67,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "中电投先融",
-          "value": 849,
-          "change": 8,
+          "value": 766,
+          "change": -83,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "东证期货",
-          "value": 818,
-          "change": 205,
+          "value": 690,
+          "change": -128,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "中信期货",
-          "value": 663,
-          "change": 320,
+          "name": "东海期货",
+          "value": 650,
+          "change": 517,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "永安期货",
-          "value": 469,
-          "change": 207,
+          "name": "中信期货",
+          "value": 645,
+          "change": -18,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "冠通期货",
-          "value": 314,
-          "change": -238,
+          "name": "永安期货",
+          "value": 421,
+          "change": -48,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "创元期货",
-          "value": 290,
-          "change": 2,
+          "name": "华闻期货",
+          "value": 270,
+          "change": 204,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "东海期货",
-          "value": 133,
-          "change": 7,
+          "name": "创元期货",
+          "value": 201,
+          "change": -89,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "华闻期货",
-          "value": 66,
-          "change": 17,
+          "name": "冠通期货",
+          "value": 108,
+          "change": -206,
           "isForeign": false
         },
         {
           "rank": 15,
-          "name": "格林大华",
-          "value": 29,
+          "name": "新湖期货",
+          "value": 83,
           "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "紫金天风",
-          "value": 26,
-          "change": 0,
-          "isForeign": false
-        },
-        {
-          "rank": 17,
-          "name": "国投期货",
-          "value": 22,
-          "change": 234,
           "isForeign": false
         }
       ],
@@ -18586,112 +18579,112 @@
         {
           "rank": 1,
           "name": "盛达期货",
-          "value": 5052,
-          "change": 4036,
+          "value": 8971,
+          "change": 3919,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "浙商期货",
-          "value": 2681,
-          "change": 310,
+          "name": "大越期货",
+          "value": 8677,
+          "change": 1150,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "华泰期货",
-          "value": 897,
-          "change": 256,
+          "name": "国泰君安",
+          "value": 1890,
+          "change": 482,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "银河期货",
-          "value": 509,
-          "change": 174,
+          "name": "创元期货",
+          "value": 589,
+          "change": 228,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "苏豪弘业",
-          "value": 878,
+          "name": "中信期货",
+          "value": 692,
           "change": 152,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "广发期货",
-          "value": 3993,
-          "change": 135,
+          "name": "银河期货",
+          "value": 661,
+          "change": 152,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "国泰君安",
-          "value": 1408,
-          "change": 115,
+          "name": "华泰期货",
+          "value": 1041,
+          "change": 144,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "南华期货",
-          "value": 1451,
-          "change": 24,
+          "name": "宝城期货",
+          "value": 656,
+          "change": 114,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "中信期货",
-          "value": 540,
-          "change": 15,
+          "name": "广州期货",
+          "value": 582,
+          "change": 99,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "中财期货",
-          "value": 2223,
-          "change": 14,
+          "name": "中粮期货",
+          "value": 631,
+          "change": 82,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "兴证期货",
-          "value": 1232,
-          "change": 10,
+          "name": "浙商期货",
+          "value": 2759,
+          "change": 78,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "建信期货",
-          "value": 499,
-          "change": 9,
+          "name": "广发期货",
+          "value": 4019,
+          "change": 26,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "大越期货",
-          "value": 7527,
-          "change": 5,
+          "name": "中财期货",
+          "value": 2232,
+          "change": 9,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "创元期货",
-          "value": null,
-          "change": null,
+          "name": "兴证期货",
+          "value": 1240,
+          "change": 8,
           "isForeign": false
         },
         {
           "rank": 15,
-          "name": "东海期货",
-          "value": null,
-          "change": null,
+          "name": "国投期货",
+          "value": 1040,
+          "change": 6,
           "isForeign": false
         },
         {
           "rank": 16,
-          "name": "佛山金控",
-          "value": 507,
+          "name": "紫金天风",
+          "value": null,
           "change": null,
           "isForeign": false
         },
@@ -18704,7 +18697,7 @@
         },
         {
           "rank": 18,
-          "name": "兴业期货",
+          "name": "海通期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -18718,7 +18711,7 @@
         },
         {
           "rank": 20,
-          "name": "民生期货",
+          "name": "永安期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -18727,98 +18720,98 @@
       "longDown": [
         {
           "rank": 1,
-          "name": "国投期货",
-          "value": 1034,
-          "change": -529,
+          "name": "徽商期货",
+          "value": 636,
+          "change": -301,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "中粮期货",
-          "value": 549,
-          "change": -274,
+          "name": "大地期货",
+          "value": 1251,
+          "change": -118,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "中州期货",
-          "value": 1412,
-          "change": -227,
+          "value": 1311,
+          "change": -101,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "大地期货",
-          "value": 1369,
-          "change": -161,
+          "name": "苏豪弘业",
+          "value": 858,
+          "change": -20,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "徽商期货",
-          "value": 937,
-          "change": -114,
+          "name": "南华期货",
+          "value": 1444,
+          "change": -7,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "宝城期货",
-          "value": 542,
-          "change": -85,
+          "name": "东证期货",
+          "value": null,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "华闻期货",
+          "name": "冠通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "申银万国",
+          "name": "高盛期货",
           "value": null,
           "change": null,
-          "isForeign": false
+          "isForeign": true
         },
         {
           "rank": 9,
-          "name": "广州期货",
+          "name": "宏源期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "国信期货",
+          "name": "东海期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "海通期货",
+          "name": "五矿期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "格林大华",
+          "name": "华闻期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "招商期货",
+          "name": "新湖期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "东证期货",
+          "name": "国信期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -18832,37 +18825,37 @@
         },
         {
           "rank": 16,
-          "name": "五矿期货",
+          "name": "紫金天风",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 17,
-          "name": "高盛期货",
+          "name": "正信期货",
           "value": null,
           "change": null,
-          "isForeign": true
+          "isForeign": false
         },
         {
           "rank": 18,
-          "name": "宏源期货",
+          "name": "海通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "冠通期货",
+          "name": "中电投先融",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "紫金天风",
-          "value": null,
-          "change": null,
+          "name": "国投期货",
+          "value": 1040,
+          "change": 6,
           "isForeign": false
         }
       ]
@@ -18872,98 +18865,98 @@
   "dceM05PositionRank": {
     "available": true,
     "symbol": "M2705",
-    "date": "2026-10-14",
+    "date": "2026-10-15",
     "tables": {
       "netLong": [
         {
           "rank": 1,
           "name": "高盛期货",
-          "value": 36628,
-          "change": 1372,
+          "value": 38633,
+          "change": 2005,
           "isForeign": true
         },
         {
           "rank": 2,
           "name": "华泰期货",
-          "value": 20318,
-          "change": -5088,
+          "value": 15390,
+          "change": -4928,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "混沌天成",
-          "value": 17077,
-          "change": 787,
+          "name": "东吴期货",
+          "value": 14471,
+          "change": -1496,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "东吴期货",
-          "value": 15967,
-          "change": -1361,
+          "name": "广发期货",
+          "value": 11326,
+          "change": 5568,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "浙商期货",
-          "value": 10691,
-          "change": 1270,
+          "name": "混沌天成",
+          "value": 10340,
+          "change": -6737,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "招商期货",
-          "value": 6241,
-          "change": 284,
+          "name": "南华期货",
+          "value": 7451,
+          "change": 2771,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "摩根大通",
-          "value": 6155,
-          "change": null,
-          "isForeign": true
+          "name": "宏源期货",
+          "value": 7073,
+          "change": 1613,
+          "isForeign": false
         },
         {
           "rank": 8,
-          "name": "大越期货",
-          "value": 6118,
-          "change": 833,
+          "name": "方正中期",
+          "value": 6813,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "广发期货",
-          "value": 5758,
-          "change": 4007,
-          "isForeign": false
+          "name": "摩根大通",
+          "value": 6686,
+          "change": 531,
+          "isForeign": true
         },
         {
           "rank": 10,
-          "name": "国信期货",
-          "value": 5603,
-          "change": 693,
-          "isForeign": false
-        },
-        {
-          "rank": 11,
-          "name": "宏源期货",
-          "value": 5460,
+          "name": "西部期货",
+          "value": 5801,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 11,
+          "name": "招商期货",
+          "value": 5775,
+          "change": -466,
+          "isForeign": false
+        },
+        {
           "rank": 12,
-          "name": "南华期货",
-          "value": 4680,
-          "change": -46,
+          "name": "国信期货",
+          "value": 5600,
+          "change": -3,
           "isForeign": false
         },
         {
           "rank": 13,
           "name": "新湖期货",
-          "value": 1567,
-          "change": 51,
+          "value": 1760,
+          "change": 193,
           "isForeign": false
         }
       ],
@@ -18971,211 +18964,211 @@
         {
           "rank": 1,
           "name": "中粮期货",
-          "value": 122843,
-          "change": 1134,
+          "value": 119840,
+          "change": -3003,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "中信期货",
-          "value": 50309,
-          "change": -3212,
+          "value": 50310,
+          "change": 1,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "国投期货",
-          "value": 30960,
-          "change": -5441,
+          "value": 26452,
+          "change": -4508,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "国泰君安",
-          "value": 24932,
-          "change": 7471,
+          "name": "东证期货",
+          "value": 20511,
+          "change": 8909,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "永安期货",
           "value": 19046,
-          "change": -633,
+          "change": 0,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "一德期货",
-          "value": 12712,
-          "change": 106,
+          "name": "国泰君安",
+          "value": 18191,
+          "change": -6741,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "东证期货",
-          "value": 11602,
-          "change": -3056,
+          "name": "一德期货",
+          "value": 12042,
+          "change": -670,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "海证期货",
-          "value": 9745,
-          "change": -961,
+          "value": 9610,
+          "change": -135,
           "isForeign": false
         },
         {
           "rank": 9,
           "name": "五矿期货",
-          "value": 4188,
-          "change": -1232,
+          "value": 3761,
+          "change": -427,
           "isForeign": false
         },
         {
           "rank": 10,
           "name": "北京首创",
-          "value": 1449,
-          "change": -755,
+          "value": 1471,
+          "change": 22,
           "isForeign": false
         }
       ],
       "longUp": [
         {
           "rank": 1,
-          "name": "摩根大通",
-          "value": 14276,
-          "change": 6063,
-          "isForeign": true
+          "name": "国泰君安",
+          "value": 63542,
+          "change": 8559,
+          "isForeign": false
         },
         {
           "rank": 2,
-          "name": "中信期货",
-          "value": 31477,
-          "change": 2146,
+          "name": "国投期货",
+          "value": 40310,
+          "change": 5141,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "中粮期货",
-          "value": 24862,
-          "change": 1868,
+          "name": "广发期货",
+          "value": 23338,
+          "change": 4876,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "宏源期货",
-          "value": 13581,
-          "change": 1801,
+          "name": "方正中期",
+          "value": 14746,
+          "change": 3876,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "国投期货",
-          "value": 35169,
-          "change": 1614,
+          "name": "南华期货",
+          "value": 29246,
+          "change": 2421,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "广发期货",
-          "value": 18462,
-          "change": 958,
+          "name": "中粮期货",
+          "value": 27117,
+          "change": 2255,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "新湖期货",
-          "value": 14830,
-          "change": 726,
-          "isForeign": false
-        },
-        {
-          "rank": 8,
           "name": "高盛期货",
-          "value": 44749,
-          "change": 625,
+          "value": 46566,
+          "change": 1817,
           "isForeign": true
         },
         {
+          "rank": 8,
+          "name": "宏源期货",
+          "value": 15006,
+          "change": 1425,
+          "isForeign": false
+        },
+        {
           "rank": 9,
-          "name": "浙商期货",
-          "value": 18812,
-          "change": 523,
+          "name": "一德期货",
+          "value": 15781,
+          "change": 508,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "招商期货",
-          "value": 28185,
-          "change": 518,
+          "name": "中信期货",
+          "value": 31875,
+          "change": 398,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "永安期货",
-          "value": 13994,
-          "change": 486,
-          "isForeign": false
+          "name": "摩根大通",
+          "value": 14619,
+          "change": 343,
+          "isForeign": true
         },
         {
           "rank": 12,
-          "name": "大越期货",
-          "value": 14239,
-          "change": 86,
+          "name": "西部期货",
+          "value": 13734,
+          "change": 320,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "混沌天成",
-          "value": 25198,
-          "change": 40,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "海通期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "海证期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "五矿期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 17,
           "name": "冠通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 14,
+          "name": "中金财富",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "正信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
           "rank": 18,
-          "name": "长江期货",
+          "name": "海证期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "金元期货",
+          "name": "瑞达期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "瑞达期货",
+          "name": "银河期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -19184,142 +19177,142 @@
       "longDown": [
         {
           "rank": 1,
-          "name": "国泰君安",
-          "value": 54983,
-          "change": -11462,
+          "name": "混沌天成",
+          "value": 18273,
+          "change": -6925,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "华泰期货",
-          "value": 35490,
-          "change": -5507,
+          "value": 30351,
+          "change": -5139,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "东吴期货",
-          "value": 26041,
-          "change": -1394,
+          "value": 24570,
+          "change": -1471,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "南华期货",
-          "value": 26825,
-          "change": -568,
+          "name": "新湖期货",
+          "value": 13834,
+          "change": -996,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "东证期货",
-          "value": 39438,
-          "change": -410,
+          "value": 38735,
+          "change": -703,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "一德期货",
-          "value": 15273,
-          "change": -68,
+          "name": "永安期货",
+          "value": 13701,
+          "change": -293,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "国信期货",
-          "value": 13724,
-          "change": -54,
+          "name": "招商期货",
+          "value": 27944,
+          "change": -241,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "建信期货",
-          "value": null,
-          "change": null,
+          "name": "国信期货",
+          "value": 13533,
+          "change": -191,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "正信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 10,
-          "name": "中金财富",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 11,
-          "name": "北京首创",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 12,
           "name": "瑞达期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 13,
-          "name": "金元期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "长江期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "中州期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
+          "rank": 10,
           "name": "冠通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 17,
-          "name": "五矿期货",
+          "rank": 11,
+          "name": "银河期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 18,
-          "name": "海证期货",
+          "rank": 12,
+          "name": "浙商期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 19,
+          "rank": 13,
           "name": "海通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 14,
+          "name": "北京首创",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "海证期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "正信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "中金财富",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
           "rank": 20,
-          "name": "混沌天成",
-          "value": 25198,
-          "change": 40,
+          "name": "西部期货",
+          "value": 13734,
+          "change": 320,
           "isForeign": false
         }
       ]
@@ -19329,303 +19322,303 @@
   "dceM01PositionRank": {
     "available": true,
     "symbol": "M2701",
-    "date": "2026-10-14",
+    "date": "2026-10-15",
     "tables": {
       "netLong": [
         {
           "rank": 1,
-          "name": "中信期货",
-          "value": 130721,
-          "change": 23359,
-          "isForeign": false
+          "name": "高盛期货",
+          "value": 118233,
+          "change": -1199,
+          "isForeign": true
         },
         {
           "rank": 2,
-          "name": "高盛期货",
-          "value": 119432,
-          "change": -2867,
-          "isForeign": true
+          "name": "中信期货",
+          "value": 110211,
+          "change": -20510,
+          "isForeign": false
         },
         {
           "rank": 3,
           "name": "国泰君安",
-          "value": 99592,
-          "change": 9123,
+          "value": 104150,
+          "change": 4558,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "银河期货",
-          "value": 70489,
-          "change": -4518,
+          "value": 78367,
+          "change": 7878,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "中信建投",
-          "value": 44827,
-          "change": -3212,
+          "value": 46442,
+          "change": 1615,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "南华期货",
-          "value": 37629,
-          "change": -1602,
+          "value": 44025,
+          "change": 6396,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "国富期货",
-          "value": 26188,
-          "change": 620,
+          "value": 27118,
+          "change": 930,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "永安期货",
-          "value": 19364,
-          "change": -1268,
+          "value": 20123,
+          "change": 759,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "海证期货",
-          "value": 14914,
-          "change": -36,
+          "name": "中泰期货",
+          "value": 16925,
+          "change": 6990,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "瑞达期货",
-          "value": 14410,
-          "change": 1256,
+          "name": "一德期货",
+          "value": 16685,
+          "change": 4577,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "一德期货",
-          "value": 12108,
-          "change": 767,
+          "name": "瑞达期货",
+          "value": 12323,
+          "change": -2087,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "中泰期货",
-          "value": 9935,
-          "change": 1881,
-          "isForeign": false
+          "name": "瑞银期货",
+          "value": 10478,
+          "change": null,
+          "isForeign": true
         }
       ],
       "netShort": [
         {
           "rank": 1,
           "name": "中粮期货",
-          "value": 477881,
-          "change": -2560,
+          "value": 433085,
+          "change": -44796,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "国投期货",
-          "value": 193173,
-          "change": 8643,
+          "value": 194307,
+          "change": 1134,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "广发期货",
-          "value": 66538,
-          "change": -2909,
+          "value": 62716,
+          "change": -3822,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "东证期货",
-          "value": 34625,
-          "change": 3165,
+          "value": 45742,
+          "change": 11117,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "摩根大通",
-          "value": 27936,
-          "change": 3727,
+          "value": 39723,
+          "change": 11787,
           "isForeign": true
         },
         {
           "rank": 6,
-          "name": "国贸期货",
-          "value": 8582,
-          "change": -866,
+          "name": "华泰期货",
+          "value": 12788,
+          "change": 5606,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "华泰期货",
-          "value": 7182,
-          "change": -3094,
+          "name": "国贸期货",
+          "value": 11595,
+          "change": 3013,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "海通期货",
-          "value": 5361,
-          "change": 2123,
+          "name": "中金财富",
+          "value": 7215,
+          "change": 4790,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "中金财富",
-          "value": 2425,
-          "change": -2531,
+          "name": "海通期货",
+          "value": 7117,
+          "change": 1756,
           "isForeign": false
         },
         {
           "rank": 10,
           "name": "大地期货",
-          "value": 2214,
-          "change": -1016,
+          "value": 3471,
+          "change": 1257,
           "isForeign": false
         }
       ],
       "longUp": [
         {
           "rank": 1,
-          "name": "中信期货",
-          "value": 239637,
-          "change": 12621,
+          "name": "国泰君安",
+          "value": 259142,
+          "change": 6883,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "摩根大通",
-          "value": 54332,
-          "change": 6891,
-          "isForeign": true
+          "name": "中粮期货",
+          "value": 65452,
+          "change": 6043,
+          "isForeign": false
         },
         {
           "rank": 3,
-          "name": "国泰君安",
-          "value": 252259,
-          "change": 5954,
+          "name": "银河期货",
+          "value": 108580,
+          "change": 4633,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "中泰期货",
-          "value": 47478,
-          "change": 3145,
+          "name": "一德期货",
+          "value": 38344,
+          "change": 3885,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "中粮期货",
-          "value": 59409,
-          "change": 2898,
+          "name": "中泰期货",
+          "value": 50322,
+          "change": 2844,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "华泰期货",
-          "value": 47636,
-          "change": 1787,
+          "name": "南华期货",
+          "value": 65684,
+          "change": 2441,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "瑞达期货",
-          "value": 36761,
-          "change": 1457,
+          "name": "中信建投",
+          "value": 68101,
+          "change": 923,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "一德期货",
-          "value": 34459,
-          "change": 968,
+          "name": "国富期货",
+          "value": 48777,
+          "change": 238,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "国富期货",
-          "value": 48539,
-          "change": 821,
+          "name": "海通期货",
+          "value": 40501,
+          "change": 193,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "中金财富",
-          "value": 37512,
-          "change": 550,
+          "name": "东证期货",
+          "value": 168659,
+          "change": 7,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "海证期货",
-          "value": 37265,
-          "change": 165,
-          "isForeign": false
-        },
-        {
-          "rank": 12,
-          "name": "建信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 13,
-          "name": "国联期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "五矿期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
           "name": "大地期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 12,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "新湖期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "东吴期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
           "rank": 16,
-          "name": "华闻期货",
+          "name": "宏源期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 17,
-          "name": "冠通期货",
+          "name": "国贸期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 18,
-          "name": "兴证期货",
+          "name": "建信期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "徽商期货",
+          "name": "浙商期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "新湖期货",
+          "name": "国联期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -19634,77 +19627,77 @@
       "longDown": [
         {
           "rank": 1,
-          "name": "银河期货",
-          "value": 103947,
-          "change": -5239,
+          "name": "中信期货",
+          "value": 225371,
+          "change": -14266,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "国投期货",
-          "value": 57396,
-          "change": -3223,
-          "isForeign": false
+          "name": "摩根大通",
+          "value": 49308,
+          "change": -5024,
+          "isForeign": true
         },
         {
           "rank": 3,
-          "name": "中信建投",
-          "value": 67178,
-          "change": -3011,
+          "name": "华泰期货",
+          "value": 43925,
+          "change": -3711,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "东证期货",
-          "value": 168652,
-          "change": -2872,
+          "name": "瑞达期货",
+          "value": 33982,
+          "change": -2779,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "高盛期货",
-          "value": 141783,
-          "change": -2666,
-          "isForeign": true
+          "name": "中金财富",
+          "value": 35114,
+          "change": -2398,
+          "isForeign": false
         },
         {
           "rank": 6,
-          "name": "海通期货",
-          "value": 40308,
-          "change": -1141,
+          "name": "广发期货",
+          "value": 57470,
+          "change": -2247,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "永安期货",
-          "value": 101831,
-          "change": -816,
-          "isForeign": false
+          "name": "高盛期货",
+          "value": 139892,
+          "change": -1891,
+          "isForeign": true
         },
         {
           "rank": 8,
-          "name": "南华期货",
-          "value": 63243,
-          "change": -508,
+          "name": "国投期货",
+          "value": 55879,
+          "change": -1517,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "广发期货",
-          "value": 59717,
-          "change": -137,
+          "name": "永安期货",
+          "value": 100330,
+          "change": -1501,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "建信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
+          "name": "瑞银期货",
+          "value": 32137,
+          "change": -86,
+          "isForeign": true
         },
         {
           "rank": 11,
-          "name": "国联期货",
+          "name": "大地期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -19718,56 +19711,56 @@
         },
         {
           "rank": 13,
-          "name": "大地期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "华闻期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "冠通期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "兴证期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 17,
-          "name": "徽商期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 18,
           "name": "新湖期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 19,
+          "rank": 14,
+          "name": "东吴期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
           "name": "宏源期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 20,
+          "rank": 17,
           "name": "国贸期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "建信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "浙商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "国联期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20403,7 +20396,6 @@
     },
     "may": {
       "closes": [
-        2779.98,
         2785.97,
         2775.0,
         2773.0,
@@ -20662,10 +20654,11 @@
         3012.0,
         2999.0,
         2987.0,
-        2985.0
+        2985.0,
+        2943.0
       ],
-      "ownCount": 99,
-      "extendedCount": 161,
+      "ownCount": 100,
+      "extendedCount": 160,
       "donor": "M2607",
       "symbol": "M2705"
     },
@@ -20943,38 +20936,37 @@
     "mainContract": {
       "key": "jan",
       "symbol": "M2701",
-      "gross": 825917
+      "gross": 817759
     },
-    "date": "2026-10-14",
+    "date": "2026-10-15",
     "members": {
       "高盛期货": {
-        "net": 119432,
-        "change": -2867,
+        "net": 118233,
+        "change": -1199,
         "side": "long",
-        "rank": 2,
+        "rank": 1,
         "foreign": true,
         "history": {
-          "n": 117,
+          "n": 118,
           "since": "2026-04-13",
           "run": {
             "direction": "down",
-            "days": 5,
-            "total": -32660,
+            "days": 6,
+            "total": -33859,
             "since": "2026-10-08",
             "contract": "M2701"
           },
           "change5": {
-            "change": -33162,
-            "from": "2026-09-30",
-            "to": "2026-10-14",
+            "change": -19750,
+            "from": "2026-10-08",
+            "to": "2026-10-15",
             "contract": "M2701",
-            "n": 5,
-            "basis": "long"
+            "n": 5
           },
           "change20": {
-            "change": -22016,
-            "from": "2026-09-08",
-            "to": "2026-10-14",
+            "change": -23150,
+            "from": "2026-09-09",
+            "to": "2026-10-15",
             "contract": "M2701",
             "n": 20,
             "approx": 1
@@ -20982,106 +20974,123 @@
         }
       },
       "摩根大通": {
-        "net": -27936,
-        "change": -3727,
+        "net": -39723,
+        "change": -11787,
         "side": "short",
         "rank": 5,
         "foreign": true,
         "history": {
-          "n": 1066,
+          "n": 1067,
           "since": "2022-01-04",
           "run": {
             "direction": "down",
-            "days": 3,
-            "total": -29571,
+            "days": 4,
+            "total": -41358,
             "since": "2026-10-12",
             "contract": "M2701"
           },
           "change5": {
-            "change": -18197,
-            "from": "2026-09-30",
-            "to": "2026-10-14",
+            "change": -31853,
+            "from": "2026-10-08",
+            "to": "2026-10-15",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": -29892,
-            "from": "2026-09-08",
-            "to": "2026-10-14",
+            "change": -54435,
+            "from": "2026-09-09",
+            "to": "2026-10-15",
             "contract": "M2701",
             "n": 20
           }
         }
       },
       "瑞银期货": {
-        "net": null,
+        "net": 10478,
         "change": null,
-        "side": null,
-        "rank": null,
-        "foreign": true
+        "side": "long",
+        "rank": 12,
+        "foreign": true,
+        "history": {
+          "n": 242,
+          "since": "2023-05-19",
+          "run": {
+            "direction": null,
+            "days": 0,
+            "total": 0,
+            "since": null,
+            "contract": "M2701"
+          },
+          "change5": {
+            "change": -1503,
+            "from": "2026-10-08",
+            "to": "2026-10-15",
+            "contract": "M2701",
+            "n": 5,
+            "bridged": 1
+          },
+          "change20": null
+        }
       },
       "中粮期货": {
-        "net": -477881,
-        "change": 2560,
+        "net": -433085,
+        "change": 44796,
         "side": "short",
         "rank": 1,
         "foreign": false,
         "history": {
-          "n": 1125,
+          "n": 1126,
           "since": "2022-01-03",
           "run": {
             "direction": "up",
-            "days": 3,
-            "total": 24891,
+            "days": 4,
+            "total": 69687,
             "since": "2026-10-12",
             "contract": "M2701"
           },
           "change5": {
-            "change": 4328,
-            "from": "2026-09-30",
-            "to": "2026-10-14",
+            "change": 42513,
+            "from": "2026-10-08",
+            "to": "2026-10-15",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": 119764,
-            "from": "2026-09-08",
-            "to": "2026-10-14",
+            "change": 167604,
+            "from": "2026-09-09",
+            "to": "2026-10-15",
             "contract": "M2701",
             "n": 20
           }
         }
       },
       "国投期货": {
-        "net": -193173,
-        "change": -8643,
+        "net": -194307,
+        "change": -1134,
         "side": "short",
         "rank": 2,
         "foreign": false,
         "history": {
-          "n": 1119,
+          "n": 1120,
           "since": "2022-01-03",
           "run": {
             "direction": "down",
-            "days": 1,
-            "total": -8643,
+            "days": 2,
+            "total": -9777,
             "since": "2026-10-14",
             "contract": "M2701"
           },
           "change5": {
-            "change": 32918,
-            "from": "2026-09-30",
-            "to": "2026-10-14",
+            "change": 21810,
+            "from": "2026-10-08",
+            "to": "2026-10-15",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": 109508,
-            "from": "2026-09-08",
-            "to": "2026-10-14",
+            "change": 104582,
+            "from": "2026-09-09",
+            "to": "2026-10-15",
             "contract": "M2701",
             "n": 20
           }
@@ -21089,9 +21098,9 @@
       }
     },
     "industry": {
-      "net": -671054,
-      "change": -6083,
-      "changePct": -0.91,
+      "net": -627392,
+      "change": 43662,
+      "changePct": 6.96,
       "members": [
         "中粮期货",
         "国投期货"
@@ -21116,77 +21125,87 @@
     "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约",
     "trend": {
       "高盛期货": {
-        "n": 47,
+        "n": 48,
         "contract": "M2701",
         "high": 120000,
         "code": "retreat_fast",
         "last": {
-          "d": "2026-10-14",
-          "v": 119432
+          "d": "2026-10-15",
+          "v": 118233
         },
         "run": {
           "direction": "down",
-          "days": 5,
-          "total": -32660,
+          "days": 6,
+          "total": -33859,
           "since": "2026-10-08"
         },
-        "dayChange": -2867,
+        "dayChange": -1199,
         "change5": {
-          "change": -32660,
-          "from": "2026-09-30",
-          "to": "2026-10-14"
+          "change": -19750,
+          "from": "2026-10-08",
+          "to": "2026-10-15"
         },
         "peak": {
           "v": 152092,
           "d": "2026-09-30"
         },
-        "drawdown": 32660,
-        "drawdownPct": 21.5,
+        "drawdown": 33859,
+        "drawdownPct": 22.3,
         "acrossHoliday": true,
         "approx": false
       },
       "摩根大通": {
-        "n": 48,
+        "n": 49,
         "contract": "M2701",
         "high": null,
         "code": "retreat_fast",
         "last": {
-          "d": "2026-10-14",
-          "v": -27936
+          "d": "2026-10-15",
+          "v": -39723
         },
         "run": {
           "direction": "down",
-          "days": 3,
-          "total": -29571,
+          "days": 4,
+          "total": -41358,
           "since": "2026-10-12"
         },
-        "dayChange": -3727,
+        "dayChange": -11787,
         "change5": {
-          "change": -18197,
-          "from": "2026-09-30",
-          "to": "2026-10-14"
+          "change": -31853,
+          "from": "2026-10-08",
+          "to": "2026-10-15"
         },
         "peak": {
           "v": 32450,
           "d": "2026-07-31"
         },
-        "drawdown": 60386,
-        "drawdownPct": 186.1,
+        "drawdown": 72173,
+        "drawdownPct": 222.4,
         "acrossHoliday": false,
         "approx": false
+      },
+      "瑞银期货": {
+        "n": 1,
+        "contract": "M2701",
+        "high": null,
+        "code": "insufficient",
+        "last": {
+          "d": "2026-10-15",
+          "v": 10478
+        }
       }
     },
     "verdict": {
       "code": "retreat_from_high",
       "level": "yellow",
       "short": "外资高位撤退加速",
-      "label": "外资高位撤退加速：高盛净多从峰值152,092手(09-30)降到119,432手，较峰值回落32,660手(21.5%)，连续5个交易日减仓",
+      "label": "外资高位撤退加速：高盛净多从峰值152,092手(09-30)降到118,233手，较峰值回落33,859手(22.3%)，连续6个交易日减仓",
       "lines": [
-        "近5个交易日高盛净多-32,660手。",
-        "距文档的12万手警戒线：已低于警戒线568手。",
+        "近5个交易日高盛净多-19,750手。",
+        "距文档的12万手警戒线：已低于警戒线1,767手。",
         "这段减仓跨过国庆长假(节前减风险、节后复盘的成分较大)，文档提示长假前后的变动要打折看，且假期后只有很少几个交易日，是否延续要再看几天。",
         "CFTC管理基金净多处近156周的99%分位，连续1周减少(周度数据，截至2026-10-06，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
-        "其他外资席位：摩根大通在减仓(加速)(连续3日累计-29,571手)，净空27,936手(摩根大通净持仓常在零附近来回，方向意义弱)。"
+        "其他外资席位：摩根大通在减仓(加速)(连续4日累计-41,358手)，净空39,723手(摩根大通净持仓常在零附近来回，方向意义弱)。"
       ],
       "evidence": [
         "历史检验(龙虎榜2022-01~2026-10，摩根大通+高盛+瑞银合计，v101.24 校准)：外资3日净加仓≥2万手后，未来10个交易日平均约+1.9%(约31个独立事件，胜率约68%，基准约+0.6%)，方向偏涨；但前半段(2022-24)约+3.5%、后半段(2025-26)约+0.9%，越近越弱，样本仍小；",
@@ -21195,7 +21214,5 @@
       ]
     }
   },
-  "carriedKeys": [
-    "mysteelPoultryProfit"
-  ]
+  "carriedKeys": []
 }
