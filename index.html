@@ -1122,7 +1122,19 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
   };
   /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；默认每 3 秒取一次，失败逐级放慢 */
   CL.tickUrl = function (sym, cb) { return 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getFewMinLine?symbol=' + encodeURIComponent(String(sym).toUpperCase()) + '&type=1'; };
-  CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume }; };
+  /* 新浪逐笔报价(hq.sinajs.cn)：比1分钟线快得多。返回 var hq_str_nf_M2601="名称,时间HHMMSS,开,高,低,昨收,买价,卖价,最新价,结算,昨结,买量,卖量,持仓,成交量,...,日期"
+     字段位置按新浪期货约定：[1]时间 [8]最新价 [13]持仓 [14]成交量；日期取字段里的 yyyy-mm-dd，没有就用北京时间今天 */
+  CL.hqUrl = function (sym) { return 'https://hq.sinajs.cn/list=nf_' + encodeURIComponent(String(sym).toUpperCase()) + '&_=' + Date.now(); };
+  CL.parseSinaHq = function (str, nowMs) {
+    if (typeof str !== 'string' || str.length < 20) return null;
+    const f = str.split(','); if (f.length < 15) return null;
+    const c = parseFloat(f[8]), tm = String(f[1] || '').replace(/\D/g, ''); if (!(c > 0) || tm.length !== 6) return null;
+    const hh = tm.slice(0, 2), mm = tm.slice(2, 4), ss = tm.slice(4); if (+hh > 23 || +mm > 59 || +ss > 59) return null;
+    let d = null; for (let i = 15; i < f.length; i++) { if (/^\d{4}-\d{2}-\d{2}$/.test(f[i])) { d = f[i]; break; } }
+    if (!d) { const b = new Date((nowMs || Date.now()) + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0'); d = b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()); }
+    return { dt: d + ' ' + hh + ':' + mm + ':' + ss, c, v: parseFloat(f[14]) || 0, src: 'hq' };
+  };
+  CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
   CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
@@ -1320,7 +1332,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 60 * 1000));
     /* 实时价条：只在交易时段+页面可见时，每3秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
-    const tickOne = (sym) => new Promise(res => {
+    const tickMin = (sym) => new Promise(res => {
       try {
         const cb = '__tk' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
         const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
@@ -1329,6 +1341,26 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         sc.src = CL.tickUrl(sym, cb); doc.head.appendChild(sc);
       } catch (_) { res({ err: '页面脚本异常' }); }
     });
+    const tickHq = (sym) => new Promise(res => {   // 逐笔报价：脚本执行后全局变量 hq_str_nf_XXX 里就是报价串
+      try {
+        const vn = 'hq_str_nf_' + String(sym).toUpperCase(), sc = doc.createElement('script'); let done = false;
+        const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[vn]; } catch (_) { window[vn] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
+        const tm = setTimeout(() => fin({ err: '逐笔报价超时(5秒没回)' }), 5000);
+        sc.charset = 'gbk'; try { sc.referrerPolicy = 'no-referrer'; } catch (_) {}
+        sc.onload = () => { const t = CL.parseSinaHq(window[vn]); fin(t || { err: '逐笔报价返回空/格式不符' }); }; sc.onerror = () => fin({ err: '逐笔报价被拒绝/网络错误' });
+        sc.src = CL.hqUrl(sym); doc.head.appendChild(sc);
+      } catch (_) { res({ err: '逐笔报价脚本异常' }); }
+    });
+    let hqBad = 0, hqSkipUntil = 0;   // 逐笔报价连续失败3次就停用5分钟，期间只用1分钟线，之后再试
+    const tickOne = async (sym) => {
+      if (!window.__NO_HQ && Date.now() >= hqSkipUntil) {
+        const r = await tickHq(sym);
+        if (r && !r.err) { hqBad = 0; return r; }
+        if (++hqBad >= 3) { hqSkipUntil = Date.now() + 5 * 60000; hqBad = 0; }
+        const m = await tickMin(sym); if (m && !m.err) m.hqErr = r && r.err; return m;
+      }
+      return tickMin(sym);
+    };
     let tkFails = 0;
     CL.tickOnce = async function () {
       try {
@@ -1338,7 +1370,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
+        st.ok++; st.src = r.src; st.hqErr = r.hqErr || null; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
         D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
@@ -1874,7 +1906,7 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
   const pLine0 = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
-  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
+  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${tkS.src === 'hq' ? '新浪逐笔报价' : tkS.src === 'min' ? '新浪1分钟线（逐笔报价不可用' + (tkS.hqErr ? '：' + esc(tkS.hqErr) : '') + '）' : '—'} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
   const rcs = reconcile(), rcOld = rcs.filter(x => x.issue === 'hist_old');
   const rcLine = rcOld.length ? `<p><b>对账提醒（${rcOld.length}）</b><span style="color:var(--ink3)"> 数据灯说正常，但趋势墙里的最新点已经很旧：</span></p><ul>${rcOld.map(x => `<li><b>${esc(x.row.name)}</b>：趋势墙最新点 ${esc(x.ser.txt)}（${esc(x.ser.d)}，距今 ${x.ser.age} 天）</li>`).join('')}</ul>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + rcLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +

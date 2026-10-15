@@ -144,9 +144,14 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
     const at=(h,m,dow)=>Date.UTC(2026,9,12+((dow+6)%7),h-8,m);
     eq('交易时段：周三10:00是，周三12:00（午休也照常刷，无害）是，周三15:30否，周三21:30是，周六10:00否',[CL.tradingNow(at(10,0,3)),CL.tradingNow(at(12,0,3)),CL.tradingNow(at(15,30,3)),CL.tradingNow(at(21,30,3)),CL.tradingNow(at(10,0,6))],[true,true,false,true,false]);
     eq('tickUrl：1分钟线、合约大写、回调名带上',/symbol=M2701&type=1$/.test(CL.tickUrl('m2701','cbx'))&&CL.tickUrl('M2701','cbx').includes('var%20cbx='),true);
-    eq('parseSinaTick：取最后一根1分钟线的收盘=最新价；空/异常→null',[CL.parseSinaTick([{d:'2026-10-14 21:30:00',o:3380,h:3385,l:3378,c:3383,v:10},{d:'2026-10-14 21:31:00',o:3383,h:3390,l:3382,c:3388,v:7}]),CL.parseSinaTick([]),CL.parseSinaTick(null)],[{dt:'2026-10-14 21:31:00',c:3388,v:7},null,null]);
+    eq('parseSinaTick：取最后一根1分钟线的收盘=最新价；空/异常→null',[CL.parseSinaTick([{d:'2026-10-14 21:30:00',o:3380,h:3385,l:3378,c:3383,v:10},{d:'2026-10-14 21:31:00',o:3383,h:3390,l:3382,c:3388,v:7}]),CL.parseSinaTick([]),CL.parseSinaTick(null)],[{dt:'2026-10-14 21:31:00',c:3388,v:7,src:'min'},null,null]);
     const dd={a:1,ticks:{sep:{c:1}},priceSrc:{x:1},old:2}; CL.fill(dd,{a:2,nw:3});
     eq('fill：整体重算时保留浏览器自己维护的实时字段（ticks/priceSrc/priceCheck），其余旧键照常清掉',dd,{a:2,ticks:{sep:{c:1}},priceSrc:{x:1},nw:3});
+    { const q='豆粕2601,110312,3100,3120,3090,3105,3108,3109,3110,3109,3105,50,60,1200000,45678,0,0,2026-10-15,x';
+      eq('parseSinaHq：取最新价/时间/成交量，日期取报价里的',CL.parseSinaHq(q),{dt:'2026-10-15 11:03:12',c:3110,v:45678,src:'hq'});
+      eq('parseSinaHq：无日期字段时用北京时间今天',CL.parseSinaHq(q.replace('2026-10-15','a'),Date.UTC(2026,9,15,3,0,0)).dt,'2026-10-15 11:03:12');
+      eq('parseSinaHq：空串/价格为0/时间错/字段不够 都返回null',[CL.parseSinaHq(''),CL.parseSinaHq(undefined),CL.parseSinaHq(q.replace(',3110,',',0,')),CL.parseSinaHq(q.replace('110312','999999')),CL.parseSinaHq('a,b,c')],[null,null,null,null,null]);
+      eq('hqUrl：指向 hq.sinajs.cn 且合约大写',/^https:\/\/hq\.sinajs\.cn\/list=nf_M2601&_=\d+$/.test(CL.hqUrl('m2601')),true); }
     eq('tickDelay：默认3秒；连续失败逐级放慢 6秒→15秒→30秒（被限流时退让）；可自定义基础间隔',[[0,1,2,3,5,6,20].map(f=>CL.tickDelay(f,3000)),CL.tickDelay(0,1500),CL.tickDelay(1,1500)],[[3000,6000,6000,15000,15000,30000,30000],1500,5000]);
   }
 }
