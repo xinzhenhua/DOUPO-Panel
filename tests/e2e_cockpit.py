@@ -355,10 +355,20 @@ def main():
     pg.evaluate("document.querySelectorAll('[data-ly]').forEach(c => { if (!c.checked) c.click(); })")
     ys = pg.evaluate("[...document.querySelectorAll('#kl text.lv')].map(t => +t.getAttribute('y')).sort((a, b) => a - b)")
     ok('全部图层打开：右侧标签互相不重叠（间距≥11px）', len(ys) >= 6 and all(ys[i + 1] - ys[i] >= 11 for i in range(len(ys) - 1)), ys)
+    OVL = """(() => { const ts = [...document.querySelectorAll('#kl svg text')].filter(t => t.getAttribute('class') === 'lv' || t.getAttribute('class') === 'lw').map(t => ({ s: t.textContent, r: t.getBoundingClientRect() })); const bad = [];
+      for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) { const a = ts[i].r, b = ts[j].r; if (a.width && b.width && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) bad.push([ts[i].s, ts[j].s]); }
+      return { n: ts.length, bad }; })()"""
+    r = pg.evaluate(OVL)
+    ok('全部图层打开（含成交量、持仓、MACD）：K线所有数据标签两两不重叠', r['n'] >= 9 and not r['bad'], r)
+    for (w, h) in ((1366, 768), (1100, 700), (390, 800)):
+        pg.set_viewport_size({'width': w, 'height': h}); pg.wait_for_timeout(500)
+        r = pg.evaluate(OVL)
+        ok('全部图层打开：%dx%d 下标签也不重叠' % (w, h), r['n'] >= 9 and not r['bad'], r)
+    pg.set_viewport_size({'width': 1440, 'height': 900}); pg.wait_for_timeout(400)
     pg.evaluate("document.body.click()")
     ok('点图层菜单外面，菜单收起', pg.evaluate("document.querySelector('.lym').hidden"))
     pg.reload(); pg.wait_for_selector('#boot', state='detached', timeout=60000); pg.wait_for_timeout(500)
-    ok('刷新后图层选择还在', '铁' in pg.evaluate("document.getElementById('kl').textContent"))
+    ok('刷新后图层选择还在（8个图层全开已记住）', pg.evaluate("(() => { try { const l = JSON.parse(localStorage.getItem('cockpit-ly') || 'null'); return !!l && l.iron === true && l.be === true && l.h20 === true; } catch (e) { return false; } })()"))
     pg.evaluate("document.querySelector('[data-view=amp]').click()"); pg.wait_for_timeout(200)
     at = pg.evaluate("document.getElementById('chart').innerText")
     ok('月振幅视图：一句结论（本月振幅/偏宽正常偏窄）+ 逐月柱状图，更多明细里才有日历月区间图', all(k in at for k in ('本月振幅', '往年同月', '近 2 年逐月振幅', '不说多空')) and pg.evaluate("document.querySelectorAll('#chart svg.amsv').length") == 2 and pg.evaluate("!document.querySelector('#chart details.vmore').open"), at[:300])
@@ -422,6 +432,31 @@ def main():
     ok('夜盘 23:00 最后一笔直接当夜盘收价（归下一交易日10-16）；早盘10:15=早盘收；时段内的实时价标盘中', r['night'][:2] == [3440, '10-16 夜盘收 23:00'] and r['am'][1] == '10-15 早盘收 10:15' and r['mid'][1] == '10-15 盘中', [r['night'], r['am'], r['mid']])
     ok('时段划分边界：休息/收盘/夜盘/开盘前', r['so'] == [None, '早盘收', '早盘收', None, None, '上午收', '上午收', None, None, '日盘收', '日盘收', None, None, '夜盘收', '夜盘收', None], r['so'])
     ok('已结束时段的最后价一直保留（一小时前的15:00价仍显示）；时段中间过期的价120秒后丢弃', r['keep1'] == 3431 and r['keep2'] is None, [r['keep1'], r['keep2']])
+    # v101.70：东方财富实时推送(SSE)：假 EventSource 模拟推送，验证推送价直接进价条、轮询旧快照不盖回去、连不上时记原因并退回轮询
+    r = pg.evaluate("""(async () => {
+      const CL = window.CockpitData, D = window.__DATA__, C = window.__cockpit, key = C.S.key, out = {};
+      window.__FORCE_TRADING = true; window.__NO_EM = true; window.__NO_HQ = true; window.__NO_SINA = false;
+      const made = []; class FES { constructor(u) { this.url = u; this.readyState = 1; made.push(this); } close() { this.readyState = 2; this.closed = true; } }
+      const real = window.EventSource; window.EventSource = FES; CL._sse.skipUntil = 0; CL._sse.es = null; CL._sse.sym = null;
+      D.ticks = {}; D.tickStat = undefined;
+      await CL.tickOnce();    // 轮询一次(联网被拦，失败也没关系)，同时建立推送连接
+      out.opened = made.length === 1 && /stock\/sse/.test(made[0].url) && /secid=114\./.test(made[0].url);
+      const es = made[0], ts = Math.floor(Date.now() / 1000);
+      es.onmessage({ data: JSON.stringify({ rc: 0, data: { f43: 3456, f57: 'x', f86: ts } }) });
+      out.t1 = D.ticks[key] && [D.ticks[key].c, D.ticks[key].src];
+      es.onmessage({ data: JSON.stringify({ rc: 0, data: { f43: 3457 } }) });
+      out.t2 = D.ticks[key].c; out.chg = D.tickStat.chg.length >= 2; out.src = D.tickStat.src;
+      out.line = document.body.innerHTML.length > 0;
+      await CL.tickOnce(); out.noExtraConn = made.length === 1;
+      // 连不上：新连接一条数据都没收到就连续出错 → 关闭、记原因、10分钟内不再试
+      CL._sse.es.close(); CL._sse.es = null; CL._sse.got = 0; made.length = 0; D.ticks = {};
+      await CL.tickOnce(); const e2 = made[0]; e2.readyState = 0; e2.onerror(); e2.onerror(); e2.onerror();
+      out.err = CL._sse.err; out.closed = !!e2.closed; out.skip = CL._sse.skipUntil > Date.now() + 5 * 60000;
+      await CL.tickOnce(); out.noReopen = made.length === 1;
+      window.EventSource = real; window.__FORCE_TRADING = false; window.__NO_EM = false; window.__NO_HQ = false; CL._sse.skipUntil = 0; CL._sse.es = null; D.ticks = {};
+      return out; })()""")
+    ok('东方财富推送：连上后推送价直接进价条（首条全量、后续只推变化字段）', r['opened'] and r['t1'] == [3456, 'sse'] and r['t2'] == 3457 and r['chg'] and r['src'] == 'sse', r)
+    ok('东方财富推送：已连着就不重复建连接；连不上(3次出错)→关闭并记原因、10分钟内不再试', r['noExtraConn'] and r['closed'] and r['skip'] and r['noReopen'] and '推送连接失败' in (r['err'] or ''), r)
     # v101.65：实时价取价诊断（成功/失败次数、耗时、近1分钟变动、最近失败原因）显示在数据弹窗里
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit; D.priceSrc = D.priceSrc || { used: { sep: 'sina' }, at: Date.now() };
       D.tickStat = { ok: 41, fail: 7, ms: 230, delay: 6000, chg: [Date.now() - 5000, Date.now() - 20000], err: '超时(5秒没回)', errAt: Date.now() - 12000, since: Date.now() };

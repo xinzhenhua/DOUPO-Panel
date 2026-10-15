@@ -194,10 +194,24 @@
     const b = new Date(ts * 1000 + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0');
     return { dt: b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()), c, v: 0, src: 'em' };
   };
+  /* 东方财富实时推送(SSE)：第一条是全量字段，之后只推变化的字段 → 把每条合并进 st 再取价。f43最新价(fltt=2时已是小数) f86成交时间(秒) */
+  CL.emSseUrl = function (sym) { return 'https://push2.eastmoney.com/api/qt/stock/sse?fields=f43,f57,f86&mpi=1000&invt=2&fltt=2&ut=fa5fd1943c7b386f172d6893dbfba10b&secid=114.' + encodeURIComponent(String(sym).toLowerCase()); };
+  CL.parseEmSse = function (st, msg) {
+    let j = msg; if (typeof msg === 'string') { try { j = JSON.parse(msg); } catch (_) { return null; } }
+    const d = j && j.data; if (!d || typeof d !== 'object') return null;
+    const n = Object.assign({}, st || {}); let any = false; for (const k of ['f43', 'f86']) if (d[k] != null && d[k] !== '-') { n[k] = d[k]; any = true; }
+    return any ? n : null;
+  };
+  CL.fmtBj = function (ms) { const b = new Date(ms + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0'); return b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()); };
+  CL.emSseTick = function (st, prevC, nowMs) {
+    if (!st) return null; let c = parseFloat(st.f43); if (!(c > 0)) return null; if (prevC > 0 && c > prevC * 20) c = c / 100;   // 万一推送给的是放大100倍的整数，按上一次价格校正
+    const ts = Number(st.f86); return { dt: CL.fmtBj(ts > 1e9 ? ts * 1000 : (nowMs || Date.now())), c, v: 0, src: 'sse' };
+  };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
-  CL.tickBase = function () { let v = (CL.tkSrc === 'em' || CL.tkSrc === 'hq') ? 1000 : 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 3000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
-  CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
+  CL.tradingNow = function (nowMs) {
+    if (typeof window !== 'undefined' && window.__FORCE_TRADING) return true;   // 仅测试用   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
     return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
   };
@@ -428,24 +442,47 @@
         if (s.k !== 'min' && (window['__NO_' + s.k.toUpperCase()] || Date.now() < (skip[s.k] || 0))) continue;
         const r = await s.f(sym);
         if (r && !r.err) { bad[s.k] = 0; r.errs = Object.assign({}, srcErr); return r; }
-        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { skip[s.k] = Date.now() + 5 * 60000; bad[s.k] = 0; }
+        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { bad[s.k] = 0; if (s.k === 'em') { CL.tkPace = CL.tkPace || {}; CL.tkPace.em = Math.min(5000, (CL.tkPace.em || 2000) + 1000); skip.em = Date.now() + 60000; } else skip[s.k] = Date.now() + 30 * 60000; }   // 东方财富被拒=取得太勤：歇1分钟再试，并把间隔放慢1秒(上限5秒)；新浪逐笔是结构性不通：歇30分钟
         if (s.k === 'min') return r;
       }
       return { err: '没有可用的取价源' };
     };
     let tkFails = 0;
+    const sse = CL._sse = { es: null, sym: null, key: null, state: null, got: 0, errs: 0, last: 0, skipUntil: 0, err: null };
+    const sseAlive = () => !!(sse.es && sse.got && sse.es.readyState === 1);
+    const applyTick = (key, sym, r, t0) => {
+      const st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] }; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
+      if (old && old.src === 'sse' && r.src !== 'sse' && String(old.dt) >= String(r.dt)) { st.ok++; return false; }   // 推送已经给过更新的价，轮询回来的旧快照不能把它盖回去
+      st.ok++; CL.tkSrc = r.src; if (r.src === 'sse' || !sseAlive()) st.src = r.src; if (r.errs) st.errs = r.errs; if (t0) st.ms = Date.now() - t0; st.delay = CL.tickDelay(0);
+      if (!old || old.c !== r.c || old.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); }
+      D.ticks[key] = { key, sym, c: r.c, dt: r.dt, src: r.src, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
+      if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
+      return true;
+    };
+    const sseStop = () => { try { sse.es && sse.es.close(); } catch (_) {} sse.es = null; };
+    const sseEnsure = (key, sym) => {   // 交易时段+页面可见时，保持一条到东方财富的推送连接；断了/连不上自动退回轮询
+      if (window.__NO_SSE || typeof window.EventSource !== 'function') return;
+      if (!CL.tradingNow(Date.now()) || doc.hidden || Date.now() < sse.skipUntil) { if (sse.es) sseStop(); return; }
+      if (sse.es && sse.sym === sym && !(sse.got && Date.now() - sse.last > 90000)) { sse.key = key; return; }   // 在用，且(收到过数据→90秒内有动静)
+      sseStop(); sse.sym = sym; sse.key = key; sse.state = null; sse.got = 0; sse.errs = 0; sse.last = 0;
+      let es; try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { sse.err = '推送连接创建失败'; sse.skipUntil = Date.now() + 10 * 60000; return; }
+      sse.es = es;
+      es.onmessage = ev => { sse.errs = 0; const ns = CL.parseEmSse(sse.state, ev.data); if (!ns) return; sse.state = ns; const old = D.ticks && D.ticks[sse.key], t = CL.emSseTick(ns, old && old.c, Date.now()); if (!t) return; sse.got++; sse.last = Date.now(); sse.err = null; applyTick(sse.key, sse.sym, t, 0); };
+      es.onerror = () => { sse.errs++; if ((!sse.got && sse.errs >= 3) || sse.errs >= 8) { sse.err = sse.got ? '推送连接反复断开' : '推送连接失败(可能被来源限制/不支持)'; sse.skipUntil = Date.now() + 10 * 60000; sseStop(); } };
+    };
+    let lastPoll = 0;
     CL.tickOnce = async function () {
       try {
         if (!D || doc.hidden || window.__NO_SINA) return null;
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
+        sseEnsure(key, sym); { const st0 = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] }; st0.sseErr = sse.err; st0.sseOn = sseAlive(); }
         // 不在交易时段：每个时段结束那一刻的最后成交价就是该时段的收盘价，保留下来（不清掉）；页面刚打开、手里没有时取一次，之后每分钟核对一次
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
-        const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
+        if (sseAlive() && Date.now() - lastPoll < 15000) return null;   // 推送连着时，轮询只做每15秒一次的核对
+        lastPoll = Date.now();
+        const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat;
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; CL.tkSrc = r.src; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
-        tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
-        D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
-        if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
+        tkFails = 0; applyTick(key, sym, r, t0);
         return r;
       } catch (_) { tkFails++; return null; }
     };

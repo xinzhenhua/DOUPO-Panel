@@ -159,7 +159,13 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
     eq('parseEmTick：f43最新价+f86秒级时间戳(北京时间)',[CL.parseEmTick({data:{f43:3110.5,f86:Date.UTC(2026,9,15,3,3,12)/1000}}),CL.parseEmTick({data:null}),CL.parseEmTick({data:{f43:'-',f86:1}}),CL.parseEmTick(null)],[{dt:'2026-10-15 11:03:12',c:3110.5,v:0,src:'em'},null,null,null]);
     eq('emTickUrl：secid=114.合约小写',/secid=114\.m2601&fields=f43,f57,f86&fltt=2/.test(CL.emTickUrl('M2601','cb')),true);
     { const o = CL.tkSrc; CL.tkSrc = 'em'; const a = CL.tickBase(); CL.tkSrc = 'min'; const b = CL.tickBase(); CL.tkSrc = undefined; const c = CL.tickBase(); CL.tkSrc = o;
-      eq('tickBase：快源(东方财富)1秒，1分钟线/未知3秒', [a, b, c], [1000, 3000, 3000]); }
+      eq('tickBase：东方财富2秒，1分钟线/未知3秒；被拒后自动放慢的间隔优先', [a, b, c], [2000, 3000, 3000]); CL.tkSrc = 'em'; CL.tkPace = { em: 3000 }; eq('tickBase：东方财富被拒放慢后=3秒', CL.tickBase(), 3000); CL.tkPace = undefined; CL.tkSrc = o; }
+    { const s1 = CL.parseEmSse(null, '{"rc":0,"data":{"f43":3110.5,"f57":"m2601","f86":1760500992}}'), s2 = CL.parseEmSse(s1, {data:{f43:3111}}), s3 = CL.parseEmSse(s2, {data:{f86:1760500999}});
+      eq('parseEmSse：首条全量，后续只推变化的字段，逐条合并', [s1.f43, s2.f43, s2.f86, s3.f43, s3.f86], [3110.5, 3111, 1760500992, 3111, 1760500999]);
+      eq('parseEmSse：坏JSON/没有data/没有关心的字段 → null', [CL.parseEmSse(null, 'x'), CL.parseEmSse(null, '{"rc":0}'), CL.parseEmSse(null, {data:{f57:'m'}}), CL.parseEmSse(null, {data:{f43:'-'}})], [null, null, null, null]);
+      eq('emSseTick：取价+秒级时间戳转北京时间', CL.emSseTick({f43:3110.5,f86:Date.UTC(2026,9,15,3,3,12)/1000}, 3100, 0), {dt:'2026-10-15 11:03:12',c:3110.5,v:0,src:'sse'});
+      eq('emSseTick：推送给放大100倍的整数时按上一价校正；没有时间戳用现在；价格无效null', [CL.emSseTick({f43:311050,f86:Date.UTC(2026,9,15,3,3,12)/1000}, 3100, 0).c, CL.emSseTick({f43:3110}, 3100, Date.UTC(2026,9,15,3,0,0)).dt, CL.emSseTick({f43:0}, 3100, 0), CL.emSseTick(null,0,0)], [3110.5, '2026-10-15 11:00:00', null, null]);
+      eq('emSseUrl：sse接口、合约小写、带fltt=2', /push2\.eastmoney\.com\/api\/qt\/stock\/sse\?.*fltt=2.*secid=114\.m2601$/.test(CL.emSseUrl('M2601')), true); }
     eq('tickDelay：默认3秒；连续失败逐级放慢 6秒→15秒→30秒（被限流时退让）；可自定义基础间隔',[[0,1,2,3,5,6,20].map(f=>CL.tickDelay(f,3000)),CL.tickDelay(0,1500),CL.tickDelay(1,1500)],[[3000,6000,6000,15000,15000,30000,30000],1500,5000]);
   }
 }

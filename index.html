@@ -1143,10 +1143,24 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     const b = new Date(ts * 1000 + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0');
     return { dt: b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()), c, v: 0, src: 'em' };
   };
+  /* 东方财富实时推送(SSE)：第一条是全量字段，之后只推变化的字段 → 把每条合并进 st 再取价。f43最新价(fltt=2时已是小数) f86成交时间(秒) */
+  CL.emSseUrl = function (sym) { return 'https://push2.eastmoney.com/api/qt/stock/sse?fields=f43,f57,f86&mpi=1000&invt=2&fltt=2&ut=fa5fd1943c7b386f172d6893dbfba10b&secid=114.' + encodeURIComponent(String(sym).toLowerCase()); };
+  CL.parseEmSse = function (st, msg) {
+    let j = msg; if (typeof msg === 'string') { try { j = JSON.parse(msg); } catch (_) { return null; } }
+    const d = j && j.data; if (!d || typeof d !== 'object') return null;
+    const n = Object.assign({}, st || {}); let any = false; for (const k of ['f43', 'f86']) if (d[k] != null && d[k] !== '-') { n[k] = d[k]; any = true; }
+    return any ? n : null;
+  };
+  CL.fmtBj = function (ms) { const b = new Date(ms + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0'); return b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()); };
+  CL.emSseTick = function (st, prevC, nowMs) {
+    if (!st) return null; let c = parseFloat(st.f43); if (!(c > 0)) return null; if (prevC > 0 && c > prevC * 20) c = c / 100;   // 万一推送给的是放大100倍的整数，按上一次价格校正
+    const ts = Number(st.f86); return { dt: CL.fmtBj(ts > 1e9 ? ts * 1000 : (nowMs || Date.now())), c, v: 0, src: 'sse' };
+  };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
-  CL.tickBase = function () { let v = (CL.tkSrc === 'em' || CL.tkSrc === 'hq') ? 1000 : 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 3000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
-  CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
+  CL.tradingNow = function (nowMs) {
+    if (typeof window !== 'undefined' && window.__FORCE_TRADING) return true;   // 仅测试用   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
     return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
   };
@@ -1377,24 +1391,47 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         if (s.k !== 'min' && (window['__NO_' + s.k.toUpperCase()] || Date.now() < (skip[s.k] || 0))) continue;
         const r = await s.f(sym);
         if (r && !r.err) { bad[s.k] = 0; r.errs = Object.assign({}, srcErr); return r; }
-        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { skip[s.k] = Date.now() + 5 * 60000; bad[s.k] = 0; }
+        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { bad[s.k] = 0; if (s.k === 'em') { CL.tkPace = CL.tkPace || {}; CL.tkPace.em = Math.min(5000, (CL.tkPace.em || 2000) + 1000); skip.em = Date.now() + 60000; } else skip[s.k] = Date.now() + 30 * 60000; }   // 东方财富被拒=取得太勤：歇1分钟再试，并把间隔放慢1秒(上限5秒)；新浪逐笔是结构性不通：歇30分钟
         if (s.k === 'min') return r;
       }
       return { err: '没有可用的取价源' };
     };
     let tkFails = 0;
+    const sse = CL._sse = { es: null, sym: null, key: null, state: null, got: 0, errs: 0, last: 0, skipUntil: 0, err: null };
+    const sseAlive = () => !!(sse.es && sse.got && sse.es.readyState === 1);
+    const applyTick = (key, sym, r, t0) => {
+      const st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] }; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
+      if (old && old.src === 'sse' && r.src !== 'sse' && String(old.dt) >= String(r.dt)) { st.ok++; return false; }   // 推送已经给过更新的价，轮询回来的旧快照不能把它盖回去
+      st.ok++; CL.tkSrc = r.src; if (r.src === 'sse' || !sseAlive()) st.src = r.src; if (r.errs) st.errs = r.errs; if (t0) st.ms = Date.now() - t0; st.delay = CL.tickDelay(0);
+      if (!old || old.c !== r.c || old.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); }
+      D.ticks[key] = { key, sym, c: r.c, dt: r.dt, src: r.src, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
+      if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
+      return true;
+    };
+    const sseStop = () => { try { sse.es && sse.es.close(); } catch (_) {} sse.es = null; };
+    const sseEnsure = (key, sym) => {   // 交易时段+页面可见时，保持一条到东方财富的推送连接；断了/连不上自动退回轮询
+      if (window.__NO_SSE || typeof window.EventSource !== 'function') return;
+      if (!CL.tradingNow(Date.now()) || doc.hidden || Date.now() < sse.skipUntil) { if (sse.es) sseStop(); return; }
+      if (sse.es && sse.sym === sym && !(sse.got && Date.now() - sse.last > 90000)) { sse.key = key; return; }   // 在用，且(收到过数据→90秒内有动静)
+      sseStop(); sse.sym = sym; sse.key = key; sse.state = null; sse.got = 0; sse.errs = 0; sse.last = 0;
+      let es; try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { sse.err = '推送连接创建失败'; sse.skipUntil = Date.now() + 10 * 60000; return; }
+      sse.es = es;
+      es.onmessage = ev => { sse.errs = 0; const ns = CL.parseEmSse(sse.state, ev.data); if (!ns) return; sse.state = ns; const old = D.ticks && D.ticks[sse.key], t = CL.emSseTick(ns, old && old.c, Date.now()); if (!t) return; sse.got++; sse.last = Date.now(); sse.err = null; applyTick(sse.key, sse.sym, t, 0); };
+      es.onerror = () => { sse.errs++; if ((!sse.got && sse.errs >= 3) || sse.errs >= 8) { sse.err = sse.got ? '推送连接反复断开' : '推送连接失败(可能被来源限制/不支持)'; sse.skipUntil = Date.now() + 10 * 60000; sseStop(); } };
+    };
+    let lastPoll = 0;
     CL.tickOnce = async function () {
       try {
         if (!D || doc.hidden || window.__NO_SINA) return null;
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
+        sseEnsure(key, sym); { const st0 = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] }; st0.sseErr = sse.err; st0.sseOn = sseAlive(); }
         // 不在交易时段：每个时段结束那一刻的最后成交价就是该时段的收盘价，保留下来（不清掉）；页面刚打开、手里没有时取一次，之后每分钟核对一次
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
-        const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
+        if (sseAlive() && Date.now() - lastPoll < 15000) return null;   // 推送连着时，轮询只做每15秒一次的核对
+        lastPoll = Date.now();
+        const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat;
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; CL.tkSrc = r.src; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
-        tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
-        D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
-        if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
+        tkFails = 0; applyTick(key, sym, r, t0);
         return r;
       } catch (_) { tkFails++; return null; }
     };
@@ -1927,7 +1964,7 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
   const pLine0 = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
-  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ hq: '新浪逐笔报价', em: '东方财富实时价', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
+  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ sse: '东方财富实时推送（数据一变就推过来）', hq: '新浪逐笔报价', em: '东方财富实时价（轮询）', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'sse' && tkS.sseErr ? '；推送：' + esc(tkS.sseErr) : ''}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · ${tkS.sseOn ? '推送中（另每15秒轮询核对一次）' : '当前取价间隔 ' + Math.round((tkS.delay || 3000) / 100) / 10 + ' 秒'} · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
   const rcs = reconcile(), rcOld = rcs.filter(x => x.issue === 'hist_old');
   const rcLine = rcOld.length ? `<p><b>对账提醒（${rcOld.length}）</b><span style="color:var(--ink3)"> 数据灯说正常，但趋势墙里的最新点已经很旧：</span></p><ul>${rcOld.map(x => `<li><b>${esc(x.row.name)}</b>：趋势墙最新点 ${esc(x.ser.txt)}（${esc(x.ser.d)}，距今 ${x.ser.age} 天）</li>`).join('')}</ul>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + rcLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +
@@ -2316,8 +2353,12 @@ function monthLines(bars) {   // K线上的「本月高低」：本月至今的�
   const m = bars.filter(z => String(z.d).slice(0, 7) === k); if (m.length < 2) return null; const cs = m.map(z => z.c), mx = Math.max(...cs), mn = Math.min(...cs);
   return { mx, mn, n: m.length, amp: (mx - mn) / last.c * 100, k };
 }
-function lyLabels(LB, gap, top, bot, xx) {   // 右侧标签防重叠：按高度排序，挨得太近的往下推，推出底就整体往上挤
-  const a = LB.slice().sort((p, q) => p.y - q.y); let prev = -1e9; a.forEach(l => { l.y2 = Math.max(l.y, prev + gap, top); prev = l.y2; });
+const LBGAP = 14;   // 右侧数据标签的最小行距（字号11px，文字框约13px高，必须≥14才不会叠）
+function lyLabels(LB, gap, top, bot, xx) {   // 右侧标签防重叠：空间不够放时先按重要性丢掉最次要的标签(铁顶底<近20日高低<本月高低<平衡价<开仓/止损)，剩下的按高度排序、挨得太近的往下推，推出底就整体往上挤
+  gap = Math.max(gap || 0, LBGAP); const pr = t => /开仓|止损|移动止盈/.test(t) ? 5 : /平衡/.test(t) ? 4 : /本月|振幅/.test(t) ? 3 : /20日/.test(t) ? 2 : 1;
+  let L2 = LB.slice(), cap = Math.max(1, Math.floor((bot - top) / gap) + 1);
+  while (L2.length > cap) { let k = 0; for (let i = 1; i < L2.length; i++) if (pr(L2[i].t) <= pr(L2[k].t)) k = i; L2.splice(k, 1); }
+  const a = L2.sort((p, q) => p.y - q.y); let prev = -1e9; a.forEach(l => { l.y2 = Math.max(l.y, prev + gap, top); prev = l.y2; });
   for (let i = a.length - 1; i >= 0; i--) { const lim = i === a.length - 1 ? bot : a[i + 1].y2 - gap; if (a[i].y2 > lim) a[i].y2 = lim; }
   return a.map(l => `${Math.abs(l.y2 - l.y) > 2 ? `<line x1="${xx - 4}" x2="${xx - 1}" y1="${l.y}" y2="${l.y2 + 1}" stroke="${l.c}" stroke-width=".8" opacity=".6"/>` : ''}<text class="lv" x="${xx}" y="${l.y2 + 4}" style="fill:${l.c}">${l.t}</text>`).join('');
 }
@@ -2552,7 +2593,7 @@ function drawChart(box0) {
   const intra = !!(S.intra && D.m15 && D.m15[S.key]), bars = intra ? D.m15[S.key] : klineNow(), N = Math.min(intra ? 120 : S.range, bars.length), b = bars.slice(-N), off = bars.length - N;
   const W = box.clientWidth || 560, H = box.clientHeight || 220, mr = 98, ml = 4, step = (W - mr - ml) / N, cw = Math.max(1.4, step * .62);
   const oiOn = lyOn('oi') && b.every(x => x.oi != null), volOn = lyOn('vol'), macdOn = lyOn('macd') && bars.length >= 30, pnl = oiOn || volOn;
-  const volH = pnl ? Math.max(30, H * .17) : 0, macdH = macdOn ? Math.max(42, H * .22) : 0, pH = H - volH - macdH - (pnl || macdOn ? 6 : 2);
+  const volH = pnl ? Math.max(30, H * .17) : 0, macdH = macdOn ? Math.max(52, H * .22) : 0, pH = H - volH - macdH - (pnl || macdOn ? 6 : 2);
   const ois = oiOn ? b.map(x => x.oi) : [0, 1], oHi = Math.max(...ois), oLo = Math.min(...ois), vmax = volOn ? Math.max(1, ...b.map(x => x.v || 0)) : 1;
   let hi = Math.max(...b.map(x => x.h)), lo = Math.min(...b.map(x => x.l)); { const bv = lyOn('be') ? beOf(S.key) : null; if (bv != null && bv > lo * .93 && bv < hi * 1.07) { hi = Math.max(hi, bv); lo = Math.min(lo, bv); } const t8 = lyOn('iron') ? posBand().t80 : null; if (t8 != null && t8 > lo * .93 && t8 < hi * 1.07) { hi = Math.max(hi, t8); lo = Math.min(lo, t8); } } const PL = planChartLines().filter(l => l.v > lo * .93 && l.v < hi * 1.07); PL.forEach(l => { hi = Math.max(hi, l.v); lo = Math.min(lo, l.v); }); const pad = (hi - lo) * .06 || 1; hi += pad; lo -= pad;
   const y = v => 6 + (hi - v) / (hi - lo) * (pH - 6), x = i => ml + i * step + step / 2;
@@ -2570,14 +2611,16 @@ function drawChart(box0) {
   if (!intra && lyOn('ma') && bars.length >= 20) { let prev = null; for (let i = 0; i < N; i++) { const gi = off + i; if (gi < 19) continue; const v = y(bars.slice(gi - 19, gi + 1).reduce((a, z) => a + z.c, 0) / 20), cur = [x(i), v]; if (prev) s += `<line x1="${prev[0]}" y1="${prev[1]}" x2="${cur[0]}" y2="${cur[1]}" stroke="${RB[rbs[gi]] || RB.unknown}" stroke-width="1.8"/>`; prev = cur; } }
   if (!intra && lyOn('iron') && pbd.p20 != null) [[pbd.p80, '260天铁顶', RB.high], [pbd.p20, '260天铁底', RB.low], ...(pbd.t80 != null ? [[pbd.t80, '10年铁顶', '#e05d9b']] : [])].forEach(([v, nm, col]) => { if (v <= hi && v >= lo) { s += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="2 4" stroke-width="1.2"/>`; LB.push({ y: y(v), c: col, t: nm + ' ' + ab(v) }); } });
   b.forEach((z, i) => { const up = z.c >= z.o, col = up ? 'var(--bull)' : 'var(--bear)', xx = x(i); s += `<line x1="${xx}" x2="${xx}" y1="${y(z.h)}" y2="${y(z.l)}" stroke="${col}" stroke-width="1"/><rect class="cd" x="${xx - cw / 2}" y="${Math.min(y(z.o), y(z.c))}" width="${cw}" height="${Math.max(1, Math.abs(y(z.o) - y(z.c)))}" fill="${col}"/>`; });
+  const PLB = [];   // 下方量/持仓区的右侧标签：统一过 lyLabels 防重叠
   if (pnl) {
     const base = pH + volH - 2, vh = volH - 10;
     s += `<line x1="${ml}" x2="${W - mr}" y1="${pH + 3}" y2="${pH + 3}" stroke="var(--line)"/>`;
     if (volOn) { b.forEach((z, i) => { const hh = Math.max(.5, (z.v || 0) / vmax * vh); s += `<rect x="${x(i) - cw / 2}" y="${base - hh}" width="${cw}" height="${hh}" fill="${z.c >= z.o ? 'var(--bull)' : 'var(--bear)'}" opacity=".55"/>`; });
-      const lv = b[b.length - 1].v || 0; s += `<text class="lw" x="${W - mr + 5}" y="${pH + 15}">量 ${lv >= 1e4 ? (lv / 1e4).toFixed(1) + '万' : Math.round(lv)}</text>`; }
+      const lv = b[b.length - 1].v || 0; PLB.push({ y: pH + 12, c: 'var(--ink2)', t: '成交量 ' + (lv >= 1e4 ? (lv / 1e4).toFixed(1) + '万' : Math.round(lv)) }); }
     if (oiOn) { const oiPts = b.map((z, i) => x(i) + ',' + yo(z.oi)).join(' ');
-      s += `<polyline points="${oiPts}" fill="none" stroke="var(--focus)" stroke-width="1.5"/><text class="lv" x="${W - mr + 5}" y="${yo(b[b.length - 1].oi) + 4}" style="fill:var(--focus)">${(b[b.length - 1].oi / 1e4).toFixed(0)}万</text>`; }
+      s += `<polyline points="${oiPts}" fill="none" stroke="var(--focus)" stroke-width="1.5"/>`; PLB.push({ y: yo(b[b.length - 1].oi), c: 'var(--focus)', t: '持仓 ' + (b[b.length - 1].oi / 1e4).toFixed(1) + '万' }); }
   }
+  if (PLB.length) s += lyLabels(PLB, LBGAP, pH + 9, pH + volH - 3, W - mr + 5);
   let MC = null;
   if (macdOn) {
     MC = macdOf(bars.map(z => z.c)); const mT = pH + volH + 8, mH = macdH - 12, sl = a => a.slice(off), dif = sl(MC.dif), dea = sl(MC.dea), hs = sl(MC.bar);
@@ -2586,10 +2629,10 @@ function drawChart(box0) {
     hs.forEach((v, i) => { const y0 = ym(0), y1 = ym(v); s += `<rect x="${x(i) - cw * .4}" y="${Math.min(y0, y1)}" width="${cw * .8}" height="${Math.max(.5, Math.abs(y1 - y0))}" fill="${v >= 0 ? 'var(--bull)' : 'var(--bear)'}" opacity=".75"/>`; });
     s += `<polyline points="${dif.map((v, i) => x(i) + ',' + ym(v)).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.3"/><polyline points="${dea.map((v, i) => x(i) + ',' + ym(v)).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.3"/>`;
     const f1 = v => v.toFixed(Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2);
-    s += `<text class="lw" x="${W - mr + 5}" y="${mT + 8}">MACD ${f1(hs[hs.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 20}" style="fill:var(--ink)">DIF ${f1(dif[dif.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 32}" style="fill:var(--amber)">DEA ${f1(dea[dea.length - 1])}</text>`;
+    s += `<text class="lw" x="${W - mr + 5}" y="${mT + 8}">MACD ${f1(hs[hs.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 8 + LBGAP}" style="fill:var(--ink)">DIF ${f1(dif[dif.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 8 + 2 * LBGAP}" style="fill:var(--amber)">DEA ${f1(dea[dea.length - 1])}</text>`;
     MC = { dif, dea, hs };
   }
-  s += lyLabels(LB, 12, 8, pH - 2, W - mr + 5);
+  s += lyLabels(LB, LBGAP, 8, pH - 2, W - mr + 5);
   s += `<line id="xh" x1="0" x2="0" y1="0" y2="${H}" stroke="var(--focus)" style="display:none"/><rect id="hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg><div class="tip" id="tip" style="display:none"></div>`;
   box.innerHTML = s;
   const hit = box.querySelector('#hit'), xh = box.querySelector('#xh'), tip = box.querySelector('#tip');

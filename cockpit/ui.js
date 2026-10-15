@@ -515,7 +515,7 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
   const pLine0 = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
-  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ hq: '新浪逐笔报价', em: '东方财富实时价', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
+  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ sse: '东方财富实时推送（数据一变就推过来）', hq: '新浪逐笔报价', em: '东方财富实时价（轮询）', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'sse' && tkS.sseErr ? '；推送：' + esc(tkS.sseErr) : ''}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · ${tkS.sseOn ? '推送中（另每15秒轮询核对一次）' : '当前取价间隔 ' + Math.round((tkS.delay || 3000) / 100) / 10 + ' 秒'} · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
   const rcs = reconcile(), rcOld = rcs.filter(x => x.issue === 'hist_old');
   const rcLine = rcOld.length ? `<p><b>对账提醒（${rcOld.length}）</b><span style="color:var(--ink3)"> 数据灯说正常，但趋势墙里的最新点已经很旧：</span></p><ul>${rcOld.map(x => `<li><b>${esc(x.row.name)}</b>：趋势墙最新点 ${esc(x.ser.txt)}（${esc(x.ser.d)}，距今 ${x.ser.age} 天）</li>`).join('')}</ul>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + rcLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +
@@ -904,8 +904,12 @@ function monthLines(bars) {   // K线上的「本月高低」：本月至今的�
   const m = bars.filter(z => String(z.d).slice(0, 7) === k); if (m.length < 2) return null; const cs = m.map(z => z.c), mx = Math.max(...cs), mn = Math.min(...cs);
   return { mx, mn, n: m.length, amp: (mx - mn) / last.c * 100, k };
 }
-function lyLabels(LB, gap, top, bot, xx) {   // 右侧标签防重叠：按高度排序，挨得太近的往下推，推出底就整体往上挤
-  const a = LB.slice().sort((p, q) => p.y - q.y); let prev = -1e9; a.forEach(l => { l.y2 = Math.max(l.y, prev + gap, top); prev = l.y2; });
+const LBGAP = 14;   // 右侧数据标签的最小行距（字号11px，文字框约13px高，必须≥14才不会叠）
+function lyLabels(LB, gap, top, bot, xx) {   // 右侧标签防重叠：空间不够放时先按重要性丢掉最次要的标签(铁顶底<近20日高低<本月高低<平衡价<开仓/止损)，剩下的按高度排序、挨得太近的往下推，推出底就整体往上挤
+  gap = Math.max(gap || 0, LBGAP); const pr = t => /开仓|止损|移动止盈/.test(t) ? 5 : /平衡/.test(t) ? 4 : /本月|振幅/.test(t) ? 3 : /20日/.test(t) ? 2 : 1;
+  let L2 = LB.slice(), cap = Math.max(1, Math.floor((bot - top) / gap) + 1);
+  while (L2.length > cap) { let k = 0; for (let i = 1; i < L2.length; i++) if (pr(L2[i].t) <= pr(L2[k].t)) k = i; L2.splice(k, 1); }
+  const a = L2.sort((p, q) => p.y - q.y); let prev = -1e9; a.forEach(l => { l.y2 = Math.max(l.y, prev + gap, top); prev = l.y2; });
   for (let i = a.length - 1; i >= 0; i--) { const lim = i === a.length - 1 ? bot : a[i + 1].y2 - gap; if (a[i].y2 > lim) a[i].y2 = lim; }
   return a.map(l => `${Math.abs(l.y2 - l.y) > 2 ? `<line x1="${xx - 4}" x2="${xx - 1}" y1="${l.y}" y2="${l.y2 + 1}" stroke="${l.c}" stroke-width=".8" opacity=".6"/>` : ''}<text class="lv" x="${xx}" y="${l.y2 + 4}" style="fill:${l.c}">${l.t}</text>`).join('');
 }
@@ -1140,7 +1144,7 @@ function drawChart(box0) {
   const intra = !!(S.intra && D.m15 && D.m15[S.key]), bars = intra ? D.m15[S.key] : klineNow(), N = Math.min(intra ? 120 : S.range, bars.length), b = bars.slice(-N), off = bars.length - N;
   const W = box.clientWidth || 560, H = box.clientHeight || 220, mr = 98, ml = 4, step = (W - mr - ml) / N, cw = Math.max(1.4, step * .62);
   const oiOn = lyOn('oi') && b.every(x => x.oi != null), volOn = lyOn('vol'), macdOn = lyOn('macd') && bars.length >= 30, pnl = oiOn || volOn;
-  const volH = pnl ? Math.max(30, H * .17) : 0, macdH = macdOn ? Math.max(42, H * .22) : 0, pH = H - volH - macdH - (pnl || macdOn ? 6 : 2);
+  const volH = pnl ? Math.max(30, H * .17) : 0, macdH = macdOn ? Math.max(52, H * .22) : 0, pH = H - volH - macdH - (pnl || macdOn ? 6 : 2);
   const ois = oiOn ? b.map(x => x.oi) : [0, 1], oHi = Math.max(...ois), oLo = Math.min(...ois), vmax = volOn ? Math.max(1, ...b.map(x => x.v || 0)) : 1;
   let hi = Math.max(...b.map(x => x.h)), lo = Math.min(...b.map(x => x.l)); { const bv = lyOn('be') ? beOf(S.key) : null; if (bv != null && bv > lo * .93 && bv < hi * 1.07) { hi = Math.max(hi, bv); lo = Math.min(lo, bv); } const t8 = lyOn('iron') ? posBand().t80 : null; if (t8 != null && t8 > lo * .93 && t8 < hi * 1.07) { hi = Math.max(hi, t8); lo = Math.min(lo, t8); } } const PL = planChartLines().filter(l => l.v > lo * .93 && l.v < hi * 1.07); PL.forEach(l => { hi = Math.max(hi, l.v); lo = Math.min(lo, l.v); }); const pad = (hi - lo) * .06 || 1; hi += pad; lo -= pad;
   const y = v => 6 + (hi - v) / (hi - lo) * (pH - 6), x = i => ml + i * step + step / 2;
@@ -1158,14 +1162,16 @@ function drawChart(box0) {
   if (!intra && lyOn('ma') && bars.length >= 20) { let prev = null; for (let i = 0; i < N; i++) { const gi = off + i; if (gi < 19) continue; const v = y(bars.slice(gi - 19, gi + 1).reduce((a, z) => a + z.c, 0) / 20), cur = [x(i), v]; if (prev) s += `<line x1="${prev[0]}" y1="${prev[1]}" x2="${cur[0]}" y2="${cur[1]}" stroke="${RB[rbs[gi]] || RB.unknown}" stroke-width="1.8"/>`; prev = cur; } }
   if (!intra && lyOn('iron') && pbd.p20 != null) [[pbd.p80, '260天铁顶', RB.high], [pbd.p20, '260天铁底', RB.low], ...(pbd.t80 != null ? [[pbd.t80, '10年铁顶', '#e05d9b']] : [])].forEach(([v, nm, col]) => { if (v <= hi && v >= lo) { s += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}" stroke="${col}" stroke-dasharray="2 4" stroke-width="1.2"/>`; LB.push({ y: y(v), c: col, t: nm + ' ' + ab(v) }); } });
   b.forEach((z, i) => { const up = z.c >= z.o, col = up ? 'var(--bull)' : 'var(--bear)', xx = x(i); s += `<line x1="${xx}" x2="${xx}" y1="${y(z.h)}" y2="${y(z.l)}" stroke="${col}" stroke-width="1"/><rect class="cd" x="${xx - cw / 2}" y="${Math.min(y(z.o), y(z.c))}" width="${cw}" height="${Math.max(1, Math.abs(y(z.o) - y(z.c)))}" fill="${col}"/>`; });
+  const PLB = [];   // 下方量/持仓区的右侧标签：统一过 lyLabels 防重叠
   if (pnl) {
     const base = pH + volH - 2, vh = volH - 10;
     s += `<line x1="${ml}" x2="${W - mr}" y1="${pH + 3}" y2="${pH + 3}" stroke="var(--line)"/>`;
     if (volOn) { b.forEach((z, i) => { const hh = Math.max(.5, (z.v || 0) / vmax * vh); s += `<rect x="${x(i) - cw / 2}" y="${base - hh}" width="${cw}" height="${hh}" fill="${z.c >= z.o ? 'var(--bull)' : 'var(--bear)'}" opacity=".55"/>`; });
-      const lv = b[b.length - 1].v || 0; s += `<text class="lw" x="${W - mr + 5}" y="${pH + 15}">量 ${lv >= 1e4 ? (lv / 1e4).toFixed(1) + '万' : Math.round(lv)}</text>`; }
+      const lv = b[b.length - 1].v || 0; PLB.push({ y: pH + 12, c: 'var(--ink2)', t: '成交量 ' + (lv >= 1e4 ? (lv / 1e4).toFixed(1) + '万' : Math.round(lv)) }); }
     if (oiOn) { const oiPts = b.map((z, i) => x(i) + ',' + yo(z.oi)).join(' ');
-      s += `<polyline points="${oiPts}" fill="none" stroke="var(--focus)" stroke-width="1.5"/><text class="lv" x="${W - mr + 5}" y="${yo(b[b.length - 1].oi) + 4}" style="fill:var(--focus)">${(b[b.length - 1].oi / 1e4).toFixed(0)}万</text>`; }
+      s += `<polyline points="${oiPts}" fill="none" stroke="var(--focus)" stroke-width="1.5"/>`; PLB.push({ y: yo(b[b.length - 1].oi), c: 'var(--focus)', t: '持仓 ' + (b[b.length - 1].oi / 1e4).toFixed(1) + '万' }); }
   }
+  if (PLB.length) s += lyLabels(PLB, LBGAP, pH + 9, pH + volH - 3, W - mr + 5);
   let MC = null;
   if (macdOn) {
     MC = macdOf(bars.map(z => z.c)); const mT = pH + volH + 8, mH = macdH - 12, sl = a => a.slice(off), dif = sl(MC.dif), dea = sl(MC.dea), hs = sl(MC.bar);
@@ -1174,10 +1180,10 @@ function drawChart(box0) {
     hs.forEach((v, i) => { const y0 = ym(0), y1 = ym(v); s += `<rect x="${x(i) - cw * .4}" y="${Math.min(y0, y1)}" width="${cw * .8}" height="${Math.max(.5, Math.abs(y1 - y0))}" fill="${v >= 0 ? 'var(--bull)' : 'var(--bear)'}" opacity=".75"/>`; });
     s += `<polyline points="${dif.map((v, i) => x(i) + ',' + ym(v)).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="1.3"/><polyline points="${dea.map((v, i) => x(i) + ',' + ym(v)).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.3"/>`;
     const f1 = v => v.toFixed(Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2);
-    s += `<text class="lw" x="${W - mr + 5}" y="${mT + 8}">MACD ${f1(hs[hs.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 20}" style="fill:var(--ink)">DIF ${f1(dif[dif.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 32}" style="fill:var(--amber)">DEA ${f1(dea[dea.length - 1])}</text>`;
+    s += `<text class="lw" x="${W - mr + 5}" y="${mT + 8}">MACD ${f1(hs[hs.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 8 + LBGAP}" style="fill:var(--ink)">DIF ${f1(dif[dif.length - 1])}</text><text class="lw" x="${W - mr + 5}" y="${mT + 8 + 2 * LBGAP}" style="fill:var(--amber)">DEA ${f1(dea[dea.length - 1])}</text>`;
     MC = { dif, dea, hs };
   }
-  s += lyLabels(LB, 12, 8, pH - 2, W - mr + 5);
+  s += lyLabels(LB, LBGAP, 8, pH - 2, W - mr + 5);
   s += `<line id="xh" x1="0" x2="0" y1="0" y2="${H}" stroke="var(--focus)" style="display:none"/><rect id="hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg><div class="tip" id="tip" style="display:none"></div>`;
   box.innerHTML = s;
   const hit = box.querySelector('#hit'), xh = box.querySelector('#xh'), tip = box.querySelector('#tip');
