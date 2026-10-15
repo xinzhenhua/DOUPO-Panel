@@ -1120,10 +1120,11 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     }
     out._sina = n; return out;
   };
-  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；每 0.7 秒取一次，失败逐级放慢 */
+  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；默认每 3 秒取一次，失败逐级放慢 */
   CL.tickUrl = function (sym, cb) { return 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getFewMinLine?symbol=' + encodeURIComponent(String(sym).toUpperCase()) + '&type=1'; };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume }; };
-  CL.tickDelay = function (fails) { return fails <= 0 ? 700 : fails < 3 ? 3000 : fails < 6 ? 10000 : 30000; };
+  CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
     return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
@@ -1318,7 +1319,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 60 * 1000));
-    /* 实时价条：只在交易时段+页面可见时，每0.7秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
+    /* 实时价条：只在交易时段+页面可见时，每3秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
     const tickOne = (sym) => new Promise(res => {
       try {
         const cb = '__tk' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
@@ -1343,7 +1344,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         return r;
       } catch (_) { tkFails++; return null; }
     };
-    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
+    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔3秒（默认）（请求耗时算在里面）
 
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };
@@ -1793,7 +1794,7 @@ function klineBase() {   // 日K线（latest.json 晚上才更新一次）+ 刚�
     return k.concat([{ d: day, o: bs[0].o, h: Math.max(...bs.map(x => x.h)), l: Math.min(...bs.map(x => x.l)), c: bs[bs.length - 1].c, v: bs.reduce((a, x) => a + (x.v || 0), 0), oi: bs[bs.length - 1].oi, prov: true }]);
   } catch (_) { return k; }
 }
-/* ---- 当天未收盘的日K线（v101.58）：分钟线拼开高低收 + 实时价当收盘，盘中随实时价条每0.7秒变动 ---- */
+/* ---- 当天未收盘的日K线（v101.58）：分钟线拼开高低收 + 实时价当收盘，盘中随实时价条每3秒变动 ---- */
 function tradeDayOf(dt, yHint) {   // 'YYYY-MM-DD HH:MM…' 或 'MM-DD HH:MM' → 所属交易日：18点以后是夜盘，归下一个交易日（周五夜盘→周一；法定节假日不识别，日线出来后以日线为准）
   const full = dt[4] === '-', y = full ? +dt.slice(0, 4) : yHint, md = full ? dt.slice(5, 10) : dt.slice(0, 5), hm = full ? dt.slice(11, 16) : dt.slice(6, 11);
   const d = new Date(Date.UTC(y, +md.slice(0, 2) - 1, +md.slice(3, 5)));
@@ -2396,7 +2397,7 @@ function renderBand() {
   renderSess(); tickPaint();
 }
 
-/* ---------- 实时价条（v101.57）：D.tick 由 loader 每0.7秒更新；这里只改这一小块 DOM，不重画整页 ---------- */
+/* ---------- 实时价条（v101.57）：D.tick 由 loader 每3秒更新；这里只改这一小块 DOM，不重画整页 ---------- */
 function tickInfo() {
   const t = curTick(120000); if (!t) return null;
   const ps = priceStats(); if (!ps) return null;

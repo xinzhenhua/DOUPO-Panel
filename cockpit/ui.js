@@ -436,7 +436,7 @@ function klineBase() {   // 日K线（latest.json 晚上才更新一次）+ 刚�
     return k.concat([{ d: day, o: bs[0].o, h: Math.max(...bs.map(x => x.h)), l: Math.min(...bs.map(x => x.l)), c: bs[bs.length - 1].c, v: bs.reduce((a, x) => a + (x.v || 0), 0), oi: bs[bs.length - 1].oi, prov: true }]);
   } catch (_) { return k; }
 }
-/* ---- 当天未收盘的日K线（v101.58）：分钟线拼开高低收 + 实时价当收盘，盘中随实时价条每0.7秒变动 ---- */
+/* ---- 当天未收盘的日K线（v101.58）：分钟线拼开高低收 + 实时价当收盘，盘中随实时价条每3秒变动 ---- */
 function tradeDayOf(dt, yHint) {   // 'YYYY-MM-DD HH:MM…' 或 'MM-DD HH:MM' → 所属交易日：18点以后是夜盘，归下一个交易日（周五夜盘→周一；法定节假日不识别，日线出来后以日线为准）
   const full = dt[4] === '-', y = full ? +dt.slice(0, 4) : yHint, md = full ? dt.slice(5, 10) : dt.slice(0, 5), hm = full ? dt.slice(11, 16) : dt.slice(6, 11);
   const d = new Date(Date.UTC(y, +md.slice(0, 2) - 1, +md.slice(3, 5)));
@@ -1039,7 +1039,7 @@ function renderBand() {
   renderSess(); tickPaint();
 }
 
-/* ---------- 实时价条（v101.57）：D.tick 由 loader 每0.7秒更新；这里只改这一小块 DOM，不重画整页 ---------- */
+/* ---------- 实时价条（v101.57）：D.tick 由 loader 每3秒更新；这里只改这一小块 DOM，不重画整页 ---------- */
 function tickInfo() {
   const t = curTick(120000); if (!t) return null;
   const ps = priceStats(); if (!ps) return null;

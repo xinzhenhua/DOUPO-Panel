@@ -171,10 +171,11 @@
     }
     out._sina = n; return out;
   };
-  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；每 0.7 秒取一次，失败逐级放慢 */
+  /* 实时价条（v101.57）：新浪 1 分钟线最后一根的收盘价 = 最新成交价；默认每 3 秒取一次，失败逐级放慢 */
   CL.tickUrl = function (sym, cb) { return 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20' + cb + '=/InnerFuturesNewService.getFewMinLine?symbol=' + encodeURIComponent(String(sym).toUpperCase()) + '&type=1'; };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume }; };
-  CL.tickDelay = function (fails) { return fails <= 0 ? 700 : fails < 3 ? 3000 : fails < 6 ? 10000 : 30000; };
+  CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
     return (dow >= 1 && dow <= 5 && m >= 540 && m <= 15 * 60 + 10) || (dow >= 1 && dow <= 5 && m >= 21 * 60 && m <= 23 * 60 + 10);
@@ -369,7 +370,7 @@
       } catch (e) { /* 没有或读失败：保持原样 */ }
     };
     timers.push(setInterval(() => { if (!doc.hidden) CL.refreshPrices(); }, 60 * 1000));
-    /* 实时价条：只在交易时段+页面可见时，每0.7秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
+    /* 实时价条：只在交易时段+页面可见时，每3秒取当前合约的最新价；失败逐级放慢（被新浪限流时自动退让） */
     const tickOne = (sym) => new Promise(res => {
       try {
         const cb = '__tk' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
@@ -394,7 +395,7 @@
         return r;
       } catch (_) { tkFails++; return null; }
     };
-    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔0.7秒（请求耗时算在里面）
+    (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔3秒（默认）（请求耗时算在里面）
 
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && D && Date.now() - D.snapshotMs > 5 * 60 * 1000) cycle(false); else if (!doc.hidden && D) CL.refreshPrices(); });
   };
