@@ -851,6 +851,22 @@ def test_fetch_data_main_attaches_history_next_to_output(monkeypatch=None):
     ok("main()：历史目录跟随OUTPUT_PATH")
 
 
+def test_brazil_planting_recorded():
+    """v101.67：巴西播种进度按周记进历史(d=CONAB周日期)，趋势墙才有这一格；周标签不是日期时不乱记"""
+    with tempfile.TemporaryDirectory() as d:
+        r = {"brazilPlantingProgress": {"available": True, "weekLabel": "2026-10-04", "pctCurrent": 8.2, "pctYearAgo": 5.1, "pctFiveYearAvg": 9.4}}
+        touched = hs.update_and_attach(r, d)
+        pts = hs.load_series("brazil_planting", d)["points"]
+        assert "brazil_planting" in touched and len(pts) == 1 and pts[0]["d"] == "2026-10-04" and pts[0]["v"] == 8.2 and pts[0]["x"]["avg5"] == 9.4, pts
+        r2 = {"brazilPlantingProgress": {"available": True, "weekLabel": "semana 5", "pctCurrent": 9.0}}
+        hs.update_and_attach(r2, d)
+        assert len(hs.load_series("brazil_planting", d)["points"]) == 1
+        r3 = {"brazilPlantingProgress": {"available": True, "weekLabel": "2026-10-11", "pctCurrent": 15.0}}
+        hs.update_and_attach(r3, d)
+        assert [p["v"] for p in hs.load_series("brazil_planting", d)["points"]] == [8.2, 15.0]
+    ok("巴西播种进度：按周记进历史、非日期周标签不记、次周追加")
+
+
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
 
 if __name__ == "__main__":

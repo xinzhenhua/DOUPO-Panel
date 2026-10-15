@@ -74,7 +74,9 @@
     const put = (key, pts, total) => { if (!out[key] || !pts) return; out[key].pts = pts; out[key].nTotal = total == null ? pts.length : total; };
     const plain = (key, file, cap) => { const a = get(file); if (a) put(key, tail(a.map(pt), cap), a.length); };
     plain('stock', 'meal_stock', 160); plain('stu', 'meal_stu'); plain('ustu', 'us_stocks_to_use', 10); plain('crush', 'crush_rate', 140);
-    plain('arrival', 'arrival_forecast'); plain('import', 'soy_import', 40); plain('feed', 'feed_days', 160); plain('hog', 'hog_ratio');
+    plain('arrival', 'arrival_forecast'); plain('import', 'soy_import', 40);
+    { const bp = get('brazil_planting'); if (bp) { let k = bp.length - 1; while (k > 0 && (Date.parse(bp[k].d) - Date.parse(bp[k - 1].d)) <= 21 * 86400e3) k--; put('bplant', bp.slice(k).map(pt), bp.length); } }   // 只取本季（相邻两期隔≤3周算同一季），上一季的100%不能和这一季的0%连成线
+    plain('feed', 'feed_days', 160); plain('hog', 'hog_ratio');
     plain('poultry', 'poultry_ndrc'); plain('rm', 'rm_spread'); plain('cftc', 'cftc_mm_net'); plain('gs', 'capital_gs_net'); plain('zl', 'capital_zl_net');
     const esr = get('esr_net_sales');
     if (esr) { const v = esr.map(p => p.v), e4 = []; for (let k = 3; k < esr.length; k++) e4.push({ d: esr[k].d, v: Math.round((v[k - 3] + v[k - 2] + v[k - 1] + v[k]) / 4 / 1e4 * 1e4) / 1e4 }); put('esr', tail(e4, 160), e4.length); }
@@ -185,6 +187,13 @@
     if (!d) { const b = new Date((nowMs || Date.now()) + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0'); d = b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()); }
     return { dt: d + ' ' + hh + ':' + mm + ':' + ss, c, v: parseFloat(f[14]) || 0, src: 'hq' };
   };
+  /* 东方财富实时报价（push2，JSONP，不检查来源）：f43=最新价(fltt=2时已是小数) f86=成交时间(秒级时间戳) */
+  CL.emTickUrl = function (sym, cb) { return 'https://push2.eastmoney.com/api/qt/stock/get?secid=114.' + encodeURIComponent(String(sym).toLowerCase()) + '&fields=f43,f57,f86&fltt=2&invt=2&cb=' + cb + '&_=' + Date.now(); };
+  CL.parseEmTick = function (j) {
+    const d = j && j.data; if (!d) return null; const c = parseFloat(d.f43), ts = Number(d.f86); if (!(c > 0) || !(ts > 1e9)) return null;
+    const b = new Date(ts * 1000 + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0');
+    return { dt: b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()), c, v: 0, src: 'em' };
+  };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
   CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
@@ -289,6 +298,7 @@
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
+      try { const j = await jget('data/history/brazil_planting.json'); H.brazil_planting = j.points || []; } catch (e) { /* 可选：播种季之前没有这个文件 */ }
       let latest = null, seasonal = null, histCsv = '', report = null, adj = null, prices = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
@@ -402,15 +412,26 @@
         sc.src = CL.hqUrl(sym); doc.head.appendChild(sc);
       } catch (_) { res({ err: '逐笔报价脚本异常' }); }
     });
-    let hqBad = 0, hqSkipUntil = 0;   // 逐笔报价连续失败3次就停用5分钟，期间只用1分钟线，之后再试
+    const tickEm = (sym) => new Promise(res => {
+      try {
+        const cb = '__te' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
+        const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
+        const tm = setTimeout(() => fin({ err: '东方财富实时价超时(5秒没回)' }), 5000);
+        window[cb] = j => { const t = CL.parseEmTick(j); fin(t || { err: '东方财富实时价返回空/格式不符' }); };
+        sc.onerror = () => fin({ err: '东方财富实时价被拒绝/网络错误' }); sc.src = CL.emTickUrl(sym, cb); doc.head.appendChild(sc);
+      } catch (_) { res({ err: '东方财富实时价脚本异常' }); }
+    });
+    /* 取价顺序：新浪逐笔报价 → 东方财富实时价 → 新浪1分钟线（最慢，兜底）。每个源连续失败3次就歇5分钟，之后再试；失败原因一直留着给诊断行看 */
+    const SRC = [{ k: 'hq', f: tickHq }, { k: 'em', f: tickEm }, { k: 'min', f: tickMin }], bad = {}, skip = {}, srcErr = {};
     const tickOne = async (sym) => {
-      if (!window.__NO_HQ && Date.now() >= hqSkipUntil) {
-        const r = await tickHq(sym);
-        if (r && !r.err) { hqBad = 0; return r; }
-        if (++hqBad >= 3) { hqSkipUntil = Date.now() + 5 * 60000; hqBad = 0; }
-        const m = await tickMin(sym); if (m && !m.err) m.hqErr = r && r.err; return m;
+      for (const s of SRC) {
+        if (s.k !== 'min' && (window['__NO_' + s.k.toUpperCase()] || Date.now() < (skip[s.k] || 0))) continue;
+        const r = await s.f(sym);
+        if (r && !r.err) { bad[s.k] = 0; r.errs = Object.assign({}, srcErr); return r; }
+        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { skip[s.k] = Date.now() + 5 * 60000; bad[s.k] = 0; }
+        if (s.k === 'min') return r;
       }
-      return tickMin(sym);
+      return { err: '没有可用的取价源' };
     };
     let tkFails = 0;
     CL.tickOnce = async function () {
@@ -421,7 +442,7 @@
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; st.src = r.src; st.hqErr = r.hqErr || null; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
+        st.ok++; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
         D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();

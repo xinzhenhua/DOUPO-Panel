@@ -1023,7 +1023,9 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     const put = (key, pts, total) => { if (!out[key] || !pts) return; out[key].pts = pts; out[key].nTotal = total == null ? pts.length : total; };
     const plain = (key, file, cap) => { const a = get(file); if (a) put(key, tail(a.map(pt), cap), a.length); };
     plain('stock', 'meal_stock', 160); plain('stu', 'meal_stu'); plain('ustu', 'us_stocks_to_use', 10); plain('crush', 'crush_rate', 140);
-    plain('arrival', 'arrival_forecast'); plain('import', 'soy_import', 40); plain('feed', 'feed_days', 160); plain('hog', 'hog_ratio');
+    plain('arrival', 'arrival_forecast'); plain('import', 'soy_import', 40);
+    { const bp = get('brazil_planting'); if (bp) { let k = bp.length - 1; while (k > 0 && (Date.parse(bp[k].d) - Date.parse(bp[k - 1].d)) <= 21 * 86400e3) k--; put('bplant', bp.slice(k).map(pt), bp.length); } }   // 只取本季（相邻两期隔≤3周算同一季），上一季的100%不能和这一季的0%连成线
+    plain('feed', 'feed_days', 160); plain('hog', 'hog_ratio');
     plain('poultry', 'poultry_ndrc'); plain('rm', 'rm_spread'); plain('cftc', 'cftc_mm_net'); plain('gs', 'capital_gs_net'); plain('zl', 'capital_zl_net');
     const esr = get('esr_net_sales');
     if (esr) { const v = esr.map(p => p.v), e4 = []; for (let k = 3; k < esr.length; k++) e4.push({ d: esr[k].d, v: Math.round((v[k - 3] + v[k - 2] + v[k - 1] + v[k]) / 4 / 1e4 * 1e4) / 1e4 }); put('esr', tail(e4, 160), e4.length); }
@@ -1134,6 +1136,13 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     if (!d) { const b = new Date((nowMs || Date.now()) + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0'); d = b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()); }
     return { dt: d + ' ' + hh + ':' + mm + ':' + ss, c, v: parseFloat(f[14]) || 0, src: 'hq' };
   };
+  /* 东方财富实时报价（push2，JSONP，不检查来源）：f43=最新价(fltt=2时已是小数) f86=成交时间(秒级时间戳) */
+  CL.emTickUrl = function (sym, cb) { return 'https://push2.eastmoney.com/api/qt/stock/get?secid=114.' + encodeURIComponent(String(sym).toLowerCase()) + '&fields=f43,f57,f86&fltt=2&invt=2&cb=' + cb + '&_=' + Date.now(); };
+  CL.parseEmTick = function (j) {
+    const d = j && j.data; if (!d) return null; const c = parseFloat(d.f43), ts = Number(d.f86); if (!(c > 0) || !(ts > 1e9)) return null;
+    const b = new Date(ts * 1000 + 8 * 3600 * 1000), z = n => String(n).padStart(2, '0');
+    return { dt: b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()), c, v: 0, src: 'em' };
+  };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
   CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
@@ -1238,6 +1247,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
       fails = [];
       const H = {};
       await Promise.all(HFILES.map(async n => { try { const j = await jget('data/history/' + n + '.json'); H[n] = j.points || []; } catch (e) { fails.push(n); } }));
+      try { const j = await jget('data/history/brazil_planting.json'); H.brazil_planting = j.points || []; } catch (e) { /* 可选：播种季之前没有这个文件 */ }
       let latest = null, seasonal = null, histCsv = '', report = null, adj = null, prices = null;
       try { latest = await jget('data/latest.json'); } catch (e) { fails.push('latest.json'); }
       try { seasonal = await jget('data/seasonal.json'); } catch (e) { fails.push('seasonal.json'); }
@@ -1351,15 +1361,26 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         sc.src = CL.hqUrl(sym); doc.head.appendChild(sc);
       } catch (_) { res({ err: '逐笔报价脚本异常' }); }
     });
-    let hqBad = 0, hqSkipUntil = 0;   // 逐笔报价连续失败3次就停用5分钟，期间只用1分钟线，之后再试
+    const tickEm = (sym) => new Promise(res => {
+      try {
+        const cb = '__te' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
+        const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
+        const tm = setTimeout(() => fin({ err: '东方财富实时价超时(5秒没回)' }), 5000);
+        window[cb] = j => { const t = CL.parseEmTick(j); fin(t || { err: '东方财富实时价返回空/格式不符' }); };
+        sc.onerror = () => fin({ err: '东方财富实时价被拒绝/网络错误' }); sc.src = CL.emTickUrl(sym, cb); doc.head.appendChild(sc);
+      } catch (_) { res({ err: '东方财富实时价脚本异常' }); }
+    });
+    /* 取价顺序：新浪逐笔报价 → 东方财富实时价 → 新浪1分钟线（最慢，兜底）。每个源连续失败3次就歇5分钟，之后再试；失败原因一直留着给诊断行看 */
+    const SRC = [{ k: 'hq', f: tickHq }, { k: 'em', f: tickEm }, { k: 'min', f: tickMin }], bad = {}, skip = {}, srcErr = {};
     const tickOne = async (sym) => {
-      if (!window.__NO_HQ && Date.now() >= hqSkipUntil) {
-        const r = await tickHq(sym);
-        if (r && !r.err) { hqBad = 0; return r; }
-        if (++hqBad >= 3) { hqSkipUntil = Date.now() + 5 * 60000; hqBad = 0; }
-        const m = await tickMin(sym); if (m && !m.err) m.hqErr = r && r.err; return m;
+      for (const s of SRC) {
+        if (s.k !== 'min' && (window['__NO_' + s.k.toUpperCase()] || Date.now() < (skip[s.k] || 0))) continue;
+        const r = await s.f(sym);
+        if (r && !r.err) { bad[s.k] = 0; r.errs = Object.assign({}, srcErr); return r; }
+        srcErr[s.k] = r && r.err || '未知'; if (s.k !== 'min' && (bad[s.k] = (bad[s.k] || 0) + 1) >= 3) { skip[s.k] = Date.now() + 5 * 60000; bad[s.k] = 0; }
+        if (s.k === 'min') return r;
       }
-      return tickMin(sym);
+      return { err: '没有可用的取价源' };
     };
     let tkFails = 0;
     CL.tickOnce = async function () {
@@ -1370,7 +1391,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; st.src = r.src; st.hqErr = r.hqErr || null; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
+        st.ok++; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
         D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
@@ -1386,7 +1407,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
-window.__STATIC__={"polarity":{"crush":-1,"stock":-1,"stu":-1,"basis":1,"arrival":-1,"import":-1,"hogratio":1,"poultry":1,"rmspread":-1,"sows":-1,"reserve":null,"feed":-1},"ctx":{"sep":{"recommendedMonths":[4,5,6,7]},"may":{"recommendedMonths":[12,1,2,3]},"jan":{"recommendedMonths":[8,9,10,11]}},"series":{"stock":{"name":"国内豆粕库存","g":"供给","unit":"万吨","freq":"weekly","pol":-1,"show":"pct","short":"豆粕库存","tiny":"库存"},"stu":{"name":"国内库消比","g":"供给","unit":"%","freq":"monthly","pol":-1,"show":"abs","short":"库消比","tiny":"库消比"},"ustu":{"name":"美豆库消比","g":"供给","unit":"%","freq":"yearly","pol":-1,"show":"abs","short":"美豆库消比","tiny":"美豆库消"},"crush":{"name":"油厂开机率","g":"供给","unit":"%","freq":"daily","pol":-1,"show":"abs","short":"开机率","tiny":"开机率"},"arrival":{"name":"大豆到港预报","g":"供给","unit":"万吨","freq":"monthly","pol":-1,"show":"pct","short":"到港预报","tiny":"到港"},"import":{"name":"大豆进口量","g":"供给","unit":"万吨","freq":"monthly","pol":-1,"show":"pct","short":"进口量","tiny":"进口"},"feed":{"name":"饲料库存天数","g":"需求","unit":"天","freq":"weekly","pol":-1,"show":"abs","short":"饲料库存","tiny":"饲料"},"hog":{"name":"猪粮比","g":"需求","unit":"","freq":"daily","pol":1,"show":"abs","short":"猪粮比","tiny":"猪粮比"},"poultry":{"name":"肉鸡养殖预期盈利","g":"需求","unit":"元/只","freq":"weekly","pol":1,"show":"abs","short":"肉鸡预期盈利","tiny":"肉鸡","note":"发改委价格监测中心×卓创的预期盈利，2024-06起的周报；发改委缺失/过期时用Mysteel白羽肉鸡养殖利润顶替同一票位(口径不同，票权×0.5)"},"rm":{"name":"豆菜粕价差","g":"需求","unit":"元/吨","freq":"weekly","pol":-1,"show":"abs","short":"豆菜粕价差","tiny":"豆菜粕","note":"2026-06起换成三城市单值口径，新口径暂不计分"},"esr":{"name":"美豆出口销售(4周均)","g":"需求","unit":"万吨","freq":"weekly","pol":1,"show":"pct","short":"出口销售","tiny":"出口","note":"周度波动很大，用4周均值看趋势"},"basis":{"name":"现货基差","g":"结构","unit":"元/吨","freq":"daily","pol":1,"show":"abs","short":"现货基差","tiny":"基差","note":"分位只在当前主力合约(M2701)自己的历史里算——换月造成的断层不混进来；该合约样本<20个交易日不计分"},"cftc":{"name":"CFTC管理基金净多","g":"资金","unit":"手","freq":"weekly","pol":0,"show":"pct","short":"CFTC净多","tiny":"CFTC"},"gs":{"name":"高盛净持仓","g":"资金","unit":"手","freq":"daily","pol":0,"show":"pct","short":"高盛净持仓","tiny":"高盛"},"zl":{"name":"中粮净持仓","g":"资金","unit":"手","freq":"daily","pol":1,"show":"pct","short":"中粮净持仓","tiny":"中粮"},"margin_sep":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"sep"},"spread_sep":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"sep"},"margin_may":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"may"},"spread_may":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"may"},"margin_jan":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"jan"},"spread_jan":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"jan"}}};
+window.__STATIC__={"polarity":{"crush":-1,"stock":-1,"stu":-1,"basis":1,"arrival":-1,"import":-1,"hogratio":1,"poultry":1,"rmspread":-1,"sows":-1,"reserve":null,"feed":-1},"ctx":{"sep":{"recommendedMonths":[4,5,6,7]},"may":{"recommendedMonths":[12,1,2,3]},"jan":{"recommendedMonths":[8,9,10,11]}},"series":{"stock":{"name":"国内豆粕库存","g":"供给","unit":"万吨","freq":"weekly","pol":-1,"show":"pct","short":"豆粕库存","tiny":"库存"},"stu":{"name":"国内库消比","g":"供给","unit":"%","freq":"monthly","pol":-1,"show":"abs","short":"库消比","tiny":"库消比"},"ustu":{"name":"美豆库消比","g":"供给","unit":"%","freq":"yearly","pol":-1,"show":"abs","short":"美豆库消比","tiny":"美豆库消"},"crush":{"name":"油厂开机率","g":"供给","unit":"%","freq":"daily","pol":-1,"show":"abs","short":"开机率","tiny":"开机率"},"arrival":{"name":"大豆到港预报","g":"供给","unit":"万吨","freq":"monthly","pol":-1,"show":"pct","short":"到港预报","tiny":"到港"},"bplant":{"name":"巴西大豆播种进度","g":"供给","unit":"%","freq":"weekly","pol":-1,"show":"abs","short":"巴西播种进度","tiny":"巴西播种","note":"CONAB每周一期，只在播种季（约10月~次年2月）有数据；越快播完，南美供应预期越足"},"import":{"name":"大豆进口量","g":"供给","unit":"万吨","freq":"monthly","pol":-1,"show":"pct","short":"进口量","tiny":"进口"},"feed":{"name":"饲料库存天数","g":"需求","unit":"天","freq":"weekly","pol":-1,"show":"abs","short":"饲料库存","tiny":"饲料"},"hog":{"name":"猪粮比","g":"需求","unit":"","freq":"daily","pol":1,"show":"abs","short":"猪粮比","tiny":"猪粮比"},"poultry":{"name":"肉鸡养殖预期盈利","g":"需求","unit":"元/只","freq":"weekly","pol":1,"show":"abs","short":"肉鸡预期盈利","tiny":"肉鸡","note":"发改委价格监测中心×卓创的预期盈利，2024-06起的周报；发改委缺失/过期时用Mysteel白羽肉鸡养殖利润顶替同一票位(口径不同，票权×0.5)"},"rm":{"name":"豆菜粕价差","g":"需求","unit":"元/吨","freq":"weekly","pol":-1,"show":"abs","short":"豆菜粕价差","tiny":"豆菜粕","note":"2026-06起换成三城市单值口径，新口径暂不计分"},"esr":{"name":"美豆出口销售(4周均)","g":"需求","unit":"万吨","freq":"weekly","pol":1,"show":"pct","short":"出口销售","tiny":"出口","note":"周度波动很大，用4周均值看趋势"},"basis":{"name":"现货基差","g":"结构","unit":"元/吨","freq":"daily","pol":1,"show":"abs","short":"现货基差","tiny":"基差","note":"分位只在当前主力合约(M2701)自己的历史里算——换月造成的断层不混进来；该合约样本<20个交易日不计分"},"cftc":{"name":"CFTC管理基金净多","g":"资金","unit":"手","freq":"weekly","pol":0,"show":"pct","short":"CFTC净多","tiny":"CFTC"},"gs":{"name":"高盛净持仓","g":"资金","unit":"手","freq":"daily","pol":0,"show":"pct","short":"高盛净持仓","tiny":"高盛"},"zl":{"name":"中粮净持仓","g":"资金","unit":"手","freq":"daily","pol":1,"show":"pct","short":"中粮净持仓","tiny":"中粮"},"margin_sep":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"sep"},"spread_sep":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"sep"},"margin_may":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"may"},"spread_may":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"may"},"margin_jan":{"name":"盘面压榨毛利","g":"供给","unit":"元/吨","freq":"seasonal-daily","pol":-1,"show":"abs","short":"压榨毛利","tiny":"压榨","ctx":"jan"},"spread_jan":{"name":"月差","g":"结构","unit":"%","freq":"seasonal-daily","pol":1,"show":"abs","short":"月差","tiny":"月差","ctx":"jan"}}};
 </script>
 <script type="text/plain" id="uiSrc">
 (function () {
@@ -1906,7 +1927,7 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
   const pLine0 = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
-  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${tkS.src === 'hq' ? '新浪逐笔报价' : tkS.src === 'min' ? '新浪1分钟线（逐笔报价不可用' + (tkS.hqErr ? '：' + esc(tkS.hqErr) : '') + '）' : '—'} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
+  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ hq: '新浪逐笔报价', em: '东方财富实时价', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · 当前取价间隔 ${Math.round((tkS.delay || 3000) / 100) / 10} 秒 · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
   const rcs = reconcile(), rcOld = rcs.filter(x => x.issue === 'hist_old');
   const rcLine = rcOld.length ? `<p><b>对账提醒（${rcOld.length}）</b><span style="color:var(--ink3)"> 数据灯说正常，但趋势墙里的最新点已经很旧：</span></p><ul>${rcOld.map(x => `<li><b>${esc(x.row.name)}</b>：趋势墙最新点 ${esc(x.ser.txt)}（${esc(x.ser.d)}，距今 ${x.ser.age} 天）</li>`).join('')}</ul>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + rcLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +
@@ -2339,14 +2360,14 @@ function trendOfBars(key, pol) {
 const SIGMAP = {  // 格子 → 当前信号(取自页面的指标徽标或投票)
   stock: i => ind('stock'), stu: i => ind('stu'), crush: i => ind('crush'), arrival: i => ind('arrival'), import: i => ind('import'),
   feed: i => ind('feed'), hog: i => ind('hogratio'), poultry: i => ind('poultry'), rm: i => ind('rmspread'), basis: i => ind('basis'),
-  ustu: () => vote(/库存消费比/), margin: () => vote(/压榨毛利/), esr: () => vote(/出口销售/), spread: () => vote(/月差/)
+  ustu: () => vote(/库存消费比/), bplant: () => vote(/巴西.*播种/), margin: () => vote(/压榨毛利/), esr: () => vote(/出口销售/), spread: () => vote(/月差/)
 };
 function ind(k) { const it = D.indicators.find(x => x.key === k); if (!it || !it.badge) return null; return /偏多/.test(it.badge) ? 1 : /偏空/.test(it.badge) ? -1 : /不计分|暂不计分/.test(it.badge) ? null : 0; }
 function vote(re) { const v = C().votes.find(x => re.test(x.label)); return v ? (v.signal === 1 || v.signal === -1 || v.signal === 0 ? v.signal : null) : null; }
 function tiles() {
   const k = S.key, out = [];
   const add = (id, base, extra) => { const s = SER[base]; if (!s) return; out.push({ id, ...s, ...extra, sig: (SIGMAP[id.replace(/_.*/, '')] || (() => null))() }); };
-  add('stock', 'stock'); add('stu', 'stu'); add('ustu', 'ustu'); add('margin', 'margin_' + k); add('crush', 'crush'); add('arrival', 'arrival'); add('import', 'import');
+  add('stock', 'stock'); add('stu', 'stu'); add('ustu', 'ustu'); add('margin', 'margin_' + k); add('crush', 'crush'); add('arrival', 'arrival'); add('bplant', 'bplant'); add('import', 'import');
   add('feed', 'feed'); add('hog', 'hog'); add('esr', 'esr'); add('poultry', 'poultry'); add('rm', 'rm');
   add('basis', 'basis'); add('spread', 'spread_' + k);
   add('cftc', 'cftc'); add('gs', 'gs'); add('zl', 'zl');
@@ -2682,7 +2703,7 @@ function tabBody(k) {
     const ST = { ok: ['ok', '通过'], todo: ['warn', '需要你做'], wait: ['note', '累积中'], note: ['note', '留意'], unknown: ['na', '这里查不了'] };
     const selfHtml = `<h3>部署自检（每一项都由数据判定）</h3>` + chk.map(x => `<div class="cd">${lampSvg(ST[x.status][0])}<span><b style="font-weight:500">${esc(x.title)}</b> <span class="dim" style="font-size:12px">${ST[x.status][1]}</span></span><span class="s">${esc(x.detail)}</span>${x.action ? `<span class="s" style="color:var(--ink);font-weight:500">你要做：${esc(x.action)}</span>` : ''}</div>`).join('');
     return selfHtml + `<h3>同步</h3><p>${esc(h.sync.label)}</p><p>没参与评分的投票：${h.missing.length ? h.missing.map(x => esc(String(x).split('(')[0]) + '（' + esc(missWhy(x)) + '）').join('；') : '无'}。</p>
-      <h3>历史累积情况（趋势墙每一格有多少个点）</h3>${Object.entries(SER).filter(([, s]) => !s.ctx || s.ctx === S.key).map(([id, s]) => { const n = s.freq === 'seasonal-daily' ? L.currentRun(s.pts, 10).length : s.pts.length; return `<div class="cd">${lampSvg(n >= 8 ? 'ok' : n >= 2 ? 'note' : 'warn')}<span>${esc(s.name)}<span class="dim">，${s.freq === 'seasonal-daily' ? '当前窗口' : s.freq}</span></span><span class="s">${n} 个点，最新 ${esc(s.pts[s.pts.length - 1].d)}${n < 3 ? '，趋势还画不出来' : ''}</span></div>`; }).join('')}
+      <h3>历史累积情况（趋势墙每一格有多少个点）</h3>${Object.entries(SER).filter(([, s]) => !s.ctx || s.ctx === S.key).map(([id, s]) => { const n = s.freq === 'seasonal-daily' ? L.currentRun(s.pts, 10).length : s.pts.length; return `<div class="cd">${lampSvg(n >= 8 ? 'ok' : n >= 2 ? 'note' : 'warn')}<span>${esc(s.name)}<span class="dim">，${s.freq === 'seasonal-daily' ? '当前窗口' : s.freq}</span></span><span class="s">${n} 个点${s.pts.length ? '，最新 ' + esc(s.pts[s.pts.length - 1].d) : '（非播种季或还没抓到）'}${n < 3 ? '，趋势还画不出来' : ''}</span></div>`; }).join('')}
       <h3>每个指标的新鲜度</h3>${rows.map(r => `<div class="cd">${lampSvg(ico[r.state] || 'na')}<span><b style="font-weight:500">${esc(r.name)}</b>，${esc(r.label)}</span><span class="s">${esc((r.detail || '').slice(0, 110))}${(() => { const sr = IND_SER[r.key] && serLast(IND_SER[r.key]); return sr ? ' · 趋势墙最新点 ' + esc(sr.txt) + '（' + esc(sr.d) + '）' : ''; })()}</span></div>`).join('')}
       <h3>数据时间与来源</h3><p>趋势墙和基本面净倾向来自 data/history（序列到 ${D.seriesAsOf ? D.seriesAsOf.history.slice(5) : '—'}，每日系统记录到 ${D.seriesAsOf ? D.seriesAsOf.systems.slice(5) : '—'}）；投票明细、徽标、龙虎榜、健康度来自 data/latest.json（${(D.generatedAt || '').slice(5, 16).replace('T', ' ')} UTC），由后台的评分引擎（engine.html，即原来的完整页面）算出，评分逻辑只有这一份；汇率、天气等指标由引擎在打开页面时联网取。页面每 10 分钟自动重取一次，切回标签页时如果数据超过 10 分钟也会重取。每日系统记录里 v100 起的值是“供需均衡”之后的口径，和 v99 及更早的值不是同一把尺子，趋势只看同口径的相邻几天。</p>`;
   }

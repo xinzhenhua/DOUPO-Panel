@@ -36,6 +36,10 @@ eq('原骨架信息保留', S.stock.name, '库存');
 const es = Array.from({ length: 8 }, (_, i) => ({ d: '2026-0' + (i + 1) + '-01', v: (i + 1) * 40000 }));
 S = CL.buildSeries(meta, { esr_net_sales: es }, ctx);
 eq('出口销售：4周均值/1万，第4个点=(1+2+3+4)*4万/4/1万=10', [S.esr.pts.length, S.esr.pts[0].v, S.esr.pts[0].d, S.esr.nTotal], [5, 10, '2026-04-01', 5]);
+{ const m2 = Object.assign({ bplant: { name: '巴西播种' } }, meta), bp = [['2025-10-05', 5], ['2025-12-28', 98], ['2026-09-27', 1], ['2026-10-04', 8.2], ['2026-10-11', 15]].map(([d, v]) => ({ d, v }));
+  const S2 = CL.buildSeries(m2, { brazil_planting: bp }, ctx);
+  eq('巴西播种：只取本季（上一季的点不连到这一季）', [S2.bplant.pts.map(p => p.v), S2.bplant.nTotal], [[1, 8.2, 15], 5]);
+  eq('巴西播种：没有历史文件时是空序列', CL.buildSeries(m2, {}, ctx).bplant.pts, []); }
 S = CL.buildSeries(meta, { esr_net_sales: es.slice(0, 3) }, ctx);
 eq('出口销售不足4个点→没有点', [S.esr.pts.length, S.esr.nTotal], [0, 0]);
 S = CL.buildSeries(meta, { crush_margin_sep: P('2026-04-01', '2026-05-15', '2026-06-25', '2026-07-31', '2026-10-09'), term_spread_jan: P('2026-10-09') }, ctx);
@@ -152,6 +156,8 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
       eq('parseSinaHq：无日期字段时用北京时间今天',CL.parseSinaHq(q.replace('2026-10-15','a'),Date.UTC(2026,9,15,3,0,0)).dt,'2026-10-15 11:03:12');
       eq('parseSinaHq：空串/价格为0/时间错/字段不够 都返回null',[CL.parseSinaHq(''),CL.parseSinaHq(undefined),CL.parseSinaHq(q.replace(',3110,',',0,')),CL.parseSinaHq(q.replace('110312','999999')),CL.parseSinaHq('a,b,c')],[null,null,null,null,null]);
       eq('hqUrl：指向 hq.sinajs.cn 且合约大写',/^https:\/\/hq\.sinajs\.cn\/list=nf_M2601&_=\d+$/.test(CL.hqUrl('m2601')),true); }
+    eq('parseEmTick：f43最新价+f86秒级时间戳(北京时间)',[CL.parseEmTick({data:{f43:3110.5,f86:Date.UTC(2026,9,15,3,3,12)/1000}}),CL.parseEmTick({data:null}),CL.parseEmTick({data:{f43:'-',f86:1}}),CL.parseEmTick(null)],[{dt:'2026-10-15 11:03:12',c:3110.5,v:0,src:'em'},null,null,null]);
+    eq('emTickUrl：secid=114.合约小写',/secid=114\.m2601&fields=f43,f57,f86&fltt=2/.test(CL.emTickUrl('M2601','cb')),true);
     eq('tickDelay：默认3秒；连续失败逐级放慢 6秒→15秒→30秒（被限流时退让）；可自定义基础间隔',[[0,1,2,3,5,6,20].map(f=>CL.tickDelay(f,3000)),CL.tickDelay(0,1500),CL.tickDelay(1,1500)],[[3000,6000,6000,15000,15000,30000,30000],1500,5000]);
   }
 }
