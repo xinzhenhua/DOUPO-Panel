@@ -1144,7 +1144,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     return { dt: b.getUTCFullYear() + '-' + z(b.getUTCMonth() + 1) + '-' + z(b.getUTCDate()) + ' ' + z(b.getUTCHours()) + ':' + z(b.getUTCMinutes()) + ':' + z(b.getUTCSeconds()), c, v: 0, src: 'em' };
   };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
-  CL.tickBase = function () { let v = 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认3秒；想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickBase = function () { let v = (CL.tkSrc === 'em' || CL.tkSrc === 'hq') ? 1000 : 3000; try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
     const b = new Date(nowMs + 8 * 3600e3), dow = b.getUTCDay(), m = b.getUTCHours() * 60 + b.getUTCMinutes();
@@ -1391,7 +1391,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
         const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
         if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
-        st.ok++; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
+        st.ok++; CL.tkSrc = r.src; st.src = r.src; st.errs = r.errs || {}; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
         D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();

@@ -158,6 +158,8 @@ eq('assemble：没给报告 → capitalCoverage=null', D2.capitalCoverage, null)
       eq('hqUrl：指向 hq.sinajs.cn 且合约大写',/^https:\/\/hq\.sinajs\.cn\/list=nf_M2601&_=\d+$/.test(CL.hqUrl('m2601')),true); }
     eq('parseEmTick：f43最新价+f86秒级时间戳(北京时间)',[CL.parseEmTick({data:{f43:3110.5,f86:Date.UTC(2026,9,15,3,3,12)/1000}}),CL.parseEmTick({data:null}),CL.parseEmTick({data:{f43:'-',f86:1}}),CL.parseEmTick(null)],[{dt:'2026-10-15 11:03:12',c:3110.5,v:0,src:'em'},null,null,null]);
     eq('emTickUrl：secid=114.合约小写',/secid=114\.m2601&fields=f43,f57,f86&fltt=2/.test(CL.emTickUrl('M2601','cb')),true);
+    { const o = CL.tkSrc; CL.tkSrc = 'em'; const a = CL.tickBase(); CL.tkSrc = 'min'; const b = CL.tickBase(); CL.tkSrc = undefined; const c = CL.tickBase(); CL.tkSrc = o;
+      eq('tickBase：快源(东方财富)1秒，1分钟线/未知3秒', [a, b, c], [1000, 3000, 3000]); }
     eq('tickDelay：默认3秒；连续失败逐级放慢 6秒→15秒→30秒（被限流时退让）；可自定义基础间隔',[[0,1,2,3,5,6,20].map(f=>CL.tickDelay(f,3000)),CL.tickDelay(0,1500),CL.tickDelay(1,1500)],[[3000,6000,6000,15000,15000,30000,30000],1500,5000]);
   }
 }
