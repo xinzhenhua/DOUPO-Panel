@@ -1157,7 +1157,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     const ts = Number(st.f86); return { dt: CL.fmtBj(ts > 1e9 ? ts * 1000 : (nowMs || Date.now())), c, v: 0, src: 'sse' };
   };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
-  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 3000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 2000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {
     if (typeof window !== 'undefined' && window.__FORCE_TRADING) return true;   // 仅测试用   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
@@ -1434,6 +1434,18 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
         tkFails = 0; applyTick(key, sym, r, t0);
         return r;
       } catch (_) { tkFails++; return null; }
+    };
+    /* 「测一测」：把每个实时价来源各试一次(推送连4秒)，把结果原样报出来，用来判断是哪一环不通（浏览器插件/网络/被对方限制） */
+    CL.probeTicks = async function () {
+      const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D && D.contracts && D.contracts[key] && D.contracts[key].symbol, rows = []; if (!sym) return [{ name: '合约', ok: false, detail: '还没有合约代码' }];
+      for (const [name, f] of [['新浪逐笔报价', tickHq], ['东方财富实时价（轮询）', tickEm], ['新浪1分钟线', tickMin]]) { const t0 = Date.now(), r = await f(sym); rows.push({ name, ok: !!(r && !r.err), ms: Date.now() - t0, detail: r && r.err ? r.err : '最新价 ' + r.c + '，时间 ' + r.dt }); }
+      rows.push(await new Promise(res => { const t0 = Date.now(); let n = 0, es, done = false, last = '';
+        const fin = (ok, d) => { if (done) return; done = true; try { es && es.close(); } catch (_) {} res({ name: '东方财富实时推送', ok, ms: Date.now() - t0, detail: d }); };
+        try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { return fin(false, '浏览器不支持或创建失败'); }
+        es.onmessage = ev => { n++; last = String(ev.data).slice(0, 60); if (n >= 2) fin(true, '4秒内收到 ' + n + ' 条，例：' + last); };
+        es.onerror = () => { if (!n) fin(false, '连接被拒绝/中断（浏览器插件拦截、网络限制或对方限制）'); };
+        setTimeout(() => fin(n > 0, n ? '4秒内收到 ' + n + ' 条（价格没怎么变），例：' + last : '4秒内没有收到任何数据'), 4000); }));
+      return rows;
     };
     (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔3秒（默认）（请求耗时算在里面）
 
@@ -1964,7 +1976,7 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
   const sec = (t, a, tip) => a.length ? `<p><b>${t}（${a.length}）</b><span style="color:var(--ink3)"> ${tip}</span></p><ul>${a.map(li).join('')}</ul>` : '';
   const ps = D.priceSrc, pc = D.priceCheck, em = ps ? Object.keys(ps.used || {}).filter(k => ps.used[k] === 'em') : [];
   const pLine0 = !ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> 现在不是交易时段，所以这里还没有内容。开盘后：新浪为主、东方财富备用，每 5 分钟两个源互相核对一次，结果会显示在这一行（“核对：一致/对不上”）。</span></p>` : ps ? `<p><b>盘中价格源</b><span style="color:var(--ink3)"> ${em.length ? '新浪取不到，已改用东方财富备用源（' + em.length + ' 个合约）' : '新浪（浏览器直连）；东方财富作备用'}${pc ? ' · 核对：' + (pc.ok === false ? '⚠️ 对不上，' : pc.ok ? '一致，' : '') + esc(pc.text) : ''}</span></p>` : '';
-  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ sse: '东方财富实时推送（数据一变就推过来）', hq: '新浪逐笔报价', em: '东方财富实时价（轮询）', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'sse' && tkS.sseErr ? '；推送：' + esc(tkS.sseErr) : ''}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · ${tkS.sseOn ? '推送中（另每15秒轮询核对一次）' : '当前取价间隔 ' + Math.round((tkS.delay || 3000) / 100) / 10 + ' 秒'} · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p>` : '', pLine = pLine0 + tkLine;
+  const tkS = D.tickStat, tkLine = tkS ? `<p><b>实时价</b><span style="color:var(--ink3)"> 数据源：${({ sse: '东方财富实时推送（数据一变就推过来）', hq: '新浪逐笔报价', em: '东方财富实时价（轮询）', min: '新浪1分钟线（最慢，兜底）' })[tkS.src] || '—'}${tkS.src !== 'sse' && tkS.sseErr ? '；推送：' + esc(tkS.sseErr) : ''}${tkS.src !== 'hq' && tkS.errs ? Object.entries({ hq: '新浪逐笔报价', em: '东方财富', min: '新浪1分钟线' }).filter(([k]) => tkS.errs[k] && k !== tkS.src).map(([k, n]) => '；' + n + '：' + esc(tkS.errs[k])).join('') : ''} · 打开以来：成功 ${tkS.ok} 次 · 失败 ${tkS.fail} 次${tkS.ms != null ? ' · 最近一次耗时 ' + tkS.ms + ' 毫秒' : ''} · ${tkS.sseOn ? '推送中（另每15秒轮询核对一次）' : '当前取价间隔 ' + Math.round((tkS.delay || 3000) / 100) / 10 + ' 秒'} · 近1分钟价格变动 ${(tkS.chg || []).filter(x => Date.now() - x < 60000).length} 次${tkS.err ? ' · 最近一次失败：' + esc(tkS.err) + '（' + Math.round((Date.now() - tkS.errAt) / 1000) + ' 秒前）' : ''}</span></p><p><button class="lnk" data-probe="1">${D.probe && D.probe.busy ? '测试中…（约6秒）' : '测一测各个实时价来源'}</button>${D.probe && D.probe.rows ? '<span style="color:var(--ink3)"> ' + Math.round((Date.now() - D.probe.at) / 1000) + ' 秒前的结果：</span></p><ul>' + D.probe.rows.map(x => `<li><b>${esc(x.name)}</b>：${x.ok ? '✓ 通' : '✗ 不通'}（${x.ms} 毫秒）${esc(x.detail)}</li>`).join('') + '</ul>' : '</p>'}` : '', pLine = pLine0 + tkLine;
   const rcs = reconcile(), rcOld = rcs.filter(x => x.issue === 'hist_old');
   const rcLine = rcOld.length ? `<p><b>对账提醒（${rcOld.length}）</b><span style="color:var(--ink3)"> 数据灯说正常，但趋势墙里的最新点已经很旧：</span></p><ul>${rcOld.map(x => `<li><b>${esc(x.row.name)}</b>：趋势墙最新点 ${esc(x.ser.txt)}（${esc(x.ser.d)}，距今 ${x.ser.age} 天）</li>`).join('')}</ul>` : '';
   return `<p>${esc(h.sync.label)}</p>` + pLine + rcLine + sec('不可用', bad, '数据过期或拿不到，这一票没有参与评分') + sec('降权', soft, '数据偏晚、估算或处在扰动期，这一票的票权被调低') + sec('手动', man, '需要人工填值，没填或没更新，这一票不算自动') +
@@ -3054,6 +3066,7 @@ document.addEventListener('toggle', e => { const d = e.target; if (d && d.classL
 document.addEventListener('click', e => {
   const dz = e.target.closest('[data-dsl]'); if (dz) { e.preventDefault(); e.stopPropagation(); S.dslOpen = !S.dslOpen; renderSig(); return; }
   if (!e.target.closest('.lyw')) $$('.lym').forEach(m => { m.hidden = true; });
+  const pbn = e.target.closest('[data-probe]'); if (pbn) { const rf = () => { const b = document.getElementById('shB'); if (b && b.querySelector('[data-probe]')) openLamp('hlth'); }; if (D.probe && D.probe.busy) return; D.probe = { busy: true, rows: null, at: Date.now() }; rf(); (window.CockpitData && window.CockpitData.probeTicks ? window.CockpitData.probeTicks() : Promise.resolve([{ name: '实时价', ok: false, ms: 0, detail: '页面还没准备好' }])).then(rows => { D.probe = { busy: false, rows, at: Date.now() }; rf(); }).catch(() => { D.probe = null; rf(); }); return; }
   const lb = e.target.closest('[data-lyr]'); if (lb) { const m = lb.parentElement.querySelector('.lym'); m.hidden = !m.hidden; lb.setAttribute('aria-expanded', String(!m.hidden)); return; }
   const t = e.target.closest('button,[data-tile]'), pop = $('#cPop'), cb = $('#cBtn');
   if (!e.target.closest('#cPop') && !e.target.closest('#cBtn')) { pop.classList.remove('on'); cb.setAttribute('aria-expanded', 'false'); }

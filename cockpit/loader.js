@@ -208,7 +208,7 @@
     const ts = Number(st.f86); return { dt: CL.fmtBj(ts > 1e9 ? ts * 1000 : (nowMs || Date.now())), c, v: 0, src: 'sse' };
   };
   CL.parseSinaTick = function (arr) { const b = CL.parseSinaMin(arr); if (!b.length) return null; const x = b[b.length - 1]; return { dt: x.datetime, c: x.close, v: x.volume, src: 'min' }; };
-  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 3000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
+  CL.tickBase = function () { let v = (CL.tkPace && CL.tkPace[CL.tkSrc]) || (CL.tkSrc === 'em' ? 2000 : CL.tkSrc === 'hq' ? 1000 : 2000); try { const o = +(window.__TICK_MS || localStorage.getItem('cockpit-tick-ms')); if (o >= 500 && o <= 60000) v = o; } catch (_) {} return v; };   // 默认：快源(东方财富/新浪逐笔)1秒，1分钟线兜底3秒；想自己定：控制台 localStorage.setItem('cockpit-tick-ms','1500')，原注释：想调快/调慢：控制台 localStorage.setItem('cockpit-tick-ms','1500')
   CL.tickDelay = function (fails, base) { base = base || CL.tickBase(); return fails <= 0 ? base : fails < 3 ? Math.max(base * 2, 5000) : fails < 6 ? 15000 : 30000; };
   CL.tradingNow = function (nowMs) {
     if (typeof window !== 'undefined' && window.__FORCE_TRADING) return true;   // 仅测试用   // 北京时间：日盘 09:00–15:10、夜盘 21:00–23:10（周日夜盘到周一凌晨不算：豆粕夜盘只到23:00）
@@ -485,6 +485,18 @@
         tkFails = 0; applyTick(key, sym, r, t0);
         return r;
       } catch (_) { tkFails++; return null; }
+    };
+    /* 「测一测」：把每个实时价来源各试一次(推送连4秒)，把结果原样报出来，用来判断是哪一环不通（浏览器插件/网络/被对方限制） */
+    CL.probeTicks = async function () {
+      const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D && D.contracts && D.contracts[key] && D.contracts[key].symbol, rows = []; if (!sym) return [{ name: '合约', ok: false, detail: '还没有合约代码' }];
+      for (const [name, f] of [['新浪逐笔报价', tickHq], ['东方财富实时价（轮询）', tickEm], ['新浪1分钟线', tickMin]]) { const t0 = Date.now(), r = await f(sym); rows.push({ name, ok: !!(r && !r.err), ms: Date.now() - t0, detail: r && r.err ? r.err : '最新价 ' + r.c + '，时间 ' + r.dt }); }
+      rows.push(await new Promise(res => { const t0 = Date.now(); let n = 0, es, done = false, last = '';
+        const fin = (ok, d) => { if (done) return; done = true; try { es && es.close(); } catch (_) {} res({ name: '东方财富实时推送', ok, ms: Date.now() - t0, detail: d }); };
+        try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { return fin(false, '浏览器不支持或创建失败'); }
+        es.onmessage = ev => { n++; last = String(ev.data).slice(0, 60); if (n >= 2) fin(true, '4秒内收到 ' + n + ' 条，例：' + last); };
+        es.onerror = () => { if (!n) fin(false, '连接被拒绝/中断（浏览器插件拦截、网络限制或对方限制）'); };
+        setTimeout(() => fin(n > 0, n ? '4秒内收到 ' + n + ' 条（价格没怎么变），例：' + last : '4秒内没有收到任何数据'), 4000); }));
+      return rows;
     };
     (function tickLoop() { const t0 = Date.now(); CL.tickOnce().finally(() => { setTimeout(tickLoop, CL.tradingNow(Date.now()) ? Math.max(0, CL.tickDelay(tkFails) - (tkFails ? 0 : Date.now() - t0)) : (tkFails ? 30000 : 15000)); }); })();   // 正常时按“发出请求到下一次发出”间隔3秒（默认）（请求耗时算在里面）
 

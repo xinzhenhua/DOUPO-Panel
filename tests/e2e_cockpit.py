@@ -462,6 +462,10 @@ def main():
       D.tickStat = { ok: 41, fail: 7, ms: 230, delay: 6000, chg: [Date.now() - 5000, Date.now() - 20000], err: '超时(5秒没回)', errAt: Date.now() - 12000, since: Date.now() };
       C.openLamp('hlth'); const t = document.getElementById('shB').innerText; C.closeSheet(); return t; })()""")
     ok('数据弹窗里有实时价诊断：成功/失败次数、耗时、取价间隔、近1分钟变动、最近失败原因', all(k in r for k in ('成功 41 次', '失败 7 次', '230 毫秒', '6 秒', '变动 2 次', '超时(5秒没回)')), r[:400])
+    # v101.71：「测一测各个实时价来源」按钮：逐个来源试一次并把结果列在弹窗里（测试环境外网被拦，所以全部应显示不通，且每一项都有原因）
+    pg.evaluate("window.__cockpit.openLamp('hlth')"); pg.evaluate("document.querySelector('[data-probe]').click()"); pg.wait_for_timeout(6500)
+    r = pg.evaluate("document.getElementById('shB').innerText"); pg.evaluate("window.__cockpit.closeSheet()")
+    ok('数据弹窗：点「测一测」后列出每个实时价来源（新浪逐笔/东方财富轮询/新浪1分钟线/东方财富推送）的通不通和原因', all(k in r for k in ('新浪逐笔报价：', '东方财富实时价（轮询）：', '新浪1分钟线：', '东方财富实时推送：', '不通')), r[-500:])
     # v101.55：数据灯 ↔ 趋势墙对账 / 失败原因 / 展开页最新日期 / 沿用上次成功值
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
       D.series.hog.pts.push({ d: today, v: 4.28 }); const rc = C.reconcile().filter(x => x.issue === 'hist_fresh').map(x => x.row.key);
