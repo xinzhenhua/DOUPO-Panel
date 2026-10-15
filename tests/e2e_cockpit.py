@@ -422,6 +422,11 @@ def main():
     ok('夜盘 23:00 最后一笔直接当夜盘收价（归下一交易日10-16）；早盘10:15=早盘收；时段内的实时价标盘中', r['night'][:2] == [3440, '10-16 夜盘收 23:00'] and r['am'][1] == '10-15 早盘收 10:15' and r['mid'][1] == '10-15 盘中', [r['night'], r['am'], r['mid']])
     ok('时段划分边界：休息/收盘/夜盘/开盘前', r['so'] == [None, '早盘收', '早盘收', None, None, '上午收', '上午收', None, None, '日盘收', '日盘收', None, None, '夜盘收', '夜盘收', None], r['so'])
     ok('已结束时段的最后价一直保留（一小时前的15:00价仍显示）；时段中间过期的价120秒后丢弃', r['keep1'] == 3431 and r['keep2'] is None, [r['keep1'], r['keep2']])
+    # v101.65：实时价取价诊断（成功/失败次数、耗时、近1分钟变动、最近失败原因）显示在数据弹窗里
+    r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit; D.priceSrc = D.priceSrc || { used: { sep: 'sina' }, at: Date.now() };
+      D.tickStat = { ok: 41, fail: 7, ms: 230, delay: 6000, chg: [Date.now() - 5000, Date.now() - 20000], err: '超时(5秒没回)', errAt: Date.now() - 12000, since: Date.now() };
+      C.openLamp('hlth'); const t = document.getElementById('shB').innerText; C.closeSheet(); return t; })()""")
+    ok('数据弹窗里有实时价诊断：成功/失败次数、耗时、取价间隔、近1分钟变动、最近失败原因', all(k in r for k in ('成功 41 次', '失败 7 次', '230 毫秒', '6 秒', '变动 2 次', '超时(5秒没回)')), r[:400])
     # v101.55：数据灯 ↔ 趋势墙对账 / 失败原因 / 展开页最新日期 / 沿用上次成功值
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
       D.series.hog.pts.push({ d: today, v: 4.28 }); const rc = C.reconcile().filter(x => x.issue === 'hist_fresh').map(x => x.row.key);

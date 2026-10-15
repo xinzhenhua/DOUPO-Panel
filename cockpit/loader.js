@@ -252,7 +252,7 @@
     return D;
   };
   /* 把 src 的内容就地灌进 dst（界面代码里持有 D 和 D.series 的引用，刷新时不能换对象） */
-  CL.LIVE_KEYS = ['ticks', 'priceCheck', 'priceSrc'];   // 浏览器自己维护的实时字段：整体重算时不能被清掉（否则实时价/价格源会每5分钟消失一次）
+  CL.LIVE_KEYS = ['ticks', 'priceCheck', 'priceSrc', 'tickStat'];   // 浏览器自己维护的实时字段：整体重算时不能被清掉（否则实时价/价格源会每5分钟消失一次）
   CL.fill = function (dst, src) { for (const k of Object.keys(dst)) if (!(k in src) && !CL.LIVE_KEYS.includes(k)) delete dst[k]; for (const k of Object.keys(src)) dst[k] = src[k]; return dst; };
 
   /* ---------- 浏览器启动流程 ---------- */
@@ -375,10 +375,10 @@
       try {
         const cb = '__tk' + Math.random().toString(36).slice(2), sc = doc.createElement('script'); let done = false;
         const fin = v => { if (done) return; done = true; clearTimeout(tm); try { delete window[cb]; } catch (_) { window[cb] = undefined; } try { sc.remove(); } catch (_) {} res(v); };
-        const tm = setTimeout(() => fin(null), 5000);
-        sc.onload = () => fin(CL.parseSinaTick(window[cb])); sc.onerror = () => fin(null);
+        const tm = setTimeout(() => fin({ err: '超时(5秒没回)' }), 5000);
+        sc.onload = () => { const t = CL.parseSinaTick(window[cb]); fin(t || { err: '新浪返回空数据' }); }; sc.onerror = () => fin({ err: '请求被拒绝/网络错误(可能被新浪限流)' });
         sc.src = CL.tickUrl(sym, cb); doc.head.appendChild(sc);
-      } catch (_) { res(null); }
+      } catch (_) { res({ err: '页面脚本异常' }); }
     });
     let tkFails = 0;
     CL.tickOnce = async function () {
@@ -387,8 +387,9 @@
         const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D.contracts && D.contracts[key] && D.contracts[key].symbol; if (!sym) return null;
         // 不在交易时段：每个时段结束那一刻的最后成交价就是该时段的收盘价，保留下来（不清掉）；页面刚打开、手里没有时取一次，之后每分钟核对一次
         if (!CL.tradingNow(Date.now())) { const t = D.ticks && D.ticks[key]; if (t && Date.now() - t.at < 60000) return null; }
-        const r = await tickOne(sym);
-        if (!r) { tkFails++; return null; }
+        const t0 = Date.now(), r = await tickOne(sym), st = D.tickStat = D.tickStat || { ok: 0, fail: 0, since: Date.now(), chg: [] };
+        if (!r || r.err) { tkFails++; st.fail++; st.err = r && r.err || '未知'; st.errAt = Date.now(); st.delay = CL.tickDelay(tkFails); return null; }
+        st.ok++; st.ms = Date.now() - t0; st.delay = CL.tickDelay(0); { const o = D.ticks && D.ticks[key]; if (!o || o.c !== r.c || o.dt !== r.dt) { st.chg.push(Date.now()); st.chg = st.chg.filter(x => Date.now() - x < 60000); } }
         tkFails = 0; D.ticks = D.ticks || {}; const old = D.ticks[key] || null;
         D.ticks[key] = { key, sym, c: r.c, dt: r.dt, at: Date.now(), dir: old ? (r.c > old.c ? 1 : r.c < old.c ? -1 : old.dir || 0) : 0, flash: !!(old && old.c !== r.c) };
         if (window.__cockpit && window.__cockpit.tickPaint) window.__cockpit.tickPaint();
