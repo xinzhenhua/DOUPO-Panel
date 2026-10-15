@@ -436,7 +436,7 @@
       } catch (_) { res({ err: '东方财富实时价脚本异常' }); }
     });
     /* 取价顺序：新浪逐笔报价 → 东方财富实时价 → 新浪1分钟线（最慢，兜底）。每个源连续失败3次就歇5分钟，之后再试；失败原因一直留着给诊断行看 */
-    const SRC = [{ k: 'hq', f: tickHq }, { k: 'em', f: tickEm }, { k: 'min', f: tickMin }], bad = {}, skip = {}, srcErr = {};
+    const SRC = [{ k: 'hq', f: tickHq }, { k: 'em', f: tickEm }, { k: 'min', f: tickMin }].filter(x => x.k !== 'hq' || window.__USE_HQ), bad = {}, skip = {}, srcErr = {};
     const tickOne = async (sym) => {
       for (const s of SRC) {
         if (s.k !== 'min' && (window['__NO_' + s.k.toUpperCase()] || Date.now() < (skip[s.k] || 0))) continue;
@@ -465,10 +465,10 @@
       if (!CL.tradingNow(Date.now()) || doc.hidden || Date.now() < sse.skipUntil) { if (sse.es) sseStop(); return; }
       if (sse.es && sse.sym === sym && !(sse.got && Date.now() - sse.last > 90000)) { sse.key = key; return; }   // 在用，且(收到过数据→90秒内有动静)
       sseStop(); sse.sym = sym; sse.key = key; sse.state = null; sse.got = 0; sse.errs = 0; sse.last = 0;
-      let es; try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { sse.err = '推送连接创建失败'; sse.skipUntil = Date.now() + 10 * 60000; return; }
+      let es; try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { sse.err = '推送连接创建失败'; sse.skipUntil = Date.now() + 2 * 60000; return; }
       sse.es = es;
       es.onmessage = ev => { sse.errs = 0; const ns = CL.parseEmSse(sse.state, ev.data); if (!ns) return; sse.state = ns; const old = D.ticks && D.ticks[sse.key], t = CL.emSseTick(ns, old && old.c, Date.now()); if (!t) return; sse.got++; sse.last = Date.now(); sse.err = null; applyTick(sse.key, sse.sym, t, 0); };
-      es.onerror = () => { sse.errs++; if ((!sse.got && sse.errs >= 3) || sse.errs >= 8) { sse.err = sse.got ? '推送连接反复断开' : '推送连接失败(可能被来源限制/不支持)'; sse.skipUntil = Date.now() + 10 * 60000; sseStop(); } };
+      es.onerror = () => { sse.errs++; if ((!sse.got && sse.errs >= 3) || sse.errs >= 8) { sse.err = sse.got ? '推送连接反复断开' : '推送连接失败(可能被来源限制/不支持)'; sse.skipUntil = Date.now() + 2 * 60000; sseStop(); } };
     };
     let lastPoll = 0;
     CL.tickOnce = async function () {
@@ -489,7 +489,7 @@
     /* 「测一测」：把每个实时价来源各试一次(推送连4秒)，把结果原样报出来，用来判断是哪一环不通（浏览器插件/网络/被对方限制） */
     CL.probeTicks = async function () {
       const key = window.__cockpit && window.__cockpit.S ? window.__cockpit.S.key : 'sep', sym = D && D.contracts && D.contracts[key] && D.contracts[key].symbol, rows = []; if (!sym) return [{ name: '合约', ok: false, detail: '还没有合约代码' }];
-      for (const [name, f] of [['新浪逐笔报价', tickHq], ['东方财富实时价（轮询）', tickEm], ['新浪1分钟线', tickMin]]) { const t0 = Date.now(), r = await f(sym); rows.push({ name, ok: !!(r && !r.err), ms: Date.now() - t0, detail: r && r.err ? r.err : '最新价 ' + r.c + '，时间 ' + r.dt }); }
+      for (const [name, f] of [['东方财富实时价（轮询）', tickEm], ['新浪1分钟线', tickMin]]) { const t0 = Date.now(), r = await f(sym); rows.push({ name, ok: !!(r && !r.err), ms: Date.now() - t0, detail: r && r.err ? r.err : '最新价 ' + r.c + '，时间 ' + r.dt }); }
       rows.push(await new Promise(res => { const t0 = Date.now(); let n = 0, es, done = false, last = '';
         const fin = (ok, d) => { if (done) return; done = true; try { es && es.close(); } catch (_) {} res({ name: '东方财富实时推送', ok, ms: Date.now() - t0, detail: d }); };
         try { es = new EventSource(CL.emSseUrl(sym)); } catch (e) { return fin(false, '浏览器不支持或创建失败'); }

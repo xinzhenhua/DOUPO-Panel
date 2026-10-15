@@ -451,12 +451,12 @@ def main():
       // 连不上：新连接一条数据都没收到就连续出错 → 关闭、记原因、10分钟内不再试
       CL._sse.es.close(); CL._sse.es = null; CL._sse.got = 0; made.length = 0; D.ticks = {};
       await CL.tickOnce(); const e2 = made[0]; e2.readyState = 0; e2.onerror(); e2.onerror(); e2.onerror();
-      out.err = CL._sse.err; out.closed = !!e2.closed; out.skip = CL._sse.skipUntil > Date.now() + 5 * 60000;
+      out.err = CL._sse.err; out.closed = !!e2.closed; out.skip = CL._sse.skipUntil > Date.now() + 60000;
       await CL.tickOnce(); out.noReopen = made.length === 1;
       window.EventSource = real; window.__FORCE_TRADING = false; window.__NO_EM = false; window.__NO_HQ = false; CL._sse.skipUntil = 0; CL._sse.es = null; D.ticks = {};
       return out; })()""")
     ok('东方财富推送：连上后推送价直接进价条（首条全量、后续只推变化字段）', r['opened'] and r['t1'] == [3456, 'sse'] and r['t2'] == 3457 and r['chg'] and r['src'] == 'sse', r)
-    ok('东方财富推送：已连着就不重复建连接；连不上(3次出错)→关闭并记原因、10分钟内不再试', r['noExtraConn'] and r['closed'] and r['skip'] and r['noReopen'] and '推送连接失败' in (r['err'] or ''), r)
+    ok('东方财富推送：已连着就不重复建连接；连不上(3次出错)→关闭并记原因、2分钟内不再试', r['noExtraConn'] and r['closed'] and r['skip'] and r['noReopen'] and '推送连接失败' in (r['err'] or ''), r)
     # v101.65：实时价取价诊断（成功/失败次数、耗时、近1分钟变动、最近失败原因）显示在数据弹窗里
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit; D.priceSrc = D.priceSrc || { used: { sep: 'sina' }, at: Date.now() };
       D.tickStat = { ok: 41, fail: 7, ms: 230, delay: 6000, chg: [Date.now() - 5000, Date.now() - 20000], err: '超时(5秒没回)', errAt: Date.now() - 12000, since: Date.now() };
@@ -465,7 +465,7 @@ def main():
     # v101.71：「测一测各个实时价来源」按钮：逐个来源试一次并把结果列在弹窗里（测试环境外网被拦，所以全部应显示不通，且每一项都有原因）
     pg.evaluate("window.__cockpit.openLamp('hlth')"); pg.evaluate("document.querySelector('[data-probe]').click()"); pg.wait_for_timeout(6500)
     r = pg.evaluate("document.getElementById('shB').innerText"); pg.evaluate("window.__cockpit.closeSheet()")
-    ok('数据弹窗：点「测一测」后列出每个实时价来源（新浪逐笔/东方财富轮询/新浪1分钟线/东方财富推送）的通不通和原因', all(k in r for k in ('新浪逐笔报价：', '东方财富实时价（轮询）：', '新浪1分钟线：', '东方财富实时推送：', '不通')), r[-500:])
+    ok('数据弹窗：点「测一测」后列出每个实时价来源（东方财富轮询/新浪1分钟线/东方财富推送）的通不通和原因', all(k in r for k in ('东方财富实时价（轮询）：', '新浪1分钟线：', '东方财富实时推送：', '不通')), r[-500:])
     # v101.55：数据灯 ↔ 趋势墙对账 / 失败原因 / 展开页最新日期 / 沿用上次成功值
     r = pg.evaluate("""(() => { const D = window.__DATA__, C = window.__cockpit, today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
       D.series.hog.pts.push({ d: today, v: 4.28 }); const rc = C.reconcile().filter(x => x.issue === 'hist_fresh').map(x => x.row.key);
