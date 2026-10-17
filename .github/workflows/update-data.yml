@@ -143,6 +143,11 @@ jobs:
           node scripts/plan_alert.js --data data --out /tmp/alert.json
           python3 notify_alert.py --alert /tmp/alert.json --state data/alert_state.json
 
+      # v101.82：iOS 桌面小组件数据(data/widget.json)。信号直接调 plan_alert.js 的同一份逻辑；失败不影响其它步骤。
+      - name: 生成手机小组件数据
+        continue-on-error: true
+        run: node scripts/build_widget.js --data data --out data/widget.json
+
       - name: 提交更新后的数据文件
         run: |
           git config user.name "github-actions[bot]"
@@ -151,6 +156,7 @@ jobs:
           # 历史序列(data/history/)：首次运行前目录可能不存在，所以单独add，失败不影响主数据的提交
           git add data/history/ 2>/dev/null || true
           git add data/main_adj.json data/alert_state.json 2>/dev/null || true
+          git add data/widget.json 2>/dev/null || true
           git add data/push_subs.json 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)
           git add data/raw/dce_rank_live/ data/raw/dce_rank_auto/ 2>/dev/null || true

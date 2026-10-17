@@ -16,6 +16,11 @@
 | 💰 CBOT豆粕价格 | 🟢 自动，每天2次由GitHub Actions同步 | Yahoo Finance非官方接口 |
 | 📦 开机率/豆粕库存/基差/到港预报/进口量/国储拍卖/猪粮比/能繁母猪/肉鸡利润/豆菜粕价差 | 🟢 自动，页面加载时直接覆盖；卡片详情里可手动修正 | Mysteel/中储粮/玄田数据(GitHub Actions同步，见下文各指标章节) |
 
+## v101.82：iOS 桌面小组件（实时价 + 入场/持仓信号）
+
+- 新增 `scripts/build_widget.js` → 生成 `data/widget.json`（当前交易合约价格 + 信号 + 持仓，约 0.5KB）；`update-prices.yml`（交易时段每5分钟）和 `update-data.yml` 里各加一步（失败不影响其它步骤）。
+- 新增 `widget/豆粕小组件.js`（Scriptable 脚本）+ `widget/README.md`（安装步骤和限制）。不改驾驶舱页面、不改任何信号逻辑；`tests/test_build_widget.js` 检查合约选择、价格、各种持仓状态。
+
 ## v101.25：新驾驶舱成为首页（index.html）· 旧页面改名 engine.html · 交易计划页 · 多品种日K抓取
 
 **文件变化（重要）**

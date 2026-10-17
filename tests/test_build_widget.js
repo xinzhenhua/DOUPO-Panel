@@ -1,0 +1,63 @@
+// scripts/build_widget.js：手机小组件数据。用仓库里的真实 data/ 拷一份到临时目录，换不同持仓检查状态；不联网。
+const fs = require('fs'), path = require('path'), os = require('os');
+const ROOT = path.join(__dirname, '..'), BW = require(path.join(ROOT, 'scripts', 'build_widget.js'));
+let pass = 0, fail = 0;
+const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('❌', n, '期望', y, '实际', x)); if (ok) console.log('✅', n); };
+
+// 1 交易合约：和 cockpit/ui.js 的 autoKey 同一规则（月份 → 合约），逐月核对
+const stat = JSON.parse(fs.readFileSync(path.join(ROOT, 'cockpit', 'static.json'), 'utf8'));
+const mk = (m) => Date.UTC(2026, m - 1, 15, 4, 0, 0);   // 北京时间中午，避开跨日
+const exp = { 1: 'may', 2: 'may', 3: 'may', 4: 'sep', 5: 'sep', 6: 'sep', 7: 'sep', 8: 'jan', 9: 'jan', 10: 'jan', 11: 'jan', 12: 'may' };
+for (let m = 1; m <= 12; m++) eq('autoKey ' + m + '月', BW.autoKey(stat.ctx, mk(m)), exp[m]);
+// 北京时间跨日：UTC 10-31 17:00 = 北京 11-01 01:00，月份按北京算
+eq('autoKey 按北京时间算月份', BW.autoKey(stat.ctx, Date.UTC(2026, 6, 31, 17, 0, 0)), 'jan');   // 北京 8-01 → 8月 → jan
+
+// 2 前收盘：只取日期早于「最新分钟线所在日」的日线，盘中未收完的当天日线不算
+const pc = { daily: [{ date: '2026-10-14', close: 3300 }, { date: '2026-10-15', close: 3316 }, { date: '2026-10-16', close: 3290 }] };
+eq('前收盘取最近一个更早的交易日', BW.prevCloseOf(pc, '2026-10-16'), 3316);
+eq('没有更早的日线 → null', BW.prevCloseOf({ daily: [] }, '2026-10-16'), null);
+
+// 3 整体：临时目录里放真实数据，换持仓
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'widget-'));
+const cp = (rel) => { const d = path.join(tmp, rel); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.copyFileSync(path.join(ROOT, 'data', rel), d); };
+['latest.json', 'main_adj.json', 'prices.json', 'raw/seasonal/M0_daily.csv'].forEach(cp);
+const prices = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'prices.json'), 'utf8'));
+const run = (pos) => { fs.writeFileSync(path.join(tmp, 'position.json'), JSON.stringify(pos)); return BW.build(tmp, { nowMs: mk(10) }); };
+
+let w = run({ flat: true });
+const key = w.contract.key, pk = { sep: 'M09', may: 'M05', jan: 'M01' }[key], lastBar = prices.contracts[pk].bars.slice(-1)[0];
+eq('合约 = 10月自动合约', key, 'jan');
+eq('价格 = prices.json 对应合约最新一根', w.price.c, +lastBar.close);
+eq('价格时间到分钟', w.price.dt, String(lastBar.datetime).slice(0, 16));
+eq('空仓 → 无持仓字段', w.position, null);
+eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short', 'nodata'].includes(w.signal.state), true);
+eq('版本号', w.v, 1);
+eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
+
+const px = w.signal.ref;   // 信号用的收盘参考价(换月调整价)
+const sym = w.contract.symbol;
+// 多单：开仓日取近半年里一个比现价低很多的日子，浮盈远超启动价8%（注意：开仓价和当天收盘差>2%会被页面逻辑按换月折算，所以必须用真实历史收盘价）
+const rows = fs.readFileSync(path.join(ROOT, 'data', 'raw', 'seasonal', 'M0_daily.csv'), 'utf8').trim().split('\n').slice(1).map(l => l.split(','));
+const lastClose = +rows[rows.length - 1][4], lowRow = rows.slice(-120).find(r => +r[4] <= lastClose * 0.88);
+eq('测试前提：近120日里有比现价低12%的日子', !!lowRow, true);
+w = run({ side: 1, lots: 10, entryD: lowRow[0], entryPx: +lowRow[4], contract: sym });
+eq('多单浮盈远超启动价 → 有移动止损线', typeof w.position.trail, 'number');
+eq('多单移动止损线在开仓价上方(已锁盈)', w.position.trail > w.position.entryPx, true);
+eq('持仓有动作字段', typeof w.position.action, 'string');
+eq('该平/持有 与 动作一致', w.position.action === '持有' ? w.signal.state === 'hold' : (w.signal.state === 'exit' && w.signal.label === '该平：' + w.position.action), true);
+// 多单亏损：开在比现价高10%且开仓日附近不存在这个价 → 被页面逻辑折算，不在此断言；改测止损价公式
+w = run({ side: -1, lots: 1, entryD: '2026-10-09', entryPx: 3386, contract: sym });
+eq('持仓止损价 = 开仓价×1.04(空单)', w.position.stop, Math.round(3386 * 1.04));
+eq('没到启动价 → 无移动止损', w.position.trail, null);
+
+w = run({ side: -1, lots: 5, entryD: '2026-10-09', entryPx: 3386, contract: sym });   // 空单(开仓价3386)，当前价更低 → 浮盈为正
+eq('空单浮盈 → r 为正', w.position.r > 0, true);
+
+// 数据缺失：没有 latest.json → gate 不通过，状态 nodata（不能硬给观望）
+fs.unlinkSync(path.join(tmp, 'latest.json'));
+w = run({ flat: true });
+eq('缺外资数据 → 数据不足', w.signal.state, 'nodata');
+eq('数据不足时带原因', w.signal.why.length > 0, true);
+
+fs.rmSync(tmp, { recursive: true, force: true });
+console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

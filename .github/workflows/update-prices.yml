@@ -53,12 +53,18 @@ jobs:
           pip install -q cryptography || true   # 网页推送加密用
           node scripts/plan_alert.js --data data --out /tmp/alert.json
           python3 notify_alert.py --alert /tmp/alert.json --state data/alert_state.json
+      # v101.82：iOS 桌面小组件数据(data/widget.json)。信号直接调 plan_alert.js 的同一份逻辑；失败不影响其它步骤。
+      - name: 生成手机小组件数据
+        continue-on-error: true
+        run: node scripts/build_widget.js --data data --out data/widget.json
+
       - name: 提交
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/prices.json
           git add data/alert_state.json 2>/dev/null || true
+          git add data/widget.json 2>/dev/null || true
           git add data/push_subs.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "盘中价格 $(date -u +'%Y-%m-%d %H:%M UTC')"
           bash scripts/git_push_retry.sh
