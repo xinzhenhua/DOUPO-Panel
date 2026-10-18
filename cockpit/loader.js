@@ -269,6 +269,7 @@
     const h = S.contracts[auto].health || {};
     D.health = { level: h.level, sync: h.sync, bad: h.bad, warn: h.warn, missing: h.missing, rows: h.rows };
     D.capital = L.marketCapital || null; D.cftc = L.cftcManagedMoney || null;
+    D.spotBasis = L.spotBasis || null;      // v101.84 交易计划做多第④条（期货不高于现货）用
     D.scoring = S.scoringVersion || '';
     D.series = CL.buildSeries(ST.series, H, ST.ctx);
     D.systems = CL.buildSystems(H);

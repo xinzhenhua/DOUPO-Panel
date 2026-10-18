@@ -62,6 +62,20 @@ eq('没到启动价 → 无移动止损', w.position.trail, null);
 w = run({ side: -1, lots: 5, entryD: '2026-10-09', entryPx: 3386, contract: sym });   // 空单(开仓价3386)，当前价更低 → 浮盈为正
 eq('空单浮盈 → r 为正', w.position.r > 0, true);
 
+// v101.84 基差：compute() 带出基差，小组件的「why」用同一份 planWhy
+{ const PA = require(path.join(ROOT, 'scripts', 'plan_alert.js')), L = JSON.parse(fs.readFileSync(path.join(tmp, 'latest.json'), 'utf8'));
+  fs.writeFileSync(path.join(tmp, 'position.json'), JSON.stringify({ flat: true }));
+  const A = PA.compute(tmp, { nowMs: mk(10), prices });
+  if (L.spotBasis && L.spotBasis.available) {
+    eq('基差 = 生意社现货 ÷ 主力合约 − 1', Math.abs(A.basis.v - (L.spotBasis.spot / L.spotBasis.domPrice - 1)) < 1e-12, true);
+    eq('sig 里带基差（planWhy 写原因要用）', A.sig.basis, A.basis.v);
+  }
+  eq('planWhy：被基差拦下时写原因（小组件 why 同一函数）', PA.loadPlan().planWhy({ basisBlocked: true, basis: -0.0123 }).includes('期货高于现货（基差 -1.23%）'), true);
+  const L2 = Object.assign({}, L, { spotBasis: { available: false, reason: '断网' } }); fs.writeFileSync(path.join(tmp, 'latest.json'), JSON.stringify(L2));
+  const A2 = PA.compute(tmp, { nowMs: mk(10), prices });
+  eq('没有基差 → 不过滤（basisOK 不出现），信号和以前一样', [A2.basis.v, A2.sig.basisOK, A2.side], [null, undefined, A.sig.basisOK === false && A.sig.basisBlocked ? A2.side : A.side]);
+  fs.writeFileSync(path.join(tmp, 'latest.json'), JSON.stringify(L)); }
+
 // 数据缺失：没有 latest.json → gate 不通过，状态 nodata（不能硬给观望）
 fs.unlinkSync(path.join(tmp, 'latest.json'));
 w = run({ flat: true });

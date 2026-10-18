@@ -1218,6 +1218,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
     const h = S.contracts[auto].health || {};
     D.health = { level: h.level, sync: h.sync, bad: h.bad, warn: h.warn, missing: h.missing, rows: h.rows };
     D.capital = L.marketCapital || null; D.cftc = L.cftcManagedMoney || null;
+    D.spotBasis = L.spotBasis || null;      // v101.84 交易计划做多第④条（期货不高于现货）用
     D.scoring = S.scoringVersion || '';
     D.series = CL.buildSeries(ST.series, H, ST.ctx);
     D.systems = CL.buildSystems(H);
@@ -1611,7 +1612,8 @@ const TPLAN = {
   TIERS: [[5000000, .6], [15000000, .4], [50000000, .25], [Infinity, .15]],   // [权益上限(元), 占用]：<500万 60%；<1500万 40%；<5000万 25%；其余 15%
   STOP: 4, TRAIL: 4, ACT: 8,          // 止损4%；移动止盈：持仓期间最高浮盈≥8% 之后，从持仓最高(低)价回落≥4% 平仓（回测验证过的等价写法）
   LO: 50, DELEV: -20000,              // 低位：近260日分位≤50；任一外资席位5日变化≤-2万手=去杠杆（看单个席位，不看合计：席位之间可能互相对冲）
-  BT_MARGIN: .10, TON: 10             // 回测保证金10%；每手10吨
+  BT_MARGIN: .10, TON: 10,            // 回测保证金10%；每手10吨
+  BASIS_MIN: 0, BASIS_AGE: 7          // v101.84 做多多一条：生意社基差(现货÷主力合约−1) ≥ 0；基差数据日和价格日相差超过7天就不用（不过滤，按原规则）
 };
 function planTier(E) { for (const [lim, u] of TPLAN.TIERS) if (E < lim) return u; return TPLAN.TIERS[TPLAN.TIERS.length - 1][1]; }
 function planPct(cs, w) { w = w || 260; const win = cs.slice(-w); if (win.length < 200) return null; const last = cs[cs.length - 1]; return win.filter(v => v <= last).length / win.length * 100; }
@@ -1626,11 +1628,26 @@ function planForeign(members) {
   const w = parts.length ? parts.reduce((a, q) => q.v < a.v ? q : a) : null;
   return { sum, used, missing, approx, parts, lastD, min: w ? w.v : 0, minK: w ? w.k : '' };
 }
-function planSignals(cs, fsum) {
+/* v101.84 基差：latest.json 的 spotBasis（生意社现货价、生意社主力合约价，fetch_data.fetch_spot_basis 取）→ 比值 现货÷主力−1（正=现货高于期货）。
+   和本地自动交易 local_signal.py、回测同一个口径。取不到/太旧 → v=null，信号按原规则（不过滤），why 写原因。 */
+function planBasis(sb, priceD) {
+  if (!sb || !sb.available) return { v: null, why: '没有基差数据' + (sb && sb.reason ? '（' + sb.reason + '）' : '') };
+  const sp = +sb.spot, fp = +sb.domPrice, d = String(sb.date || '').slice(0, 10);
+  if (!(sp > 0 && fp > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return { v: null, why: '基差数据不完整' };
+  const age = priceD ? Math.round((Date.parse(priceD) - Date.parse(d)) / 86400000) : 0;
+  if (Math.abs(age) > TPLAN.BASIS_AGE) return { v: null, why: '基差数据日 ' + d + ' 和价格日 ' + priceD + ' 相差 ' + Math.abs(age) + ' 天，太旧不用', d };
+  return { v: sp / fp - 1, d, age, spot: sp, fut: fp, dom: sb.domSymbol || '' };
+}
+function planSignals(cs, fsum, basis) {   // basis：planBasis(...).v；不传/null = 原规则（和 v101.81 之前完全一样）
   const n = cs.length, last = cs[n - 1], pct = planPct(cs), ma20 = planMA(cs, 20), ma60 = planMA(cs, 60), conf = planConfirm(cs), delev = fsum <= TPLAN.DELEV;
   const lowOK = pct != null && pct <= TPLAN.LO;
   const trendDn = ma20 != null && ma60 != null && last < ma20 && ma20 < ma60 && n >= 6 && last < cs[n - 6];
-  return { pct, ma20, ma60, confirm: conf, delev, lowOK, trendDn, longOK: lowOK && conf && !delev, shortOK: delev && trendDn };
+  const o = { pct, ma20, ma60, confirm: conf, delev, lowOK, trendDn, longOK: lowOK && conf && !delev, shortOK: delev && trendDn };
+  if (typeof basis === 'number' && isFinite(basis)) {
+    const ok = basis >= TPLAN.BASIS_MIN;
+    Object.assign(o, { basis, basisOK: ok, basisBlocked: o.longOK && !ok, contangoShort: basis < 0 && trendDn && !delev, longOK: o.longOK && ok });
+  }
+  return o;
 }
 /* mode='real'：手数按你填的实际保证金算（占用=你说的资金占比）；mode='bt'：按回测的10%保证金/名义杠杆算（保证金高于10%时实际占用会更高）*/
 function planSize(o) {
@@ -1656,7 +1673,8 @@ function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum=最弱席�
 }
 /* ---- 账户与持仓（v101.26）：权益、手续费、持仓最高/最低价全部由交易记录和价格数据算出 ---- */
 function planWhy(sg) {
-  if (sg.longOK) return '低位 + 反弹确认 + 外资没有去杠杆';
+  if (sg.longOK) return '低位 + 反弹确认 + 外资没有去杠杆' + (sg.basisOK ? ' + 期货不高于现货' : '');
+  if (sg.basisBlocked) return '低位 + 反弹确认 + 外资没有去杠杆，但期货高于现货（基差 ' + (sg.basis * 100).toFixed(2) + '%）：按基差过滤不做多';
   if (sg.shortOK) return '外资去杠杆 + 价格趋势向下';
   if (sg.delev) return '外资在去杠杆，但价格趋势还没向下：不做多，也不做空';
   if (sg.pct == null) return '历史价格不足，暂时算不出价格分位';
@@ -1792,7 +1810,7 @@ function planExpect(o) {   // o: {side,entry,peak,last,closes(真实价，至少
 function planSrc(t) {
   if (!t) return 'sys'; if (t.src === 'sys' || t.src === 'own') return t.src;
   const sn = t.snap; if (!sn) return 'sys'; if (sn.gateOk === false) return 'own';
-  const longOK = sn.pct != null && sn.pct <= TPLAN.LO && !!sn.confirm && !sn.delev, shortOK = !!sn.delev && !!sn.trendDn;
+  const longOK = sn.pct != null && sn.pct <= TPLAN.LO && !!sn.confirm && !sn.delev && !(typeof sn.basis === 'number' && sn.basis < TPLAN.BASIS_MIN), shortOK = !!sn.delev && !!sn.trendDn;
   return (t.side > 0 ? longOK : shortOK) ? 'sys' : 'own';
 }
 /* 平仓建议：按系统信号开的单，回测只验证过「按规则持有」；自己开的单没有入场优势，建议更紧。rr=从现在起继续持有的预计盈亏比 */
@@ -1862,20 +1880,21 @@ function holdSeries(t) {
   return { h: D.adj || (D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] }), own: false };
 }
 function planSnap() {
-  const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), sig = planSignals(cs, F.min);
-  const px = cs.length ? cs[cs.length - 1] : planLastPx(), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
+  const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
+  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, B = planBasis(D.spotBasis, hl), sig = planSignals(cs, F.min, B.v);
+  const px = cs.length ? cs[cs.length - 1] : planLastPx();
   const any = planOpen(A.trades), pos = curPos(), other = any && !pos ? any : null; let hold = null, mg = null, holdAny = null;
   if (any) { const hs = holdSeries(any), ho = planHold(hs.h, any), ma = hs.own ? (hs.h.c.length >= 20 ? hs.h.c.slice(-20).reduce((a, b) => a + b, 0) / 20 : null) : (sig.ma20 == null ? null : sig.ma20 * ho.k); holdAny = ho;
     if (pos) { hold = ho; mg = planManage({ side: pos.side, entry: pos.entryPx, peak: ho.peak, last: ho.last, ma20: ma, fsum: F.min, fall: F.sum }); } }
   const E = planEquity(A, holdAny ? holdAny.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
-  const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
+  const adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
-  return { A, cs, F, sig, px, pos, other, hold, mg, E, base, side, size, gate, dl };
+  return { A, cs, F, B, sig, px, pos, other, hold, mg, E, base, side, size, gate, dl };
 }
 /* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
 function planSnapshotNow(s) {
-  const o = { d: todayBJ(), px: Math.round(s.px), pct: s.sig.pct == null ? null : Math.round(s.sig.pct), confirm: s.sig.confirm, delev: s.sig.delev, trendDn: s.sig.trendDn, fsum: Math.round(s.F.min), fsumAll: Math.round(s.F.sum), fsumK: s.F.minK, gateOk: s.gate.ok };
+  const o = { d: todayBJ(), px: Math.round(s.px), pct: s.sig.pct == null ? null : Math.round(s.sig.pct), confirm: s.sig.confirm, delev: s.sig.delev, trendDn: s.sig.trendDn, fsum: Math.round(s.F.min), fsumAll: Math.round(s.F.sum), fsumK: s.F.minK, gateOk: s.gate.ok, basis: s.B && s.B.v != null ? +s.B.v.toFixed(4) : null };
   try { const f = fundamentals(), c = C(); o.fund = f.dir || null; o.fundRatio = f.ratio == null ? null : +(+f.ratio).toFixed(2); o.tech = c.tech || null; o.struct = c.structure && !c.structure.thin ? c.structure.direction || null : null; const cp = capital(); o.cap = cp.verdict && cp.verdict.short ? cp.verdict.short : null; } catch (_) {}
   return o;
 }
@@ -1983,6 +2002,12 @@ function healthBody(h) {   // 「数据」灯：把不可用 / 降权 / 手动�
     (h.missing.length ? `<p><b>没参与评分的投票（${h.missing.length}）</b><span style="color:var(--ink3)"> 原因逐条写在后面：有的是没数据，有的是有数据但暂不计分</span></p><ul>${h.missing.map(x => `<li><b>${esc(String(x).split('(')[0])}</b>：${esc(missWhy(x))}</li>`).join('')}</ul>` : '') +
     (!bad.length && !soft.length && !man.length && !h.missing.length ? '<p>全部指标正常。</p>' : '');
 }
+/* v101.84：信号条上基差那一格（有数据：✓/✗ 期货≤现货 +2.35%；没有：灰色「基差无数据·不过滤」） */
+function basisChip(sg, B) {
+  if (typeof sg.basisOK !== 'boolean') return `<span class="sc sep" title="${esc((B && B.why) || '')}">基差无数据·不过滤</span>`;
+  const t = (sg.basis >= 0 ? '+' : '') + (sg.basis * 100).toFixed(1) + '%';
+  return `<span class="sc ${sg.basisOK ? 'y' : 'n'}" title="生意社 ${esc(B.d || '')}：现货 ${fmtD(B.spot)} / ${esc(B.dom || '主力')} ${fmtD(B.fut)}">${sg.basisOK ? '✓' : '✗'} 期货≤现货 ${t}</span>`;
+}
 function renderSig() {
   const el = $('#sigbar'); if (!el) return;
   const s = planSnap(), sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
@@ -1993,7 +2018,7 @@ function renderSig() {
   let left, right;
   if (!s.pos) {
     left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 最近收盘${lastBarD()} ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
-    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
+    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}${basisChip(sg, s.B)}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.trendDn, '趋势向下')}${sg.contangoShort ? '<span class="sc sep" title="期货升水做空没有充分验证，只提示不作为信号">候选：期货升水+趋势向下（未启用）</span>' : ''}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
     right = s.other ? (() => { const o = s.other, ck = ['sep', 'may', 'jan'].find(k => String((D.contracts[k] || {}).symbol || '').toLowerCase() === String(o.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase()); return `<button class="sg" ${ck ? `data-ck="${ck}"` : 'data-goplan="toggle"'} aria-label="持仓在另一个合约，点击切换过去"><div class="cl">持仓在另一个合约</div><div class="hd">${esc(o.contract || '—')}</div><div class="sb">${sdName(o.side)} ${fmtD(o.lots)} 手 · 点这里切过去看</div></button>`; })() : `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
   } else {
     const m = s.mg, ho = s.hold, t = s.pos, sd = t.side > 0, out = m.action !== '持有', fl = planPnl(t, ho.last), noF = !F.used.length;
@@ -2036,10 +2061,17 @@ function sigTableHtml(s) {
    <tr><td>做多①价格低位（260日分位 ≤ ${TPLAN.LO}%）</td><td class="n">${pct1(sg.pct)}</td>${mk(sg.lowOK, '满足', '不满足')}</tr>
    <tr><td>做多②反弹确认（高于5日前，且高出前10日最低价1%）</td><td class="n">—</td>${mk(sg.confirm, '满足', '不满足')}</tr>
    <tr><td>做多③外资没有去杠杆（任一席位5日变化 > ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(!sg.delev, '满足', '外资去杠杆')}</tr>
+   <tr><td>做多④期货不高于现货（生意社基差 ≥ 0）</td><td class="n">${typeof sg.basisOK === 'boolean' ? (sg.basis >= 0 ? '+' : '') + (sg.basis * 100).toFixed(2) + '%' : '—'}</td>${typeof sg.basisOK === 'boolean' ? mk(sg.basisOK, '满足', '期货高于现货') : '<td class="ok">无数据·不过滤</td>'}</tr>
    <tr><td>做空①外资去杠杆（任一席位5日变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
    <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
+   <tr><td>候选（未启用）：期货高于现货 + 趋势向下，不要求外资去杠杆</td><td class="n">—</td><td class="${sg.contangoShort ? 'no' : ''}">${sg.contangoShort ? '出现（只提示，不开空）' : '没有'}</td></tr>
   </tbody></table>
+  <div class="plh">${basisLine(s.B)}</div>
   <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div>`;
+}
+function basisLine(B) {
+  if (!B || B.v == null) return '基差：' + esc((B && B.why) || '没有数据') + '。取不到时做多不看这一条（按原规则）。';
+  return `基差（生意社 ${esc(B.d)}）：现货 ${fmtD(B.spot)} ÷ ${esc(B.dom || '主力合约')} ${fmtD(B.fut)} − 1 = <b>${(B.v >= 0 ? '+' : '') + (B.v * 100).toFixed(2)}%</b>${B.v < 0 ? '，期货高于现货' : ''}${B.age ? '（比价格日早 ' + B.age + ' 天）' : ''}。生意社现货价偏全国多地综合，比江苏/山东/广东港口价高约 80~90 元。`;
 }
 const POPH = { set: '', fl: '' };
 const REASON_TXT = Object.fromEntries(PLAN_REASONS.filter(r => r[0]).map(r => [r[0], r[1]]));
@@ -2807,7 +2839,8 @@ ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」�
 <ul><li><b>价格</b>：用「换月调整的主力连续价」（只做主力合约，主力按持仓量在1/5/9月之间轮换，换月日沿用前一天涨跌幅，不吃价差跳空）。信号和持仓涨跌都用它，收盘后看一次，操作在<b>下一个交易日</b>（入场挂限价单，平仓开盘市价）。</li>
 <li><b>外资</b> = 摩根大通、高盛期货、瑞银期货，各自「近5个交易日」持仓变化。龙虎榜每边只公布前20名：席位只有一边进前20时，只用进榜那一边的真实变化，不把顶替的第20名算进去；拿不到的席位不参与（回测里缺数据日按0）。</li>
 <li><b>外资去杠杆</b>：<b>任一</b>席位5日变化 ≤ −2万手（看单个席位，不看合计：席位之间会对冲，例如摩根加仓、高盛减仓）。</li>
-<li><b>做多</b>（三条同时满足）：①价格在近260日 ≤50% 分位；②反弹确认：今天收盘高于5日前，且比前10日最低价高1%以上；③外资没有去杠杆。</li>
+<li><b>做多</b>（四条同时满足）：①价格在近260日 ≤50% 分位；②反弹确认：今天收盘高于5日前，且比前10日最低价高1%以上；③外资没有去杠杆；④期货不高于现货（生意社基差 ≥ 0，v101.84 加）。</li>
+<li><b>基差（v101.84）</b>：生意社豆粕现货价 ÷ 生意社主力合约价 − 1，和回测、本地自动交易同一个源。全品种回测里期货明显高于现货时做多平均是亏的；豆粕自己历史上只过滤 2 笔（回测夏普 1.10→1.12，回撤不变），但 2026 年期货高于现货的天数约一半，以后会常起作用。<b>取不到或数据日和价格日相差 7 天以上时这一条不起作用</b>，按原来三条判断。「期货升水+趋势向下」做空没有充分验证，只在信号条和条件表里提示「候选（未启用）」，不作为信号、不发提醒。</li>
 <li><b>做空</b>（三条同时满足）：①外资去杠杆（任一席位5日变化 ≤ −2万手）；②价格 < MA20 < MA60；③价格低于5日前。空头只在外资去杠杆时才做。</li>
 <li><b>平多</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最高价回落4%；外资去杠杆（任一席位 ≤ −2万手）。</li>
 <li><b>平空</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最低价反弹4%；外资<b>三家合计</b>5日变化 ≥0（外资回正）；价格站上MA20。</li>
@@ -2836,6 +2869,7 @@ function sigHelp() {
    <p>${F.parts.length ? '最弱席位 <b>' + esc(F.minK) + ' ' + f2(F.min) + '</b> 手（三家合计 ' + f2(F.sum) + ' 手，仅供参考）；最弱的一家 ≤ −20,000 手就算「外资去杠杆」。' : '没有可用的外资数据。'}</p>
    <p>为什么不用三家合计：席位之间可能对冲(比如摩根加仓、高盛减仓)，合计会把单个席位的撤退抵消掉。回测里两种口径几乎一样(历史上外资信号基本就是摩根大通)，这里按单个席位判断。</p><p>龙虎榜每边只公布前20名。一个席位只有一边进了前20时，另一边用第20名顶替，那个数字的变动和该席位无关，所以信号只用进榜那一边的真实变化。</p>
    <h3>和研究页「高盛净持仓」为什么对不上</h3><p>研究页画的是<b>净持仓(多−空)</b>，空单常常是第20名顶替的下限估计，周期是「1周/1月」按自然日找对比点；这里是<b>近5个交易日</b>、只用真实一边。起点日期和口径都不同，数字就不同。研究页高盛的明细里有这一行对照。</p>
+   <h3>基差（做多第④条）</h3><p>${basisLine(s.B)}</p>
    <h3>价格口径</h3><p>价格用「换月调整的主力连续价」(与回测同一口径)，现价 ${fmtD(s.px)}。信号收盘后看一次即可，龙虎榜收盘后才发布，所以数据日是前一个交易日。</p>
    <h3>完整规则</h3><p>入场、离场、仓位的全部逻辑见右上角「说明」→「交易计划怎么用」。</p><h3>本月</h3><p>${esc(monthHint())}</p>`;
 }

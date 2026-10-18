@@ -2,7 +2,7 @@
 /* 交易提醒：用页面同一份纯函数（cockpit/ui.js 里 PLAN_BEGIN…PLAN_END）算「入场信号 / 持仓离场 / 数据不足」，输出 JSON 给 notify.py 去发。
  * 逻辑只有一份：页面和提醒不可能算出两个结论。tests/e2e_cockpit.py 里有一致性测试（同一份数据，页面的 planSnap 和这里必须一样）。
  *   node scripts/plan_alert.js --data data --position data/position.json --out /tmp/alert.json [--today 2026-10-12]
- * 输入：data/latest.json（外资席位 5 日变化）、data/raw/seasonal/M0_daily.csv（原始主连）、data/main_adj.json（换月调整价）、data/position.json（可选：你的持仓）。 */
+ * 输入：data/latest.json（外资席位 5 日变化、spotBasis 生意社基差）、data/raw/seasonal/M0_daily.csv（原始主连）、data/main_adj.json（换月调整价）、data/position.json（可选：你的持仓）。 */
 'use strict';
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
@@ -12,7 +12,7 @@ function loadPlan() {
   const src = fs.readFileSync(path.join(ROOT, 'cockpit', 'ui.js'), 'utf8');
   const a = src.indexOf('/* PLAN_BEGIN'), b = src.indexOf('/* PLAN_END */');
   if (a < 0 || b < 0) throw new Error('ui.js 里找不到 PLAN_BEGIN/PLAN_END 标记');
-  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planSignals,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
+  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planSignals,planBasis,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
 }
 const readJson = p => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; } };
 const readText = p => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } };
@@ -48,7 +48,8 @@ function compute(dataDir, opts) {
   const F = P.planForeign(latest.marketCapital && latest.marketCapital.members);
   const lastD = h.d.length ? h.d[h.d.length - 1] : null;
   const gate = P.planGate(F.used, lastD, today, { missing: F.missing, approx: F.approx, fD: F.lastD, adj: !!adj });
-  const sig = cs.length >= 11 ? P.planSignals(cs, F.min) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, longOK: false, shortOK: false };
+  const B = P.planBasis(latest.spotBasis, lastD);   // v101.84：做多第④条，取不到 → B.v=null → 原规则
+  const sig = cs.length >= 11 ? P.planSignals(cs, F.min, B.v) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, longOK: false, shortOK: false };
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const px = cs.length ? cs[cs.length - 1] : null;
   const pos = normPosition(opts.position);
@@ -60,7 +61,7 @@ function compute(dataDir, opts) {
   if (side !== 0 && !pos) {
     const stop = px * (1 - side * TP.STOP / 100);
     ev.push({ type: 'entry', side, key: 'entry|' + lastD + '|' + side, title: '【豆粕】' + (side > 0 ? '做多' : '做空') + '入场信号（数据日 ' + lastD + '）',
-      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日挂限价单——' + (side > 0 ? '做多 ≤ ' : '做空 ≥ ') + f0(px) + '（信号日收盘价），当日有效，没成交就作废、不追；止损 ' + TP.STOP + '%（约 ' + f0(stop) + '）；浮盈 ≥' + TP.ACT + '% 后从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '% 平仓。' + tail });
+      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手，' + (B.v == null ? '基差无数据（不过滤）' : '基差 ' + (B.v >= 0 ? '+' : '') + (B.v * 100).toFixed(2) + '%（生意社 ' + B.d.slice(5) + '）') + '，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日挂限价单——' + (side > 0 ? '做多 ≤ ' : '做空 ≥ ') + f0(px) + '（信号日收盘价），当日有效，没成交就作废、不追；止损 ' + TP.STOP + '%（约 ' + f0(stop) + '）；浮盈 ≥' + TP.ACT + '% 后从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '% 平仓。' + tail });
   }
   if (pos && mg && mg.action !== '持有') {
     ev.push({ type: 'exit', key: 'exit|' + lastD + '|' + pos.entryD + '|' + mg.action, title: '【豆粕】持仓该平了：' + mg.action + '（' + sd + pos.lots + '手）',
@@ -100,7 +101,8 @@ function compute(dataDir, opts) {
     });
   }
   return { today, priceDate: lastD, adj: !!adj, px, side, gate: { ok: gate.ok, level: gate.level, reasons: gate.reasons, warn: gate.warn }, fsum: F.min, fsumAll: F.sum, foreign: F.parts,
-           sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK },
+           sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK, basisOK: sig.basisOK, basisBlocked: !!sig.basisBlocked, contangoShort: !!sig.contangoShort, basis: sig.basis },
+           basis: B,
            position: pos, manage: mg ? { action: mg.action, r: mg.r, peakR: mg.peakR } : null, events: ev };
 }
 

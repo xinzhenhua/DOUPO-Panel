@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planBasis,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -217,5 +217,31 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('建议：自主单、浮亏、盈亏比低 → 减仓/止损',A({src:'own',r:-1,rr:1.2}).lv,'exit');
   eq('建议：系统单、浮亏、盈亏比低 → 仍按规则持有（不自己砍）',A({r:-1,rr:1.0}).lv,'watch');
   eq('建议：系统单盈亏比高 → 持有',A({rr:3}).head.includes('按规则持有'),true);
+}
+
+// ---- v101.84 基差（做多第④条）----
+{ let cs=Array(200).fill(100); for(let i=0;i<59;i++) cs.push(100-i*0.3); cs.push(cs[cs.length-1]+1.5);
+  const a=P.planSignals(cs,0);
+  eq('基差：不传 = 原规则，输出字段不变',Object.keys(a).sort(),['confirm','delev','longOK','lowOK','ma20','ma60','pct','shortOK','trendDn']);
+  eq('基差：null = 原规则',P.planSignals(cs,0,null).longOK,true);
+  eq('基差 0 → 可做多（边界含 0）',[P.planSignals(cs,0,0).longOK,P.planSignals(cs,0,0).basisOK],[true,true]);
+  eq('基差 −0.01% → 不做多，basisBlocked',[P.planSignals(cs,0,-0.0001).longOK,P.planSignals(cs,0,-0.0001).basisBlocked],[false,true]);
+  eq('基差 +2% → 可做多',P.planSignals(cs,0,0.02).longOK,true);
+  eq('去杠杆时基差不算 basisBlocked（本来就不做多）',P.planSignals(cs,-30000,-0.01).basisBlocked,false);
+  eq('planWhy：被基差拦下写原因',P.planWhy(P.planSignals(cs,0,-0.0123)).includes('期货高于现货（基差 -1.23%）'),true);
+  eq('planWhy：满足时写上第④条',P.planWhy(P.planSignals(cs,0,0.01)),'低位 + 反弹确认 + 外资没有去杠杆 + 期货不高于现货');
+  const dcs=Array(260).fill(0).map((_,i)=>200-i*0.5);
+  eq('候选：期货升水+趋势向下+外资没去杠杆 → contangoShort，但 shortOK 不变',[P.planSignals(dcs,0,-0.02).contangoShort,P.planSignals(dcs,0,-0.02).shortOK],[true,false]);
+  eq('候选：外资去杠杆时不算候选（已经是正式空单）',[P.planSignals(dcs,-30000,-0.02).contangoShort,P.planSignals(dcs,-30000,-0.02).shortOK],[false,true]);
+  eq('候选：基差≥0 没有候选',P.planSignals(dcs,0,0.01).contangoShort,false);
+  const sb={available:true,spot:3358,domPrice:3281,date:'2026-10-16',domSymbol:'m2701'};
+  const b=P.planBasis(sb,'2026-10-16'); eq('planBasis：比值=现货÷主力−1',b.v,3358/3281-1,1e-12); eq('planBasis：日期/合约',[b.d,b.dom,b.age],['2026-10-16','m2701',0]);
+  eq('planBasis：前一天的也用（age=1）',P.planBasis(Object.assign({},sb,{date:'2026-10-15'}),'2026-10-16').age,1);
+  eq('planBasis：差 7 天还用、8 天不用',[P.planBasis(Object.assign({},sb,{date:'2026-10-09'}),'2026-10-16').v!=null,P.planBasis(Object.assign({},sb,{date:'2026-10-08'}),'2026-10-16').v],[true,null]);
+  eq('planBasis：没取到 → null 并写原因',[P.planBasis({available:false,reason:'最近4个交易日都没取到'},'2026-10-16').v,P.planBasis({available:false,reason:'x'},'2026-10-16').why.includes('没有基差数据')],[null,true]);
+  eq('planBasis：没有对象/缺价格 → null',[P.planBasis(null,'2026-10-16').v,P.planBasis({available:true,spot:0,domPrice:3281,date:'2026-10-16'},'2026-10-16').v,P.planBasis({available:true,spot:3358,domPrice:3281,date:'bad'},'2026-10-16').v],[null,null,null]);
+  const sn=o=>Object.assign({pct:30,confirm:true,delev:false,trendDn:false,gateOk:true},o);
+  eq('来源：开仓快照里基差<0 → 那天系统不会给多单 → own',P.planSrc({side:1,snap:sn({basis:-0.01})}),'own');
+  eq('来源：快照基差≥0 或没有基差 → sys',[P.planSrc({side:1,snap:sn({basis:0.01})}),P.planSrc({side:1,snap:sn({})})],['sys','sys']);
 }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);
