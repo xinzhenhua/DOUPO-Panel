@@ -12,10 +12,19 @@ for (let m = 1; m <= 12; m++) eq('autoKey ' + m + '月', BW.autoKey(stat.ctx, mk
 // 北京时间跨日：UTC 10-31 17:00 = 北京 11-01 01:00，月份按北京算
 eq('autoKey 按北京时间算月份', BW.autoKey(stat.ctx, Date.UTC(2026, 6, 31, 17, 0, 0)), 'jan');   // 北京 8-01 → 8月 → jan
 
-// 2 前收盘：只取日期早于「最新分钟线所在日」的日线，盘中未收完的当天日线不算
-const pc = { daily: [{ date: '2026-10-14', close: 3300 }, { date: '2026-10-15', close: 3316 }, { date: '2026-10-16', close: 3290 }] };
-eq('前收盘取最近一个更早的交易日', BW.prevCloseOf(pc, '2026-10-16'), 3316);
-eq('没有更早的日线 → null', BW.prevCloseOf({ daily: [] }, '2026-10-16'), null);
+// 2 前收盘：日盘 → 更早交易日收盘；夜盘(≥21点) → 当天日盘收盘（夜盘属于下一个交易日）
+const mkBar = (dt, c) => ({ datetime: dt, close: c });
+const pc = { daily: [{ date: '2026-10-14', close: 3300 }, { date: '2026-10-15', close: 3316 }, { date: '2026-10-16', close: 3281 }], bars: [] };
+eq('日盘：前收盘取更早一个交易日', BW.prevCloseOf(pc, mkBar('2026-10-16 10:00:00', 3290)), 3316);
+eq('夜盘：前收盘取当天日盘收盘(3281，不是前天的3316)', BW.prevCloseOf(pc, mkBar('2026-10-16 23:00:00', 3268)), 3281);
+eq('夜盘 21:00 也算夜盘', BW.prevCloseOf(pc, mkBar('2026-10-16 21:00:00', 3270)), 3281);
+// 日线还没刷新到当天：夜盘用15分钟线里当天日盘最后一根(15:00)顶上
+const pc2 = { daily: [{ date: '2026-10-15', close: 3316 }], bars: [mkBar('2026-10-16 14:45:00', 3283), mkBar('2026-10-16 15:00:00', 3281), mkBar('2026-10-16 21:15:00', 3270)] };
+eq('夜盘+日线缺当天：用日盘最后一根15分钟线', BW.prevCloseOf(pc2, mkBar('2026-10-16 23:00:00', 3268)), 3281);
+// 日盘还没收完(最后一根在14点前)不能当收盘 → 退回日线
+const pc3 = { daily: [{ date: '2026-10-15', close: 3316 }], bars: [mkBar('2026-10-16 11:00:00', 3290), mkBar('2026-10-16 21:15:00', 3270)] };
+eq('夜盘+日盘数据不全：退回日线最近收盘', BW.prevCloseOf(pc3, mkBar('2026-10-16 21:15:00', 3270)), 3316);
+eq('没有任何日线 → null', BW.prevCloseOf({ daily: [], bars: [] }, mkBar('2026-10-16 10:00:00', 3290)), null);
 
 // 3 整体：临时目录里放真实数据，换持仓
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'widget-'));

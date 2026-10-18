@@ -20,10 +20,19 @@ function autoKey(ctx, nowMs) {
   return 'sep';
 }
 
-/* 前收盘 = 日线里日期早于「最新分钟线所在日」的最后一根；盘中未收完的当天日线不能当前收 */
-function prevCloseOf(pc, lastBarDate) {
-  const d = (pc.daily || []).filter(b => b && b.close != null && String(b.date) < lastBarDate);
-  return d.length ? +d[d.length - 1].close : null;
+/* 前收盘（和驾驶舱同口径：收盘价，不是结算价）。
+ * 夜盘（21:00–23:00）属于「下一个交易日」，所以夜盘里的前收盘 = 同一个日历日的日盘收盘；
+ * 日盘里的前收盘 = 更早一个交易日的收盘。
+ * 日线里还没有当天（收盘后任务还没刷新）时，用 15 分钟线里当天日盘最后一根的收盘价顶上，不能退回到前天的收盘（会差出一整天的涨跌）。 */
+function prevCloseOf(pc, bar) {
+  const dt = String(bar.datetime), day = dt.slice(0, 10), hh = +dt.slice(11, 13), night = hh >= 21;
+  const d = (pc.daily || []).filter(b => b && b.close != null && (night ? String(b.date) <= day : String(b.date) < day));
+  const last = d.length ? d[d.length - 1] : null;
+  if (!night) return last ? +last.close : null;
+  if (last && String(last.date) === day) return +last.close;
+  const dayBars = (pc.bars || []).filter(b => b && b.close != null && String(b.datetime).slice(0, 10) === day && +String(b.datetime).slice(11, 13) < 21);
+  if (dayBars.length && +String(dayBars[dayBars.length - 1].datetime).slice(11, 13) >= 14) return +dayBars[dayBars.length - 1].close;   // 日盘最后一根在14点以后才算收完
+  return last ? +last.close : null;
 }
 
 function build(dataDir, opts) {
@@ -36,7 +45,7 @@ function build(dataDir, opts) {
   const bars = (pc.bars || []).filter(b => b && b.close != null);
   const lb = bars.length ? bars[bars.length - 1] : null;
   const lastBarDate = lb ? String(lb.datetime).slice(0, 10) : null;
-  const prev = lb ? prevCloseOf(pc, lastBarDate) : null;
+  const prev = lb ? prevCloseOf(pc, lb) : null;
 
   const A = PA.compute(dataDir, { nowMs, position: readJson(path.join(dataDir, 'position.json')), prices });
   const TP = PA.loadPlan().TPLAN;
