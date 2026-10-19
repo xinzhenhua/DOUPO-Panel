@@ -44,6 +44,18 @@ ph = P.ruPlan(S3, lastD3, { level: 'block', text: '云南 严重偏旱' }, posd)
 const Sx = mk('2027-02-22', [200, 199, 198, 197, 196, 195, 194, 193, 197 * 1.06]); eq('触及止损 → 平仓', P.ruPlan(Sx, Sx.d[Sx.d.length - 1], null, { d: '2027-03-02', px: 19700, lots: 1 }).st, 'exit');
 eq('3/31 持仓 → 该平仓', P.ruPlan(S3, '2027-03-31', null, posd).st, 'exit');
 eq('4月还拿着 → 平仓', P.ruPlan(S3, '2027-04-08', null, posd).st, 'exit');
+// ---- 手动录入、合约、换合约、止损后不再开
+const S4 = mk('2027-02-22', [200, 199, 198, 197, 196, 195, 194, 193, 197]); S4.m = S4.d.map(() => '2705'); const L4 = S4.d[S4.d.length - 1], okw = { level: 'ok', text: '' };
+eq('出信号时带上当前主力合约', P.ruPlan(S4, L4, okw, null, {}).order.contract, 'RU2705'); eq('3月05合约代码', P.ruPlan(S4, L4, okw, null, {}).mar05, 'RU2705'); eq('3月09合约代码', P.ruPlan(S4, L4, okw, null, {}).mar09, 'RU2709');
+eq('手动：延迟开割 → 暂缓', P.ruPlan(S4, L4, okw, null, { st: 'delay' }).st, 'blocked'); eq('手动：需求走强 → 暂缓', P.ruPlan(S4, L4, okw, null, { demand: true }).st, 'blocked');
+eq('手动：正常开割 → 不拦', P.ruPlan(S4, L4, okw, null, { st: 'ok' }).st, 'go'); eq('手动：停割中 → 不拦', P.ruPlan(S4, L4, okw, null, { st: 'stop' }).st, 'go');
+eq('持仓+需求走强 → 考虑离场', P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { demand: true }).st, 'holdwx');
+eq('持仓+延迟开割 → 考虑离场', P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { st: 'delay' }).st, 'holdwx');
+eq('拦截原因写在 bad 里', P.ruPlan(S4, L4, okw, null, { st: 'delay', demand: true }).bad.length, 2);
+const S5 = mk('2027-03-10', [197, 197]); S5.m = ['2709', '2709'];
+eq('主力换到09、持仓在05 → roll提示', P.ruPlan(S5, S5.d[1], okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, {}).roll, true);
+eq('持仓合约=主力 → 无roll提示', P.ruPlan(S5, S5.d[1], okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2709' }, {}).roll, false);
+eq('今年已止损 → 不再开仓', P.ruPlan(S4, L4, okw, null, { stopY: 2027 }).st, 'done'); eq('去年止损不影响今年', P.ruPlan(S4, L4, okw, null, { stopY: 2026 }).st, 'go');
 // ---- 手数
 let z = P.ruSize(500000, 17235, 2, 12); eq('50万/2%风险 → 1手', z.lots, 1); near('1手止损亏', z.perLot, 17235 * 10 * 0.05, 0.01);
 z = P.ruSize(2000000, 17235, 2, 12); eq('200万/2% → 4手(风险) ', z.byRisk, 4); eq('保证金上限不超30%', z.lots <= z.byMargin, true);
