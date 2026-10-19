@@ -49,7 +49,7 @@ function compute(dataDir, opts) {
   const lastD = h.d.length ? h.d[h.d.length - 1] : null;
   const gate = P.planGate(F.used, lastD, today, { missing: F.missing, approx: F.approx, fD: F.lastD, adj: !!adj });
   const B = P.planBasis(latest.spotBasis, lastD);   // v101.84：做多第④条，取不到 → B.v=null → 原规则
-  const sig = cs.length >= 11 ? P.planSignals(cs, F.min, B.v) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, longOK: false, shortOK: false };
+  const sig = cs.length >= 11 ? P.planSignals(cs, F.min, B.v) : { pct: null, ma20: null, ma60: null, confirm: false, delev: false, lowOK: false, trendDn: false, below20: false, highOK: false, longOK: false, shortOK: false };
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
   const px = cs.length ? cs[cs.length - 1] : null;
   const pos = normPosition(opts.position);

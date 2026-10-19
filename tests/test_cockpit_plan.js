@@ -24,7 +24,9 @@ let cs=Array(200).fill(100); for(let i=0;i<59;i++) cs.push(100-i*0.3); cs.push(c
 let s=P.planSignals(cs,0); eq('信号 低位+反弹+无去杠杆→可做多',s.longOK,true); eq('信号 去杠杆则禁做多',P.planSignals(cs,-20000).longOK,false);
 eq('信号 去杠杆阈值边界 -20000 含',P.planSignals(cs,-20000).delev,true); eq('信号 -19999 不算',P.planSignals(cs,-19999).delev,false);
 // 空头：下行趋势 + 去杠杆
-let dcs=Array(260).fill(0).map((_,i)=>200-i*0.5); eq('空头 下行+去杠杆→可做空',P.planSignals(dcs,-30000).shortOK,true); eq('空头 无去杠杆→不做空',P.planSignals(dcs,0).shortOK,false);
+let dcs=Array(260).fill(0).map((_,i)=>200-i*0.5); const hiDip=[...Array(250)].map((_,i)=>i+1).concat([250,249,248,247,246,245,244,243,242,241]);   // 高位回落：分位≈96%，收盘在MA20下方
+eq('空头(v101.89) 高位+收盘<MA20+去杠杆→可做空',P.planSignals(hiDip,-30000).shortOK,true); eq('空头 无去杠杆→不做空',P.planSignals(hiDip,0).shortOK,false);
+eq('空头 一路下跌(分位低，不在高位)+去杠杆→不做空',P.planSignals(dcs,-30000).shortOK,false);
 // 仓位计算(手算)：权益50万 价3400 保证金13% 占用60% → floor(300000/(10*3400*0.13))=floor(67.87)=67 手
 let z=P.planSize({equity:500000,margin:.13,price:3400,side:1,mode:'real'});
 eq('手数(实际保证金13%)=67',z.lots,67); eq('名义金额',z.notional,2278000); eq('占用保证金',z.margin,296140,1e-6); eq('实际占用',z.usage,296140/500000,1e-9);
@@ -64,7 +66,7 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
 { const w=[]; for(let i=0;i<130;i++) w.push(1000+i); for(let i=1;i<=129;i++) w.push(i); w.push(500);   // 130个更高、129个更低、末位500 → 分位恰好50
   const sg=P.planSignals(w,0); eq('分位恰好50 → 仍算低位(≤50)',sg.pct,50,1e-9); eq('分位恰好50 → lowOK',sg.lowOK,true); }
 { const u=[...Array(259)].map((_,i)=>i+1).concat([240]); const sg=P.planSignals(u,-30000);
-  eq('上行趋势里回落到MA20下方：MA20>MA60 → 不是下行趋势，不做空',sg.shortOK,false); }
+  eq('上行趋势里回落到MA20下方：v101.89 不再要求MA20<MA60，高位+去杠杆 → 做空',sg.shortOK,true); }
 { const m=P.planManage({side:-1,entry:3400,peak:3300,last:3350,ma20:3400,fsum:0}); eq('空单 外资5日净变化=0 → 离场(≥0)',m.action,'空单离场'); }
 
 // ===== v101.26 账户与持仓 =====
@@ -222,7 +224,7 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
 // ---- v101.84 基差（做多第④条）----
 { let cs=Array(200).fill(100); for(let i=0;i<59;i++) cs.push(100-i*0.3); cs.push(cs[cs.length-1]+1.5);
   const a=P.planSignals(cs,0);
-  eq('基差：不传 = 原规则，输出字段不变',Object.keys(a).sort(),['confirm','delev','longOK','lowOK','ma20','ma60','pct','shortOK','trendDn']);
+  eq('基差：不传 = 原规则，输出字段不变',Object.keys(a).sort(),['below20','confirm','delev','highOK','longOK','lowOK','ma20','ma60','pct','shortOK','trendDn']);
   eq('基差：null = 原规则',P.planSignals(cs,0,null).longOK,true);
   eq('基差 0 → 可做多（边界含 0）',[P.planSignals(cs,0,0).longOK,P.planSignals(cs,0,0).basisOK],[true,true]);
   eq('基差 −0.01% → 不做多，basisBlocked',[P.planSignals(cs,0,-0.0001).longOK,P.planSignals(cs,0,-0.0001).basisBlocked],[false,true]);
@@ -232,7 +234,7 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('planWhy：满足时写上第④条',P.planWhy(P.planSignals(cs,0,0.01)),'低位 + 反弹确认 + 外资没有去杠杆 + 期货不高于现货');
   const dcs=Array(260).fill(0).map((_,i)=>200-i*0.5);
   eq('候选：期货升水+趋势向下+外资没去杠杆 → contangoShort，但 shortOK 不变',[P.planSignals(dcs,0,-0.02).contangoShort,P.planSignals(dcs,0,-0.02).shortOK],[true,false]);
-  eq('候选：外资去杠杆时不算候选（已经是正式空单）',[P.planSignals(dcs,-30000,-0.02).contangoShort,P.planSignals(dcs,-30000,-0.02).shortOK],[false,true]);
+  eq('候选：外资去杠杆时不算候选（已经是正式空单）',[P.planSignals(dcs,-30000,-0.02).contangoShort,P.planSignals(hiDip,-30000,-0.02).shortOK],[false,true]);
   eq('候选：基差≥0 没有候选',P.planSignals(dcs,0,0.01).contangoShort,false);
   const sb={available:true,spot:3358,domPrice:3281,date:'2026-10-16',domSymbol:'m2701'};
   const b=P.planBasis(sb,'2026-10-16'); eq('planBasis：比值=现货÷主力−1',b.v,3358/3281-1,1e-12); eq('planBasis：日期/合约',[b.d,b.dom,b.age],['2026-10-16','m2701',0]);
@@ -254,7 +256,7 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('候选A 开了：当做空信号，来源 contango',(r=>[r.cShortGo,r.shortOK,r.via])(P.planSignals(dnc,0,-0.02,oC)),[true,true,'contango']);
   eq('候选A 开了但基差≥0：不出现',(r=>[r.contangoShort,r.shortOK])(P.planSignals(dnc,0,0.01,oC)),[false,false]);
   eq('候选A 开了但趋势没向下：不出现',P.planSignals(upc,0,-0.02,oC).shortOK,false);
-  eq('候选A 外资已在去杠杆：常规做空已成立，不算候选单（via 为空）',(r=>[r.shortOK,r.cShortGo,r.via])(P.planSignals(dnc,-30000,-0.02,oC)),[true,false,null]);
+  eq('候选A 外资已在去杠杆：常规做空已成立，不算候选单（via 为空）',(r=>[r.contangoShort,r.cShortGo,r.via])(P.planSignals(dnc,-30000,-0.02,oC)),[false,false,null]);
   eq('候选A 没有基差数据：不出现（取不到不猜）',P.planSignals(dnc,0,null,oC).shortOK,false);
   eq('候选B 没开：外资加杠杆只是「出现」(fxCand)，不做多',(r=>[r.fxLever,r.fxCand,r.fxGo,r.longOK])(P.planSignals(upc,0,0.01,Object.assign({fmax:25000},o0))),[true,true,false,false]);
   eq('候选B 开了：当做多信号，来源 fx',(r=>[r.fxGo,r.longOK,r.via])(P.planSignals(upc,0,0.01,Object.assign({fmax:25000},oF))),[true,true,'fx']);
@@ -274,5 +276,27 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('来源：候选A 启用后开的空单 → sys',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:false,trendDn:true,gateOk:true,via:'contango'}}),'sys');
   eq('来源：via=fx 但方向是空 → 仍按自主(own)',P.planSrc({side:-1,snap:{pct:88,confirm:true,delev:false,trendDn:false,gateOk:true,via:'fx'}}),'own');
   eq('来源：没有 via、也不满足常规条件 → own（老记录不受影响）',P.planSrc({side:1,snap:{pct:88,confirm:true,delev:false,gateOk:true}}),'own');
+}
+
+// ===== v101.89 做空规则：去杠杆 + 收盘<MA20 + 260日分位≥70 =====
+{
+  const sg=(c,f)=>P.planSignals(c,f);
+  eq('做空：三条齐 → 做空',(r=>[r.delev,r.below20,r.highOK,r.shortOK])(sg(hiDip,-30000)),[true,true,true,true]);
+  eq('做空：去掉外资去杠杆 → 不做空',sg(hiDip,-19999).shortOK,false);
+  eq('做空：去杠杆边界 −20000 含',sg(hiDip,-20000).shortOK,true);
+  const aboveMA=[...Array(259)].map((_,i)=>i+1).concat([300]);   // 高位但收盘在MA20上方
+  eq('做空：收盘在MA20上方 → 不做空',(r=>[r.below20,r.highOK,r.shortOK])(sg(aboveMA,-30000)),[false,true,false]);
+  const lowBelow=[...Array(240)].map((_,i)=>1000+i).concat([...Array(20)].map((_,i)=>1240-i*40)); // 先涨后大跌到分位很低
+  eq('做空：收盘<MA20 但价格分位不到70 → 不做空',(r=>[r.below20,r.highOK,r.shortOK])(sg(lowBelow,-30000)),[true,false,false]);
+  { const w=[...Array(181)].map((_,i)=>i+1).concat([...Array(78)].map((_,i)=>1000+i),[500]); const r=sg(w,-30000);   // 181个更低、78个更高、末位500 → 分位恰好70，收盘在MA20下方
+    eq('做空：分位恰好70 → 算高位(≥70)',[r.pct,r.highOK,r.below20,r.shortOK],[70,true,true,true]);
+    const w2=w.slice(); w2[w2.length-1]=499; w2[0]=600;   // 分位降到 ~69.6
+    eq('做空：分位<70 → 不算高位',sg(w2,-30000).highOK,false); }
+  eq('做空：分位边界 ≥70（P.TPLAN.SHORT_PCT=70）',P.TPLAN.SHORT_PCT,70);
+  eq('planWhy 做空文案含分位',P.planWhy(sg(hiDip,-30000)).includes('分位')&&P.planWhy(sg(hiDip,-30000)).includes('≥ 70%'),true);
+  eq('planWhy 去杠杆但分位不够 → 不做空文案',P.planWhy(sg(lowBelow,-30000)).includes('不算高位'),true);
+  eq('planSrc 新快照(below20+highOK+delev) 空单 → sys',P.planSrc({side:-1,snap:{pct:90,confirm:false,delev:true,below20:true,highOK:true,gateOk:true}}),'sys');
+  eq('planSrc 新快照 分位不够 → own',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:true,below20:true,highOK:false,gateOk:true}}),'own');
+  eq('planSrc 老快照(只有trendDn) 仍按旧规则 → sys',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:true,trendDn:true,gateOk:true}}),'sys');
 }
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);
