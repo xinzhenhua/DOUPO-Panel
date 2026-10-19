@@ -244,4 +244,35 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('来源：开仓快照里基差<0 → 那天系统不会给多单 → own',P.planSrc({side:1,snap:sn({basis:-0.01})}),'own');
   eq('来源：快照基差≥0 或没有基差 → sys',[P.planSrc({side:1,snap:sn({basis:0.01})}),P.planSrc({side:1,snap:sn({})})],['sys','sys']);
 }
+
+// ===== v101.87 候选规则：期货升水做空 / 外资加杠杆做多（默认关，opt 控制）=====
+{
+  const upc=[...Array(260)].map((_,i)=>i+1);                       // 一路涨：不在低位 → 常规多单不成立；反弹确认成立
+  const dnc=Array(260).fill(0).map((_,i)=>200-i*0.5);               // 一路跌：趋势向下
+  const o0={contangoShort:false,fxLong:false}, oC={contangoShort:true,fxLong:false}, oF={contangoShort:false,fxLong:true};
+  eq('候选A 没开：期货升水+趋势向下只是「出现」，不是信号',(r=>[r.contangoShort,r.cShortGo,r.shortOK,r.via])(P.planSignals(dnc,0,-0.02,o0)),[true,false,false,null]);
+  eq('候选A 开了：当做空信号，来源 contango',(r=>[r.cShortGo,r.shortOK,r.via])(P.planSignals(dnc,0,-0.02,oC)),[true,true,'contango']);
+  eq('候选A 开了但基差≥0：不出现',(r=>[r.contangoShort,r.shortOK])(P.planSignals(dnc,0,0.01,oC)),[false,false]);
+  eq('候选A 开了但趋势没向下：不出现',P.planSignals(upc,0,-0.02,oC).shortOK,false);
+  eq('候选A 外资已在去杠杆：常规做空已成立，不算候选单（via 为空）',(r=>[r.shortOK,r.cShortGo,r.via])(P.planSignals(dnc,-30000,-0.02,oC)),[true,false,null]);
+  eq('候选A 没有基差数据：不出现（取不到不猜）',P.planSignals(dnc,0,null,oC).shortOK,false);
+  eq('候选B 没开：外资加杠杆只是「出现」(fxCand)，不做多',(r=>[r.fxLever,r.fxCand,r.fxGo,r.longOK])(P.planSignals(upc,0,0.01,Object.assign({fmax:25000},o0))),[true,true,false,false]);
+  eq('候选B 开了：当做多信号，来源 fx',(r=>[r.fxGo,r.longOK,r.via])(P.planSignals(upc,0,0.01,Object.assign({fmax:25000},oF))),[true,true,'fx']);
+  eq('候选B 门槛边界 +20000 含、19999 不算',[P.planSignals(upc,0,0.01,Object.assign({fmax:20000},oF)).fxGo,P.planSignals(upc,0,0.01,Object.assign({fmax:19999},oF)).fxGo],[true,false]);
+  eq('候选B 有席位在去杠杆：不做',(r=>[r.fxLever,r.fxGo,r.longOK])(P.planSignals(upc,-25000,0.01,Object.assign({fmax:30000},oF))),[true,false,false]);
+  eq('候选B 期货高于现货：不做',(r=>[r.fxCand,r.fxGo])(P.planSignals(upc,0,-0.01,Object.assign({fmax:30000},oF))),[false,false]);
+  eq('候选B 取不到基差：不拦（和本地 fx_lever_long 一致）',P.planSignals(upc,0,null,Object.assign({fmax:30000},oF)).fxGo,true);
+  eq('候选B 没有外资数据(fmax=null)：不出现',(r=>[r.fxMax,r.fxLever,r.fxGo])(P.planSignals(upc,0,0.01,Object.assign({fmax:null},oF))),[null,false,false]);
+  eq('候选B 常规多单已成立：不算外资加杠杆单（via 为空）',(r=>[r.longOK,r.fxCand,r.fxGo,r.via])(P.planSignals(cs,0,0.01,Object.assign({fmax:30000},oF))),[true,false,false,null]);
+  eq('不传 opt：不出现任何候选字段（推送提醒用的调用和 v101.84 一样）',['fxGo','cShortGo','via','fxLever'].map(k=>k in P.planSignals(cs,0,0.01)),[false,false,false,false]);
+  eq('两个都开、都没出现：和关着一样',(r=>[r.longOK,r.shortOK])(P.planSignals(cs,0,0.01,{contangoShort:true,fxLong:true,fmax:0})),[true,false]);
+  eq('planForeign 最大席位变化',(f=>[f.max,f.maxK])(P.planForeign({'摩根大通':{foreign:true,history:{change5:{change:31000}}},'瑞银期货':{foreign:true,history:{change5:{change:-500}}}})),[31000,'摩根大通']);
+  eq('planForeign 没有数据：max=null',P.planForeign({}).max,null);
+  eq('planWhy 外资加杠杆(已启用)',P.planWhy(P.planSignals(upc,0,0.01,Object.assign({fmax:31000},oF))).includes('外资加杠杆直接做多（候选规则，你已启用）')&&P.planWhy(P.planSignals(upc,0,0.01,Object.assign({fmax:31000},oF))).includes('+31,000'),true);
+  eq('planWhy 期货升水做空(已启用)',P.planWhy(P.planSignals(dnc,0,-0.02,oC)).includes('候选规则，你已启用'),true);
+  eq('来源：候选B 启用后开的多单 → sys（快照带 via）',P.planSrc({side:1,snap:{pct:88,confirm:true,delev:false,gateOk:true,via:'fx'}}),'sys');
+  eq('来源：候选A 启用后开的空单 → sys',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:false,trendDn:true,gateOk:true,via:'contango'}}),'sys');
+  eq('来源：via=fx 但方向是空 → 仍按自主(own)',P.planSrc({side:-1,snap:{pct:88,confirm:true,delev:false,trendDn:false,gateOk:true,via:'fx'}}),'own');
+  eq('来源：没有 via、也不满足常规条件 → own（老记录不受影响）',P.planSrc({side:1,snap:{pct:88,confirm:true,delev:false,gateOk:true}}),'own');
+}
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);
