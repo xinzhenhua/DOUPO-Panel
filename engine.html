@@ -1364,8 +1364,8 @@ function renderSaPsd(sa, genAt){
     window._saPsdSignal = null;
     return;
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
+  if(sa.carried){ badge.textContent = '🔁 沿用上次成功值 · USDA本次没连上'; badge.className = 'badge badge-manual'; }
+  else { badge.textContent = '🟢 已同步 '+fmtTime(genAt); badge.className = 'badge badge-auto'; }
   let rows = '';
   let debugParts = '';
   let combinedProduction = 0;
@@ -2668,7 +2668,10 @@ function renderEsr(esr, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">收到的是旧版本后端生成的出口销售数据(豆粕口径)，已忽略</span>请等GitHub Actions用最新的fetch_data.py重新同步一次(详见README)</div>`;
     return;
   }
-  if(esr.isStale){
+  if(esr.carried){
+    badge.textContent = '🔁 沿用上次成功值 · USDA本次没连上';
+    badge.className = 'badge badge-manual';
+  } else if(esr.isStale){
     badge.textContent = '⚠️ 数据可能过期 '+fmtTime(genAt);
     badge.className = 'badge badge-offline';
   } else {
@@ -2734,8 +2737,8 @@ function renderPsd(psd, genAt){
     el.innerHTML = `<div class="alert-box neutral"><span class="at">收到的是旧版本后端生成的供需数据(豆粕口径)，已忽略</span>请等GitHub Actions用最新的fetch_data.py重新同步一次(详见README)</div>`;
     return;
   }
-  badge.textContent = '🟢 已同步 '+fmtTime(genAt);
-  badge.className = 'badge badge-auto';
+  if(psd.carried){ badge.textContent = '🔁 沿用上次成功值 · USDA本次没连上'; badge.className = 'badge badge-manual'; }
+  else { badge.textContent = '🟢 已同步 '+fmtTime(genAt); badge.className = 'badge badge-auto'; }
 
   const fmt = n => n==null ? '--' : Number(n).toLocaleString();
   const stu = psd.stocksToUsePct;

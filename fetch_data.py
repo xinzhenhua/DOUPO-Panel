@@ -5126,6 +5126,89 @@ CARRY_KEYS = ("hogRatio", "mysteelArrivalForecast", "mysteelCrushRate", "mysteel
               "sowInventory", "spotBasis")
 
 
+# v101.86：USDA 三项（美豆库消比 / 出口销售 / 南美产量）也沿用上次成功值。
+# 起因：2026-10-19 上午 USDA 的 api.fas.usda.gov 返回 503（对方服务器故障），三项同时变红「无数据」，一次抖动整个丢掉。
+# 和上面那批不同：这三项的结果里没有 value 字段（是一整块结构），而且 latest.json 每次整体重写——这次失败写进去后，
+#   下一次再失败就没有"上次成功"可沿用了。所以另存一份 data/usda_last_good.json（每次成功就刷新），失败时从它取。
+# 期限：最多沿用 10 天（出口销售周更、供需表月更）；超过就老老实实显示失败，不拿太旧的数当现在。
+USDA_CARRY_KEYS = ("exportSales", "supplyDemand", "southAmericaPsd")
+USDA_CARRY_MAX_DAYS = 10
+USDA_LAST_GOOD_PATH = os.path.join(os.path.dirname(__file__), "data", "usda_last_good.json")
+
+
+def _parse_iso(t):
+    try:
+        return datetime.fromisoformat(str(t).replace("Z", "+00:00"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def update_usda_last_good(result, last_good, now=None):
+    """本次成功的 USDA 块记进 last_good（dict，原地改）；返回是否有变化。"""
+    now = now or datetime.now(timezone.utc)
+    changed = False
+    for k in USDA_CARRY_KEYS:
+        v = result.get(k)
+        if isinstance(v, dict) and v.get("available") and not v.get("carried"):
+            last_good[k] = {"savedAt": now.isoformat(), "block": v}
+            changed = True
+    return changed
+
+
+def carry_usda(result, prev, last_good, now=None, max_days=USDA_CARRY_MAX_DAYS):
+    """USDA 三项失败时沿用：先用上次 latest.json 里成功的，没有就用 last_good；超过 max_days 不沿用。返回被沿用的 key 列表。"""
+    now = now or datetime.now(timezone.utc)
+    carried = []
+    for k in USDA_CARRY_KEYS:
+        new = result.get(k)
+        if k not in result or (isinstance(new, dict) and new.get("available")):
+            continue
+        old, since = None, None
+        if isinstance(prev, dict) and isinstance(prev.get(k), dict) and prev[k].get("available"):
+            old = prev[k]; since = old.get("carriedFrom") or prev.get("generatedAt")
+        elif isinstance(last_good, dict) and isinstance(last_good.get(k), dict):
+            old = last_good[k].get("block"); since = (old or {}).get("carriedFrom") or last_good[k].get("savedAt")
+        t0 = _parse_iso(since)
+        if not isinstance(old, dict) or not old.get("available") or t0 is None:
+            continue
+        if t0.tzinfo is None:
+            t0 = t0.replace(tzinfo=timezone.utc)
+        if (now - t0).total_seconds() > max_days * 86400:
+            continue
+        merged = dict(old)
+        merged["carried"] = True
+        merged["carriedReason"] = str((new or {}).get("reason") or (new or {}).get("error") or "本次抓取失败")[:300]
+        merged["carriedFrom"] = since
+        try:   # 出口销售块里存着"距今几天"，沿用后要按今天重算，不然页面显示的是上次抓取时的天数
+            if merged.get("weekEnding") and merged.get("dataAgeDays") is not None:
+                merged["dataAgeDays"] = (now.date() - _date_cls.fromisoformat(str(merged["weekEnding"])[:10])).days
+        except Exception:  # noqa: BLE001
+            pass
+        result[k] = merged
+        carried.append(k)
+    return carried
+
+
+def apply_usda_carry(result, prev, path=None, now=None):
+    """USDA 三项：失败沿用（上次 latest.json 或存档 usda_last_good.json），成功就刷新存档。出任何错都只打印警告，返回被沿用的 key 列表。"""
+    path = path or USDA_LAST_GOOD_PATH
+    try:
+        try:
+            last_good = json.load(open(path, encoding="utf-8"))
+            if not isinstance(last_good, dict):
+                last_good = {}
+        except Exception:  # noqa: BLE001
+            last_good = {}
+        carried = carry_usda(result, prev, last_good, now)
+        if update_usda_last_good(result, last_good, now):
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(last_good, f, ensure_ascii=False)
+        return carried
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] USDA 沿用/存档失败(不影响其它数据): {type(e).__name__}: {e}", file=sys.stderr)
+        return []
+
+
 def carry_forward(result, prev, keys=CARRY_KEYS):
     """返回被沿用的 key 列表。prev 是上一次的 latest.json（dict，可为空）。"""
     carried = []
@@ -5267,6 +5350,7 @@ def main():
         except Exception:  # noqa: BLE001
             prev_latest = {}
         carried = carry_forward(result, prev_latest)
+        carried += apply_usda_carry(result, prev_latest)
         if carried:
             print(f"[WARN] 本次抓取失败，沿用上次成功的值: {', '.join(carried)}", file=sys.stderr)
         result["carriedKeys"] = carried

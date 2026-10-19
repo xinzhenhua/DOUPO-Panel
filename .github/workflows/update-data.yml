@@ -157,6 +157,7 @@ jobs:
           git add data/history/ 2>/dev/null || true
           git add data/main_adj.json data/alert_state.json 2>/dev/null || true
           git add data/widget.json 2>/dev/null || true
+          git add data/usda_last_good.json 2>/dev/null || true   # v101.86：USDA 三项上次成功的存档（USDA 偶尔 503，失败时沿用）
           git add data/push_subs.json 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)
           git add data/raw/dce_rank_live/ data/raw/dce_rank_auto/ 2>/dev/null || true

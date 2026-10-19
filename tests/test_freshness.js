@@ -158,6 +158,18 @@ renderEsr(esrBase(ago(30)), new Date().toISOString());
 check('★ESR距今30天(过期)：不判方向、不投票，界面说明', window._esrSignal === null && makeEl('esrContent').innerHTML.includes('已过期') && makeEl('esrContent').innerHTML.includes('不参与评分'));
 renderEsr({available:false, reason:'x'}, new Date().toISOString());
 check('ESR不可用时质量状态被清空(不沿用上次的)', window._esrQuality === null);
+// v101.86：USDA 抓取失败、沿用上次成功值：徽标写明，信号和新鲜度照常按数据日期判断
+renderEsr(Object.assign(esrBase(ago(10)), {carried:true, carriedReason:'HTTP 503'}), new Date().toISOString());
+check('★ESR沿用上次成功值：徽标"沿用上次成功值"，信号仍在、质量乘数照常按数据日期算(10天=1)', makeEl('esrBadge').textContent.includes('沿用上次成功值') && window._esrSignal === 1 && window._esrQuality.m === 1);
+renderEsr(Object.assign(esrBase(ago(30)), {carried:true, carriedReason:'HTTP 503'}), new Date().toISOString());
+check('★ESR沿用的值太旧(30天)：照样过期不投票（沿用不能让旧数据复活）', window._esrSignal === null && makeEl('esrContent').innerHTML.includes('已过期'));
+elements['psdBadge']=makeEl('psdBadge'); elements['psdContent']=makeEl('psdContent'); elements['saPsdBadge']=makeEl('saPsdBadge'); elements['saPsdContent']=makeEl('saPsdContent');
+renderPsd({available:true, commodity:'Oilseed, Soybean', marketYear:2026, marketYearLabel:'2026/27', endingStocks:300, domesticConsumption:1000, exports:1800, stocksToUsePct:4.5, carried:true, carriedReason:'HTTP 503'}, new Date().toISOString());
+check('★美豆库消比沿用上次成功值：徽标写明，信号照算(4.5% 低于5% 偏紧→偏多)', makeEl('psdBadge').textContent.includes('沿用上次成功值') && window._psdSignal === 1);
+renderPsd({available:true, commodity:'Oilseed, Soybean', marketYear:2026, marketYearLabel:'2026/27', endingStocks:300, domesticConsumption:1000, exports:1800, stocksToUsePct:4.5}, new Date().toISOString());
+check('美豆库消比正常抓到：仍是"已同步"，不带沿用字样', makeEl('psdBadge').textContent.includes('已同步') && !makeEl('psdBadge').textContent.includes('沿用'));
+renderSaPsd({available:true, byCountry:{BR:{available:true, countryName:'巴西', marketYear:'2026/27', production:180000}}, carried:true, carriedReason:'HTTP 503'}, new Date().toISOString());
+check('★南美产量沿用上次成功值：徽标写明', makeEl('saPsdBadge').textContent.includes('沿用上次成功值'));
 // ESR晚了一期 → 票权减半
 reset(); makeEl('m_crush').value='50'; makeEl('m_stock').value='70'; window._esrSignal = 1; window._esrQuality = {m:0.5, why:'出口销售周报晚了一期'}; updateOverallAlert();
 check('★ESR晚了一期时出口销售这一票降权：质量分(9+0.5)/10=0.95，点名被降权的是出口销售', Math.abs(window._quality.score - 0.95) < 1e-9 && window._quality.lowItems[0].label.includes('出口销售'));
