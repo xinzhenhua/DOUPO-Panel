@@ -151,7 +151,7 @@ const TPLAN = {
   STOP: 4, TRAIL: 4, ACT: 8,          // 止损4%；移动止盈：持仓期间最高浮盈≥8% 之后，从持仓最高(低)价回落≥4% 平仓（回测验证过的等价写法）
   LO: 50, DELEV: -20000,              // 低位：近260日分位≤50；任一外资席位5日变化≤-2万手=去杠杆（看单个席位，不看合计：席位之间可能互相对冲）
   BT_MARGIN: .10, TON: 10,            // 回测保证金10%；每手10吨
-  SHORT_PCT: 70, SHORT_MAXD: 10,      // v101.89 做空：外资去杠杆 + 收盘<MA20 + 260日分位≥70；空单最多持有10个交易日
+  SHORT_PCT: 70,                      // v101.89 做空：外资去杠杆 + 收盘<MA20 + 260日分位≥70
   FX_TH: 20000,                       // v101.87 候选规则「外资加杠杆做多」：任一外资席位5日持仓变化 ≥ +2万手（去杠杆的镜像）
   BASIS_MIN: 0, BASIS_AGE: 7          // v101.84 做多多一条：生意社基差(现货÷主力合约−1) ≥ 0；基差数据日和价格日相差超过7天就不用（不过滤，按原规则）
 };
@@ -215,16 +215,15 @@ function planSize(o) {
   return { u, lots, notional, margin, usage: margin / E, leverage: notional / E, stopPx, lossStop, lossPct: lossStop / E, actPx, liqPx,
            liqGapPct: Math.abs(liqPx - stopPx) / px * 100, riskAtStop, riskNow: margin / E };
 }
-function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum=最弱席位5日变化(多单离场用), fall=三家合计5日变化(空单离场用；不传则用fsum), held=已持有的交易日数(空单最多持10天)}
+function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum=最弱席位5日变化(多单离场用), fall=三家合计5日变化(空单离场用；不传则用fsum)}
   const side = o.side >= 0 ? 1 : -1, r = side * (o.last / o.entry - 1) * 100;
   const stop = r <= -TPLAN.STOP;
   const peakR = side * (o.peak / o.entry - 1) * 100;      // 持仓期间出现过的最高浮盈
   const trail = peakR >= TPLAN.ACT && (side > 0 ? o.last <= o.peak * (1 - TPLAN.TRAIL / 100) : o.last >= o.peak * (1 + TPLAN.TRAIL / 100));
   const delevOut = side > 0 && o.fsum <= TPLAN.DELEV;
   const shortOut = side < 0 && ((o.fall != null ? o.fall : o.fsum) >= 0 || (o.ma20 != null && o.last > o.ma20));
-  const timeOut = side < 0 && o.held != null && o.held >= TPLAN.SHORT_MAXD;
-  const action = stop ? '止损' : trail ? '移动止盈' : delevOut ? '外资去杠杆·平多' : shortOut ? '空单离场' : timeOut ? '空单到期' : '持有';
-  return { r, peakR, stop, trail, delevOut, shortOut, timeOut, action };
+  const action = stop ? '止损' : trail ? '移动止盈' : delevOut ? '外资去杠杆·平多' : shortOut ? '空单离场' : '持有';
+  return { r, peakR, stop, trail, delevOut, shortOut, action };
 }
 /* ---- 账户与持仓（v101.26）：权益、手续费、持仓最高/最低价全部由交易记录和价格数据算出 ---- */
 function planWhy(sg) {
@@ -304,7 +303,7 @@ function planStats(a) {
 
 /* ---- 实盘记录（v101.50）：每笔交易存下「当时系统怎么看、预计多少」和「事后实际怎样」，攒够了就能检验系统 ---- */
 const PLAN_REASONS = [['', '自动（按系统建议动作）'], ['stop', '止损'], ['trail', '移动止盈'], ['foreign', '外资去杠杆/翻转'], ['ma20', '站上MA20'], ['protect', '手动保本/落袋'], ['feel', '主观判断（没触发规则）'], ['other', '其他']];
-const planReasonOf = act => act === '止损' ? 'stop' : act === '移动止盈' ? 'trail' : act === '外资去杠杆·平多' || act === '空单离场' ? 'foreign' : act === '空单到期' ? 'other' : 'feel';
+const planReasonOf = act => act === '止损' ? 'stop' : act === '移动止盈' ? 'trail' : act === '外资去杠杆·平多' || act === '空单离场' ? 'foreign' : 'feel';
 const planSlip = (side, ref, px) => (ref > 0 && px > 0) ? (side >= 0 ? 1 : -1) * (px / ref - 1) * 100 : null;   // 开仓滑点：正数=比参考价更不利（多单买高了/空单卖低了）
 function planPath(h, t) {   // 持仓期间的日线路径与极值：{days, mfe(最大浮盈%), mae(最大浮亏%，负数), path:[[日期,真实价]...]}；已平仓只算到平仓日
   if (!h || !h.d || !h.d.length) return null;
@@ -325,7 +324,7 @@ function planReview(trades, per) {   // 已平仓交易的「预计 vs 实际」
 /* ---- 持仓预期（v101.48）：回测经验值 + 从现在起的价格推演（蒙特卡洛）。不是预测，是把"回测里的平均优势"套到当前持仓上 ---- */
 const TBT = {   // 回测（2017-12~2026-10，信号收盘价、止损/移动止盈按收盘判断，40笔）里同方向的统计；脚本见 scratchpad/mp/bt4.py
   long: { n: 26, win: .538, avgWin: 9.1, avgLoss: -2.6, avg: 3.7, days: 29 },
-  short: { n: 12, win: .583, avgWin: 1.8, avgLoss: -0.8, avg: 0.7, days: 5 },   // v101.89 新做空规则（去杠杆+收盘<MA20+分位≥70+最多持10天，2022年起12笔）
+  short: { n: 12, win: .583, avgWin: 2.0, avgLoss: -0.8, avg: 0.8, days: 6 },   // v101.89 新做空规则（去杠杆+收盘<MA20+分位≥70，2022年起12笔）
   LIM: { pct: 0.3, fill: 83, med: 1022, close: 830, open: 735 },   // 次日限价=收盘价回调0.3%：成交率83%，50万起5年终值中位（见回测摘要）
   SEDGE: .0022,   // 空单有外资翻转模型后需要的每日优势（让推演的胜率≈64%、平均≈+1.0%、持有≈4~5天，对上回测空单的统计；脚本 scratchpad/mp/flipmc.py）
   FLIPH: [.02, .11, .15, .25, .25, .20],   // 外资三家5日合计从「去杠杆」翻回≥0 的每日概率（第1天,第2天…第6天起恒定）：回测期45个空单信号日，翻转的中位天数4~5天（flip.py）
@@ -461,7 +460,7 @@ function planSnap() {
   const px = cs.length ? cs[cs.length - 1] : planLastPx();
   const any = planOpen(A.trades), pos = curPos(), other = any && !pos ? any : null; let hold = null, mg = null, holdAny = null;
   if (any) { const hs = holdSeries(any), ho = planHold(hs.h, any), ma = hs.own ? (hs.h.c.length >= 20 ? hs.h.c.slice(-20).reduce((a, b) => a + b, 0) / 20 : null) : (sig.ma20 == null ? null : sig.ma20 * ho.k); holdAny = ho;
-    if (pos) { hold = ho; mg = planManage({ side: pos.side, entry: pos.entryPx, peak: ho.peak, last: ho.last, ma20: ma, fsum: F.min, fall: F.sum, held: ho.days }); } }
+    if (pos) { hold = ho; mg = planManage({ side: pos.side, entry: pos.entryPx, peak: ho.peak, last: ho.last, ma20: ma, fsum: F.min, fall: F.sum }); } }
   const E = planEquity(A, holdAny ? holdAny.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
   const adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
@@ -608,7 +607,7 @@ function renderSig() {
   } else {
     const m = s.mg, ho = s.hold, t = s.pos, sd = t.side > 0, out = m.action !== '持有', fl = planPnl(t, ho.last), noF = !F.used.length;
     const stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), stopGap = Math.abs((stopPx / ho.last - 1) * 100);
-    const why = !out ? '没有触发止损、移动止盈、外资离场或空单到期' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损` : m.action === '移动止盈' ? `最高浮盈 ${m.peakR.toFixed(1)}% 后回落已到 ${TPLAN.TRAIL}%` : m.action === '外资去杠杆·平多' ? `${F.minK} 5日 ${f2(F.min)} 手，≤ ${f2(TPLAN.DELEV)}` : m.action === '空单到期' ? `空单已持有 ${ho.days} 个交易日，到 ${TPLAN.SHORT_MAXD} 天上限` : `外资三家合计5日 ${f2(F.sum)} 手（≥0），或价格站上MA20`;
+    const why = !out ? '没有触发止损、移动止盈或外资离场' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损` : m.action === '移动止盈' ? `最高浮盈 ${m.peakR.toFixed(1)}% 后回落已到 ${TPLAN.TRAIL}%` : m.action === '外资去杠杆·平多' ? `${F.minK} 5日 ${f2(F.min)} 手，≤ ${f2(TPLAN.DELEV)}` : `外资三家合计5日 ${f2(F.sum)} 手（≥0），或价格站上MA20`;
     const trailTxt = m.peakR >= TPLAN.ACT ? '移动止盈已启动' : `移动止盈未启动（最高浮盈 ${m.peakR.toFixed(1)}%<${TPLAN.ACT}%）`;
     const fch = sd ? chip(!m.delevOut, m.delevOut ? '外资去杠杆' : '外资未去杠杆') : chip(!(F.used.length && F.sum >= 0), '外资合计 ' + (F.used.length ? f2(F.sum) : '无数据') + (F.sum >= 0 && F.used.length ? '（回正）' : '，未回正')) + (sg.ma20 != null ? chip(!(ho.last > sg.ma20 * ho.k), '未站上MA20') : '');
     left = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="toggle" aria-label="持仓信号：${out ? '该平仓：' + m.action : '继续持有'}。点击展开或收起交易计划"><div class="cl">收盘${lastBarD()} ${fmtD(ho.last)}${liveTxt()}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>${out ? `<div class="sb">${esc(why)}</div>` : ''}
@@ -642,21 +641,20 @@ const qb = k => `<button class="q" data-about="${k}" aria-label="说明">?</butt
 const PLAN_OPT = () => planOptGet();
 /* 候选规则（默认不启用）：规则 + 回测数据 + 启用按钮，放在「入场信号：数据和口径说明」最后。数字出处：项目文档「豆粕策略加三条规则全回测」「外资条件作用」，2026-10-18 */
 function shortCmpHtml() {
-  return `<h3>做空规则（v101.89 起）：外资去杠杆 + 收盘&lt;MA20 + 260日分位≥70，最多持 10 个交易日</h3>
-  <p>做空要<b>三条同时满足</b>：①外资任一席位 5 日变化 ≤ −2万手；②收盘价在 MA20 下方；③260 日价格分位 ≥ ${TPLAN.SHORT_PCT}%（价格在高位）。空单离场：亏 4% 止损 / 外资三家合计回到 ≥0 / 收盘站上 MA20 / <b>最多持有 ${TPLAN.SHORT_MAXD} 个交易日</b>（到期平仓，意图是空单只做短线）。做多规则不变。</p>
+  return `<h3>做空规则（v101.89 起）：外资去杠杆 + 收盘&lt;MA20 + 260日分位≥70</h3>
+  <p>做空要<b>三条同时满足</b>：①外资任一席位 5 日变化 ≤ −2万手；②收盘价在 MA20 下方；③260 日价格分位 ≥ ${TPLAN.SHORT_PCT}%（价格在高位）。空单离场：亏 4% 止损 / 外资三家合计回到 ≥0 / 收盘站上 MA20（不设最长持有天数：回测里空单平均只持有约 8 天，限制到 10 天反而把赢单提前平掉）。做多规则不变。</p>
   <p>回测（做多含「基差≥0」；2013–2026，收盘成交；<b>外资数据 2022 年才有，含外资条件的做空只有 2022 年以后的样本</b>）：</p>
   <table class="tb3x" style="font-size:12px"><thead><tr><th>做空触发条件</th><th>笔数</th><th>空单平均/合计</th><th>夏普22-26</th></tr></thead><tbody>
-   <tr class="cur"><td>★现在：去杠杆 + 收盘&lt;MA20 + 分位≥70 + 最多持10天</td><td class="n">12</td><td class="n">+0.68% / +8.1%</td><td class="n">1.27</td></tr>
-   <tr><td>同上，不限持有天数</td><td class="n">12</td><td class="n">+0.82% / +9.8%</td><td class="n">1.29</td></tr>
+   <tr class="cur"><td>★现在：去杠杆 + 收盘&lt;MA20 + 分位≥70</td><td class="n">12</td><td class="n">+0.82% / +9.8%</td><td class="n">1.29</td></tr>
+   <tr><td>同上，再限制最多持 10 天（试过，没采用）</td><td class="n">12</td><td class="n">+0.68% / +8.1%</td><td class="n">1.27</td></tr>
    <tr><td>去杠杆 + 收盘&lt;MA20（不看分位）</td><td class="n">32</td><td class="n">+0.2% / +7.3%</td><td class="n">1.20</td></tr>
    <tr><td>旧规则：去杠杆 + MA20&lt;MA60 + 低于5日前</td><td class="n">16</td><td class="n">−0.0% / −0.7%</td><td class="n">1.08</td></tr>
    <tr><td>只要趋势向下（不看外资）</td><td class="n">311</td><td class="n">−0.1% / −23.6%</td><td class="n">1.14</td></tr>
    <tr><td>不做空（只做多）</td><td class="n">0</td><td class="n">—</td><td class="n">1.14</td></tr></tbody></table>
   <ul>
-   <li><b>整体账户（2018 起 50 万、阶梯仓位、收盘成交）</b>：旧规则终值 1559 万；不做空 1234 万；新规则（含10天上限）1655 万，不限天数 2183 万。5 年滚动窗口终值中位数：旧 670万、不做空 558万、新 602万。最大回撤都是 −59%（回撤主要来自多单）。次日开盘成交：旧 1005万、不做空 1051万、新 1544万。</li>
-   <li><b>最多持 10 天不是白拿的</b>：它把 12 笔里 2 笔赢单提前平掉，空单合计 +9.8% → +8.1%，终值 2183万 → 1655万。作用是限制“被套/等大跌”的时间，不是提高收益；这是你的选择，回测里略吃亏。</li>
-   <li><b>不显著</b>：新规则对旧规则 2022 年后年化差 +1.65%（95% 区间 −3.3% 到 +5.3%），对“不做空” +1.73%（区间 −1.0% 到 +3.7%）。只有 12 笔空单、t 值约 1.4，其中 70 这个分位门槛是从 70–95 几档里挑出来的，分位门槛抬高后结果一路变差。</li>
-   <li><b>实际上空单本来就很短</b>：回测里空单平均持有约 7 天；几乎都是“站上 MA20 / 外资回补”平掉的，止损和 8% 回落止盈基本没触发过。</li>
+   <li><b>整体账户（2018 起 50 万、阶梯仓位、收盘成交）</b>：旧规则终值 1559 万；不做空 1234 万；新规则 2183 万（限制最多持10天的版本 1655 万）。5 年滚动窗口终值中位数：旧 670万、不做空 558万、新 641万。最大回撤都是 −59%（回撤主要来自多单）。次日开盘成交：旧 1005万、不做空 1051万、新 1676万。</li>
+   <li><b>不显著</b>：新规则对“不做空” 2022 年后年化差约 +2%，区间包含 0（分位≥70 版本空单 t 值约 1.5）。只有 12 笔空单，其中 70 这个分位门槛是从 70–95 几档里挑出来的，分位门槛抬高后结果一路变差。</li>
+   <li><b>实际上空单本来就很短</b>：回测里空单平均持有约 8 天，几乎都是“站上 MA20 / 外资回补”平掉的，止损和 8% 回落止盈基本没触发过；试过 10 天上限，只是把赢单提前平掉，所以没加。</li>
    <li><b>只看趋势会亏</b>：2013–2021 年单靠“价格跌就做空”有 238 笔、合计 −30%。</li>
   </ul>`;
 }
@@ -764,7 +762,7 @@ function planBodyHtml(s) {
       <button class="pbtn" data-act="open">记录开仓</button>`;
   } else {
     const t = s.pos, m = s.mg, ho = s.hold, out = m.action !== '持有', fl = planPnl(t, ho.last), sd = t.side > 0, usage = t.lots * TPLAN.TON * ho.last * (A.margin / 100) / (s.E.equity > 0 ? s.E.equity : 1);
-    const why2 = !out ? '没有触发止损、移动止盈、外资离场或空单到期。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `${esc(s.F.minK)} 5日变化 ${f2(s.F.min)} 手，≤ ${f2(TPLAN.DELEV)}。` : m.action === '空单到期' ? `空单已持有 ${ho.days} 个交易日，到 ${TPLAN.SHORT_MAXD} 天上限，按规则平仓。` : `外资三家合计5日变化 ${f2(s.F.sum)} 手（≥0），或价格已站上MA20。`;
+    const why2 = !out ? '没有触发止损、移动止盈或外资离场。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `${esc(s.F.minK)} 5日变化 ${f2(s.F.min)} 手，≤ ${f2(TPLAN.DELEV)}。` : `外资三家合计5日变化 ${f2(s.F.sum)} 手（≥0），或价格已站上MA20。`;
     const trigPx = sd ? ho.peak * (1 - TPLAN.TRAIL / 100) : ho.peak * (1 + TPLAN.TRAIL / 100), stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), actPx = t.entryPx * (1 + (sd ? 1 : -1) * TPLAN.ACT / 100);
     const trailTxt = m.peakR >= TPLAN.ACT ? `已启动：${sd ? '跌破' : '涨过'} ${fmtD(trigPx)} 平仓（距现价 ${Math.abs((trigPx / ho.last - 1) * 100).toFixed(1)}%）` : `未启动（最高浮盈 ${m.peakR.toFixed(1)}% < ${TPLAN.ACT}%）；价格到 ${fmtD(actPx)} 后启动`;
     const dist = x => Math.abs((x / ho.last - 1) * 100).toFixed(1) + '%', card = (l, v, sub, tone) => `<div class="hvk${tone ? ' t' + tone : ''}"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
@@ -1482,7 +1480,7 @@ ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」�
 <li><b>外资去杠杆</b>：<b>任一</b>席位5日变化 ≤ −2万手（看单个席位，不看合计：席位之间会对冲，例如摩根加仓、高盛减仓）。</li>
 <li><b>做多</b>（四条同时满足）：①价格在近260日 ≤50% 分位；②反弹确认：今天收盘高于5日前，且比前10日最低价高1%以上；③外资没有去杠杆；④期货不高于现货（生意社基差 ≥ 0，v101.84 加）。</li>
 <li><b>基差（v101.84）</b>：生意社豆粕现货价 ÷ 生意社主力合约价 − 1，和回测、本地自动交易同一个源。全品种回测里期货明显高于现货时做多平均是亏的；豆粕自己历史上只过滤 2 笔（回测夏普 1.10→1.12，回撤不变），但 2026 年期货高于现货的天数约一半，以后会常起作用。<b>取不到或数据日和价格日相差 7 天以上时这一条不起作用</b>，按原来三条判断。「期货升水+趋势向下」做空、「外资加杠杆直接做多」是两条候选规则，没有通过稳健性检验，默认不启用：信号条和条件表里只提示「候选（未启用）」，不作为信号、不发提醒；想用的话在「入场信号：数据和口径说明」最后看回测数据，再点「启用」开关（只对这台设备的网页生效）。</li>
-<li><b>做空</b>（三条同时满足，v101.89）：①外资去杠杆（任一席位5日变化 ≤ −2万手）；②收盘价 < MA20；③260日价格分位 ≥ 70%（高位）。空单最多持有10个交易日，到期平仓；其余离场同前（止损4%、外资三家合计回到≥0、站上MA20）。</li>
+<li><b>做空</b>（三条同时满足，v101.89）：①外资去杠杆（任一席位5日变化 ≤ −2万手）；②收盘价 < MA20；③260日价格分位 ≥ 70%（高位）。离场同前（止损4%、外资三家合计回到≥0、站上MA20）。</li>
 <li><b>平多</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最高价回落4%；外资去杠杆（任一席位 ≤ −2万手）。</li>
 <li><b>平空</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最低价反弹4%；外资<b>三家合计</b>5日变化 ≥0（外资回正）；价格站上MA20。</li>
 <li><b>入场价（挂条件单用）</b>：信号出现后，下一个交易日挂<b>限价单</b>：做多 ≤ 信号日收盘价、做空 ≥ 信号日收盘价，当日有效，没成交就作废、不追（第二天信号还在会重新给价）。跳空低开（做空是高开）时按开盘价成交，等于不追高。回测（收盘价限价）：5年终值中位 830万 / 夏普 1.11，95% 的信号能成交，不比开盘市价（735万）差。页面建议价是<b>收盘价回调 0.3%</b>（做空是反弹 0.3%）：成交率约 83%，没成交就作废，回测 5年终值中位 1022万，高于挂收盘价的 830万——但这是少数单的路径、样本小；想求稳就挂收盘价。回调 0.5% 成交率 58%（919万），回调 1% 成交率只剩 22%、终值掉到 337万——<b>回调不要挂得更深</b>。止损价按<b>实际成交价</b>×(1∓4%)重新算，页面给的止损价是按收盘价算的参考。</li>

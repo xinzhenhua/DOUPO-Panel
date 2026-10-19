@@ -54,7 +54,7 @@ function compute(dataDir, opts) {
   const px = cs.length ? cs[cs.length - 1] : null;
   const pos = normPosition(opts.position);
   let hold = null, mg = null;
-  if (pos && h.d.length) { hold = P.planHold(h, pos); mg = P.planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.min, fall: F.sum, held: hold.days }); }
+  if (pos && h.d.length) { hold = P.planHold(h, pos); mg = P.planManage({ side: pos.side, entry: pos.entryPx, peak: hold.peak, last: hold.last, ma20: sig.ma20 == null ? null : sig.ma20 * hold.k, fsum: F.min, fall: F.sum }); }
   const ev = [], sd = pos ? (pos.side > 0 ? '多' : '空') : '';
   const tail = '\n\n（提醒按收盘后的数据算；入场挂限价单、平仓开盘市价，都在下一个交易日。手数、止损价、账户权益请打开驾驶舱看。）';
   if (!gate.ok) ev.push({ type: 'gate', key: 'gate|' + today, title: '【豆粕】数据不足，信号暂停', body: '信号和离场判断暂时不可信：' + gate.reasons.join('；') + '。\n先别按页面上的信号操作，检查 Actions 是否正常运行。' });

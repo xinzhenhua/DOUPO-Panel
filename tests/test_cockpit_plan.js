@@ -278,7 +278,7 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('来源：没有 via、也不满足常规条件 → own（老记录不受影响）',P.planSrc({side:1,snap:{pct:88,confirm:true,delev:false,gateOk:true}}),'own');
 }
 
-// ===== v101.89 做空规则：去杠杆 + 收盘<MA20 + 260日分位≥70；空单最多持10个交易日 =====
+// ===== v101.89 做空规则：去杠杆 + 收盘<MA20 + 260日分位≥70 =====
 {
   const sg=(c,f)=>P.planSignals(c,f);
   eq('做空：三条齐 → 做空',(r=>[r.delev,r.below20,r.highOK,r.shortOK])(sg(hiDip,-30000)),[true,true,true,true]);
@@ -293,14 +293,6 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
     const w2=w.slice(); w2[w2.length-1]=499; w2[0]=600;   // 分位降到 ~69.6
     eq('做空：分位<70 → 不算高位',sg(w2,-30000).highOK,false); }
   eq('做空：分位边界 ≥70（P.TPLAN.SHORT_PCT=70）',P.TPLAN.SHORT_PCT,70);
-  eq('空单最多持有10个交易日（TPLAN.SHORT_MAXD）',P.TPLAN.SHORT_MAXD,10);
-  const base={side:-1,entry:3400,peak:3300,last:3350,ma20:3400,fsum:-30000,fall:-30000};
-  eq('空单：持有9天 → 持有',P.planManage(Object.assign({held:9},base)).action,'持有');
-  eq('空单：持有10天 → 空单到期',P.planManage(Object.assign({held:10},base)).action,'空单到期');
-  eq('空单：没传 held → 不按天数平(旧调用兼容)',P.planManage(base).action,'持有');
-  eq('空单：10天且站上MA20 → 先报空单离场',P.planManage(Object.assign({held:10},base,{ma20:3300})).action,'空单离场');
-  eq('空单：10天但止损先到 → 止损',P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-30000,held:12}).action,'止损');
-  eq('多单：持有20天也不按天数平',P.planManage({side:1,entry:3400,peak:3450,last:3420,ma20:3300,fsum:0,held:20}).action,'持有');
   eq('planWhy 做空文案含分位',P.planWhy(sg(hiDip,-30000)).includes('分位')&&P.planWhy(sg(hiDip,-30000)).includes('≥ 70%'),true);
   eq('planWhy 去杠杆但分位不够 → 不做空文案',P.planWhy(sg(lowBelow,-30000)).includes('不算高位'),true);
   eq('planSrc 新快照(below20+highOK+delev) 空单 → sys',P.planSrc({side:-1,snap:{pct:90,confirm:false,delev:true,below20:true,highOK:true,gateOk:true}}),'sys');
