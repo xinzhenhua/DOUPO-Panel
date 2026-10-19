@@ -566,6 +566,28 @@ def main():
             pg.evaluate("window.__cockpit.closeSheet()")
         ok('做空信号页(%d宽)无 JS 错误' % w_, not e11, e11); ctx.close()
     s6.shutdown(); shutil.rmtree(d6, ignore_errors=True)
+    # ---- 7d. v102.0：期货组合页——品种切换、橡胶3月页、总览；豆粕页不受影响 ----
+    MOCKWX = [{'k': 'ths', 'n': '泰国南部（合艾）', 'core': True, 'p30': 62, 'p7': 10, 'f7': 18, 'n30': 98, 'ratio': .63, 't7': 33, 'tn': 32, 'sev': 0, 'msg': '正常'}, {'k': 'yn', 'n': '云南（西双版纳）', 'core': True, 'p30': 40, 'p7': 5, 'f7': 9, 'n30': 52, 'ratio': .77, 't7': 29, 'tn': 28, 'sev': 0, 'msg': '正常'}]
+    for w_, h_ in ((390, 800), (1280, 900)):
+        ctx = b.new_context(viewport={'width': w_, 'height': h_}); pg = ctx.new_page(); e12 = []; pg.on('pageerror', lambda e: e12.append(str(e)))
+        pg.add_init_script("window.__RU_TODAY='2026-03-12';window.__RU_WX_MOCK=" + json.dumps(MOCKWX) + ";")
+        pg.goto('http://127.0.0.1:%d/index.html' % port); pg.wait_for_function("window.__ru", timeout=30000); pg.wait_for_timeout(500)
+        ok('组合页(%d宽)：默认进豆粕页，顶部有 总览/豆粕/橡胶 切换' % w_, pg.evaluate("document.querySelectorAll('#vSeg button').length === 3 && document.querySelector('#vSeg [data-v=meal]').getAttribute('aria-pressed') === 'true' && !document.body.classList.contains('v-ru')"))
+        pg.evaluate("(c) => { const S = window.__ru.S(); const k = S.d.findIndex(x => x > c); for (const a of ['d','o','h','l','c','r']) S[a].length = k; }", '2026-03-11')
+        pg.click('#vSeg [data-v=ru]'); pg.wait_for_timeout(500)
+        ok('橡胶页(%d宽)：出做空信号，写明明日限价和止损价' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('做空信号') && t.includes('止损价') && /≥ 17,?2\\d\\d/.test(t); })()"))
+        ok('橡胶页(%d宽)：豆粕的信号条/趋势墙被隐藏' % w_, pg.evaluate("getComputedStyle(document.getElementById('sigbar')).display === 'none' && getComputedStyle(document.querySelector('.main')).display === 'none'"))
+        ok('橡胶页(%d宽)：天气表有两个核心产区' % w_, pg.evaluate("document.getElementById('ruApp').innerText.includes('泰国南部') && document.getElementById('ruApp').innerText.includes('云南')"))
+        ok('橡胶页(%d宽)：不横向溢出、无未知标签' % w_, pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1 && [...document.querySelectorAll('*')].filter(e => e instanceof HTMLUnknownElement).length === 0"))
+        pg.fill('#ruEq', '2000000'); pg.dispatch_event('#ruEq', 'change'); pg.wait_for_timeout(300)
+        ok('橡胶页(%d宽)：改权益后手数跟着变（200万 → 4手）' % w_, pg.evaluate("document.getElementById('ruApp').innerText.includes('总共 4 手')"))
+        pg.fill('#ruPp', '17235'); pg.fill('#ruPl', '1'); pg.click('[data-ru=open]'); pg.wait_for_timeout(300)
+        ok('橡胶页(%d宽)：记一笔空单后显示浮盈和止损价' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('浮盈') && t.includes('18,097'); })()"))
+        pg.click('#vSeg [data-v=all]'); pg.wait_for_timeout(300)
+        ok('总览(%d宽)：同时显示豆粕和橡胶两张卡' % w_, pg.evaluate("document.querySelectorAll('#ruApp .ov-c').length === 2"))
+        pg.click('#vSeg [data-v=meal]'); pg.wait_for_timeout(400)
+        ok('切回豆粕(%d宽)：信号条恢复显示、橡胶页清空' % w_, pg.evaluate("getComputedStyle(document.getElementById('sigbar')).display !== 'none' && document.getElementById('ruApp').innerHTML === ''"))
+        ok('组合页(%d宽)全程无 JS 错误' % w_, not e12, e12); ctx.close()
     # ---- 8. file:// ----
     ctx = b.new_context(); pg = ctx.new_page(); pg.goto('file://' + os.path.join(d, 'index.html'))
     ok('file:// 打开：提示要用网址打开，不空白', '网址' in pg.evaluate("document.getElementById('boot').innerText"))
