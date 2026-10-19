@@ -359,6 +359,7 @@ body.ex .why{display:block}
 .tbpl td.n{text-align:right}
 .tbcv th,.tbcv td{white-space:nowrap}
 @media(max-width:560px){.tbpl,.tbpl tbody,.tbpl tr,.tbpl td{display:block;width:auto}.tbpl thead{display:none}.tbpl tr{padding:7px 0;border-bottom:1px solid var(--line2)}.tbpl td{padding:1px 0;text-align:left!important}.tbpl td.n{color:var(--ink)}}
+.optb{border:1px solid var(--line);margin-top:5px;padding:7px 14px;font-size:13.5px;border-radius:8px}.optb[aria-pressed=true]{background:var(--focusS);font-weight:600}
 .tb3x td.ok{color:var(--ink)} .tb3x td.no{color:var(--ink3)} .tb3x tr.cur td{font-weight:600}
 
 /* ===== v101.32：电脑端一屏放下（交易页两列；说明收进问号） ===== */
@@ -2104,6 +2105,24 @@ function sizeHtml(z, side, m, mode, eq, px) {
 const qb = k => `<button class="q" data-about="${k}" aria-label="说明">?</button>`;
 const PLAN_OPT = () => planOptGet();
 /* 候选规则（默认不启用）：规则 + 回测数据 + 启用按钮，放在「入场信号：数据和口径说明」最后。数字出处：项目文档「豆粕策略加三条规则全回测」「外资条件作用」，2026-10-18 */
+function shortCmpHtml() {
+  return `<h3>做空条件：要同时满足，还是满足一个就行？（回测对比）</h3>
+  <p>现在的规则是<b>①外资去杠杆 和 ②价格趋势向下 要同时满足</b>才做空。下面是把条件放宽、改成“满足一个就行”的回测（做多规则都一样，含「基差≥0」；2013–2026，收盘成交；<b>外资数据 2022 年才有，含外资条件的做空只有 2022 年以后的样本</b>）：</p>
+  <table class="tb3x" style="font-size:12px"><thead><tr><th>做空触发条件</th><th>笔数</th><th>空单平均/合计</th><th>夏普22-26</th></tr></thead><tbody>
+   <tr class="cur"><td>现在：①去杠杆 且 ②趋势向下</td><td class="n">16</td><td class="n">−0.0% / −0.7%</td><td class="n">1.08</td></tr>
+   <tr><td>只要①去杠杆（不看趋势）</td><td class="n">56</td><td class="n">+0.1% / +6.7%</td><td class="n">1.17</td></tr>
+   <tr><td>①去杠杆 且 仅“收盘&lt;MA20”（放宽趋势）</td><td class="n">32</td><td class="n">+0.2% / +7.3%</td><td class="n">1.20</td></tr>
+   <tr><td>只要②趋势向下（不看外资）</td><td class="n">311</td><td class="n">−0.1% / −23.6%</td><td class="n">1.14</td></tr>
+   <tr><td>①或②满足一个就做空</td><td class="n">351</td><td class="n">−0.1% / −20.4%</td><td class="n">1.16</td></tr>
+   <tr><td>不做空（只做多）</td><td class="n">0</td><td class="n">—</td><td class="n">1.14</td></tr></tbody></table>
+  <ul>
+   <li><b>只看趋势会亏</b>：2013–2021 年单靠“价格跌就做空”有 238 笔、合计 −30%（2014、2016、2019 年都亏）；2022 年以后才转正（73 笔 +6.4%）。所以要有外资这个条件来筛。</li>
+   <li><b>只看外资去杠杆</b>：笔数从 16 笔增到 56 笔，合计由 −0.7% 变 +6.7%，夏普（2022-26）由 1.08 升到 1.17，最大回撤都是 −23%；但 56 笔里有 45 笔入场时价格还没向下，平均只持有约 5 天，2025 年一年就亏 −10.8%。</li>
+   <li><b>差别都不显著</b>：和现规则的年化差 +2.15%（95% 区间 −2.5% 到 +6.0%），空单 t 值只有 0.5；“放宽趋势”那条 +2.05%（区间 −1.5% 到 +4.9%）。包含 0，只是几十笔交易的差别。</li>
+   <li><b>用事件检验（不看离场规则）</b>：2022 年后，外资去杠杆当天之后 10 个交易日平均 −0.13%（48 次新触发，54% 下跌），对比任意一天平均 +0.55%——有一点点偏空，但很弱；去杠杆且趋势向下 −0.61%（51 天），去杠杆但趋势没向下 −0.37%（100 天）。</li>
+   <li><b>结论</b>：保持“同时满足”（最保守、只有 16 笔，基本不赚不赔）。放宽成“只要去杠杆”或“收盘&lt;MA20”看起来略好，但这是从几个写法里挑出来的、样本只有 2022 年后的 3 年多，不够证明。想试的话可以先用上面的候选规则记录实盘，攒够样本再改。</li>
+  </ul>`;
+}
 function candHtml() {
   const O = planOptGet(), btn = (k, on) => `<p><button class="tb" data-opt="${k}" aria-pressed="${on}" style="padding:8px 14px;font-size:14px">${on ? '✓ 已启用 · 点这里关闭' : '启用这条规则'}</button>　<span style="color:var(--ink2)">当前：${on ? '已启用（只对这台设备的网页生效）' : '未启用（默认）'}</span></p>`;
   return `<h3>候选规则（默认都不启用）：先看回测，再决定要不要开</h3>
@@ -2145,10 +2164,10 @@ function sigTableHtml(s) {
    <tr><td>做多②反弹确认（高于5日前，且高出前10日最低价1%）</td><td class="n">—</td>${mk(sg.confirm, '满足', '不满足')}</tr>
    <tr><td>做多③外资没有去杠杆（任一席位5日变化 > ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(!sg.delev, '满足', '外资去杠杆')}</tr>
    <tr><td>做多④期货不高于现货（生意社基差 ≥ 0）</td><td class="n">${typeof sg.basisOK === 'boolean' ? (sg.basis >= 0 ? '+' : '') + (sg.basis * 100).toFixed(2) + '%' : '—'}</td>${typeof sg.basisOK === 'boolean' ? mk(sg.basisOK, '满足', '期货高于现货') : '<td class="ok">无数据·不过滤</td>'}</tr>
-   <tr><td>做空①外资去杠杆（任一席位5日变化 ≤ ${f2(TPLAN.DELEV)} 手）</td><td class="n">${fwk(F)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
-   <tr><td>做空②价格 < MA20 < MA60，且低于5日前</td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
-   <tr><td>候选A（${PLAN_OPT().cs ? '已启用' : '未启用'}）：期货高于现货 + 趋势向下做空，不要求外资去杠杆</td><td class="n">${typeof sg.basis === 'number' ? (sg.basis >= 0 ? '+' : '') + (sg.basis * 100).toFixed(2) + '%' : '—'}</td><td class="${sg.contangoShort ? (sg.cShortGo ? 'ok' : 'no') : ''}">${sg.contangoShort ? (sg.cShortGo ? '出现 → 已当做空信号' : '出现（未启用，只提示）') : '没有'}</td></tr>
-   <tr><td>候选B（${PLAN_OPT().fx ? '已启用' : '未启用'}）：外资加杠杆直接做多（任一席位5日变化 ≥ +${TPLAN.FX_TH.toLocaleString('en-US')} 手）</td><td class="n">${F.max == null ? '—' : esc(F.maxK.replace('期货', '')) + ' ' + f2(F.max)}</td><td class="${sg.fxCand ? (sg.fxGo ? 'ok' : 'no') : ''}">${sg.fxCand ? (sg.fxGo ? '出现 → 已当做多信号' : '出现（未启用，只提示）') : sg.fxLever ? '席位加杠杆，但常规多单已成立/外资去杠杆/期货高于现货' : '没有'}</td></tr>
+   <tr><td>做空①外资去杠杆（任一席位5日变化 ≤ ${f2(TPLAN.DELEV)} 手）<b>·与②同时满足才做空</b></td><td class="n">${fwk(F)}</td>${mk(sg.delev, '满足', '不满足')}</tr>
+   <tr><td>做空②价格 < MA20 < MA60，且低于5日前<b>·与①同时满足才做空</b></td><td class="n">${sg.ma20 == null ? '—' : fmtD(sg.ma20) + ' / ' + fmtD(sg.ma60)}</td>${mk(sg.trendDn, '满足', '不满足')}</tr>
+   <tr><td>候选A（${PLAN_OPT().cs ? '已启用' : '未启用'}）：期货高于现货 + 趋势向下做空，不要求外资去杠杆</td><td class="n">${typeof sg.basis === 'number' ? (sg.basis >= 0 ? '+' : '') + (sg.basis * 100).toFixed(2) + '%' : '—'}</td><td class="${sg.contangoShort ? (sg.cShortGo ? 'ok' : 'no') : ''}">${sg.contangoShort ? (sg.cShortGo ? '出现 → 已当做空信号' : '出现（未启用，只提示）') : '没有'}<br><button class="tb optb" data-opt="cs" aria-pressed="${PLAN_OPT().cs}">${PLAN_OPT().cs ? '✓ 已启用 · 点此关闭' : '点此启用'}</button></td></tr>
+   <tr><td>候选B（${PLAN_OPT().fx ? '已启用' : '未启用'}）：外资加杠杆直接做多（任一席位5日变化 ≥ +${TPLAN.FX_TH.toLocaleString('en-US')} 手）</td><td class="n">${F.max == null ? '—' : esc(F.maxK.replace('期货', '')) + ' ' + f2(F.max)}</td><td class="${sg.fxCand ? (sg.fxGo ? 'ok' : 'no') : ''}">${sg.fxCand ? (sg.fxGo ? '出现 → 已当做多信号' : '出现（未启用，只提示）') : sg.fxLever ? '席位加杠杆，但常规多单已成立/外资去杠杆/期货高于现货' : '没有'}<br><button class="tb optb" data-opt="fx" aria-pressed="${PLAN_OPT().fx}">${PLAN_OPT().fx ? '✓ 已启用 · 点此关闭' : '点此启用'}</button></td></tr>
   </tbody></table>
   <div class="plh">${basisLine(s.B)}</div>
   <div class="dsl ${s.dl.cls}">${esc(s.dl.t)}</div>`;
@@ -2955,7 +2974,7 @@ function sigHelp() {
    <h3>和研究页「高盛净持仓」为什么对不上</h3><p>研究页画的是<b>净持仓(多−空)</b>，空单常常是第20名顶替的下限估计，周期是「1周/1月」按自然日找对比点；这里是<b>近5个交易日</b>、只用真实一边。起点日期和口径都不同，数字就不同。研究页高盛的明细里有这一行对照。</p>
    <h3>基差（做多第④条）</h3><p>${basisLine(s.B)}</p>
    <h3>价格口径</h3><p>价格用「换月调整的主力连续价」(与回测同一口径)，现价 ${fmtD(s.px)}。信号收盘后看一次即可，龙虎榜收盘后才发布，所以数据日是前一个交易日。</p>
-   <h3>完整规则</h3><p>入场、离场、仓位的全部逻辑见右上角「说明」→「交易计划怎么用」。</p><h3>本月</h3><p>${esc(monthHint())}</p>${candHtml()}`;
+   <h3>完整规则</h3><p>入场、离场、仓位的全部逻辑见右上角「说明」→「交易计划怎么用」。</p><h3>本月</h3><p>${esc(monthHint())}</p>${shortCmpHtml()}${candHtml()}`;
 }
 const HELP = {
   plsig: ['入场信号：数据和口径说明', sigHelp],
