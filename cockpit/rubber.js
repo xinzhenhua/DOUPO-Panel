@@ -65,10 +65,14 @@ function ruWxVerdict(rs) {
   return { level: 'ok', text: '主产区天气正常' };
 }
 /* 当前该做什么。S 序列（含 r 真实收盘），today 北京日期，wx 天气结论，pos 记录的空单 {d,px,lots}|null */
-function ruPlan(S, today, wx, pos) {
+function ruPlan(S, today, wx, pos, man) {
   const n = S.d.length, L = S.d[n - 1], y = +today.slice(0, 4), mmdd = today.slice(5), real = S.r[n - 1] != null ? S.r[n - 1] : null, scale = real ? S.c[n - 1] / real : null;
   const inMar = +today.slice(5, 7) === RUP.MON, pre = mmdd >= RUP.PRE_FROM && mmdd < '03-01', yE = ruLastWeekdayOfMarch(y);
-  const o = { today, last: L, real, inMar, pre, exitD: yE, wx, st: 'sleep', head: '', sub: '', chips: [], order: null };
+  const dom = S.m && S.m[n - 1] ? 'RU' + S.m[n - 1] : null, yy = String(y).slice(2), bad = [];
+  if (wx && wx.level === 'block') bad.push(wx.text);
+  if (man && man.st === 'delay') bad.push('手动录入：开割延迟（干旱/洪涝）');
+  if (man && man.demand) bad.push('手动录入：需求超预期走强（轮胎开工率回升）');
+  const o = { today, last: L, real, dom, bad, inMar, pre, exitD: yE, wx, st: 'sleep', head: '', sub: '', chips: [], order: null, mar05: 'RU' + yy + '05', mar09: 'RU' + yy + '09' };
   const nextWin = (mmdd >= '04-01' ? (y + 1) : y) + '-03-01'; o.nextWin = nextWin; o.daysTo = Math.round((new Date(nextWin + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5);
   const ma = ruMA(S.c, n - 1, RUP.MA), reb = ma != null && S.c[n - 1] >= ma; o.reb = reb; o.ma = ma != null && scale ? ma / scale : null;
   const stale = inMar && L < ruAddDays(today, -4); o.stale = stale;
@@ -77,8 +81,9 @@ function ruPlan(S, today, wx, pos) {
     const exitDue = today >= yE || !inMar, stopHit = real != null && real >= o.pos.stop;
     if (stopHit) { o.st = 'exit'; o.head = '止损：平空单'; o.sub = '现价 ' + Math.round(real) + ' 已到止损价 ' + Math.round(o.pos.stop) + '（' + RUP.STOP + '%）'; }
     else if (exitDue) { o.st = 'exit'; o.head = today > yE ? '3月已过：平空单' : '今天是3月最后一个交易日：收盘前平空单'; o.sub = '季节窗口结束，不留到4月（开割后供应利空已兑现，没有历史优势）'; }
-    else if (wx && wx.level === 'block') { o.st = 'holdwx'; o.head = '持有空单·天气异常，考虑离场'; o.sub = wx.text + '。你给的规则：开割后天气持续异常，应止盈或止损离场'; }
+    else if (bad.length) { o.st = 'holdwx'; o.head = '持有空单·出现离场条件，考虑离场'; o.sub = bad.join('；') + '。你的规则：开割后天气持续异常、或需求超预期强劲回升，空头逻辑被破坏，应止盈或止损离场'; }
     else { o.st = 'hold'; o.head = '持有空单'; o.sub = '到 ' + yE + ' 收盘平仓；止损 ' + Math.round(o.pos.stop); }
+    o.roll = !!(pos.contract && dom && pos.contract !== dom);
     return o;
   }
   if (!inMar) {
@@ -89,11 +94,12 @@ function ruPlan(S, today, wx, pos) {
   if (stale) { o.st = 'stale'; o.head = '价格数据没更新到3月'; o.sub = '最新一根是 ' + L + '，需要 Actions 更新橡胶价格后才出信号'; return o; }
   if (today > yE) { o.st = 'sleep'; o.head = '3月窗口已结束'; o.sub = '下一个窗口 ' + nextWin; return o; }
   if (L.slice(0, 7) !== today.slice(0, 7)) { o.st = 'pre'; o.head = '3月窗口开始：等第一个3月收盘'; o.sub = '信号只看3月内的收盘；最新价格是 ' + L + '，等3月的第一根日线'; return o; }
-  if (wx && wx.level === 'block') { o.st = 'blocked'; o.head = '天气异常：暂缓做空'; o.sub = wx.text; return o; }
+  if (man && man.stopY === y) { o.st = 'done'; o.head = '今年3月已止损，不再开仓'; o.sub = '回测每年只做一次，止损后再开没有验证过；下一个窗口 ' + nextWin; return o; }
+  if (bad.length) { o.st = 'blocked'; o.head = '暂缓做空'; o.sub = bad.join('；'); return o; }
   if (!reb) { o.st = 'wait'; o.head = '等反弹：收盘还在5日线下，不追空'; o.sub = '收盘 ' + (real ? Math.round(real) : '—') + (o.ma ? ' 低于 MA5 ' + Math.round(o.ma) : '') + '；逢反弹站上5日线再挂空单'; return o; }
   const lim = real ? ruTickUp(real * (1 + RUP.LIM / 100)) : null;
   o.st = 'go'; o.head = '做空信号：明日挂限价 ' + (lim ? '≥ ' + lim : ''); o.sub = '收盘站上MA5（反弹），天气' + (wx && wx.level === 'warn' ? '轻度异常' : wx && wx.level === 'ok' ? '正常' : '未知') + '；次日有效，没成交就作废，不追';
-  o.order = { lim, stop: lim ? Math.round(lim * (1 + RUP.STOP / 100)) : null, ref: lim ? Math.round(lim * (1 - RUP.AVG_DROP / 100)) : null };
+  o.order = { contract: dom, lim, stop: lim ? Math.round(lim * (1 + RUP.STOP / 100)) : null, ref: lim ? Math.round(lim * (1 - RUP.AVG_DROP / 100)) : null };
   return o;
 }
 /* 手数：单笔风险% 与 保证金占用上限 取小 */
@@ -112,12 +118,12 @@ function ruSize(eq, px, riskPct, margin) {
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
   const f0 = x => x == null || isNaN(x) ? '—' : Math.round(x).toLocaleString('en-US'), p1 = x => x == null || isNaN(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
-  let S = { d: RU.d.slice(), o: RU.o.slice(), h: RU.h.slice(), l: RU.l.slice(), c: RU.c.slice(), r: RU.r.slice() }, WX = { rs: null, v: null, at: null, busy: false }, VIEW = lsGet('fut-view', 'meal');
-  const OPT = { eq: lsGet('ru-eq', 500000), risk: lsGet('ru-risk', RUP.RISK), margin: lsGet('ru-margin', RUP.MARGIN), pos: lsGet('ru-pos', null) };
+  let S = { d: RU.d.slice(), o: RU.o.slice(), h: RU.h.slice(), l: RU.l.slice(), c: RU.c.slice(), r: RU.r.slice(), m: (RU.m || []).slice() }, WX = { rs: null, v: null, at: null, busy: false }, VIEW = lsGet('fut-view', 'meal');
+  const OPT = { eq: lsGet('ru-eq', 500000), risk: lsGet('ru-risk', RUP.RISK), margin: lsGet('ru-margin', RUP.MARGIN), pos: lsGet('ru-pos', null), stopY: lsGet('ru-stopY', null), man: lsGet('ru-man', { st: '', note: '', qg: '', bg: '', stk: '', demand: false, d: '' }) };
   /* 接上 data/ru_live.json（Actions 追加的最新真实日线 {d,o,h,l,c}）：按快照最后一天的 调整价/真实价 比例换算 */
   function mergeLive(j) {
     if (!j || !j.d || !j.d.length) return; const n = S.d.length, f = S.c[n - 1] / S.r[n - 1];
-    for (let i = 0; i < j.d.length; i++) { if (j.d[i] <= S.d[S.d.length - 1]) continue; S.d.push(j.d[i]); S.o.push(j.o[i] * f); S.h.push(j.h[i] * f); S.l.push(j.l[i] * f); S.c.push(j.c[i] * f); S.r.push(j.c[i]); }
+    for (let i = 0; i < j.d.length; i++) { if (j.d[i] <= S.d[S.d.length - 1]) continue; S.d.push(j.d[i]); S.o.push(j.o[i] * f); S.h.push(j.h[i] * f); S.l.push(j.l[i] * f); S.c.push(j.c[i] * f); S.r.push(j.c[i]); S.m.push(j.m && j.m[i] ? String(j.m[i]).replace(/^RU/, '') : S.m[S.m.length - 1]); }
   }
   async function loadLive() { try { const r = await fetch('data/ru_live.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) mergeLive(await r.json()); } catch (_) {} }
   /* ---- 天气（浏览器直连 Open-Meteo，免密钥；每6小时缓存一次） ---- */
@@ -141,7 +147,7 @@ function ruSize(eq, px, riskPct, margin) {
   }
   /* ---- 渲染 ---- */
   const chip = (ok, t) => '<span class="sc ' + (ok == null ? '' : ok ? 'ok' : 'no') + '">' + (ok == null ? '' : ok ? '✓ ' : '✗ ') + esc(t) + '</span>';
-  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null); }
+  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, Object.assign({}, OPT.man, { stopY: OPT.stopY })); }
   function wxHtml() {
     if (WX.busy) return '<p class="dim">正在取天气…</p>';
     if (!WX.rs) return '<p class="dim">还没取天气。</p>';
@@ -156,24 +162,34 @@ function ruSize(eq, px, riskPct, margin) {
     let h = '<div class="rusg ' + (P.st === 'go' || P.st === 'exit' ? 'go' : '') + '"><div class="cl">橡胶 RU · 3月季节性做空 · 价格截至 ' + esc(P.last) + (P.real ? ' · 收盘 ' + f0(P.real) : '') + '</div><div class="hd ' + tone + '">' + esc(P.head) + '</div><div class="sb">' + esc(P.sub) + '</div><div class="scs">'
       + chip(P.inMar ? true : null, P.inMar ? '3月窗口' : '不在3月窗口') + (P.inMar || P.pre ? chip(P.reb, '收盘≥MA5（反弹）' + (P.ma ? ' ' + f0(P.ma) : '')) : '') + (WX.v ? chip(WX.v.level === 'unknown' ? null : WX.v.level !== 'block', '天气' + ({ ok: '正常', warn: '轻度异常', block: '异常', unknown: '未知' })[WX.v.level]) : '') + chip(null, '止损 ' + RUP.STOP + '% · 月底平仓 · 不设止盈') + '</div></div>';
     if (P.order) {
-      h += '<h3>建议价格</h3><table class="rutb"><tbody><tr><td>最近收盘（真实主连）</td><td class="n">' + f0(P.real) + '</td></tr><tr><td><b>明日挂限价卖出（空）</b></td><td class="n"><b>≥ ' + f0(P.order.lim) + '</b>（收盘价反弹 ' + RUP.LIM + '%；当日有效，没成交作废，不追）</td></tr><tr><td>止损价（' + RUP.STOP + '%）</td><td class="n">' + f0(P.order.stop) + '</td></tr><tr><td>离场</td><td class="n">' + esc(P.exitD) + ' 收盘（3月最后一个交易日）</td></tr><tr><td>参考目标（历史3月平均跌 ' + RUP.AVG_DROP + '%）</td><td class="n">' + f0(P.order.ref) + '（仅参考，不设止盈：回测里加止盈更差）</td></tr></tbody></table>';
+      h += '<h3>建议价格</h3><table class="rutb"><tbody><tr><td><b>做哪个合约</b></td><td class="n"><b>' + esc(P.dom || '当前主力') + '</b>（当前主力；3月下旬主力常从 ' + esc(P.mar05) + ' 换到 ' + esc(P.mar09) + '，见下面「换合约」）</td></tr><tr><td>最近收盘（真实主连）</td><td class="n">' + f0(P.real) + '</td></tr><tr><td><b>明日挂限价卖出（空）</b></td><td class="n"><b>≥ ' + f0(P.order.lim) + '</b>（收盘价反弹 ' + RUP.LIM + '%；当日有效，没成交作废，不追）</td></tr><tr><td>止损价（' + RUP.STOP + '%）</td><td class="n">' + f0(P.order.stop) + '</td></tr><tr><td>离场</td><td class="n">' + esc(P.exitD) + ' 收盘（3月最后一个交易日）</td></tr><tr><td>参考目标（历史3月平均跌 ' + RUP.AVG_DROP + '%）</td><td class="n">' + f0(P.order.ref) + '（仅参考，不设止盈：回测里加止盈更差）</td></tr></tbody></table>';
       h += '<h3>建议手数（轻仓、分批）</h3><div class="ruin"><label>账户权益(元)<input id="ruEq" inputmode="numeric" value="' + OPT.eq + '"></label><label>单笔最多亏(权益%)<input id="ruRisk" inputmode="decimal" value="' + OPT.risk + '"></label><label>保证金率(%)<input id="ruMg" inputmode="decimal" value="' + OPT.margin + '"></label></div>'
         + '<p>' + (eqLots.lots >= 1 ? '总共 <b>' + eqLots.lots + ' 手</b>（按止损亏 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.loss / OPT.eq * 100).toFixed(1) + '%；占用保证金约 ' + f0(eqLots.margin) + ' 元）。' + (eqLots.lots >= 2 ? '建议分两批：首批 ' + Math.ceil(eqLots.lots / 2) + ' 手，下一个仍站上MA5的反弹日再挂 ' + Math.floor(eqLots.lots / 2) + ' 手（分批是你文字里的建议，没有单独回测）。' : '') : '按这个风险预算开不了1手（1手止损约亏 ' + f0(eqLots.perLot) + ' 元）。') + '</p>';
     }
     h += '<h3>天气（做空筛选）</h3>' + wxHtml();
+    h += '<h3>手动录入：开割进度与需求（暂时没有自动数据）</h3>' + manHtml(P);
     h += '<h3>我的橡胶空单</h3>' + posHtml(P);
     h += '<h3>提醒</h3>' + remindHtml(P);
     h += '<h3>历史：每年3月按这条规则</h3>' + histHtml(H, ST);
     h += '<details class="ruabout"><summary>规则依据与局限</summary>' + aboutHtml() + '</details>';
     return h;
   }
+  function manHtml(P) {
+    const m = OPT.man, age = m.d ? Math.round((new Date(todayBJ() + 'T00:00:00Z') - new Date(m.d + 'T00:00:00Z')) / 864e5) : null, old = (P.inMar || P.pre) && (age == null || age > 14);
+    const sel = [['', '没录入'], ['stop', '还在停割'], ['trial', '部分产区试割'], ['ok', '正常开割'], ['delay', '延迟开割（干旱/洪涝）']].map(x => '<option value="' + x[0] + '"' + (m.st === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
+    return (old ? '<div class="ruwx warn"><b>' + (age == null ? '还没录入过' : '已 ' + age + ' 天没更新') + '：</b>3月里请每周看一次泰国/越南/云南的开割进度和轮胎开工率，录在这里（来源：隆众、卓创、云南/海南农垦消息、泰国橡胶局）。</div>' : '')
+      + '<div class="ruin"><label>开割进度<select id="ruMs">' + sel + '</select></label><label>备注（哪个产区、什么情况）<input id="ruMn" value="' + esc(m.note) + '"></label></div>'
+      + '<div class="ruin"><label>全钢胎开工率(%)<input id="ruMq" inputmode="decimal" value="' + esc(m.qg) + '"></label><label>半钢胎开工率(%)<input id="ruMb" inputmode="decimal" value="' + esc(m.bg) + '"></label><label>社会库存(万吨)<input id="ruMk" inputmode="decimal" value="' + esc(m.stk) + '"></label></div>'
+      + '<label class="ruck"><input type="checkbox" id="ruMd"' + (m.demand ? ' checked' : '') + '> 需求超预期强劲回升（你判断开工率明显高于预期）→ 暂缓做空；持仓则考虑离场</label>'
+      + '<p class="dim">录入日期：' + esc(m.d || '—') + '。只记在这台设备上。选「延迟开割」或勾「需求超预期走强」，和天气严重异常一样会拦住新的做空、并提示持仓离场；开工率和库存数字只做记录，系统不拿它们算信号（没有历史数据可回测）。</p>';
+  }
   function posHtml(P) {
     const pos = OPT.pos;
-    if (pos && pos.px) return '<p>空 ' + esc(pos.lots || '') + ' 手 @ ' + f0(pos.px) + '（' + esc(pos.d || '') + '）' + (P.pos ? '：浮盈 <b class="' + (P.pos.r >= 0 ? 'bear' : 'bull') + '">' + p1(P.pos.r) + '</b>，止损价 ' + f0(P.pos.stop) + '（距现价 ' + (P.pos.stopGap == null ? '—' : P.pos.stopGap.toFixed(1) + '%') + '），到 ' + esc(P.exitD) + ' 收盘平仓' : '') + ' <button class="lnk" data-ru="close">已平仓，清除</button></p>';
-    return '<div class="ruin"><label>开仓日<input id="ruPd" placeholder="YYYY-MM-DD"></label><label>成交价<input id="ruPp" inputmode="decimal"></label><label>手数<input id="ruPl" inputmode="numeric"></label><button class="tb" data-ru="open" style="border:1px solid var(--line)">记一笔空单</button></div><p class="dim">只记在这台设备上，用来算浮盈、止损线和离场提醒。</p>';
+    if (pos && pos.px) return (P.roll ? '<div class="ruwx warn"><b>主力已换到 ' + esc(P.dom) + '，你的单子在 ' + esc(pos.contract) + '</b>：不用换，拿到月底平仓就行；下面的浮盈、止损线按主连价格估算，和你的合约有价差，实际以你软件里的 ' + esc(pos.contract) + ' 价格为准。</div>' : '') + '<p>空 ' + esc(pos.contract || '') + ' ' + esc(pos.lots || '') + ' 手 @ ' + f0(pos.px) + '（' + esc(pos.d || '') + '）' + (P.pos ? '：浮盈 <b class="' + (P.pos.r >= 0 ? 'bear' : 'bull') + '">' + p1(P.pos.r) + '</b>，止损价 ' + f0(P.pos.stop) + '（距现价 ' + (P.pos.stopGap == null ? '—' : P.pos.stopGap.toFixed(1) + '%') + '），到 ' + esc(P.exitD) + ' 收盘平仓' : '') + ' <button class="lnk" data-ru="close">已平仓，清除</button> <button class="lnk" data-ru="stopped">止损平仓（今年不再开）</button></p>';
+    return '<div class="ruin"><label>开仓日<input id="ruPd" placeholder="YYYY-MM-DD"></label><label>成交价<input id="ruPp" inputmode="decimal"></label><label>手数<input id="ruPl" inputmode="numeric"></label><label>合约<input id="ruPc" placeholder="' + esc(P.dom || 'RU2705') + '"></label><button class="tb" data-ru="open" style="border:1px solid var(--line)">记一笔空单</button></div><p class="dim">只记在这台设备上，用来算浮盈、止损线和离场提醒。</p>';
   }
   function remindHtml(P) {
-    const y = +todayBJ().slice(0, 4), yy = P.nextWin ? +P.nextWin.slice(0, 4) : y, L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5且天气正常 → 次日挂限价空'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
+    const y = +todayBJ().slice(0, 4), yy = P.nextWin ? +P.nextWin.slice(0, 4) : y, L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5且天气正常 → 次日挂限价空'], ['(每周)', '3月里每周录一次开割进度和轮胎开工率（上面手动录入）'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常、开割延迟、需求走强 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
     let h = '<ul class="rurm">' + L.map(x => '<li><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</li>').join('') + '</ul>';
     const alert = P.st === 'go' || P.st === 'exit' || P.st === 'holdwx' || P.st === 'blocked';
     h += '<p class="' + (alert ? 'ruhot' : 'dim') + '">' + (alert ? '👉 今天要处理：' + esc(P.head) : '今天没有要处理的事。') + '</p><p class="dim">手机推送提醒（窗口开始、出信号、止损/离场、天气异常）随整包上线时接入现有的推送。</p>';
@@ -187,7 +203,7 @@ function ruSize(eq, px, riskPct, margin) {
     return h + '</tbody></table>';
   }
   function aboutHtml() {
-    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：你的文字里「主产区天气正常」是做空前提。这里用降水异常和高温做判定，没有历史天气数据，所以<b>没回测过这个过滤</b>，只作为风险开关。</p><p><b>没有做的</b>：轮胎开工率、库存、青岛保税区库存（数据没取到，库存接口失败）；多NR空RU套利（没有价差回测）。需求走强是你文字里的离场条件，这里需要你手动判断。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
+    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：你的文字里「主产区天气正常」是做空前提。这里用降水异常和高温做判定，没有历史天气数据，所以<b>没回测过这个过滤</b>，只作为风险开关。</p><p><b>没有做的</b>：开割进度、轮胎开工率、库存、青岛保税区库存没有自动数据（库存接口取数失败），暂时是手动录入，只有「延迟开割」「需求超预期走强」两个开关会影响信号；多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
   }
   function overviewHtml() {
     let meal = '<div class="ov-c" data-v="meal"><h4>豆粕 M</h4><p class="dim">没取到</p></div>';
@@ -212,10 +228,16 @@ function ruSize(eq, px, riskPct, margin) {
     const oc = e.target.closest('.ov-c'); if (oc) return setView(oc.dataset.v);
     const t = e.target.closest('[data-ru]'); if (!t) return; const a = t.dataset.ru;
     if (a === 'wxre') { WX.rs = null; loadWx(true).then(paint); paint(); }
+    if (a === 'stopped') { OPT.stopY = +todayBJ().slice(0, 4); lsSet('ru-stopY', OPT.stopY); OPT.pos = null; lsSet('ru-pos', null); paint(); }
     if (a === 'close') { OPT.pos = null; lsSet('ru-pos', null); paint(); }
-    if (a === 'open') { const d = ($('#ruPd').value || todayBJ()).trim(), px = +$('#ruPp').value, lots = +$('#ruPl').value; if (!(px > 0)) return; OPT.pos = { d, px, lots: lots > 0 ? lots : null }; lsSet('ru-pos', OPT.pos); paint(); }
+    if (a === 'open') { const d = ($('#ruPd').value || todayBJ()).trim(), px = +$('#ruPp').value, lots = +$('#ruPl').value; if (!(px > 0)) return; const pc = ($('#ruPc').value || '').trim().toUpperCase() || (planNow().dom || ''); OPT.pos = { d, px, lots: lots > 0 ? lots : null, contract: pc }; lsSet('ru-pos', OPT.pos); paint(); }
   });
   document.addEventListener('change', e => {
+    const id = e.target && e.target.id;
+    if (id === 'ruMs' || id === 'ruMn' || id === 'ruMq' || id === 'ruMb' || id === 'ruMk' || id === 'ruMd') {
+      const g = k => { const x = $('#' + k); return x ? (x.type === 'checkbox' ? x.checked : x.value.trim()) : ''; };
+      OPT.man = { st: g('ruMs'), note: g('ruMn').slice(0, 80), qg: g('ruMq'), bg: g('ruMb'), stk: g('ruMk'), demand: !!g('ruMd'), d: todayBJ() }; lsSet('ru-man', OPT.man); return paint();
+    }
     const m = { ruEq: ['eq', 'ru-eq'], ruRisk: ['risk', 'ru-risk'], ruMg: ['margin', 'ru-margin'] }[e.target && e.target.id]; if (!m) return;
     const v = +e.target.value; if (!(v > 0)) return; OPT[m[0]] = v; lsSet(m[1], v); paint();
   });
