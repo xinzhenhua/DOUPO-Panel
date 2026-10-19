@@ -29,6 +29,7 @@ BOOT_JS = r"""
   var $ = function (id) { return document.getElementById(id); };
   function runUI() {
     var s = document.createElement('script'); s.textContent = $('uiSrc').textContent; document.body.appendChild(s);
+    var s2 = document.createElement('script'); s2.textContent = $('ruSrc').textContent; document.body.appendChild(s2);
     var b = $('boot'); if (b) b.remove();
   }
   function warn(fails) {
@@ -70,13 +71,16 @@ def build():
     shell = shell.replace('</style>', BOOT_CSS + '</style>')
     shell = shell.replace('<body>\n', '<body>\n' + BOOT_HTML, 1)
     static = json.dumps(json.load(open(os.path.join(HERE, 'cockpit', 'static.json'), encoding='utf-8')), ensure_ascii=False, separators=(',', ':'))
-    ui = rd('ui.js')
+    ui = rd('ui.js'); rub = rd('rubber.js'); assert '</script' not in rub
+    ru_hist = json.dumps(json.load(open(os.path.join(HERE, 'cockpit', 'ru_hist.json'), encoding='utf-8')), separators=(',', ':'))
     assert '</script' not in ui and '</script' not in rd('logic.js') and '</script' not in rd('loader.js')
     parts = [shell.rstrip('\n'),
              '<script>\n' + rd('logic.js').rstrip('\n') + '\n</script>',
              '<script>\n' + rd('loader.js').rstrip('\n') + '\n</script>',
              '<script>\nwindow.__STATIC__=' + static + ';\n</script>',
              '<script type="text/plain" id="uiSrc">\n' + ui.rstrip('\n') + '\n</script>',
+             '<script>\nwindow.__RU__=' + ru_hist + ';\n</script>',
+             '<script type="text/plain" id="ruSrc">\n' + rub.rstrip('\n') + '\n</script>',
              '<script>' + BOOT_JS + '</script>',
              '</body>\n</html>\n']
     return '\n'.join(parts)
