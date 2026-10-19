@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-19T01:44:12.968888+00:00",
+  "generatedAt": "2026-10-19T06:00:37.299023+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 358.8,
-    "change": 1.7,
-    "changePct": 0.48,
-    "asOf": "2026-10-19T01:34:05+00:00",
+    "price": 359.0,
+    "change": 1.9,
+    "changePct": 0.53,
+    "asOf": "2026-10-19T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
   "mysteelCrushRate": {
@@ -120,7 +120,7 @@
     "dateFallback": false,
     "usedFallback": false,
     "fallbackWeeks": 0,
-    "ageDays": 24,
+    "ageDays": 26,
     "stale": true,
     "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
     "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
@@ -143,10 +143,7 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "发改委文章列表取不到: 页面上找不到文字为'猪料、鸡料、蛋料比价信息'的导航元素(页面可能改版，或还没渲染出来)",
-    "carriedFrom": "2026-10-16T18:47:23.885663+00:00"
+    }
   },
   "mysteelPoultryProfit": {
     "available": true,
@@ -1087,7 +1084,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1300.75,
+        "zsCents": 1299.5,
         "zsDate": "2026-10-19",
         "zsExact": true,
         "zsNote": "",
@@ -1099,18 +1096,18 @@
         "brazil": {
           "beanPrice": 3826.0,
           "breakeven": 3025.0,
-          "impliedPremium": 50.1,
+          "impliedPremium": 51.4,
           "available": true,
-          "zsCents": 1300.75,
+          "zsCents": 1299.5,
           "fx": 6.6862,
           "mealPrice": 3034.0,
           "oilPrice": 8656.0,
-          "beanCost": 4142.8,
-          "mealCost": 3428.6,
-          "mealCostLow": 3252.9,
-          "mealCostHigh": 3604.3,
-          "gap": -394.6,
-          "gapPct": -11.5,
+          "beanCost": 4139.4,
+          "mealCost": 3424.2,
+          "mealCostLow": 3248.6,
+          "mealCostHigh": 3599.9,
+          "gap": -390.2,
+          "gapPct": -11.4,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1131,18 +1128,18 @@
         "us": {
           "beanPrice": 3826.0,
           "breakeven": 3025.0,
-          "impliedPremium": -69.4,
+          "impliedPremium": -68.2,
           "available": true,
-          "zsCents": 1300.75,
+          "zsCents": 1299.5,
           "fx": 6.6862,
           "mealPrice": 3034.0,
           "oilPrice": 8656.0,
-          "beanCost": 4847.0,
-          "mealCost": 4325.7,
-          "mealCostLow": 4132.9,
-          "mealCostHigh": 4518.4,
-          "gap": -1291.7,
-          "gapPct": -29.9,
+          "beanCost": 4843.2,
+          "mealCost": 4320.9,
+          "mealCostLow": 4128.1,
+          "mealCostHigh": 4513.6,
+          "gap": -1286.9,
+          "gapPct": -29.8,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1163,7 +1160,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1287.75,
+        "zsCents": 1287.25,
         "zsDate": "2026-10-19",
         "zsExact": true,
         "zsNote": "",
@@ -1175,18 +1172,18 @@
         "brazil": {
           "beanPrice": 3744.0,
           "breakeven": 2907.4,
-          "impliedPremium": 33.4,
+          "impliedPremium": 33.9,
           "available": true,
-          "zsCents": 1287.75,
+          "zsCents": 1287.25,
           "fx": 6.6862,
           "mealPrice": 2939.0,
           "oilPrice": 8712.0,
-          "beanCost": 3980.1,
-          "mealCost": 3208.1,
-          "mealCostLow": 3032.4,
-          "mealCostHigh": 3383.8,
-          "gap": -269.1,
-          "gapPct": -8.4,
+          "beanCost": 3978.7,
+          "mealCost": 3206.4,
+          "mealCostLow": 3030.7,
+          "mealCostHigh": 3382.1,
+          "gap": -267.4,
+          "gapPct": -8.3,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1211,7 +1208,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1264.25,
+        "zsCents": 1264.0,
         "zsDate": "2026-10-19",
         "zsExact": true,
         "zsNote": "",
@@ -1223,17 +1220,17 @@
         "brazil": {
           "beanPrice": 4028.0,
           "breakeven": 3238.0,
-          "impliedPremium": 159.9,
+          "impliedPremium": 160.1,
           "available": true,
-          "zsCents": 1264.25,
+          "zsCents": 1264.0,
           "fx": 6.6862,
           "mealPrice": 3281.0,
           "oilPrice": 8844.0,
-          "beanCost": 4249.0,
-          "mealCost": 3519.6,
-          "mealCostLow": 3343.9,
-          "mealCostHigh": 3695.3,
-          "gap": -238.6,
+          "beanCost": 4248.3,
+          "mealCost": 3518.7,
+          "mealCostLow": 3343.0,
+          "mealCostHigh": 3694.4,
+          "gap": -237.7,
           "gapPct": -6.8,
           "position": "below",
           "params": {
@@ -1255,17 +1252,17 @@
         "us": {
           "beanPrice": 4028.0,
           "breakeven": 3238.0,
-          "impliedPremium": 33.8,
+          "impliedPremium": 34.1,
           "available": true,
-          "zsCents": 1264.25,
+          "zsCents": 1264.0,
           "fx": 6.6862,
           "mealPrice": 3281.0,
           "oilPrice": 8844.0,
-          "beanCost": 4772.9,
-          "mealCost": 4186.9,
-          "mealCostLow": 3994.2,
-          "mealCostHigh": 4379.7,
-          "gap": -905.9,
+          "beanCost": 4772.1,
+          "mealCost": 4186.0,
+          "mealCostLow": 3993.2,
+          "mealCostHigh": 4378.7,
+          "gap": -905.0,
           "gapPct": -21.6,
           "position": "below",
           "params": {
@@ -3329,7 +3326,7 @@
   "dceM09Hourly": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 107,
+    "totalBarsReturned": 109,
     "bars": [
       {
         "datetime": "2026-09-14 22:00:00",
@@ -4289,10 +4286,28 @@
         "datetime": "2026-10-19 10:00:00",
         "open": 3028.0,
         "high": 3032.0,
-        "low": 3022.0,
-        "close": 3023.0,
-        "volume": 52.0,
-        "hold": 63622.0
+        "low": 3018.0,
+        "close": 3020.0,
+        "volume": 357.0,
+        "hold": 64890.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 3019.0,
+        "high": 3022.0,
+        "low": 3014.0,
+        "close": 3015.0,
+        "volume": 23.0,
+        "hold": 65998.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 3015.0,
+        "high": 3021.0,
+        "low": 3011.0,
+        "close": 3017.0,
+        "volume": 11.0,
+        "hold": 66184.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4302,87 +4317,6 @@
     "symbol": "M2709",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-09-21 10:15:00",
-        "open": 3100.0,
-        "high": 3103.0,
-        "low": 3100.0,
-        "close": 3103.0,
-        "volume": 38.0,
-        "hold": 13516.0
-      },
-      {
-        "datetime": "2026-09-21 10:45:00",
-        "open": 3103.0,
-        "high": 3108.0,
-        "low": 3103.0,
-        "close": 3106.0,
-        "volume": 121.0,
-        "hold": 13507.0
-      },
-      {
-        "datetime": "2026-09-21 11:00:00",
-        "open": 3106.0,
-        "high": 3115.0,
-        "low": 3103.0,
-        "close": 3113.0,
-        "volume": 211.0,
-        "hold": 13479.0
-      },
-      {
-        "datetime": "2026-09-21 11:15:00",
-        "open": 3113.0,
-        "high": 3113.0,
-        "low": 3109.0,
-        "close": 3109.0,
-        "volume": 128.0,
-        "hold": 13549.0
-      },
-      {
-        "datetime": "2026-09-21 11:30:00",
-        "open": 3110.0,
-        "high": 3110.0,
-        "low": 3108.0,
-        "close": 3108.0,
-        "volume": 85.0,
-        "hold": 13623.0
-      },
-      {
-        "datetime": "2026-09-21 13:45:00",
-        "open": 3108.0,
-        "high": 3113.0,
-        "low": 3107.0,
-        "close": 3111.0,
-        "volume": 239.0,
-        "hold": 13671.0
-      },
-      {
-        "datetime": "2026-09-21 14:00:00",
-        "open": 3111.0,
-        "high": 3113.0,
-        "low": 3110.0,
-        "close": 3110.0,
-        "volume": 83.0,
-        "hold": 13670.0
-      },
-      {
-        "datetime": "2026-09-21 14:15:00",
-        "open": 3110.0,
-        "high": 3110.0,
-        "low": 3107.0,
-        "close": 3108.0,
-        "volume": 34.0,
-        "hold": 13683.0
-      },
-      {
-        "datetime": "2026-09-21 14:30:00",
-        "open": 3108.0,
-        "high": 3109.0,
-        "low": 3107.0,
-        "close": 3108.0,
-        "volume": 29.0,
-        "hold": 13676.0
-      },
       {
         "datetime": "2026-09-21 14:45:00",
         "open": 3108.0,
@@ -6997,10 +6931,91 @@
         "datetime": "2026-10-19 09:45:00",
         "open": 3027.0,
         "high": 3028.0,
-        "low": 3022.0,
-        "close": 3023.0,
-        "volume": 52.0,
-        "hold": 63622.0
+        "low": 3020.0,
+        "close": 3020.0,
+        "volume": 1542.0,
+        "hold": 64265.0
+      },
+      {
+        "datetime": "2026-10-19 10:00:00",
+        "open": 3021.0,
+        "high": 3021.0,
+        "low": 3018.0,
+        "close": 3020.0,
+        "volume": 357.0,
+        "hold": 64890.0
+      },
+      {
+        "datetime": "2026-10-19 10:15:00",
+        "open": 3018.0,
+        "high": 3020.0,
+        "low": 3018.0,
+        "close": 3019.0,
+        "volume": 1.0,
+        "hold": 65004.0
+      },
+      {
+        "datetime": "2026-10-19 10:45:00",
+        "open": 3018.0,
+        "high": 3021.0,
+        "low": 3018.0,
+        "close": 3019.0,
+        "volume": 99.0,
+        "hold": 65036.0
+      },
+      {
+        "datetime": "2026-10-19 11:00:00",
+        "open": 3019.0,
+        "high": 3022.0,
+        "low": 3016.0,
+        "close": 3017.0,
+        "volume": 852.0,
+        "hold": 65501.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 3017.0,
+        "high": 3021.0,
+        "low": 3014.0,
+        "close": 3015.0,
+        "volume": 23.0,
+        "hold": 65998.0
+      },
+      {
+        "datetime": "2026-10-19 11:30:00",
+        "open": 3015.0,
+        "high": 3015.0,
+        "low": 3011.0,
+        "close": 3014.0,
+        "volume": 20.0,
+        "hold": 66168.0
+      },
+      {
+        "datetime": "2026-10-19 13:45:00",
+        "open": 3014.0,
+        "high": 3019.0,
+        "low": 3013.0,
+        "close": 3018.0,
+        "volume": 7.0,
+        "hold": 66165.0
+      },
+      {
+        "datetime": "2026-10-19 14:00:00",
+        "open": 3018.0,
+        "high": 3021.0,
+        "low": 3016.0,
+        "close": 3016.0,
+        "volume": 4.0,
+        "hold": 66184.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 3017.0,
+        "high": 3017.0,
+        "low": 3017.0,
+        "close": 3017.0,
+        "volume": 11.0,
+        "hold": 66184.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -8028,24 +8043,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 180,
     "bars": [
-      {
-        "datetime": "2026-08-27 15:00:00",
-        "open": 3004.0,
-        "high": 3027.0,
-        "low": 3004.0,
-        "close": 3026.0,
-        "volume": 1.0,
-        "hold": 869166.0
-      },
-      {
-        "datetime": "2026-08-27 22:00:00",
-        "open": 3018.0,
-        "high": 3026.0,
-        "low": 2996.0,
-        "close": 2998.0,
-        "volume": 91307.0,
-        "hold": 854663.0
-      },
       {
         "datetime": "2026-08-27 23:00:00",
         "open": 2998.0,
@@ -9645,8 +9642,26 @@
         "high": 2945.0,
         "low": 2931.0,
         "close": 2935.0,
-        "volume": 37952.0,
-        "hold": 837040.0
+        "volume": 45644.0,
+        "hold": 836753.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 2933.0,
+        "high": 2935.0,
+        "low": 2926.0,
+        "close": 2928.0,
+        "volume": 24385.0,
+        "hold": 839653.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 2927.0,
+        "high": 2934.0,
+        "low": 2925.0,
+        "close": 2930.0,
+        "volume": 13006.0,
+        "hold": 837390.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -9656,87 +9671,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-09-21 10:15:00",
-        "open": 3004.0,
-        "high": 3008.0,
-        "low": 3003.0,
-        "close": 3006.0,
-        "volume": 778.0,
-        "hold": 868108.0
-      },
-      {
-        "datetime": "2026-09-21 10:45:00",
-        "open": 3006.0,
-        "high": 3015.0,
-        "low": 3005.0,
-        "close": 3011.0,
-        "volume": 63.0,
-        "hold": 868225.0
-      },
-      {
-        "datetime": "2026-09-21 11:00:00",
-        "open": 3011.0,
-        "high": 3021.0,
-        "low": 3008.0,
-        "close": 3019.0,
-        "volume": 1452.0,
-        "hold": 866610.0
-      },
-      {
-        "datetime": "2026-09-21 11:15:00",
-        "open": 3019.0,
-        "high": 3020.0,
-        "low": 3014.0,
-        "close": 3015.0,
-        "volume": 3.0,
-        "hold": 867148.0
-      },
-      {
-        "datetime": "2026-09-21 11:30:00",
-        "open": 3015.0,
-        "high": 3015.0,
-        "low": 3013.0,
-        "close": 3015.0,
-        "volume": 251.0,
-        "hold": 867028.0
-      },
-      {
-        "datetime": "2026-09-21 13:45:00",
-        "open": 3012.0,
-        "high": 3019.0,
-        "low": 3011.0,
-        "close": 3017.0,
-        "volume": 24.0,
-        "hold": 867266.0
-      },
-      {
-        "datetime": "2026-09-21 14:00:00",
-        "open": 3016.0,
-        "high": 3020.0,
-        "low": 3015.0,
-        "close": 3015.0,
-        "volume": 1652.0,
-        "hold": 867607.0
-      },
-      {
-        "datetime": "2026-09-21 14:15:00",
-        "open": 3015.0,
-        "high": 3017.0,
-        "low": 3012.0,
-        "close": 3013.0,
-        "volume": 85.0,
-        "hold": 867762.0
-      },
-      {
-        "datetime": "2026-09-21 14:30:00",
-        "open": 3013.0,
-        "high": 3015.0,
-        "low": 3012.0,
-        "close": 3014.0,
-        "volume": 937.0,
-        "hold": 867551.0
-      },
       {
         "datetime": "2026-09-21 14:45:00",
         "open": 3014.0,
@@ -12351,10 +12285,91 @@
         "datetime": "2026-10-19 09:45:00",
         "open": 2941.0,
         "high": 2942.0,
-        "low": 2934.0,
+        "low": 2933.0,
+        "close": 2936.0,
+        "volume": 9082.0,
+        "hold": 836540.0
+      },
+      {
+        "datetime": "2026-10-19 10:00:00",
+        "open": 2936.0,
+        "high": 2936.0,
+        "low": 2933.0,
         "close": 2935.0,
-        "volume": 5611.0,
-        "hold": 837040.0
+        "volume": 4219.0,
+        "hold": 836753.0
+      },
+      {
+        "datetime": "2026-10-19 10:15:00",
+        "open": 2934.0,
+        "high": 2935.0,
+        "low": 2930.0,
+        "close": 2931.0,
+        "volume": 3447.0,
+        "hold": 836868.0
+      },
+      {
+        "datetime": "2026-10-19 10:45:00",
+        "open": 2930.0,
+        "high": 2932.0,
+        "low": 2927.0,
+        "close": 2929.0,
+        "volume": 10241.0,
+        "hold": 837526.0
+      },
+      {
+        "datetime": "2026-10-19 11:00:00",
+        "open": 2929.0,
+        "high": 2931.0,
+        "low": 2926.0,
+        "close": 2929.0,
+        "volume": 5019.0,
+        "hold": 838505.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 2929.0,
+        "high": 2934.0,
+        "low": 2927.0,
+        "close": 2928.0,
+        "volume": 5678.0,
+        "hold": 839653.0
+      },
+      {
+        "datetime": "2026-10-19 11:30:00",
+        "open": 2928.0,
+        "high": 2930.0,
+        "low": 2925.0,
+        "close": 2927.0,
+        "volume": 3411.0,
+        "hold": 839345.0
+      },
+      {
+        "datetime": "2026-10-19 13:45:00",
+        "open": 2927.0,
+        "high": 2932.0,
+        "low": 2925.0,
+        "close": 2930.0,
+        "volume": 493.0,
+        "hold": 839125.0
+      },
+      {
+        "datetime": "2026-10-19 14:00:00",
+        "open": 2930.0,
+        "high": 2934.0,
+        "low": 2927.0,
+        "close": 2929.0,
+        "volume": 12174.0,
+        "hold": 837364.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 2929.0,
+        "high": 2930.0,
+        "low": 2928.0,
+        "close": 2930.0,
+        "volume": 332.0,
+        "hold": 837390.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -14153,24 +14168,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-08-27 15:00:00",
-        "open": 3334.0,
-        "high": 3355.0,
-        "low": 3332.0,
-        "close": 3355.0,
-        "volume": 25813.0,
-        "hold": 2788832.0
-      },
-      {
-        "datetime": "2026-08-27 22:00:00",
-        "open": 3353.0,
-        "high": 3355.0,
-        "low": 3320.0,
-        "close": 3322.0,
-        "volume": 459555.0,
-        "hold": 2770269.0
-      },
-      {
         "datetime": "2026-08-27 23:00:00",
         "open": 3323.0,
         "high": 3348.0,
@@ -15769,8 +15766,26 @@
         "high": 3289.0,
         "low": 3271.0,
         "close": 3280.0,
-        "volume": 273684.0,
-        "hold": 2299968.0
+        "volume": 299776.0,
+        "hold": 2300602.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 3280.0,
+        "high": 3288.0,
+        "low": 3273.0,
+        "close": 3280.0,
+        "volume": 123964.0,
+        "hold": 2300042.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 3280.0,
+        "high": 3292.0,
+        "low": 3276.0,
+        "close": 3290.0,
+        "volume": 716.0,
+        "hold": 2296196.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -15780,87 +15795,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-09-21 10:15:00",
-        "open": 3385.0,
-        "high": 3390.0,
-        "low": 3383.0,
-        "close": 3386.0,
-        "volume": 23509.0,
-        "hold": 2692944.0
-      },
-      {
-        "datetime": "2026-09-21 10:45:00",
-        "open": 3387.0,
-        "high": 3397.0,
-        "low": 3386.0,
-        "close": 3391.0,
-        "volume": 45368.0,
-        "hold": 2688813.0
-      },
-      {
-        "datetime": "2026-09-21 11:00:00",
-        "open": 3391.0,
-        "high": 3399.0,
-        "low": 3386.0,
-        "close": 3396.0,
-        "volume": 39270.0,
-        "hold": 2689707.0
-      },
-      {
-        "datetime": "2026-09-21 11:15:00",
-        "open": 3396.0,
-        "high": 3398.0,
-        "low": 3391.0,
-        "close": 3391.0,
-        "volume": 29.0,
-        "hold": 2687281.0
-      },
-      {
-        "datetime": "2026-09-21 11:30:00",
-        "open": 3391.0,
-        "high": 3392.0,
-        "low": 3389.0,
-        "close": 3390.0,
-        "volume": 2033.0,
-        "hold": 2685533.0
-      },
-      {
-        "datetime": "2026-09-21 13:45:00",
-        "open": 3390.0,
-        "high": 3399.0,
-        "low": 3387.0,
-        "close": 3396.0,
-        "volume": 7975.0,
-        "hold": 2685803.0
-      },
-      {
-        "datetime": "2026-09-21 14:00:00",
-        "open": 3396.0,
-        "high": 3400.0,
-        "low": 3392.0,
-        "close": 3393.0,
-        "volume": 5129.0,
-        "hold": 2688420.0
-      },
-      {
-        "datetime": "2026-09-21 14:15:00",
-        "open": 3392.0,
-        "high": 3395.0,
-        "low": 3390.0,
-        "close": 3391.0,
-        "volume": 17096.0,
-        "hold": 2687883.0
-      },
-      {
-        "datetime": "2026-09-21 14:30:00",
-        "open": 3390.0,
-        "high": 3393.0,
-        "low": 3390.0,
-        "close": 3391.0,
-        "volume": 9997.0,
-        "hold": 2686117.0
-      },
       {
         "datetime": "2026-09-21 14:45:00",
         "open": 3390.0,
@@ -18477,8 +18411,89 @@
         "high": 3287.0,
         "low": 3279.0,
         "close": 3280.0,
-        "volume": 25031.0,
-        "hold": 2299968.0
+        "volume": 33395.0,
+        "hold": 2299178.0
+      },
+      {
+        "datetime": "2026-10-19 10:00:00",
+        "open": 3280.0,
+        "high": 3283.0,
+        "low": 3278.0,
+        "close": 3280.0,
+        "volume": 17728.0,
+        "hold": 2300602.0
+      },
+      {
+        "datetime": "2026-10-19 10:15:00",
+        "open": 3278.0,
+        "high": 3280.0,
+        "low": 3273.0,
+        "close": 3275.0,
+        "volume": 5468.0,
+        "hold": 2300781.0
+      },
+      {
+        "datetime": "2026-10-19 10:45:00",
+        "open": 3275.0,
+        "high": 3280.0,
+        "low": 3274.0,
+        "close": 3278.0,
+        "volume": 38483.0,
+        "hold": 2300609.0
+      },
+      {
+        "datetime": "2026-10-19 11:00:00",
+        "open": 3278.0,
+        "high": 3281.0,
+        "low": 3273.0,
+        "close": 3280.0,
+        "volume": 31391.0,
+        "hold": 2297898.0
+      },
+      {
+        "datetime": "2026-10-19 11:15:00",
+        "open": 3281.0,
+        "high": 3288.0,
+        "low": 3279.0,
+        "close": 3280.0,
+        "volume": 48616.0,
+        "hold": 2300042.0
+      },
+      {
+        "datetime": "2026-10-19 11:30:00",
+        "open": 3280.0,
+        "high": 3282.0,
+        "low": 3276.0,
+        "close": 3280.0,
+        "volume": 18361.0,
+        "hold": 2298300.0
+      },
+      {
+        "datetime": "2026-10-19 13:45:00",
+        "open": 3279.0,
+        "high": 3286.0,
+        "low": 3276.0,
+        "close": 3284.0,
+        "volume": 34408.0,
+        "hold": 2297859.0
+      },
+      {
+        "datetime": "2026-10-19 14:00:00",
+        "open": 3284.0,
+        "high": 3292.0,
+        "low": 3283.0,
+        "close": 3288.0,
+        "volume": 425.0,
+        "hold": 2296202.0
+      },
+      {
+        "datetime": "2026-10-19 14:15:00",
+        "open": 3289.0,
+        "high": 3290.0,
+        "low": 3288.0,
+        "close": 3290.0,
+        "volume": 716.0,
+        "hold": 2296196.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -19904,36 +19919,400 @@
     "source": "东方财富期货持仓排名(datacenter-web接口)，T+1数据(收盘后发布)"
   },
   "southAmericaPsd": {
-    "available": false,
-    "reason": "大豆商品代码查找失败",
-    "debug": {
-      "url": "https://api.fas.usda.gov/api/psd/commodities",
-      "httpStatus": 503,
-      "error": "The read operation timed out",
-      "rawSnippet": "upstream connect error or disconnect/reset before headers. retried and the latest reset reason: remote connection failure",
-      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
-    }
+    "available": true,
+    "byCountry": {
+      "BR": {
+        "available": true,
+        "marketYear": 2025,
+        "production": 180500.0,
+        "totalSupply": 219241.0,
+        "countryName": "巴西",
+        "debug": {
+          "matchedCommodity": {
+            "matchedBy": "精确匹配'Oilseed, Soybean'",
+            "matchedName": "Oilseed, Soybean"
+          },
+          "attemptsPerYear": {
+            "2025": {
+              "httpStatus": 200,
+              "rowCount": 13
+            },
+            "2026": {
+              "httpStatus": 200,
+              "rowCount": 13
+            },
+            "2027": {
+              "httpStatus": 200,
+              "rowCount": 0
+            }
+          },
+          "sampleRawRows": [
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 4,
+              "unitId": 4,
+              "value": 48500.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 20,
+              "unitId": 8,
+              "value": 37688.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 28,
+              "unitId": 8,
+              "value": 180500.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 57,
+              "unitId": 8,
+              "value": 1053.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 86,
+              "unitId": 8,
+              "value": 219241.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 88,
+              "unitId": 8,
+              "value": 114460.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 7,
+              "unitId": 8,
+              "value": 62500.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 149,
+              "unitId": 8,
+              "value": 0.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 161,
+              "unitId": 8,
+              "value": 4400.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "BR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 125,
+              "unitId": 8,
+              "value": 66900.0
+            }
+          ]
+        }
+      },
+      "AR": {
+        "available": true,
+        "marketYear": 2025,
+        "production": 49300.0,
+        "totalSupply": 81471.0,
+        "countryName": "阿根廷",
+        "debug": {
+          "matchedCommodity": {
+            "matchedBy": "精确匹配'Oilseed, Soybean'",
+            "matchedName": "Oilseed, Soybean"
+          },
+          "attemptsPerYear": {
+            "2025": {
+              "httpStatus": 200,
+              "rowCount": 13
+            },
+            "2026": {
+              "httpStatus": 200,
+              "rowCount": 13
+            },
+            "2027": {
+              "httpStatus": 200,
+              "rowCount": 0
+            }
+          },
+          "sampleRawRows": [
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 4,
+              "unitId": 4,
+              "value": 16200.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 20,
+              "unitId": 8,
+              "value": 24671.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 28,
+              "unitId": 8,
+              "value": 49300.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 57,
+              "unitId": 8,
+              "value": 7500.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 86,
+              "unitId": 8,
+              "value": 81471.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 88,
+              "unitId": 8,
+              "value": 8900.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 7,
+              "unitId": 8,
+              "value": 43000.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 149,
+              "unitId": 8,
+              "value": 0.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 161,
+              "unitId": 8,
+              "value": 5900.0
+            },
+            {
+              "commodityCode": "2222000",
+              "countryCode": "AR",
+              "marketYear": "2025",
+              "calendarYear": "2026",
+              "month": "10",
+              "attributeId": 125,
+              "unitId": 8,
+              "value": 48900.0
+            }
+          ]
+        }
+      }
+    },
+    "source": "USDA-FAS PSD API（跟美国数据同一套接口，换了国家代码）"
   },
   "exportSales": {
-    "available": false,
-    "reason": "未能找到大豆(Soybeans)的ESR商品编码",
-    "debug": {
-      "url": "https://api.fas.usda.gov/api/esr/commodities",
-      "error": "HTTP 503: Service Unavailable",
-      "httpStatus": 503,
-      "rawSnippet": "upstream connect error or disconnect/reset before headers. retried and the latest reset reason: remote connection failure",
-      "failureStage": "请求/esr/commodities本身失败（网络问题、认证失败、或被限流）"
+    "available": true,
+    "commodity": "Soybeans(大豆)",
+    "weekEnding": "2026-10-08T00:00:00",
+    "marketYearUsed": 2027,
+    "dataAgeDays": 11,
+    "isStale": false,
+    "netSalesMT": 574878,
+    "prevNetSalesMT": 549377,
+    "avg4wNetSalesMT": 963948,
+    "vs4wAvgPct": -40.4,
+    "wowChangePct": 4.6,
+    "shipmentsMT": 1153971,
+    "chinaNetSalesMT": 0,
+    "unknownNetSalesMT": 0,
+    "otherNetSalesMT": 574878,
+    "chinaShipmentsMT": 0,
+    "china4wSumMT": 0,
+    "unknown4wSumMT": 0,
+    "total4wSumMT": 2740232,
+    "chinaShare4wPct": 0.0,
+    "latestIsRollover": false,
+    "rolloverAdjustedWeeks": [
+      "2025-09-04",
+      "2026-09-03"
+    ],
+    "chinaMatched": false,
+    "countryNamesSeen": [],
+    "recentWeeks": [
+      {
+        "weekEnding": "2026-08-20T00:00:00",
+        "netSalesMT": 2552242,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-08-27T00:00:00",
+        "netSalesMT": 1854251,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-03T00:00:00",
+        "netSalesMT": 1772344,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-10T00:00:00",
+        "netSalesMT": 1690438,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-17T00:00:00",
+        "netSalesMT": 582432,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-09-24T00:00:00",
+        "netSalesMT": 1033545,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-10-01T00:00:00",
+        "netSalesMT": 549377,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      },
+      {
+        "weekEnding": "2026-10-08T00:00:00",
+        "netSalesMT": 574878,
+        "chinaNetSalesMT": 0,
+        "unknownNetSalesMT": 0
+      }
+    ],
+    "source": "USDA-FAS ESR API",
+    "sourceUrl": "https://apps.fas.usda.gov/esrqs/",
+    "history": {
+      "n": 613,
+      "minPoints": 12,
+      "asOf": "2026-10-08",
+      "since": "2014-10-02",
+      "percentile": 40.5,
+      "min": 19,
+      "max": 11244808,
+      "median": 3281447,
+      "seasonal": {
+        "month": 10,
+        "n": 54,
+        "percentile": 3.7,
+        "median": 5912821.0
+      },
+      "cohort": null,
+      "sparse": null,
+      "window": null,
+      "basis": "近4周净销售合计"
     }
   },
   "supplyDemand": {
-    "available": false,
-    "reason": "未能找到大豆(Oilseed, Soybean)的PSD商品编码",
-    "debug": {
-      "url": "https://api.fas.usda.gov/api/psd/commodities",
-      "httpStatus": 503,
-      "error": "The read operation timed out",
-      "rawSnippet": "upstream connect error or disconnect/reset before headers. retried and the latest reset reason: remote connection failure",
-      "failureStage": "请求/psd/commodities本身失败（网络问题、认证失败、或被限流）"
+    "available": true,
+    "commodity": "Oilseed, Soybean",
+    "marketYear": 2026,
+    "marketYearLabel": "2026/27",
+    "wasdeVintage": "2026年10月版",
+    "endingStocks": 8572.0,
+    "production": 124147.0,
+    "totalSupply": 133404.0,
+    "domesticConsumption": 78702.0,
+    "exports": 46130.0,
+    "crush": 75659.0,
+    "totalUse": 124832.0,
+    "stocksToUsePct": 6.9,
+    "unit": "千公吨(USDA PSD标准单位)",
+    "source": "USDA-FAS PSD API (WASDE同源数据)",
+    "sourceUrl": "https://apps.fas.usda.gov/psdonline/",
+    "history": {
+      "n": 20,
+      "minPoints": 12,
+      "asOf": "2026",
+      "since": "2006",
+      "percentile": 60.0,
+      "min": 2.65,
+      "max": 23.39,
+      "median": 6.35,
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
     }
   },
   "pricePosition": {
@@ -20991,7 +21370,5 @@
       ]
     }
   },
-  "carriedKeys": [
-    "ndrcPoultryProfit"
-  ]
+  "carriedKeys": []
 }
