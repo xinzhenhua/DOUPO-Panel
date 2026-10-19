@@ -275,7 +275,7 @@ body.ex .why{display:block}
 .sh-t::-webkit-scrollbar{display:none}
 .sh-t button{padding:9px 13px;font-size:13.5px;color:var(--ink2);border-bottom:2px solid transparent;white-space:nowrap;flex:none}
 .sh-t button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--focus);font-weight:500}
-.sh-b{padding:16px 20px 32px;overflow:auto;flex:1 1 auto;min-height:0}
+.sh-b{padding:16px 20px 32px;overflow:auto;flex:1 1 auto;min-height:0;overflow-wrap:anywhere}
 .sh-b h3{font-size:14px;font-weight:700;margin:20px 0 6px}
 .sh-b h3:first-child{margin-top:0}
 .sh-b p{color:var(--ink2);margin-bottom:9px;line-height:1.75}
@@ -2069,7 +2069,7 @@ function renderSig() {
   let left, right;
   if (!s.pos) {
     left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 最近收盘${lastBarD()} ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
-    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}${basisChip(sg, s.B)}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.below20, '收盘<MA20')}${chip(sg.highOK, '高位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%') + '≥' + TPLAN.SHORT_PCT)}${candChips(sg)}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
+    <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}${basisChip(sg, s.B)}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.below20, '收盘&lt;MA20')}${chip(sg.highOK, '高位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%') + '≥' + TPLAN.SHORT_PCT)}${candChips(sg)}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
     right = s.other ? (() => { const o = s.other, ck = ['sep', 'may', 'jan'].find(k => String((D.contracts[k] || {}).symbol || '').toLowerCase() === String(o.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase()); return `<button class="sg" ${ck ? `data-ck="${ck}"` : 'data-goplan="toggle"'} aria-label="持仓在另一个合约，点击切换过去"><div class="cl">持仓在另一个合约</div><div class="hd">${esc(o.contract || '—')}</div><div class="sb">${sdName(o.side)} ${fmtD(o.lots)} 手 · 点这里切过去看</div></button>`; })() : `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
   } else {
     const m = s.mg, ho = s.hold, t = s.pos, sd = t.side > 0, out = m.action !== '持有', fl = planPnl(t, ho.last), noF = !F.used.length;

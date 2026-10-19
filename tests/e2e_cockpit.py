@@ -543,6 +543,29 @@ def main():
     ctx, pg, e10 = open_page(b, port, 390, 800); pg.evaluate("document.getElementById('planBtn').click()"); pg.wait_for_timeout(200); pg.evaluate("(() => { const d = document.getElementById('pf-mo'); if (d) d.open = true; })()"); pg.wait_for_timeout(200)
     ok('手机390：历史开仓月份表不横向溢出', pg.evaluate("(() => { const t = document.querySelector('#pf-mo .tbmo'); return !!t && t.getBoundingClientRect().right <= window.innerWidth + 1 && document.documentElement.scrollWidth <= window.innerWidth + 1; })()"), pg.evaluate("document.documentElement.scrollWidth"))
     ctx.close()
+    # ---- 7c. v101.90：做空信号芯片不得被当成HTML标签吞掉、不得重叠；弹窗不横向溢出 ----
+    def _mut_short(x):
+        q = os.path.join(x, 'data', 'main_adj.json'); a = json.load(open(q)); n = len(a['i'])
+        base = [float(i + 1) for i in range(250)] + [250., 249, 248, 247, 246, 245, 244, 243, 242, 241]
+        a['i'][n - 260:] = [v * 3 + 10 for v in base]; json.dump(a, open(q, 'w'))
+        q = os.path.join(x, 'data', 'latest.json'); l = json.load(open(q))
+        for k, m in l['marketCapital']['members'].items():
+            if m.get('foreign'): m['history']['change5'] = {'change': -30000 if k == '摩根大通' else -1000, 'to': a['d'][-1], 'from': a['d'][-6], 'basis': 'both'}
+        json.dump(l, open(q, 'w'), ensure_ascii=False)
+    d6 = make_site(_mut_short); s6, p6 = serve(d6)
+    for w_, h_ in ((360, 800), (1280, 900)):
+        ctx, pg, e11 = open_page(b, p6, w_, h_, mode='research'); pg.wait_for_timeout(400)
+        unk = pg.evaluate("[...document.querySelectorAll('*')].filter(e => e instanceof HTMLUnknownElement).length")
+        ok('做空信号页(%d宽)：没有被误解析的未知标签' % w_, unk == 0, unk)
+        ov = pg.evaluate("""(() => { let n = 0; for (const r of document.querySelectorAll('.scs')) { const c = [...r.children].filter(e => e.getBoundingClientRect().width > 0).map(e => e.getBoundingClientRect()); for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) { const a = c[i], b2 = c[j]; if (Math.min(a.right, b2.right) - Math.max(a.left, b2.left) > 2 && Math.min(a.bottom, b2.bottom) - Math.max(a.top, b2.top) > 2) n++; } } return n; })()""")
+        ok('做空信号页(%d宽)：信号芯片互不重叠' % w_, ov == 0, ov)
+        ok('做空信号页(%d宽)：「收盘<MA20」文字完整显示' % w_, pg.evaluate("document.body.innerText.includes('收盘<MA20')"))
+        for k in ('evt', 'hlth', 'pos'):
+            pg.evaluate("window.__cockpit.openLamp('%s')" % k); pg.wait_for_timeout(150)
+            ok('做空信号页(%d宽)：%s弹窗不横向溢出' % (w_, k), pg.evaluate("(() => { const b = document.getElementById('shB'); return b.scrollWidth <= b.clientWidth + 1; })()"))
+            pg.evaluate("window.__cockpit.closeSheet()")
+        ok('做空信号页(%d宽)无 JS 错误' % w_, not e11, e11); ctx.close()
+    s6.shutdown(); shutil.rmtree(d6, ignore_errors=True)
     # ---- 8. file:// ----
     ctx = b.new_context(); pg = ctx.new_page(); pg.goto('file://' + os.path.join(d, 'index.html'))
     ok('file:// 打开：提示要用网址打开，不空白', '网址' in pg.evaluate("document.getElementById('boot').innerText"))
