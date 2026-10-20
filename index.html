@@ -3392,14 +3392,24 @@ function ruWxVerdict(rs) {
   if (warn.length) return { level: 'warn', text: '有产区轻度异常：' + warn.map(r => r.n + ' ' + r.msg).join('、') + '（不拦，留意）' };
   return { level: 'ok', text: '主产区天气正常' };
 }
+/* 需求意外爆发（防3月下旬空头被逼仓）：必须同时满足 ①统计周在当年3月15日之后 ②全钢胎产能利用率≥75% 且较上周上升 ③同比≥+8个点。全部自动，不再手动勾选 */
+const RUSURGE = { FROM: '03-15', LEVEL: 75, YOY: 8 };
+function ruDemandSurge(ind, today) {
+  const ls = (ind && ind.qg) || [], ys = (ind && ind.qgY) || [], y = String(today).slice(0, 4), n = ls.length, o = { on: false, text: '', conds: [] };
+  if (!n) { o.text = '全钢胎产能利用率暂无数据'; return o; }
+  const last = ls[n - 1], prev = n > 1 ? ls[n - 2] : null, yy = ys.find(p => p.d === last.d);
+  const c1 = last.d.slice(0, 4) === y && last.d.slice(5) >= RUSURGE.FROM && last.d.slice(5) <= '03-31', c2 = last.v >= RUSURGE.LEVEL && !!prev && last.v > prev.v, c3 = !!yy && yy.v >= RUSURGE.YOY;
+  o.conds = [c1, c2, c3]; o.on = c1 && c2 && c3; o.last = last; o.yoy = yy ? yy.v : null;
+  o.text = o.on ? '需求意外爆发：全钢胎产能利用率 ' + last.v + '%（周期止 ' + last.d + '，较上周升、同比 +' + yy.v + ' 点），防空头被逼仓' : '未触发（全钢胎 ' + last.v + '%，同比 ' + (yy ? (yy.v >= 0 ? '+' : '') + yy.v + '点' : '—') + '；需3/15后、≥' + RUSURGE.LEVEL + '%且周升、同比≥+' + RUSURGE.YOY + '点）';
+  return o;
+}
 /* 当前该做什么。S 序列（含 r 真实收盘），today 北京日期，wx 天气结论，pos 记录的空单 {d,px,lots}|null */
 function ruPlan(S, today, wx, pos, man) {
   const n = S.d.length, L = S.d[n - 1], y = +today.slice(0, 4), mmdd = today.slice(5), real = S.r[n - 1] != null ? S.r[n - 1] : null, scale = real ? S.c[n - 1] / real : null;
   const inMar = +today.slice(5, 7) === RUP.MON, pre = mmdd >= RUP.PRE_FROM && mmdd < '03-01', yE = ruLastWeekdayOfMarch(y);
   const dom = S.m && S.m[n - 1] ? 'RU' + S.m[n - 1] : null, yy = String(y).slice(2), bad = [];
   if (wx && wx.level === 'block') bad.push(wx.text);
-  if (man && man.st === 'delay') bad.push('手动判断：开割延迟（干旱/洪涝）');
-  if (man && man.demand) bad.push('手动判断：需求超预期走强（轮胎产能利用率回升）');
+  if (man && man.surge && man.surge.on) bad.push(man.surge.text);
   const o = { today, last: L, real, dom, bad, inMar, pre, exitD: yE, wx, st: 'sleep', head: '', sub: '', chips: [], order: null, mar05: 'RU' + yy + '05', mar09: 'RU' + yy + '09' };
   const nextWin = (mmdd >= '04-01' ? (y + 1) : y) + '-03-01'; o.nextWin = nextWin; o.daysTo = Math.round((new Date(nextWin + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5);
   const ma = ruMA(S.c, n - 1, RUP.MA), reb = ma != null && S.c[n - 1] >= ma; o.reb = reb; o.ma = ma != null && scale ? ma / scale : null;
@@ -3471,7 +3481,7 @@ function ruIndSummary(ind, today) {
   const T = RUIND.map(d => ruIndTrend(d, ind, today)), E = T.filter(t => t.n > 0), bear = E.filter(t => t.m < 0).length, bull = E.filter(t => t.m > 0).length, by = {}; T.forEach(t => { by[t.def.k] = t; });
   const dir = E.length < 3 ? 'na' : bear - bull >= 2 ? '偏空' : bull - bear >= 2 ? '偏多' : '中性', warns = [], goods = [];
   const dk = by.dark; if (dk && dk.delta != null && dk.delta <= -3) warns.push('深色胶库存较上期降 ' + Math.abs(dk.delta).toFixed(1) + '%（意外大幅去库：空头要警惕）');
-  ['qg', 'bg'].forEach(k => { const t = by[k]; if (t && t.delta != null && t.delta >= 3 && t.yy && t.yy.v >= 3) warns.push(t.def.n + '较上期升 ' + t.delta.toFixed(1) + ' 个点、且比去年同期高 ' + t.yy.v.toFixed(1) + ' 个点（需求明显强于去年：若你判断是“超预期强劲回升”，请在「手动判断」里勾选）'); });
+  ['qg', 'bg'].forEach(k => { const t = by[k]; if (t && t.delta != null && t.delta >= 3 && t.yy && t.yy.v >= 3) warns.push(t.def.n + '较上期升 ' + t.delta.toFixed(1) + ' 个点、且比去年同期高 ' + t.yy.v.toFixed(1) + ' 个点（需求明显强于去年；只有3/15后、≥75%且同比≥+8点才会触发“需求爆发”离场条件）'); });
   if (by.qin && by.qout && by.qin.delta != null && by.qout.delta != null && by.qin.delta >= 5 && by.qout.delta <= -2) goods.push('青岛入库率大升、出库率走低：现货压力在积聚（强化空头逻辑）');
   if (by.stk && by.stk.delta != null && by.stk.delta >= 3) goods.push('社会库存较上期升 ' + by.stk.delta.toFixed(1) + '%（累库，强化空头逻辑）');
   const fresh = E.filter(t => !t.stale).length, last = E.reduce((a, t) => t.last.d > a ? t.last.d : a, '');
@@ -3522,7 +3532,7 @@ function ruIndSummary(ind, today) {
   }
   /* ---- 渲染 ---- */
   const chip = (ok, t, tip) => '<span class="sc ' + (ok == null ? '' : ok ? 'y' : 'n') + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + (ok == null ? '' : ok ? '✓ ' : '✗ ') + esc(t) + '</span>';
-  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, Object.assign({}, OPT.man, { stopY: OPT.stopY })); }
+  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, { stopY: OPT.stopY, surge: ruDemandSurge(indAll(), todayBJ()) }); }
   const indNow = () => ruIndSummary(indAll(), todayBJ());
   const ago = n => n <= 0 ? '今天' : n + '天前';
   /* 迷你曲线：和豆粕趋势墙同一种画法（面积+线+末点） */
@@ -3565,20 +3575,14 @@ function ruIndSummary(ind, today) {
     const groups = [['供给', gt('供给')], ['库存', gt('库存')], ['青岛', gt('青岛')], ['需求', gt('需求')], ['天气', RUREG.map(wxTile)]];
     const upd = AUTOINFO && AUTOINFO.updated ? '，抓取于 ' + esc(AUTOINFO.updated) : '';
     let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">库存/青岛/产能利用率/产量/进口全部由 Actions 自动抓取隆众周报月报' + upd + '；天气自动取。颜色：对价格多空的含义</span></div>'
-      + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、延迟开割、需求超预期走强（你在下方“手动判断”里选）才会拦住做空。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
+      + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、或“需求爆发”（3/15后全钢胎产能利用率≥75%且周升、同比≥+8点，自动判断）才会拦住做空。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
     groups.forEach(g => { h += '<div class="bh"><span>' + g[0] + '</span><i>' + g[1].length + '项</i></div><div class="blk"><div class="rail"><span>' + g[0] + '</span></div><div class="bg" style="grid-template-columns:repeat(' + g[1].length + ',minmax(0,1fr))">' + g[1].join('') + '</div></div>'; });
     return h + '</div>' + entryHtml(IS);
   }
-  /* 只剩两个判断项：开割进度、需求是否超预期（这两个没有数据源，只能人工判断；会影响信号） */
+  /* 数据来源说明 + 需求爆发离场条件（全部自动，没有任何手动录入） */
   function entryHtml(IS) {
-    const m = OPT.man, ageM = m.d ? ruDaysBetween(m.d, todayBJ()) : null;
-    const sel = [['', '没判断'], ['stop', '还在停割'], ['trial', '部分产区试割'], ['ok', '正常开割'], ['delay', '延迟开割（干旱/洪涝）']].map(x => '<option value="' + x[0] + '"' + (m.st === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
-    const staleTxt = IS.n ? (IS.stale ? IS.stale + ' 项指标已过期（周数据>10天、月数据>45天没更新）' : '指标数据都是新的') : '指标还没有数据';
-    return '<details class="ruent" id="ruEnt"><summary>手动判断（开割进度/需求） <small class="dim">（' + esc(staleTxt) + '）</small></summary><div class="entb">'
-      + '<div class="ruin"><label>开割进度<select id="ruMs">' + sel + '</select></label><label>备注（哪个产区、什么情况）<input id="ruMn" value="' + esc(m.note) + '"></label></div>'
-      + '<label class="ruck"><input type="checkbox" id="ruMd"' + (m.demand ? ' checked' : '') + '> 需求超预期强劲回升（你判断轮胎产能利用率明显高于预期）→ 暂缓做空；持仓则考虑离场</label>'
-      + '<p class="dim">开割进度选「延迟开割」或勾「需求超预期走强」，和天气严重异常一样会拦住新的做空、并提示持仓离场。只记在这台设备上。' + (ageM != null ? '录入于 ' + esc(m.d) + '（' + ago(ageM) + '）。' : '') + '</p>'
-      + '<details class="ruabout"><summary>数据来源（隆众/Mysteel 固定标题，自动抓取）</summary><ul class="rurm"><li>库存：「中国天然橡胶社会库存周数据分析」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>产能利用率：「中国轮胎产能利用率周数据统计」（全钢胎/半钢胎）</li><li>产量：「全球天然橡胶产量月数据统计」（ANRPC预测）</li><li>进口：「中国天然橡胶进口量月数据统计」（海关终值，预估已剔除）</li></ul></details></div></details>';
+    const DS = ruDemandSurge(indAll(), todayBJ());
+    return '<details class="ruabout"><summary>数据来源与自动离场条件（点开）</summary><ul class="rurm"><li><b>需求爆发（自动，会拦做空/提示持仓离场）</b>：3月15日之后的统计周，全钢胎产能利用率 ≥' + RUSURGE.LEVEL + '% 且较上周上升、同比 ≥+' + RUSURGE.YOY + ' 个点，三条同时满足。当前：' + esc(DS.text) + '</li><li>库存：「中国天然橡胶社会库存周数据分析」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>产能利用率：「中国轮胎产能利用率周数据统计」（全钢胎/半钢胎）</li><li>产量：「全球天然橡胶产量月数据统计」（ANRPC预测）</li><li>进口：「中国天然橡胶进口量月数据统计」（海关终值，预估已剔除）</li></ul></details>';
   }
   /* 价格图：近N个交易日收盘（按最近真实价换算）+ MA5 + 历年3月窗口底色 + 挂单价/止损线 */
   function chartHtml(P, W, H) {
@@ -3599,10 +3603,10 @@ function ruIndSummary(ind, today) {
   function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = W < 520 ? 230 : 260; el.innerHTML = chartHtml(planNow(), W, H); }
   function sigHtml(P, IS, eqLots) {
     const tone = { go: 'short', exit: 'wait', holdwx: 'wait', hold: 'short', blocked: 'wait', wait: 'wait', pre: 'wait', sleep: 'wait', stale: 'wait', done: 'wait' }[P.st] || 'wait', cls = P.st === 'stale' ? 'gate' : tone;
-    const wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
+    const DS = ruDemandSurge(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
     const chips = chip(P.inMar ? true : null, P.inMar ? '3月窗口' : '不在3月窗口') + (P.inMar || P.pre ? chip(P.reb, '收盘≥MA5（反弹）' + (P.ma ? ' ' + f0(P.ma) : '')) : '')
       + (wv ? chip(wxOk, wv.level === 'block' ? '天气：暂缓' : wv.level === 'warn' ? '天气：轻度异常' : wv.level === 'ok' ? '天气正常' : '天气未取到', wv.text) : '')
-      + chip(OPT.man.st === 'delay' ? false : OPT.man.st ? true : null, OPT.man.st ? ({ stop: '还在停割', trial: '部分试割', ok: '正常开割', delay: '延迟开割' })[OPT.man.st] : '开割进度未判断') + chip(OPT.man.demand ? false : null, OPT.man.demand ? '需求超预期强（手动）' : '需求未标记走强')
+      + chip(DS.on ? false : DS.last ? null : null, DS.on ? '需求爆发（自动）' : '需求未爆发', DS.text)
       + '<span class="sc sep">止损 ' + RUP.STOP + '% · 月底平仓 · 不设止盈</span>';
     const sizeLn = P.order && eqLots && eqLots.lots >= 1 ? '<div class="sb">建议总共 <b>' + eqLots.lots + ' 手</b>（止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.loss / OPT.eq * 100).toFixed(1) + '%）' + (eqLots.lots >= 2 ? '，可分2批：先一半，次日再反弹再加' : '') + '</div>' : '';
     const left = '<button class="sg ' + cls + '" data-ru="goplan" aria-label="橡胶入场信号：' + esc(P.head) + '"><div class="cl">橡胶 RU · 3月季节性做空 · 最近收盘（' + esc(P.last.slice(5)) + '）' + (P.real ? ' ' + f0(P.real) : '') + '</div><div class="hd">' + esc(P.head) + '</div><div class="sb">' + esc(P.sub) + '</div>' + sizeLn + '<div class="scs">' + chips + '</div></button>';
@@ -3665,7 +3669,7 @@ function ruIndSummary(ind, today) {
   }
 
   function aboutHtml() {
-    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有「延迟开割」「需求超预期走强」两个手动判断和天气严重异常会拦住信号</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
+    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有天气严重异常和“需求爆发”（3/15后全钢胎产能利用率≥75%、周升、同比≥+8点，自动判断）会拦住信号</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
   }
 
   function overviewHtml() {
@@ -3677,7 +3681,6 @@ function ruIndSummary(ind, today) {
     const P = planNow(), ru = '<div class="ov-c" data-v="ru"><h4>橡胶 RU · 仅3月做空</h4><div class="hd">' + esc(P.head) + '</div><p class="dim">' + esc(P.sub) + '　点此进入橡胶页</p></div>';
     return '<div class="ovg">' + meal + ru + '</div><p class="dim ovn">组合思路：每个品种只在自己有逻辑的窗口里做，互不重叠，分散风险。目前接入：豆粕（全年）、橡胶（3月）。新品种要先有因果逻辑，再回测，再接入。</p>';
   }
-  let ENT_OPEN = false;
   function paint() {
     const app = $('#ruApp'); if (!app) return;
     try { const ae = document.activeElement; if (ae && app.contains(ae) && ae.blur) ae.blur(); } catch (_) {}   // 先让输入框失焦（触发它的 change），再重画，避免重画过程中 blur 嵌套
@@ -3685,10 +3688,9 @@ function ruIndSummary(ind, today) {
     document.querySelectorAll('#vSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === VIEW)));
     if (VIEW === 'meal') { app.innerHTML = ''; return; }
     app.innerHTML = VIEW === 'all' ? '<div class="ruin2">' + overviewHtml() + '</div>' : ruHtml();
-    if (VIEW === 'ru') { const e = document.getElementById('ruEnt'); if (e && ENT_OPEN) e.open = true; drawChart(); }
+    if (VIEW === 'ru') drawChart();
   }
   function setView(v) { VIEW = v; lsSet('fut-view', v); if (v !== 'meal' && !WX.rs && !WX.busy) loadWx().then(paint); paint(); try { window.scrollTo(0, 0); const a = $('#ruApp'); if (a) a.scrollTop = 0; } catch (_) {} if (v === 'meal') { try { window.dispatchEvent(new Event('resize')); } catch (_) {} } }
-  document.addEventListener('toggle', e => { if (e.target && e.target.id === 'ruEnt') ENT_OPEN = e.target.open; }, true);
   window.addEventListener('resize', () => { if (VIEW === 'ru') drawChart(); });
   document.addEventListener('click', e => {
     const b = e.target.closest('#vSeg button'); if (b) return setView(b.dataset.v);
@@ -3703,17 +3705,12 @@ function ruIndSummary(ind, today) {
     if (a === 'close') { OPT.pos = null; lsSet('ru-pos', null); paint(); }
     if (a === 'open') { const d = ($('#ruPd').value || todayBJ()).trim(), px = +$('#ruPp').value, lots = +$('#ruPl').value; if (!(px > 0)) return; const pc = ($('#ruPc').value || '').trim().toUpperCase() || (planNow().dom || ''); OPT.pos = { d, px, lots: lots > 0 ? lots : null, contract: pc }; lsSet('ru-pos', OPT.pos); paint(); }
   });
-  function alert_(msg) { const e = document.getElementById('ruEnt'); if (!e) return; let n = e.querySelector('.ruerr'); if (!n) { n = document.createElement('div'); n.className = 'ruwx warn ruerr'; e.querySelector('.entb').prepend(n); } n.textContent = msg; }   // 不用 window.alert（会卡住页面）
   document.addEventListener('change', e => {
     const id = e.target && e.target.id;
-    if (id === 'ruMs' || id === 'ruMn' || id === 'ruMd') {
-      const g = k => { const x = $('#' + k); return x ? (x.type === 'checkbox' ? x.checked : x.value.trim()) : ''; };
-      OPT.man = Object.assign({}, OPT.man, { st: g('ruMs'), note: g('ruMn').slice(0, 80), demand: !!g('ruMd'), d: todayBJ() }); lsSet('ru-man', OPT.man); ENT_OPEN = true; return paint();
-    }
     const m = { ruEq: ['eq', 'ru-eq'], ruRisk: ['risk', 'ru-risk'], ruMg: ['margin', 'ru-margin'] }[e.target && e.target.id]; if (!m) return;
     const v = +e.target.value; if (!(v > 0)) return; OPT[m[0]] = v; lsSet(m[1], v); paint();
   });
-  window.__ru = { plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow };
+  window.__ru = { surge: () => ruDemandSurge(indAll(), todayBJ()), plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow };
   Promise.all([loadLive(), loadAuto()]).then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
   paint();
 })();

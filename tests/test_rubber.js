@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -47,11 +47,16 @@ eq('4月还拿着 → 平仓', P.ruPlan(S3, '2027-04-08', null, posd).st, 'exit'
 // ---- 手动录入、合约、换合约、止损后不再开
 const S4 = mk('2027-02-22', [200, 199, 198, 197, 196, 195, 194, 193, 197]); S4.m = S4.d.map(() => '2705'); const L4 = S4.d[S4.d.length - 1], okw = { level: 'ok', text: '' };
 eq('出信号时带上当前主力合约', P.ruPlan(S4, L4, okw, null, {}).order.contract, 'RU2705'); eq('3月05合约代码', P.ruPlan(S4, L4, okw, null, {}).mar05, 'RU2705'); eq('3月09合约代码', P.ruPlan(S4, L4, okw, null, {}).mar09, 'RU2709');
-eq('手动：延迟开割 → 暂缓', P.ruPlan(S4, L4, okw, null, { st: 'delay' }).st, 'blocked'); eq('手动：需求走强 → 暂缓', P.ruPlan(S4, L4, okw, null, { demand: true }).st, 'blocked');
-eq('手动：正常开割 → 不拦', P.ruPlan(S4, L4, okw, null, { st: 'ok' }).st, 'go'); eq('手动：停割中 → 不拦', P.ruPlan(S4, L4, okw, null, { st: 'stop' }).st, 'go');
-eq('持仓+需求走强 → 考虑离场', P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { demand: true }).st, 'holdwx');
-eq('持仓+延迟开割 → 考虑离场', P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { st: 'delay' }).st, 'holdwx');
-eq('拦截原因写在 bad 里', P.ruPlan(S4, L4, okw, null, { st: 'delay', demand: true }).bad.length, 2);
+eq('自动：需求爆发 → 暂缓', P.ruPlan(S4, L4, okw, null, { surge: { on: true, text: '需求意外爆发' } }).st, 'blocked'); eq('自动：未触发 → 不拦', P.ruPlan(S4, L4, okw, null, { surge: { on: false } }).st, 'go');
+eq('持仓+需求爆发 → 考虑离场', P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { surge: { on: true, text: '需求意外爆发' } }).st, 'holdwx');
+eq('拦截原因写在 bad 里', P.ruPlan(S4, L4, okw, null, { surge: { on: true, text: '需求意外爆发' } }).bad.length, 1);
+const SGok = { qg: [{ d: '2027-03-14', v: 60 }, { d: '2027-03-21', v: 76 }], qgY: [{ d: '2027-03-21', v: 9 }] };
+eq('需求爆发：3/15后+≥75%+周升+同比≥8 → 触发', P.ruDemandSurge(SGok, '2027-03-24').on, true);
+eq('需求爆发：统计周在3/15前 → 不触发', P.ruDemandSurge({ qg: [{ d: '2027-03-07', v: 60 }, { d: '2027-03-14', v: 80 }], qgY: [{ d: '2027-03-14', v: 12 }] }, '2027-03-17').on, false);
+eq('需求爆发：水位74.9 → 不触发', P.ruDemandSurge({ qg: [{ d: '2027-03-14', v: 60 }, { d: '2027-03-21', v: 74.9 }], qgY: [{ d: '2027-03-21', v: 12 }] }, '2027-03-24').on, false);
+eq('需求爆发：同比7.9 → 不触发', P.ruDemandSurge({ qg: [{ d: '2027-03-14', v: 60 }, { d: '2027-03-21', v: 80 }], qgY: [{ d: '2027-03-21', v: 7.9 }] }, '2027-03-24').on, false);
+eq('需求爆发：没升反降(80→78) → 不触发', P.ruDemandSurge({ qg: [{ d: '2027-03-14', v: 80 }, { d: '2027-03-21', v: 78 }], qgY: [{ d: '2027-03-21', v: 12 }] }, '2027-03-24').on, false);
+eq('需求爆发：去年的数据 → 不触发；无数据不报错', [P.ruDemandSurge(SGok, '2028-03-24').on, P.ruDemandSurge({}, '2027-03-24').on], [false, false]);
 const S5 = mk('2027-03-10', [197, 197]); S5.m = ['2709', '2709'];
 eq('主力换到09、持仓在05 → roll提示', P.ruPlan(S5, S5.d[1], okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, {}).roll, true);
 eq('持仓合约=主力 → 无roll提示', P.ruPlan(S5, S5.d[1], okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2709' }, {}).roll, false);
