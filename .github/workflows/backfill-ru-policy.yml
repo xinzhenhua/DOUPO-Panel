@@ -8,6 +8,9 @@ on:
       days:
         description: "回看天数（默认 400）"
         default: "400"
+      end_date:
+        description: "可选：窗口截止日 YYYY-MM-DD，做定点回看（如 end=2016-04-30、days=90 看 2016 年 3 月三国限出口；留空=到今天）"
+        default: ""
 
 permissions:
   contents: write
@@ -29,7 +32,11 @@ jobs:
       - name: 回看
         env:
           DAYS: ${{ github.event.inputs.days }}
-        run: python3 ru_policy.py --days "${DAYS:-400}" --out /tmp/ru_policy_backfill.json
+          END: ${{ github.event.inputs.end_date }}
+        run: |
+          ARGS="--days ${DAYS:-400} --out /tmp/ru_policy_backfill.json"
+          if [ -n "$END" ]; then ARGS="$ARGS --end $END"; fi
+          python3 ru_policy.py $ARGS
       - name: 当前预警（近14天）
         run: python3 ru_policy.py
       - name: 提交
