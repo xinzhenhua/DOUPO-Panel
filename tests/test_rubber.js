@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {ruPolicyAlert,ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {ruResonance,ruPolicyAlert,ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -131,4 +131,10 @@ eq('政策突袭：近10天命中 → on', P.ruPolicyAlert(PO, '2027-03-15', nul
 eq('政策突袭：持仓只看开仓日之后(开仓3/13，命中3/12 → off)', P.ruPolicyAlert(PO, '2027-03-15', '2027-03-13').on, false); eq('政策突袭：持仓开仓3/10 → on', P.ruPolicyAlert(PO, '2027-03-15', '2027-03-10').on, true);
 eq('政策突袭：无文件不报错', P.ruPolicyAlert(null, '2027-03-15', null).on, false);
 eq('政策命中 → 暂缓做空；持仓 → 考虑离场', [P.ruPlan(S4, L4, okw, null, { policy: { on: true, text: 'x' } }).st, P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { policy: { on: true, text: 'x' } }).st], ['blocked', 'holdwx']);
+const R0 = '2027-03-10', RS_ = (py, q, b, pd = '2027-02-05') => ({ prodY: [{ d: pd, v: py }], qgY: [{ d: '2027-03-01', v: q[0] }, { d: '2027-03-08', v: q[1] }], bgY: [{ d: '2027-03-01', v: b[0] }, { d: '2027-03-08', v: b[1] }] });
+eq('共振：产量-4%、两种轮胎两周同比都≥3 → on', P.ruResonance(RS_(-4, [5, 6], [4, 3]), R0).on, true);
+eq('共振：产量不低(+1%) → off', P.ruResonance(RS_(1, [5, 6], [4, 3]), R0).on, false); eq('共振：半钢一周只有2.9 → off', P.ruResonance(RS_(-4, [5, 6], [2.9, 3]), R0).on, false);
+eq('共振：产量数据过期(>75天) → off', P.ruResonance(RS_(-4, [5, 6], [4, 3], '2026-11-01'), R0).on, false); eq('共振：无数据不报错', P.ruResonance({}, R0).on, false);
+eq('共振：低产成立但需求弱 → low真strong假', [P.ruResonance(RS_(-4, [-5, -6], [-4, -3]), R0).low, P.ruResonance(RS_(-4, [-5, -6], [-4, -3]), R0).strong], [true, false]);
+eq('共振命中 → 暂缓做空；持仓 → 考虑离场', [P.ruPlan(S4, L4, okw, null, { reson: { on: true, text: 'x' } }).st, P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { reson: { on: true, text: 'x' } }).st], ['blocked', 'holdwx']);
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);
