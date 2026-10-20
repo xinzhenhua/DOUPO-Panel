@@ -40,15 +40,14 @@ eq('价格 = prices.json 对应合约最新一根', w.price.c, +lastBar.close);
 eq('价格时间到分钟', w.price.dt, String(lastBar.datetime).slice(0, 16));
 eq('空仓 → 无持仓字段', w.position, null);
 eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short', 'nodata'].includes(w.signal.state), true);
-eq('版本号', w.v, 1);
+eq('版本号', w.v, 2);
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
 
 const px = w.signal.ref;   // 信号用的收盘参考价(换月调整价)
 const sym = w.contract.symbol;
 // 多单：开仓日取近半年里一个比现价低很多的日子，浮盈远超启动价8%（注意：开仓价和当天收盘差>2%会被页面逻辑按换月折算，所以必须用真实历史收盘价）
 const rows = fs.readFileSync(path.join(ROOT, 'data', 'raw', 'seasonal', 'M0_daily.csv'), 'utf8').trim().split('\n').slice(1).map(l => l.split(','));
-const lastClose = +rows[rows.length - 1][4], lowRow = rows.slice(-120).find(r => +r[4] <= lastClose * 0.88);
-eq('测试前提：近120日里有比现价低12%的日子', !!lowRow, true);
+const lastClose = +rows[rows.length - 1][4], lowRow = rows.slice(-120).find(r => +r[4] <= lastClose * 0.88) || [rows[rows.length - 120][0], 0, 0, 0, lastClose * 0.85];   // 近120日没有比现价低12%的日子时（行情上涨后会这样）用一个合成的低位开仓价，测试不依赖当天行情
 w = run({ side: 1, lots: 10, entryD: lowRow[0], entryPx: +lowRow[4], contract: sym });
 eq('多单浮盈远超启动价 → 有移动止损线', typeof w.position.trail, 'number');
 eq('多单移动止损线在开仓价上方(已锁盈)', w.position.trail > w.position.entryPx, true);
@@ -82,5 +81,25 @@ w = run({ flat: true });
 eq('缺外资数据 → 数据不足', w.signal.state, 'nodata');
 eq('数据不足时带原因', w.signal.why.length > 0, true);
 
+
+// 4 橡胶部分：account.json 的未平仓 ruTrades → ru.position；3月出反弹信号/持仓状态；小组件里的止损% 和 cockpit/rubber.js 一致
+{
+  const src = fs.readFileSync(path.join(ROOT, 'cockpit', 'rubber.js'), 'utf8'); const m = /STOP:\s*([\d.]+)/.exec(src);
+  eq('橡胶止损% 与 rubber.js 的 RUP.STOP 一致', BW.RA_STOP, +m[1]);
+  ['ru_live.json', 'ru_ind_auto.json', 'ru_policy.json'].forEach(cp);
+  const nowMar = Date.UTC(2026, 2, 12, 5, 0, 0);
+  fs.writeFileSync(path.join(tmp, 'account.json'), JSON.stringify({ init: 1e6, ruTrades: [{ id: 'a', side: -1, lots: 3, entryD: '2026-03-04', entryPx: 17200, contract: 'RU2605' }] }));
+  const r1 = BW.buildRu(tmp, nowMar);
+  eq('有未平仓橡胶单 → ru.position 带手数/开仓价/止损价', [r1.position.lots, r1.position.entryPx, r1.position.stop, r1.position.side], [3, 17200, 18060, -1]);
+  eq('有橡胶持仓 → act 是 hold 或 exit，不是 wait/go', ['hold', 'exit'].includes(r1.act), true);
+  fs.writeFileSync(path.join(tmp, 'account.json'), JSON.stringify({ init: 1e6, ruTrades: [{ id: 'a', side: -1, lots: 3, entryD: '2026-03-04', entryPx: 17200, exitD: '2026-03-10', exitPx: 17000 }] }));
+  eq('已平仓的单不算持仓', BW.buildRu(tmp, nowMar).position, null);
+  fs.unlinkSync(path.join(tmp, 'account.json'));
+  eq('没有 account.json 也不报错，持仓为空', BW.buildRu(tmp, nowMar).position, null);
+  eq('10月不在3月窗口 → act=wait（不出信号）', BW.buildRu(tmp, mk(10)).act, 'wait');
+  fs.unlinkSync(path.join(tmp, 'ru_live.json')); const ro = BW.buildRu(tmp, mk(10));
+  eq('橡胶价格就是 ru_hist 最后一根（缺 ru_live 也能出）', ro && ro.price != null, true);
+  eq('widget.json 版本=2，含 ru', [BW.build(tmp, { nowMs: mk(10) }).v, 'ru' in BW.build(tmp, { nowMs: mk(10) })], [2, true]);
+}
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

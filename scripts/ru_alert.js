@@ -64,4 +64,9 @@ async function main(argv) {
   console.error(`[橡胶提醒] ${today} · 价格日 ${out.priceDate} · ${out.plan.st} · 事件 ${out.events.length}`);
 }
 if (require.main === module) main(process.argv.slice(2));
-module.exports = { compute, loadSeries };
+/* 小组件用：只要 ruPlan 的结果（可带持仓 pos={px,contract}）。天气拿不到就当未知，不拦单（天气拦单以驾驶舱页面为准） */
+function plan(S, today, pos, ind, pol) {
+  const wx = null;
+  return P.ruPlan(S, today, wx, pos || null, { surge: P.ruDemandSurge(ind || {}, today), policy: P.ruPolicyAlert(pol || {}, today, pos ? pos.d : null), reson: P.ruResonance(ind || {}, today) });
+}
+module.exports = { compute, loadSeries, plan };

@@ -7,6 +7,7 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const PA = require('./plan_alert.js');
+const RA = require('./ru_alert.js');
 
 const readJson = p => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; } };
 const bj = ms => new Date(ms + 8 * 3600e3);
@@ -72,7 +73,7 @@ function build(dataDir, opts) {
 
   const why = A.gate.ok ? PA.loadPlan().planWhy(A.sig) : (A.gate.reasons || []).join('；');
   return {
-    v: 1,
+    v: 2,
     updatedAt: new Date(nowMs).toISOString(),
     contract: { key, name: NAME[key], symbol: pc.symbol || null },
     price: lb ? { c: +lb.close, dt: String(lb.datetime).slice(0, 16), prev } : null,
@@ -80,9 +81,30 @@ function build(dataDir, opts) {
               stop: A.side !== 0 && A.px != null ? Math.round(A.px * (1 - A.side * TP.STOP / 100)) : null,
               pct: A.sig.pct == null ? null : Math.round(A.sig.pct), fsum: A.fsum, delev: !!A.sig.delev,
               gateOk: A.gate.ok },
-    position: pos
+    position: pos,
+    ru: opts.noRu ? null : buildRu(dataDir, nowMs)
   };
 }
+
+/* 橡胶：价格取 ru_live.json 最后两根收盘；持仓取 account.json 里没平仓的 ruTrades；状态来自 cockpit/rubber.js 的 ruPlan（和页面同一份）。
+ * 天气拦单只在驾驶舱页面里判断（小组件每5分钟生成，不去取天气），所以这里「做空信号」不含天气这一条。 */
+function buildRu(dataDir, nowMs) {
+  const S = RA.loadSeries(dataDir); if (!S) return null;
+  const today = bj(nowMs).toISOString().slice(0, 10), n = S.d.length;
+  const acct = readJson(path.join(dataDir, 'account.json')) || {}, t = (acct.ruTrades || []).find(x => x && !x.exitD) || null;
+  const pos = t ? { px: +t.entryPx, lots: +t.lots, d: t.entryD, contract: t.contract || '' } : null;
+  const ind = readJson(path.join(dataDir, 'ru_ind_auto.json'), {}), pol = readJson(path.join(dataDir, 'ru_policy.json'), {});
+  const pl = RA.plan(S, today, pos, ind, pol), real = S.r[n - 1] != null ? S.r[n - 1] : null, prev = n > 1 && S.r[n - 2] != null ? S.r[n - 2] : null;
+  const dom = pl.dom || null;
+  const act = pl.st === 'go' ? 'go' : pl.st === 'exit' || pl.st === 'holdwx' ? 'exit' : pl.pos ? 'hold' : 'wait';
+  return {
+    symbol: dom, price: real == null ? null : { c: real, prev, d: S.d[n - 1] },
+    state: pl.st, act, head: pl.head, sub: pl.sub,
+    order: pl.order ? { lim: pl.order.lim, stop: pl.order.stop } : null,
+    position: pos ? { side: -1, lots: pos.lots, entryPx: pos.px, entryD: pos.d, contract: pos.contract || null, r: pl.pos && pl.pos.r != null ? +pl.pos.r.toFixed(2) : null, stop: Math.round(pos.px * (1 + RA_STOP / 100)), action: act === 'exit' ? '该平' : '持有' } : null
+  };
+}
+const RA_STOP = 5;   // = cockpit/rubber.js RUP.STOP；test_build_widget 里有一条断言核对两处一致
 
 function main(argv) {
   const a = {}; for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) a[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true;
@@ -92,4 +114,4 @@ function main(argv) {
   console.error(`[小组件] ${o.contract.symbol} ${o.price ? o.price.c : '—'} · ${o.signal.label} · ${out}`);
 }
 if (require.main === module) main(process.argv.slice(2));
-module.exports = { build, autoKey, prevCloseOf };
+module.exports = { build, autoKey, prevCloseOf, buildRu, RA_STOP };
