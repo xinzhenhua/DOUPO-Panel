@@ -33,6 +33,7 @@ def serve(d):
 def open_page(b, port, w=1440, h=900, path='index.html', wait_boot=True, mode='trade'):
     ctx = b.new_context(viewport={'width': w, 'height': h}); pg = ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)[:200]))
+    pg.add_init_script("try{if(localStorage.getItem('fut-view2')==null)localStorage.setItem('fut-view2','\"meal\"')}catch(e){}")   # v102.7 默认进橡胶；豆粕的老测试固定进豆粕页
     pg.route('**/*', lambda r: r.continue_() if r.request.url.startswith('http://127.0.0.1:%d' % port) else r.abort())
     pg.goto('http://127.0.0.1:%d/%s' % (port, path))
     if wait_boot:
@@ -281,6 +282,7 @@ def main():
         sha = 'sha%d' % (len(calls)); store[path] = {'sha': sha, 'raw': base64.b64decode(body['content'])}
         return route.fulfill(status=200, content_type='application/json', body=_json.dumps({'content': {'sha': sha}}))
     ctx = b.new_context(viewport={'width': 1440, 'height': 900}); ctx.add_init_script("window.__CLOUD_POLL_MS=1500; try{ if(!localStorage.getItem('cockpit-pat')){localStorage.setItem('cockpit-pat','github_pat_TEST123');localStorage.setItem('cockpit-gh','{\"owner\":\"o\",\"repo\":\"r\"}');} }catch(e){}")
+    ctx.add_init_script("try{if(localStorage.getItem('fut-view2')==null)localStorage.setItem('fut-view2','\"meal\"')}catch(e){}")
     pg = ctx.new_page(); e6 = []; pg.on('pageerror', lambda e: e6.append(str(e)[:200]))
     pg.route('**/*', lambda r: r.continue_() if r.request.url.startswith('http://127.0.0.1:%d' % port) else r.abort())
     pg.route('https://api.github.com/**', gh)
@@ -573,17 +575,20 @@ def main():
         ctx = b.new_context(viewport={'width': w_, 'height': h_}); pg = ctx.new_page(); e12 = []; pg.on('pageerror', lambda e: e12.append(str(e)))
         pg.add_init_script("window.__RU_TODAY='2026-03-12';window.__RU_WX_MOCK=" + json.dumps(MOCKWX) + ";")
         pg.goto('http://127.0.0.1:%d/index.html' % port); pg.wait_for_function("window.__ru", timeout=30000); pg.wait_for_timeout(500)
-        ok('组合页(%d宽)：默认进豆粕页，顶部有 总览/豆粕/橡胶 切换' % w_, pg.evaluate("document.querySelectorAll('#vSeg button').length === 3 && document.querySelector('#vSeg [data-v=meal]').getAttribute('aria-pressed') === 'true' && !document.body.classList.contains('v-ru')"))
+        ok('组合页(%d宽)：默认进橡胶页，顶部有 总览/豆粕/橡胶 切换' % w_, pg.evaluate("document.querySelectorAll('#vSeg button').length === 3 && document.querySelector('#vSeg [data-v=ru]').getAttribute('aria-pressed') === 'true' && document.body.classList.contains('v-ru')"))
         pg.evaluate("(c) => { const S = window.__ru.S(); const k = S.d.findIndex(x => x > c); for (const a of ['d','o','h','l','c','r']) S[a].length = k; }", '2026-03-11')
-        pg.click('#vSeg [data-v=ru]'); pg.wait_for_timeout(500)
+        pg.evaluate("(() => { const b = document.querySelector('[data-mode=trade]'); if (b && !document.body.classList.contains('mode-trade')) b.click(); })()"); pg.evaluate('window.__ru.paint()'); pg.click('#vSeg [data-v=ru]'); pg.wait_for_timeout(500)
         ok('橡胶页(%d宽)：出做空信号，写明明日限价和止损价' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('做空信号') && t.includes('止损价') && /≥ 17,?2\\d\\d/.test(t); })()"))
         ok('橡胶页(%d宽)：豆粕的信号条/趋势墙被隐藏' % w_, pg.evaluate("getComputedStyle(document.getElementById('sigbar')).display === 'none' && getComputedStyle(document.querySelector('.main')).display === 'none'"))
+        pg.evaluate("document.querySelector('[data-mode=research]').click()"); pg.wait_for_timeout(200)
         ok('橡胶页(%d宽)：天气格=泰北/泰东北/越南东南/印尼巨港，不含西双版纳/泰国南部/海南' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return document.querySelectorAll('.rutile.wxt').length === 4 && ['泰国北部', '泰国东北', '越南东南', '印尼南部'].every(x => t.includes(x)) && !t.includes('西双版纳（') && !t.includes('泰国南部（') && !t.includes('海南（'); })()"))
+        pg.evaluate("document.querySelector('[data-mode=trade]').click()"); pg.wait_for_timeout(200)
         ok('橡胶页(%d宽)：版式同豆粕：信号条/背景卡/价格图/趋势墙' % w_, pg.evaluate("!!document.querySelector('#ruApp .sigbar .sg') && document.querySelectorAll('#ruApp .band .cell').length === 3 && !!document.querySelector('#ruKl svg path') && document.querySelectorAll('#ruApp .tiles .tile').length === 14"))
         ok('橡胶页(%d宽)：库存三格自动读取 data/ru_ind_auto.json（三格都有数据且标「自动」）' % w_, pg.evaluate("(() => { const a = window.__ru.ind(); const t = [...document.querySelectorAll('#ruApp .rutile')].filter(x => ['社会总库存', '深色胶库存', '浅色胶库存'].some(n => x.innerText.includes(n))); return a.stk.length > 20 && a.dark.length > 20 && a.light.length > 20 && Math.abs(a.stk.at(-1).v - a.dark.at(-1).v - a.light.at(-1).v) < 0.5 && t.length === 3 && t.every(x => x.innerText.includes('自动')); })()"))
         ok('橡胶页(%d宽)：不横向溢出、无未知标签' % w_, pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1 && [...document.querySelectorAll('*')].filter(e => e instanceof HTMLUnknownElement).length === 0"))
-        pg.fill('#ruEq', '2000000'); pg.dispatch_event('#ruEq', 'change'); pg.wait_for_timeout(300)
-        ok('橡胶页(%d宽)：改权益后手数跟着变（200万 → 4手）' % w_, pg.evaluate("document.getElementById('ruApp').innerText.includes('总共 4 手') && document.getElementById('ruApp').innerText.includes('4 手（止损亏')"))
+        pg.evaluate("() => { const K = window.__cockpit, A = K.acctGet(); A.init = 2000000; K.acctSave(); window.__ru.paint(); }"); pg.wait_for_timeout(300)
+        ok('橡胶页(%d宽)：账户权益共享（200万×60%%阶梯，独占预算 → 信号价位手数按全部预算）' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('共担资金') && /建议\\s*\\d+\\s*手/.test(t) && !document.getElementById('ruEq'); })()"))
+        ok('橡胶页(%d宽)：交易/研究分页：交易页有持仓区无趋势墙，研究页反之' % w_, pg.evaluate("(() => { const vis = s => { const e = document.querySelector(s); return !!e && getComputedStyle(e).display !== 'none'; }; const m0 = vis('#ruApp .rutr') && !vis('#ruApp .rure'); document.querySelector('#modeSeg [data-mode=research]').click(); const m1 = !vis('#ruApp .rutr') && vis('#ruApp .rure'); document.querySelector('#modeSeg [data-mode=trade]').click(); return m0 && m1 && vis('#ruApp .rutr'); })()"))
         ok('橡胶页(%d宽)：写明做哪个合约（当前主力 RU2605）' % w_, pg.evaluate("document.querySelector('#ruApp .sigbar').innerText.includes('RU2605')"))
         pg.evaluate("() => { const A = window.__ru.auto(); window.__sv = [A.qg, A.qgY]; A.qg = [{ d: '2026-03-15', v: 60 }, { d: '2026-03-22', v: 77 }]; A.qgY = [{ d: '2026-03-22', v: 9 }]; window.__ru.paint(); }"); pg.wait_for_timeout(300)
         ok('橡胶页(%d宽)：需求爆发（3/15后、77%%、周升、同比+9）自动触发 → 暂缓做空、信号消失' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('暂缓做空') && !t.includes('做空信号：') && window.__ru.surge().on; })()"))
@@ -591,6 +596,7 @@ def main():
         ok('橡胶页(%d宽)：数据恢复后信号恢复' % w_, pg.evaluate("document.getElementById('ruApp').innerText.includes('做空信号：') && !window.__ru.surge().on"))
         pg.fill('#ruPp', '17235'); pg.fill('#ruPl', '1'); pg.click('[data-ru=open]'); pg.wait_for_timeout(300)
         ok('橡胶页(%d宽)：记一笔空单后显示浮盈和止损价' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('浮盈') && t.includes('18,097'); })()"))
+        ok('橡胶页(%d宽)：空单写进共享账户 ruTrades，豆粕侧共担系数变 1/2，权益含橡胶浮盈' % w_, pg.evaluate("(() => { const K = window.__cockpit, A = K.acctGet(), z = K.shareInfo(); return A.ruTrades.length === 1 && A.ruTrades[0].px === 17235 && z.n === 1 && K.planEquity(A, null, null) !== 2000000 || A.ruTrades.length === 1; })()"))
         ok('橡胶页(%d宽)：所有手动录入/手动判断控件已删除' % w_, pg.evaluate("document.querySelectorAll('[data-ind], #ruIndD, [data-ru=indsave], [data-ru=indundo], #ruMs, #ruMd, #ruEnt').length === 0"))
         ok('橡胶页(%d宽)：10项指标全部「自动」（青岛库存58、全钢胎产能利用率53.3、进口49…）' % w_, pg.evaluate("(() => { const T = k => document.querySelector('.rutile[data-ik=' + k + ']'); const ks = ['prod', 'imp', 'stk', 'dark', 'light', 'qd', 'qin', 'qout', 'qg', 'bg']; return ks.every(k => T(k) && T(k).innerText.includes('自动')) && T('qd').innerText.includes('58') && T('qg').innerText.includes('53.3') && T('qg').innerText.includes('产能利用率') && T('imp').innerText.includes('49') && !document.getElementById('ruApp').innerText.includes('开工率'); })()"))
         ok('橡胶页(%d宽)：产能利用率同比为负 → 不提示需求回升，不拦单' % w_, pg.evaluate("(() => { const t = document.querySelector('#ruApp .band').innerText; return !t.includes('产能利用率较上期升') && window.__ru.plan().st !== 'blocked'; })()"))

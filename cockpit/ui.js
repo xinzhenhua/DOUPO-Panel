@@ -205,7 +205,7 @@ function planSignals(cs, fsum, basis, opt) {   // basis：planBasis(...).v；不
 }
 /* mode='real'：手数按你填的实际保证金算（占用=你说的资金占比）；mode='bt'：按回测的10%保证金/名义杠杆算（保证金高于10%时实际占用会更高）*/
 function planSize(o) {
-  const E = o.equity, m = o.margin, px = o.price, side = o.side >= 0 ? 1 : -1, u = planTier(E), den = o.mode === 'bt' ? TPLAN.BT_MARGIN : m;
+  const E = o.equity, m = o.margin, px = o.price, side = o.side >= 0 ? 1 : -1, u = planTier(E) * (o.share > 0 && o.share <= 1 ? o.share : 1), den = o.mode === 'bt' ? TPLAN.BT_MARGIN : m;   // share：与其它品种共担时的份额（1/持仓品种数）
   const lots = Math.floor(E * u / (TPLAN.TON * px * den));
   if (!(lots >= 1)) return { u, lots: 0 };
   const L = lots * TPLAN.TON, notional = L * px, margin = notional * m;
@@ -289,10 +289,11 @@ function planHold(h, t) {
            last: h.c[n - 1] * k, lastD: h.d[n - 1], days: n - 1 - i0, k, scaled, covered: true };
 }
 /* 权益 = 初始资金 + 出入金 + 已平仓盈亏 + 持仓浮盈亏 − 全部手续费 */
-function planEquity(a, openLast) {
+function planEquity(a, openLast, ruLast) {   // ruLast：橡胶持仓的最新价（橡胶记在 a.ruTrades，和豆粕同一个账户、同一个权益）
   const per = +a.fee || 0; let realized = 0, floating = 0, fees = 0, flows = 0;
   (a.flows || []).forEach(f => { flows += +f.amt || 0; });
   (a.trades || []).forEach(t => { fees += planFee(t, per); if (t.exitD) realized += planPnl(t, t.exitPx); else floating += planPnl(t, openLast != null ? openLast : t.entryPx); });
+  (a.ruTrades || []).forEach(t => { fees += planFee(t, per); if (t.exitD) realized += planPnl(t, t.exitPx); else floating += planPnl(t, ruLast != null ? ruLast : t.entryPx); });
   return { init: +a.init || 0, flows, realized, floating, fees, equity: (+a.init || 0) + flows + realized + floating - fees };
 }
 function planStats(a) {
@@ -405,7 +406,7 @@ function monthAmpCalc(d, c, curMonth) {   // d: 日期数组(升序), c: 收盘�
 function planState() { let s = {}; try { s = JSON.parse(localStorage.getItem('cockpit-plan') || '{}') || {}; } catch (_) {} return s; }   // v101.25 旧版手填，只用来迁移
 let ACCT = null, PMSG = null;
 function acctNorm(a) {
-  a.flows = Array.isArray(a.flows) ? a.flows : []; a.trades = Array.isArray(a.trades) ? a.trades : [];
+  a.flows = Array.isArray(a.flows) ? a.flows : []; a.trades = Array.isArray(a.trades) ? a.trades : []; a.ruTrades = Array.isArray(a.ruTrades) ? a.ruTrades : [];
   if (!(+a.init >= 0)) a.init = 500000; if (!(+a.margin > 0 && +a.margin < 100)) a.margin = 10; if (!(+a.fee >= 0)) a.fee = 23; if (a.mode !== 'bt') a.mode = 'real';
   return a;
 }
@@ -454,6 +455,26 @@ function planOptToggle(k) {
   planOptSet(k, !planOptGet()[k]); renderSig(); try { planUpdate(true); } catch (_) {}
   const b = $('#shB'); if (b && b.querySelector('[data-opt]')) { const y = b.scrollTop; b.innerHTML = sigHelp(); b.scrollTop = y; }
 }
+/* ---- 橡胶（v102.7）：和豆粕同一个账户、同一个权益；总资金占比=阶梯占用，按持仓品种数均分（共担） ---- */
+function acctRuOpen() { return ((acctGet().ruTrades) || []).find(t => !t.exitD) || null; }
+function acctRuLast() { try { const l = window.__ru && window.__ru.lastReal && window.__ru.lastReal(); return l > 0 ? l : null; } catch (_) { return null; } }
+/* 共担明细：E=已实现权益；预算=E×阶梯占用；有几个品种持仓就均分；allot=按份额应持手数，diff>0 表示现持比份额多（可减） */
+function shareInfo() {
+  const A = acctGet(), s = planSnap(), E = s.base.equity, u = planTier(E), mr = A.margin / 100, den = A.mode === 'bt' ? TPLAN.BT_MARGIN : mr, soy = planOpen(A.trades), ru = acctRuOpen(), n = (soy ? 1 : 0) + (ru ? 1 : 0);
+  const it = (k, name, t, px) => { const lots = +t.lots || 0, margin = lots * TPLAN.TON * px * mr, allot = n ? Math.floor(E * u / n / (TPLAN.TON * px * den)) : 0; return { k, name, lots, px, margin, usage: E > 0 ? margin / E : 0, allot, diff: lots - allot, side: t.side }; };
+  const items = []; if (soy) items.push(it('M', '豆粕', soy, s.hold ? s.hold.last : soy.entryPx)); if (ru) items.push(it('RU', '橡胶', ru, acctRuLast() || ru.entryPx));
+  const used = items.reduce((a, x) => a + x.margin, 0);
+  return { E, u, budget: E * u, n, items, used, usedPct: E > 0 ? used / E : 0, share: n ? 1 / n : 1 };
+}
+function shareHtml() {
+  const z = shareInfo(); if (!(z.E > 0)) return '';
+  let h = `<div class="plt">共担资金（豆粕＋橡胶同一账户）</div><div class="hl">权益 <b>${fmtD(z.E)}</b> 元 × 阶梯占用 ${Math.round(z.u * 100)}% = 总保证金预算 <b>${fmtD(z.budget)}</b> 元；现占用 ${fmtD(z.used)} 元（${pc1(z.usedPct)}）。</div>`;
+  if (!z.n) return h + `<div class="plh">现在空仓。谁先出信号谁开：只有一个品种持仓时拿全部预算；第二个品种开仓时，两边各拿一半，已有的那个若超过一半，页面会提示可减几手。</div>`;
+  h += `<table class="tb3x tbpl"><thead><tr><th>品种</th><th>现持</th><th>占用保证金</th><th>占权益</th><th>按共担应持</th><th>差额</th></tr></thead><tbody>${z.items.map(x => `<tr><td>${x.name}${x.side > 0 ? '多' : '空'}</td><td class="n">${x.lots} 手</td><td class="n">${fmtD(x.margin)}</td><td class="n">${pc1(x.usage)}</td><td class="n">${x.allot} 手</td><td class="n" style="color:${x.diff > 0 ? 'var(--amber)' : 'var(--ink2)'}">${x.diff > 0 ? '多 ' + x.diff + ' 手，可减' : x.diff < 0 ? '少 ' + (-x.diff) + ' 手' : '正好'}</td></tr>`).join('')}</tbody></table>`;
+  if (z.n === 1) h += `<div class="plh">只有 ${z.items[0].name} 持仓，占用预算的 ${pc1(z.budget > 0 ? z.items[0].margin / z.budget : 0)}。另一个品种出信号时，它的建议手数按一半预算算。</div>`;
+  else h += `<div class="plh">两个品种同时持仓：各按一半预算。后开的那个已按一半算；先开的如果现持比应持多，是开仓时拿的全额，不强制，想降风险就减到应持手数。</div>`;
+  return h;
+}
 function planSnap() {
   const A = acctGet(), cs = planCloses(), F = planForeign(D.capital && D.capital.members), h = D.adj ? D.adj : D.hist && D.hist.d && D.hist.d.length ? D.hist : { d: [], c: [] };
   const hl = h.d.length ? h.d[h.d.length - 1] : ((C().kline || []).slice(-1)[0] || {}).d || null, B = planBasis(D.spotBasis, hl), O = planOptGet(), sig = planSignals(cs, F.min, B.v, { contangoShort: O.cs, fxLong: O.fx, fmax: F.max });
@@ -461,10 +482,10 @@ function planSnap() {
   const any = planOpen(A.trades), pos = curPos(), other = any && !pos ? any : null; let hold = null, mg = null, holdAny = null;
   if (any) { const hs = holdSeries(any), ho = planHold(hs.h, any), ma = hs.own ? (hs.h.c.length >= 20 ? hs.h.c.slice(-20).reduce((a, b) => a + b, 0) / 20 : null) : (sig.ma20 == null ? null : sig.ma20 * ho.k); holdAny = ho;
     if (pos) { hold = ho; mg = planManage({ side: pos.side, entry: pos.entryPx, peak: ho.peak, last: ho.last, ma20: ma, fsum: F.min, fall: F.sum }); } }
-  const E = planEquity(A, holdAny ? holdAny.last : null), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD) }, null);
+  const ruLast = acctRuLast(), E = planEquity(A, holdAny ? holdAny.last : null, ruLast), base = planEquity({ init: A.init, flows: A.flows, fee: A.fee, trades: A.trades.filter(t => t.exitD), ruTrades: (A.ruTrades || []).filter(t => t.exitD) }, null);
   const adjOn = !!D.adj, gate = planGate(F.used, hl, todayBJ(), { missing: F.missing, approx: F.approx, fD: F.lastD, adj: adjOn }), dl = planDataLine(gate, F.used, hl, F.lastD, adjOn, F.parts);
   const side = gate.ok ? (sig.longOK ? 1 : sig.shortOK ? -1 : 0) : 0;
-  const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode }) : null;
+  const size = !pos && side && base.equity > 0 ? planSize({ equity: base.equity, margin: A.margin / 100, price: px, side, mode: A.mode, share: 1 / (1 + (acctRuOpen() ? 1 : 0)) }) : null;   // 橡胶有持仓时，新开豆粕只拿一半份额
   return { A, cs, F, B, sig, px, pos, other, hold, mg, E, base, side, size, gate, dl };
 }
 /* 决策快照：开/平仓时存下当时的各面结论，以后用自己的实盘检验基本面有没有用 */
@@ -780,7 +801,7 @@ function planBodyHtml(s) {
   const E = s.E, st = planStats(A);
   h += `\u0001<div class="plt">账户权益（自动）${qb('placct')}</div><div class="hl"><b>${fmtD(E.equity)} 元</b>　<span style="color:var(--ink2)">= 初始 ${fmtD(E.init)} ${yuan(E.flows)}出入金 ${yuan(E.realized)}已平仓 ${yuan(E.floating)}持仓浮动 −${fmtD(E.fees)}手续费</span></div>
    <div class="plh">${st.n ? `已平仓 ${st.n} 笔，胜 ${st.wins} 笔（${(st.wins / st.n * 100).toFixed(0)}%），净盈亏 ${yuan(st.net)} 元（已扣手续费）。` : '还没有已平仓记录。'} 云端：<span class="cloudmsg">${esc(cloudShort())}</span></div>
-`;
+` + (acctRuOpen() ? shareHtml() : '');
   POPH.set = `<div class="pph">账户设置 · 出入金 · 对账校准<button class="xbtn" data-pop="x" aria-label="关闭">×</button></div><div class="plf">
     <label>初始资金（元）${inp('pf-init', A.init, '', 'data-set="init"')}</label>
     <label>期货公司保证金比例（%）${inp('pf-m', A.margin, '', 'data-set="margin"')}</label>
@@ -1566,9 +1587,9 @@ function syncDotUpdate() {   // 页面顶部：绿点=云端已同步，黄点=�
   d.title = has ? (m || '云端：已连接，等待同步') : '没填令牌：账只存在这台设备。点这里去填';
 }
 function cloudSet(m) { CLOUD.msg = m; $$('.cloudmsg').forEach(e => { e.textContent = cloudShort(); }); syncDotUpdate(); }
-function acctHasData(A) { return !!(A.trades.length || A.flows.length || +A.init !== 500000); }
+function acctHasData(A) { return !!(A.trades.length || (A.ruTrades || []).length || A.flows.length || +A.init !== 500000); }
 function adoptAcct(a, note) {
-  ACCT = acctNorm(a); acctSave(true); PMSG = null; planUpdate(true); renderSig(); drawChart(); cloudSet('已同步 ' + cloudT() + (note || ''));
+  ACCT = acctNorm(a); acctSave(true); PMSG = null; planUpdate(true); renderSig(); drawChart(); try { window.__ru && window.__ru.paint(); } catch (_) {} cloudSet('已同步 ' + cloudT() + (note || ''));
 }
 async function cloudFetch() {
   const r = await ghApi('GET', 'data/account.json');
@@ -1801,6 +1822,6 @@ function refreshed() {   // 后台重取数据后调用：不打断正在输入�
   if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); }
   else renderAll(false);
 }
-window.__cockpit = { curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+window.__cockpit = { shareInfo, shareHtml, acctGet, acctSave, planEquity, planTier, planUpdate, renderSig, drawChart, cloudShort, curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 

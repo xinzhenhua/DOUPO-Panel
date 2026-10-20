@@ -471,7 +471,7 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
 .ruapp{display:none}
 body.v-ru .app>:not(.bar):not(.ruapp),body.v-all .app>:not(.bar):not(.ruapp){display:none!important}
 body.v-ru .ruapp,body.v-all .ruapp{display:block;flex:1 1 auto;overflow:auto}
-body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .sess,body.v-all .sess,body.v-ru #syncDot,body.v-all #syncDot,body.v-ru .modes,body.v-all .modes,body.v-ru #flBtn,body.v-all #flBtn,body.v-ru #setBtn,body.v-all #setBtn,body.v-ru #planBtn,body.v-all #planBtn,body.v-ru #exBtn,body.v-all #exBtn,body.v-ru #abBtn,body.v-all #abBtn,body.v-ru .sync,body.v-all .sync{display:none!important}
+body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .sess,body.v-all .sess,body.v-all #syncDot,body.v-all .modes,body.v-ru #flBtn,body.v-all #flBtn,body.v-ru #setBtn,body.v-all #setBtn,body.v-ru #planBtn,body.v-all #planBtn,body.v-ru #exBtn,body.v-all #exBtn,body.v-ru #abBtn,body.v-all #abBtn,body.v-ru .sync,body.v-all .sync{display:none!important}
 .ruin2{max-width:900px;margin:0 auto;padding:18px 20px 60px}
 .ruin2 h2{font-size:16px;margin:26px 0 6px} .ruin2 h3{font-size:14px;font-weight:700;margin:22px 0 6px}
 .rusg{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:var(--surface)}
@@ -486,6 +486,15 @@ body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .ses
 .ovg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ov-c{border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;background:var(--surface)}.ov-c:hover{background:var(--focusS)}.ov-c h4{font-size:13px;color:var(--ink3);font-weight:500}.ov-c .hd{font-size:18px;font-weight:700;margin:4px 0}.ovn{margin-top:10px;font-size:12.5px}
 @media(max-width:700px){.ovg{grid-template-columns:1fr}.rutb thead{display:none}.rutb tr{display:block;border-bottom:1px solid var(--line2);padding:4px 0}.rutb td{display:block;border:0;padding:2px 8px}.rusg .hd{font-size:20px}.ruin input{width:100%}.ruin label{flex:1 1 40%}}
 
+
+/* v102.7 橡胶：交易/研究分页（和豆粕共用顶部的 交易/研究 切换）；手机文字不溢出 */
+body.v-ru.mode-trade .rure{display:none}
+body.v-ru.mode-research .rutr{display:none}
+.rutr{padding:6px 20px 28px;max-width:1100px}.rutr .rutp .rucheck{padding:0;margin:0 -2px 4px}
+.ruapp .cell.pv,.ruapp .cell.pv .sub{white-space:normal;text-align:left;overflow-wrap:anywhere}.ruapp .cell.pv{font-weight:400}
+.ruapp .rucheck{height:auto;flex-wrap:wrap;white-space:normal;gap:6px 18px;padding:8px 0;overflow:visible}.ruapp .ruci{white-space:normal}
+.ruapp .rutr table{width:100%}.ruapp .rutr .tb3x td,.ruapp .rutr .tb3x th{white-space:normal}
+@media(max-width:899px){.rutr{padding:6px 14px 28px}.ruapp .rutr .tbpl{font-size:12.5px}.ruapp .rucheck{padding:8px 0}}
 /* ===== 橡胶页：复用豆粕页的信号条/背景卡/价格图/趋势墙样式，下面只补差异 ===== */
 .ruapp .main{display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);flex:none;min-height:0}
 .ruapp .chart{overflow:visible}
