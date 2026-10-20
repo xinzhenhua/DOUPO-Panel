@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {ruIndMerge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -104,21 +104,21 @@ let r1w = P.ruRegionWx(f1, h1, wToday, yrs, 'wet'); eq('印尼(wet)：干旱+高
 eq('印尼单独严重不拦(非核心)', P.ruWxVerdict([{ core: true, sev: 0, n: 'a', msg: '正常' }, { core: false, sev: 2, n: '印尼', msg: '降雨严重偏多' }]).level, 'warn');
 eq('印尼严重+泰北注意 累计≥3 → 拦', P.ruWxVerdict([{ core: true, sev: 1, n: 'a', msg: 'x' }, { core: false, sev: 2, n: '印尼', msg: 'y' }]).level, 'block');
 // ---- 四类指标
-const T0 = '2027-03-10', I1 = { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 103 }], dark: [{ d: '2027-03-02', v: 50 }, { d: '2027-03-09', v: 47 }], qg: [{ d: '2027-03-02', v: 60 }, { d: '2027-03-09', v: 64 }], qin: [{ d: '2027-03-02', v: 8 }, { d: '2027-03-09', v: 14 }], qout: [{ d: '2027-03-02', v: 9 }, { d: '2027-03-09', v: 6 }], prod: [{ d: '2027-02-20', v: 38 }], prodY: [{ d: '2027-02-20', v: 4 }], imp: [{ d: '2027-02-20', v: 30 }], impY: [{ d: '2027-02-20', v: -8 }] };
+const T0 = '2027-03-10', I1 = { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 103 }], dark: [{ d: '2027-03-02', v: 50 }, { d: '2027-03-09', v: 47 }], qg: [{ d: '2027-03-02', v: 60 }, { d: '2027-03-09', v: 64 }], qgY: [{ d: '2027-03-09', v: 5 }], qin: [{ d: '2027-03-02', v: 1 }, { d: '2027-03-09', v: 14 }], qout: [{ d: '2027-03-02', v: 0.5 }, { d: '2027-03-09', v: -3 }], prod: [{ d: '2027-02-20', v: 38 }], prodY: [{ d: '2027-02-20', v: 4 }], imp: [{ d: '2027-02-20', v: 30 }], impY: [{ d: '2027-02-20', v: -8 }] };
 const S1 = P.ruIndSummary(I1, T0), by = S1.by;
-eq('社会库存+3% → 偏空(-1)', by.stk.m, -1); eq('深色胶-6% → 偏多(+1)', by.dark.m, 1); eq('全钢开工率+4点 → 偏多(+1)', by.qg.m, 1);
-eq('青岛入库率+6点 → 偏空(-1)', by.qin.m, -1); eq('青岛出库率-3点 → 偏空(-1)', by.qout.m, -1);
+eq('社会库存+3% → 偏空(-1)', by.stk.m, -1); eq('深色胶-6% → 偏多(+1)', by.dark.m, 1); eq('全钢产能利用率同比+5点 → 偏多(+1)', by.qg.m, 1);
+eq('青岛入库率周变化+14点 → 偏空(-1)', by.qin.m, -1); eq('青岛出库率周变化-3点 → 偏空(-1)', by.qout.m, -1);
 eq('产量同比+4% → 偏空(-1)', by.prod.m, -1); eq('进口同比-8% → 偏多(+1)', by.imp.m, 1);
-eq('没录入的指标 n=0 m=0', [by.light.n, by.light.m], [0, 0]); eq('录入项数', [S1.n, S1.tot], [7, 9]);
-eq('空4(库存/入库/出库/产量)、多3(深色/开工率/进口) → 中性', [S1.bear, S1.bull, S1.dir], [4, 3, '中性']);
-eq('深色胶去库≥3% → 提示警惕', S1.warns.some(w => /深色胶.*去库/.test(w)), true); eq('全钢开工率+4点≥3 → 提示需求回升', S1.warns.some(w => /全钢胎开工率.*升 4\.0/.test(w)), true);
+eq('没录入的指标 n=0 m=0', [by.light.n, by.light.m], [0, 0]); eq('录入项数', [S1.n, S1.tot], [7, 10]);
+eq('空4(库存/入库/出库/产量)、多3(深色/产能利用率/进口) → 中性', [S1.bear, S1.bull, S1.dir], [4, 3, '中性']);
+eq('深色胶去库≥3% → 提示警惕', S1.warns.some(w => /深色胶.*去库/.test(w)), true); eq('全钢产能利用率环比+4且同比+5 → 提示需求回升', S1.warns.some(w => /全钢胎产能利用率.*升 4\.0/.test(w)), true);
 eq('青岛入库大升出库走低 → 利空佐证', S1.goods.some(w => /青岛入库率/.test(w)), true);
 eq('不足3项 → 数据不足', P.ruIndSummary({ stk: I1.stk }, T0).dir, 'na');
 eq('周数据>10天没更新 → 过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), I1, '2027-03-25').stale, true); eq('月数据30天内不过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'prod'), I1, '2027-03-25').stale, false);
 eq('变化小于阈值 → 不明显(0)', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 100.5 }] }, T0).m, 0);
 eq('只录入一期 → 无较上期、含义0', P.ruIndTrend(P.RUIND.find(d => d.k === 'qg'), { qg: [{ d: '2027-03-09', v: 60 }] }, T0).m, 0);
 eq('偏空占优≥2 → 偏空', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qout: I1.qout }, T0).dir, '偏空');
-const MG = P.ruIndMerge({ stk: [{ d: '2026-10-04', v: 100 }, { d: '2026-10-11', v: 999 }], qg: [{ d: '2026-10-09', v: 60 }] }, { stk: [{ d: '2026-10-11', v: 110.4 }, { d: '2026-09-27', v: 109.6 }], dark: [{ d: '2026-10-11', v: 74.5 }] });
-eq('合并：同日以自动为准', MG.stk.find(p => p.d === '2026-10-11').v, 110.4); eq('合并：自动没有的日期保留手动并升序', MG.stk.map(p => p.d).join(), '2026-09-27,2026-10-04,2026-10-11');
-eq('合并：只有手动的指标原样保留', MG.qg.length, 1); eq('合并：只有自动的指标', MG.dark[0].v, 74.5); eq('合并：空输入', JSON.stringify(P.ruIndMerge(null, null)), '{}');
+const IQ = { qin: [{ d: '2027-03-02', v: 1 }, { d: '2027-03-09', v: 2 }, { d: '2027-03-16', v: 3 }, { d: '2027-03-23', v: 4 }] }; eq('chg模式：近4周累计', P.ruIndTrend(P.RUIND.find(d => d.k === 'qin'), IQ, '2027-03-24').d4, 10);
+eq('产能利用率：环比高但同比<3 → 不提示(国庆/春节环比失真)', P.ruIndSummary({ qg: [{ d: '2027-03-02', v: 40 }, { d: '2027-03-09', v: 60 }], qgY: [{ d: '2027-03-09', v: 1 }] }, T0).warns.length, 0);
+eq('指标个数=10且不含手动字段', [P.RUIND.length, P.RUIND.every(d => d.src)], [10, true]);
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);

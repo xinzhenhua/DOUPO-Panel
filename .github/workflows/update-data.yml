@@ -138,10 +138,10 @@ jobs:
         run: python3 fetch_ru.py
 
       # v102.2：橡胶社会库存/深色胶/浅色胶(隆众周报，列表→正文两步)。每天夜盘后一次（周报周二~周三出）；失败不影响其它步骤。
-      - name: 橡胶库存周报(v102.2)
+      - name: 橡胶指标周报月报(v102.3)
         if: ${{ github.event.schedule == '5 15 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.src != 'cron' || steps.bj.outputs.hh == '23')) }}
         continue-on-error: true
-        run: python3 ru_stock.py
+        run: python3 ru_ind.py
 
       # v102.0：橡胶3月提醒（准备期/窗口开始/做空信号/被天气拦住/最后交易日平仓）。独立的已发记录 data/ru_alert_state.json。
       - name: 橡胶提醒(v102.0)

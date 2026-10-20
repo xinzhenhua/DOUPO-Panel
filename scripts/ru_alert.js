@@ -1,5 +1,5 @@
 /* 橡胶3月做空提醒（v102.0）：输出和 plan_alert.js 同格式的 {priceDate,gate,side,events}，交给 notify_alert.py（独立 state：data/ru_alert_state.json）。
- * 规则/计划全部来自 cockpit/rubber.js 的纯函数（和页面同一份）。服务器不知道你的空单和手动录入，所以：
+ * 规则/计划全部来自 cockpit/rubber.js 的纯函数（和页面同一份）。服务器不知道你的空单和手动判断，所以：
  *   准备期(2/10) → 3/1窗口开始 → 出信号(挂单价/止损价) → 信号被天气拦住 → 天气转坏(持仓者考虑离场) → 3月最后交易日平仓提醒。
  * 用法：node scripts/ru_alert.js [--data data] [--out f] [--today YYYY-MM-DD] [--nowx] */
 const fs = require('fs'), path = require('path');

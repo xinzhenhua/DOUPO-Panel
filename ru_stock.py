@@ -152,11 +152,11 @@ def _headers():
     return {"token": "-1", "Origin": "https://search.mysteel.com", "Referer": "https://search.mysteel.com/fastcomment.html", "X-Requested-With": "XMLHttpRequest"}
 
 
-def search_window(start, end, fetch_json, page_size=20, max_pages=6):
+def search_window(start, end, fetch_json, page_size=20, max_pages=6, query=None):
     """一个时间窗口内的文章列表 [{title,url,publishTime,content}]；接口失败返回 (已拿到的, 原因)。"""
     items, why = [], None
     for page in range(1, max_pages + 1):
-        payload = {"query": QUERY, "startTime": start.strftime("%Y-%m-%d 00:00:00"), "endTime": end.strftime("%Y-%m-%d 23:59:59"),
+        payload = {"query": query or QUERY, "startTime": start.strftime("%Y-%m-%d 00:00:00"), "endTime": end.strftime("%Y-%m-%d 23:59:59"),
                    "sortType": "complex", "platform": "pc", "pageNo": page, "pageSize": page_size}
         data, dbg = fetch_json(SEARCH_URL, headers=_headers(), post_data=payload)
         if not isinstance(data, dict) or data.get("resultCode") != 0:

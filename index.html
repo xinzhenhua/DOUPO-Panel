@@ -3398,8 +3398,8 @@ function ruPlan(S, today, wx, pos, man) {
   const inMar = +today.slice(5, 7) === RUP.MON, pre = mmdd >= RUP.PRE_FROM && mmdd < '03-01', yE = ruLastWeekdayOfMarch(y);
   const dom = S.m && S.m[n - 1] ? 'RU' + S.m[n - 1] : null, yy = String(y).slice(2), bad = [];
   if (wx && wx.level === 'block') bad.push(wx.text);
-  if (man && man.st === 'delay') bad.push('手动录入：开割延迟（干旱/洪涝）');
-  if (man && man.demand) bad.push('手动录入：需求超预期走强（轮胎开工率回升）');
+  if (man && man.st === 'delay') bad.push('手动判断：开割延迟（干旱/洪涝）');
+  if (man && man.demand) bad.push('手动判断：需求超预期走强（轮胎产能利用率回升）');
   const o = { today, last: L, real, dom, bad, inMar, pre, exitD: yE, wx, st: 'sleep', head: '', sub: '', chips: [], order: null, mar05: 'RU' + yy + '05', mar09: 'RU' + yy + '09' };
   const nextWin = (mmdd >= '04-01' ? (y + 1) : y) + '-03-01'; o.nextWin = nextWin; o.daysTo = Math.round((new Date(nextWin + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5);
   const ma = ruMA(S.c, n - 1, RUP.MA), reb = ma != null && S.c[n - 1] >= ma; o.reb = reb; o.ma = ma != null && scale ? ma / scale : null;
@@ -3436,49 +3436,46 @@ function ruSize(eq, px, riskPct, margin) {
   const perLot = px * RUP.TON * RUP.STOP / 100, byRisk = Math.floor(eq * riskPct / 100 / perLot), byMargin = Math.floor(eq * RUP.USE_CAP / 100 / (px * RUP.TON * margin / 100));
   const lots = Math.max(0, Math.min(byRisk, byMargin)); return { lots, byRisk, byMargin, perLot, margin: lots * px * RUP.TON * margin / 100, loss: lots * perLot };
 }
-/* ---- 四类基本面指标（库存/开工率/产量/进口）：现在手动录入，每项一个时间序列 [{d,v}]；以后逐个接自动抓取，只替换数据来源，口径不变 ----
+/* ---- 基本面指标（库存/产能利用率/产量/进口/青岛）：全部由 Actions 自动抓取隆众周报/月报 → data/ru_ind_auto.json，页面只读，不能录入 ----
+ * 每项一个时间序列 [{d,v,(m)}]，d=统计日(周数据)或发布日(月数据，m=统计月份)。
  * m：对价格的含义，+1=偏多、−1=偏空、0=不明显（和豆粕趋势墙同一约定：库存上升对价格偏空）。阈值是常识性的提示线，没有历史回测，不单独拦单。
- * mode：pct=较上期变化%；pt=较上期变化(百分点)；lvl=看同比字段（产量/进口的同比%） */
+ * mode：pct=较上期变化%；chg=序列本身就是「较上周变化(百分点)」(青岛出入库率正文只给变化，不给水平)，另算4周累计；
+ *       lvl=看同比字段 y（产量/进口：累计同比%；轮胎产能利用率：同比百分点，dmode:'pt' 表示较上期也按百分点算） */
 const RUIND = [
-  { k: 'prod', n: '全球产量', u: '万吨', g: '供给', mode: 'lvl', y: 'prodY', thr: 2, sign: -1, freq: 'm', src: '隆众：[产量]全球天然橡胶产量月数据统计' },
-  { k: 'imp', n: '进口量', u: '万吨', g: '供给', mode: 'lvl', y: 'impY', thr: 5, sign: -1, freq: 'm', src: '隆众：[进出口]中国天然橡胶进口量月数据统计' },
-  { k: 'qin', n: '青岛入库率', u: '%', g: '供给', mode: 'pt', thr: 2, sign: -1, freq: 'w', src: '隆众：青岛地区天然橡胶样本库存和出入库率周数据' },
-  { k: 'qout', n: '青岛出库率', u: '%', g: '供给', mode: 'pt', thr: 2, sign: 1, freq: 'w', src: '同上' },
+  { k: 'prod', n: '全球产量', u: '万吨', g: '供给', mode: 'lvl', y: 'prodY', yu: '%', thr: 2, sign: -1, freq: 'm', src: '隆众：[产量]全球天然橡胶产量月数据统计（ANRPC预测，同比=累计同比）' },
+  { k: 'imp', n: '进口量', u: '万吨', g: '供给', mode: 'lvl', y: 'impY', yu: '%', thr: 5, sign: -1, freq: 'm', src: '隆众：[进出口]中国天然橡胶进口量月数据统计（海关终值，预估值已剔除；同比=累计同比）' },
   { k: 'stk', n: '社会总库存', u: '万吨', g: '库存', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '隆众：中国天然橡胶社会库存周数据分析' },
-  { k: 'dark', n: '深色胶库存', u: '万吨', g: '库存', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '同上（深色胶=轮胎用）' },
-  { k: 'light', n: '浅色胶库存', u: '万吨', g: '库存', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '同上' },
-  { k: 'qg', n: '全钢胎开工率', u: '%', g: '需求', mode: 'pt', thr: 1, sign: 1, freq: 'w', src: '隆众：中国轮胎样本企业周度产能利用率' },
-  { k: 'bg', n: '半钢胎开工率', u: '%', g: '需求', mode: 'pt', thr: 1, sign: 1, freq: 'w', src: '同上' }
+  { k: 'dark', n: '深色胶库存', u: '万吨', g: '库存', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '同上（深色胶=轮胎用）；深色+浅色=社会总库存' },
+  { k: 'light', n: '浅色胶库存', u: '万吨', g: '库存', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '同上；正文缺失时由 总库存−深色胶 算出' },
+  { k: 'qd', n: '青岛库存', u: '万吨', g: '青岛', mode: 'pct', thr: 1, sign: -1, freq: 'w', src: '隆众：青岛地区天然橡胶样本库存和出入库率周数据（保税+一般贸易合计）' },
+  { k: 'qin', n: '青岛入库率变化', u: '点', g: '青岛', mode: 'chg', thr: 2, sign: -1, freq: 'w', src: '同上（一般贸易仓库入库率，较上周变化的百分点）' },
+  { k: 'qout', n: '青岛出库率变化', u: '点', g: '青岛', mode: 'chg', thr: 2, sign: 1, freq: 'w', src: '同上（一般贸易仓库出库率，较上周变化的百分点）' },
+  { k: 'qg', n: '全钢胎产能利用率', u: '%', g: '需求', mode: 'lvl', y: 'qgY', yu: '点', dmode: 'pt', thr: 3, sign: 1, freq: 'w', src: '隆众：中国轮胎产能利用率周数据统计（样本企业；多空看同比，国庆/春节停工会让环比失真）' },
+  { k: 'bg', n: '半钢胎产能利用率', u: '%', g: '需求', mode: 'lvl', y: 'bgY', yu: '点', dmode: 'pt', thr: 3, sign: 1, freq: 'w', src: '同上' }
 ];
-const RUIND_EXTRA = [{ k: 'prodY', n: '产量累计同比', u: '%' }, { k: 'impY', n: '进口同比', u: '%' }];
 const RUIND_STALE = { w: 10, m: 45 };
 function ruDaysBetween(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5); }
-/* 一项指标的趋势：最新值、较上期、含义、多久没更新 */
+/* 一项指标的趋势：最新值、较上期、同比、含义、多久没更新 */
 function ruIndTrend(df, ind, today) {
   const ls = (ind && ind[df.k]) || [], n = ls.length; if (!n) return { n: 0, def: df, m: 0 };
-  const last = ls[n - 1], prev = n > 1 ? ls[n - 2] : null, yy = df.y && ind[df.y] && ind[df.y].length ? ind[df.y][ind[df.y].length - 1] : null;
-  let delta = null, m = 0;
-  if (df.mode === 'lvl') { if (yy) m = Math.abs(yy.v) >= df.thr ? (yy.v > 0 ? df.sign : -df.sign) : 0; if (prev) delta = (last.v / prev.v - 1) * 100; }
-  else if (prev) { delta = df.mode === 'pct' ? (last.v / prev.v - 1) * 100 : last.v - prev.v; m = Math.abs(delta) >= df.thr ? (delta > 0 ? df.sign : -df.sign) : 0; }
+  const last = ls[n - 1], prev = n > 1 ? ls[n - 2] : null, ys = df.y && ind[df.y] && ind[df.y].length ? ind[df.y] : null, yy = ys ? (ys.find(p => p.d === last.d) || ys[ys.length - 1]) : null;
+  let delta = null, m = 0, d4 = null;
+  if (df.mode === 'chg') { delta = last.v; if (n >= 4) d4 = ls.slice(-4).reduce((a, p) => a + p.v, 0); m = Math.abs(delta) >= df.thr ? (delta > 0 ? df.sign : -df.sign) : 0; }
+  else if (df.mode === 'lvl') { if (yy) m = Math.abs(yy.v) >= df.thr ? (yy.v > 0 ? df.sign : -df.sign) : 0; if (prev) delta = df.dmode === 'pt' ? last.v - prev.v : (last.v / prev.v - 1) * 100; }
+  else if (prev) { delta = (last.v / prev.v - 1) * 100; m = Math.abs(delta) >= df.thr ? (delta > 0 ? df.sign : -df.sign) : 0; }
   const age = today ? ruDaysBetween(last.d, today) : 0;
-  return { n, def: df, last, prev, delta, yy, m, age, stale: age > RUIND_STALE[df.freq], pts: ls.slice(-24) };
+  return { n, def: df, last, prev, delta, d4, yy, m, age, stale: age > RUIND_STALE[df.freq], pts: ls.slice(-24) };
 }
-/* 综合：偏空/偏多/中性/数据不足 + 提示（你文字里写的几个要警惕的信号） */
+/* 综合：偏空/偏多/中性/数据不足 + 提示 */
 function ruIndSummary(ind, today) {
   const T = RUIND.map(d => ruIndTrend(d, ind, today)), E = T.filter(t => t.n > 0), bear = E.filter(t => t.m < 0).length, bull = E.filter(t => t.m > 0).length, by = {}; T.forEach(t => { by[t.def.k] = t; });
   const dir = E.length < 3 ? 'na' : bear - bull >= 2 ? '偏空' : bull - bear >= 2 ? '偏多' : '中性', warns = [], goods = [];
   const dk = by.dark; if (dk && dk.delta != null && dk.delta <= -3) warns.push('深色胶库存较上期降 ' + Math.abs(dk.delta).toFixed(1) + '%（意外大幅去库：空头要警惕）');
-  ['qg', 'bg'].forEach(k => { const t = by[k]; if (t && t.delta != null && t.delta >= 3) warns.push(t.def.n + '较上期升 ' + t.delta.toFixed(1) + ' 个点（需求回升明显：若你判断是“超预期强劲回升”，请勾选手动开关）'); });
+  ['qg', 'bg'].forEach(k => { const t = by[k]; if (t && t.delta != null && t.delta >= 3 && t.yy && t.yy.v >= 3) warns.push(t.def.n + '较上期升 ' + t.delta.toFixed(1) + ' 个点、且比去年同期高 ' + t.yy.v.toFixed(1) + ' 个点（需求明显强于去年：若你判断是“超预期强劲回升”，请在「手动判断」里勾选）'); });
   if (by.qin && by.qout && by.qin.delta != null && by.qout.delta != null && by.qin.delta >= 5 && by.qout.delta <= -2) goods.push('青岛入库率大升、出库率走低：现货压力在积聚（强化空头逻辑）');
   if (by.stk && by.stk.delta != null && by.stk.delta >= 3) goods.push('社会库存较上期升 ' + by.stk.delta.toFixed(1) + '%（累库，强化空头逻辑）');
   const fresh = E.filter(t => !t.stale).length, last = E.reduce((a, t) => t.last.d > a ? t.last.d : a, '');
   return { T, by, n: E.length, tot: RUIND.length, bear, bull, dir, warns, goods, fresh, last, stale: E.length - fresh };
-}
-/* 自动抓取的序列(data/ru_ind_auto.json)与手动录入合并：同日期以自动为准，自动没有的日期保留手动点；各自升序 */
-function ruIndMerge(man, auto) {
-  const out = {}; const ks = new Set([].concat(Object.keys(man || {}), Object.keys(auto || {})));
-  ks.forEach(k => { const a = Array.isArray(auto && auto[k]) ? auto[k] : null, m = Array.isArray(man && man[k]) ? man[k] : []; if (!a || !a.length) { if (m.length) out[k] = m; return; } const ad = new Set(a.map(p => p.d)); out[k] = a.concat(m.filter(p => !ad.has(p.d))).sort((x, y) => x.d < y.d ? -1 : 1); });
-  return out;
 }
 /* RU_END */
 (function () {
@@ -3493,17 +3490,16 @@ function ruIndMerge(man, auto) {
   let S = { d: RU.d.slice(), o: RU.o.slice(), h: RU.h.slice(), l: RU.l.slice(), c: RU.c.slice(), r: RU.r.slice(), m: (RU.m || []).slice() }, WX = { rs: null, v: null, at: null, busy: false }, VIEW = lsGet('fut-view', 'meal');
   const OPT = { eq: lsGet('ru-eq', 500000), risk: lsGet('ru-risk', RUP.RISK), margin: lsGet('ru-margin', RUP.MARGIN), pos: lsGet('ru-pos', null), stopY: lsGet('ru-stopY', null), man: lsGet('ru-man', { st: '', note: '', qg: '', bg: '', stk: '', demand: false, d: '' }) };
   const CH = { span: 120 };
-  /* 手动录入的指标序列 {k:[{d,v}]}；旧版（只有全钢/半钢/库存三个数）自动迁移 */
-  let AUTO = {}, AUTOINFO = null;   // 自动抓取的指标序列（只读）；IND 只存手动录入
-  let IND = lsGet('ru-ind', null);
-  if (!IND) { IND = {}; const o = lsGet('ru-man', null); if (o && o.d) ['qg', 'bg', 'stk'].forEach(k => { const v = parseFloat(o[k]); if (v > 0) IND[k] = [{ d: o.d, v }]; }); lsSet('ru-ind', IND); }
+  /* 指标序列（自动抓取，只读）{k:[{d,v,m?}]} 与 抓取元信息 */
+  let AUTO = {}, AUTOINFO = null;
   /* 接上 data/ru_live.json（Actions 追加的最新真实日线 {d,o,h,l,c}）：按快照最后一天的 调整价/真实价 比例换算 */
   function mergeLive(j) {
     if (!j || !j.d || !j.d.length) return; const n = S.d.length, f = S.c[n - 1] / S.r[n - 1];
     for (let i = 0; i < j.d.length; i++) { if (j.d[i] <= S.d[S.d.length - 1]) continue; S.d.push(j.d[i]); S.o.push(j.o[i] * f); S.h.push(j.h[i] * f); S.l.push(j.l[i] * f); S.c.push(j.c[i] * f); S.r.push(j.c[i]); S.m.push(j.m && j.m[i] ? String(j.m[i]).replace(/^RU/, '') : S.m[S.m.length - 1]); }
   }
-  const indAll = () => ruIndMerge(IND, AUTO);
-  async function loadAuto() { try { const r = await fetch('data/ru_ind_auto.json?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AUTO = {}; ['stk', 'dark', 'light'].forEach(k => { if (Array.isArray(j[k]) && j[k].length) AUTO[k] = j[k].filter(p => p && /^\d{4}-\d{2}-\d{2}$/.test(p.d) && p.v > 0); }); AUTOINFO = { updated: j.updated || '', calc: new Set(j.calc || []), warn: j.warn || [] }; } catch (_) {} }
+  const indAll = () => AUTO;
+  function setAuto(j) { AUTO = {}; const ks = new Set(RUIND.map(d => d.k).concat(RUIND.map(d => d.y).filter(Boolean))); ks.forEach(k => { if (j && Array.isArray(j[k]) && j[k].length) AUTO[k] = j[k].filter(p => p && /^\d{4}-\d{2}-\d{2}$/.test(p.d) && typeof p.v === 'number' && isFinite(p.v)); }); AUTOINFO = { updated: (j && j.updated) || '', calc: new Set((j && j.calc) || []), warn: (j && j.warn) || [] }; }
+  async function loadAuto() { try { const r = await fetch('data/ru_ind_auto.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) setAuto(await r.json()); } catch (_) {} }
   async function loadLive() { try { const r = await fetch('data/ru_live.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) mergeLive(await r.json()); } catch (_) {} }
   /* ---- 天气（浏览器直连 Open-Meteo，免密钥；每6小时缓存一次） ---- */
   async function jget(u) { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); }
@@ -3540,14 +3536,18 @@ function ruIndMerge(man, auto) {
   const fnum = (v, dp) => v == null || isNaN(v) ? '—' : (+v).toFixed(dp == null ? 1 : dp).replace(/\.0+$/, '');
   /* 指标格（和趋势墙的格子同一套 class） */
   function indTile(t) {
-    const df = t.def; if (!t.n) return '<button class="tile pend rutile" data-ik="' + df.k + '"><div class="t1"><span class="n">' + esc(df.n) + '</span></div><div class="sk"><div class="na">还没录入<br><small>点这里录入</small></div></div></button>';
+    const df = t.def; if (!t.n) return '<div class="tile pend rutile" data-ik="' + df.k + '"><div class="t1"><span class="n">' + esc(df.n) + '</span></div><div class="sk"><div class="na">暂无数据<br><small>等 Actions 自动抓取</small></div></div></div>';
     const tint = t.m > 0 ? 'tb2' : t.m < 0 ? 'tx2' : '', side = t.m > 0 ? 'sb' : t.m < 0 ? 'sx' : '', bd = t.m ? '<span class="bd ' + (t.m > 0 ? 'up' : 'down') + '">' + (t.m > 0 ? '偏多' : '偏空') + '</span>' : (t.stale ? '<span class="bd m">过期</span>' : '');
-    const chg = df.mode === 'lvl' ? (t.yy ? (t.yy.v >= 0 ? '+' : '') + fnum(t.yy.v) + '%' : '—') : t.delta == null ? '—' : (t.delta >= 0 ? '↑' : '↓') + fnum(Math.abs(t.delta), 1) + (df.mode === 'pct' ? '%' : '点');
-    const chgM = df.mode === 'lvl' ? t.m : t.m;
-    return '<button class="tile ' + side + ' ' + tint + ' rutile" data-ik="' + df.k + '" aria-label="' + esc(df.n) + '，最新' + fnum(t.last.v) + esc(df.u) + '，点击录入"><div class="t1"><span class="n">' + esc(df.n) + (AUTO[df.k] && AUTO[df.k].some(p => p.d === t.last.d) ? '<small class="dim" title="自动抓取自隆众周报' + (AUTOINFO && AUTOINFO.calc.has(t.last.d + ':' + df.k) ? '（该值由 深色+浅色=总库存 算出）' : '') + '"> 自动' + (AUTOINFO && AUTOINFO.calc.has(t.last.d + ':' + df.k) ? '*' : '') + '</small>' : '') + '</span>' + bd + '</div>'
-      + '<div class="t2"><span class="v">' + fnum(t.last.v) + '</span><span class="u">' + esc(df.u) + '</span></div>'
-      + '<div class="sk">' + (t.pts.length >= 3 ? spark(t.pts.map(p => p.v), mcolor(t.m), 120, 40) : '<div class="na">已录 ' + t.n + ' 期，满3期画曲线</div>') + '</div>'
-      + '<div class="chips"><div class="chip"><div class="l">' + (df.mode === 'lvl' ? '同比' : '较上期') + '</div><div class="a" style="color:' + mcolor(chgM) + '">' + esc(chg) + '</div></div><div class="chip"><div class="l">上期</div><div class="a">' + (t.prev ? fnum(t.prev.v) : '—') + '</div></div><div class="chip' + (t.stale ? ' na' : '') + '"><div class="l">统计日</div><div class="a"' + (t.stale ? ' style="color:var(--amber)"' : '') + '>' + esc(t.last.d.slice(5)) + '</div></div></div></button>';
+    const sg = v => (v >= 0 ? '+' : '') + fnum(v), calc = AUTOINFO && AUTOINFO.calc.has(t.last.d + ':' + df.k);
+    let lab = '较上期', chg = '—', l2 = '上期', v2 = t.prev ? fnum(t.prev.v) : '—';
+    if (df.mode === 'lvl') { lab = '同比'; chg = t.yy ? sg(t.yy.v) + (df.yu === '%' ? '%' : '点') : '—'; }
+    else if (df.mode === 'chg') { chg = t.delta == null ? '—' : (t.delta >= 0 ? '↑' : '↓') + fnum(Math.abs(t.delta), 1) + '点'; l2 = '近4周'; v2 = t.d4 == null ? '—' : sg(t.d4); }
+    else chg = t.delta == null ? '—' : (t.delta >= 0 ? '↑' : '↓') + fnum(Math.abs(t.delta), 1) + '%';
+    const mm = df.freq === 'm' && t.last.m ? t.last.m.slice(2).replace('-', '/') + '月' : t.last.d.slice(5);
+    return '<div class="tile ' + side + ' ' + tint + ' rutile" data-ik="' + df.k + '" title="' + esc(df.src) + '" aria-label="' + esc(df.n) + '，最新' + fnum(t.last.v) + esc(df.u) + '"><div class="t1"><span class="n">' + esc(df.n) + '<small class="dim"> 自动' + (calc ? '*' : '') + '</small></span>' + bd + '</div>'
+      + '<div class="t2"><span class="v">' + (df.mode === 'chg' ? sg(t.last.v) : fnum(t.last.v)) + '</span><span class="u">' + esc(df.u) + '</span></div>'
+      + '<div class="sk">' + (t.pts.length >= 3 ? spark(t.pts.map(p => p.v), mcolor(t.m), 120, 40) : '<div class="na">只有 ' + t.n + ' 期，满3期画曲线</div>') + '</div>'
+      + '<div class="chips"><div class="chip"><div class="l">' + lab + '</div><div class="a" style="color:' + mcolor(t.m) + '">' + esc(chg) + '</div></div><div class="chip"><div class="l">' + l2 + '</div><div class="a">' + v2 + '</div></div><div class="chip' + (t.stale ? ' na' : '') + '"><div class="l">' + (df.freq === 'm' ? '统计月' : '统计日') + '</div><div class="a"' + (t.stale ? ' style="color:var(--amber)"' : '') + '>' + esc(mm) + '</div></div></div></div>';
   }
   /* 天气格 */
   function wxTile(g) {
@@ -3561,28 +3561,24 @@ function ruIndMerge(man, auto) {
       + '<div class="chips"><div class="chip"><div class="l">30天降水</div><div class="a">' + f0(r.p30) + 'mm' + (r.ratio != null ? '<span class="wr">·' + (r.ratio * 100).toFixed(0) + '%</span>' : '') + '</div></div><div class="chip"><div class="l">7天均温</div><div class="a">' + (r.t7 == null ? '—' : r.t7.toFixed(1) + '℃') + '</div></div><div class="chip"><div class="l">未来7天雨</div><div class="a">' + f0(r.f7) + 'mm</div></div></div></button>';
   }
   function wallHtml(IS) {
-    const groups = [['供给', IS.T.filter(t => t.def.g === '供给').map(indTile)], ['库存', IS.T.filter(t => t.def.g === '库存').map(indTile)], ['需求', IS.T.filter(t => t.def.g === '需求').map(indTile)], ['天气', RUREG.map(wxTile)]];
-    let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">社会总库存/深色胶/浅色胶已自动抓取（隆众周报），其余指标手动录入（点格子录入），天气自动取。颜色：对价格多空的含义</span></div>'
-      + '<div class="why" style="padding:6px 20px">每一格一个指标。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口增加、产量同比增加偏空；开工率回升、去库偏多。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、延迟开割、需求超预期走强（你手动勾选）才会拦住做空。</div><div class="tiles blocks rutiles">';
+    const gt = g => IS.T.filter(t => t.def.g === g).map(indTile);
+    const groups = [['供给', gt('供给')], ['库存', gt('库存')], ['青岛', gt('青岛')], ['需求', gt('需求')], ['天气', RUREG.map(wxTile)]];
+    const upd = AUTOINFO && AUTOINFO.updated ? '，抓取于 ' + esc(AUTOINFO.updated) : '';
+    let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">库存/青岛/产能利用率/产量/进口全部由 Actions 自动抓取隆众周报月报' + upd + '；天气自动取。颜色：对价格多空的含义</span></div>'
+      + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、延迟开割、需求超预期走强（你在下方“手动判断”里选）才会拦住做空。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
     groups.forEach(g => { h += '<div class="bh"><span>' + g[0] + '</span><i>' + g[1].length + '项</i></div><div class="blk"><div class="rail"><span>' + g[0] + '</span></div><div class="bg" style="grid-template-columns:repeat(' + g[1].length + ',minmax(0,1fr))">' + g[1].join('') + '</div></div>'; });
     return h + '</div>' + entryHtml(IS);
   }
-  /* 手动录入面板：统计日期 + 各指标；保存后每项追加一个点（同一天覆盖） */
+  /* 只剩两个判断项：开割进度、需求是否超预期（这两个没有数据源，只能人工判断；会影响信号） */
   function entryHtml(IS) {
-    const m = OPT.man, ageM = m.d ? ruDaysBetween(m.d, todayBJ()) : null, f = (k, n, u, ph) => '<label>' + n + (u ? '(' + u + ')' : '') + '<input data-ind="' + k + '" inputmode="decimal" placeholder="' + esc(ph || '') + '"></label>';
-    const last = k => { const l = indAll()[k]; return l && l.length ? '上次 ' + fnum(l[l.length - 1].v) : ''; };
-    const sel = [['', '没录入'], ['stop', '还在停割'], ['trial', '部分产区试割'], ['ok', '正常开割'], ['delay', '延迟开割（干旱/洪涝）']].map(x => '<option value="' + x[0] + '"' + (m.st === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
-    const staleTxt = IS.n ? (IS.stale ? IS.stale + ' 项已过期（周数据>10天、月数据>45天没更新）' : '数据都是新的') : '还没录入过';
-    return '<details class="ruent" id="ruEnt"><summary>手动录入指标 <small class="dim">（' + esc(staleTxt) + '）</small></summary><div class="entb">'
-      + '<p class="dim">来源：隆众资讯/Mysteel 的定期报告（标题和发布时间见下面）。每周看一次，填你要更新的那几项，其余留空；只记在这台设备上。社会总库存/深色胶/浅色胶已自动抓取，同一天以自动为准，这三项不用再填；其余自动抓取逐个接入中。</p>'
-      + '<div class="ruin"><label>统计日期<input id="ruIndD" value="' + todayBJ() + '"></label></div>'
-      + '<h4>周数据（库存周报：周一/二；开工率：周四/五）</h4><div class="ruin">' + f('stk', '社会总库存', '万吨', last('stk')) + f('dark', '深色胶库存', '万吨', last('dark')) + f('light', '浅色胶库存', '万吨', last('light')) + f('qin', '青岛入库率', '%', last('qin')) + f('qout', '青岛出库率', '%', last('qout')) + f('qg', '全钢胎开工率', '%', last('qg')) + f('bg', '半钢胎开工率', '%', last('bg')) + '</div>'
-      + '<h4>月数据（次月中下旬）</h4><div class="ruin">' + f('prod', '全球产量', '万吨', last('prod')) + f('prodY', '产量累计同比', '%', last('prodY')) + f('imp', '进口量', '万吨', last('imp')) + f('impY', '进口同比', '%', last('impY')) + '</div>'
-      + '<div class="ruin"><button class="tb" data-ru="indsave" style="border:1px solid var(--line)">保存本次录入</button><button class="lnk" data-ru="indundo">撤销最近一次录入</button></div>'
-      + '<h4>开割进度与需求判断（会影响信号）</h4><div class="ruin"><label>开割进度<select id="ruMs">' + sel + '</select></label><label>备注（哪个产区、什么情况）<input id="ruMn" value="' + esc(m.note) + '"></label></div>'
-      + '<label class="ruck"><input type="checkbox" id="ruMd"' + (m.demand ? ' checked' : '') + '> 需求超预期强劲回升（你判断开工率明显高于预期）→ 暂缓做空；持仓则考虑离场</label>'
-      + '<p class="dim">开割进度选「延迟开割」或勾「需求超预期走强」，和天气严重异常一样会拦住新的做空、并提示持仓离场。' + (ageM != null ? '这两项录入于 ' + esc(m.d) + '（' + ago(ageM) + '）。' : '') + '</p>'
-      + '<details class="ruabout"><summary>去哪里看（隆众/Mysteel 固定标题）</summary><ul class="rurm"><li>库存：「中国天然橡胶社会库存周数据分析（日期）」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>开工率：「中国轮胎样本企业周度产能利用率数据分析」</li><li>产量：「全球/中国天然橡胶产量月数据统计」</li><li>进口：「中国天然橡胶进口量月数据统计」</li></ul></details></div></details>';
+    const m = OPT.man, ageM = m.d ? ruDaysBetween(m.d, todayBJ()) : null;
+    const sel = [['', '没判断'], ['stop', '还在停割'], ['trial', '部分产区试割'], ['ok', '正常开割'], ['delay', '延迟开割（干旱/洪涝）']].map(x => '<option value="' + x[0] + '"' + (m.st === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
+    const staleTxt = IS.n ? (IS.stale ? IS.stale + ' 项指标已过期（周数据>10天、月数据>45天没更新）' : '指标数据都是新的') : '指标还没有数据';
+    return '<details class="ruent" id="ruEnt"><summary>手动判断（开割进度/需求） <small class="dim">（' + esc(staleTxt) + '）</small></summary><div class="entb">'
+      + '<div class="ruin"><label>开割进度<select id="ruMs">' + sel + '</select></label><label>备注（哪个产区、什么情况）<input id="ruMn" value="' + esc(m.note) + '"></label></div>'
+      + '<label class="ruck"><input type="checkbox" id="ruMd"' + (m.demand ? ' checked' : '') + '> 需求超预期强劲回升（你判断轮胎产能利用率明显高于预期）→ 暂缓做空；持仓则考虑离场</label>'
+      + '<p class="dim">开割进度选「延迟开割」或勾「需求超预期走强」，和天气严重异常一样会拦住新的做空、并提示持仓离场。只记在这台设备上。' + (ageM != null ? '录入于 ' + esc(m.d) + '（' + ago(ageM) + '）。' : '') + '</p>'
+      + '<details class="ruabout"><summary>数据来源（隆众/Mysteel 固定标题，自动抓取）</summary><ul class="rurm"><li>库存：「中国天然橡胶社会库存周数据分析」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>产能利用率：「中国轮胎产能利用率周数据统计」（全钢胎/半钢胎）</li><li>产量：「全球天然橡胶产量月数据统计」（ANRPC预测）</li><li>进口：「中国天然橡胶进口量月数据统计」（海关终值，预估已剔除）</li></ul></details></div></details>';
   }
   /* 价格图：近N个交易日收盘（按最近真实价换算）+ MA5 + 历年3月窗口底色 + 挂单价/止损线 */
   function chartHtml(P, W, H) {
@@ -3606,7 +3602,7 @@ function ruIndMerge(man, auto) {
     const wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
     const chips = chip(P.inMar ? true : null, P.inMar ? '3月窗口' : '不在3月窗口') + (P.inMar || P.pre ? chip(P.reb, '收盘≥MA5（反弹）' + (P.ma ? ' ' + f0(P.ma) : '')) : '')
       + (wv ? chip(wxOk, wv.level === 'block' ? '天气：暂缓' : wv.level === 'warn' ? '天气：轻度异常' : wv.level === 'ok' ? '天气正常' : '天气未取到', wv.text) : '')
-      + chip(OPT.man.st === 'delay' ? false : OPT.man.st ? true : null, OPT.man.st ? ({ stop: '还在停割', trial: '部分试割', ok: '正常开割', delay: '延迟开割' })[OPT.man.st] : '开割进度未录入') + chip(OPT.man.demand ? false : null, OPT.man.demand ? '需求超预期强（手动）' : '需求未标记走强')
+      + chip(OPT.man.st === 'delay' ? false : OPT.man.st ? true : null, OPT.man.st ? ({ stop: '还在停割', trial: '部分试割', ok: '正常开割', delay: '延迟开割' })[OPT.man.st] : '开割进度未判断') + chip(OPT.man.demand ? false : null, OPT.man.demand ? '需求超预期强（手动）' : '需求未标记走强')
       + '<span class="sc sep">止损 ' + RUP.STOP + '% · 月底平仓 · 不设止盈</span>';
     const sizeLn = P.order && eqLots && eqLots.lots >= 1 ? '<div class="sb">建议总共 <b>' + eqLots.lots + ' 手</b>（止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.loss / OPT.eq * 100).toFixed(1) + '%）' + (eqLots.lots >= 2 ? '，可分2批：先一半，次日再反弹再加' : '') + '</div>' : '';
     const left = '<button class="sg ' + cls + '" data-ru="goplan" aria-label="橡胶入场信号：' + esc(P.head) + '"><div class="cl">橡胶 RU · 3月季节性做空 · 最近收盘（' + esc(P.last.slice(5)) + '）' + (P.real ? ' ' + f0(P.real) : '') + '</div><div class="hd">' + esc(P.head) + '</div><div class="sb">' + esc(P.sub) + '</div>' + sizeLn + '<div class="scs">' + chips + '</div></button>';
@@ -3623,7 +3619,7 @@ function ruIndMerge(man, auto) {
     const n = S.d.length, f = S.r[n - 1] / S.c[n - 1], chg = n > 1 ? S.c[n - 1] / S.c[n - 2] - 1 : null, c5 = n > 5 ? S.c[n - 1] / S.c[n - 6] - 1 : null;
     const pv = '<div class="cell pv"><div class="cl">RU 主连价格与均线</div><div class="px"><span class="p">' + f0(P.real) + '</span><span class="c ' + (chg > 0 ? 'bull' : chg < 0 ? 'bear' : '') + '">' + (chg == null ? '' : (chg >= 0 ? '+' : '') + (chg * 100).toFixed(2) + '%') + '</span><span class="dim" style="font-size:11.5px;margin-left:6px">' + esc(P.last.slice(5)) + ' 收盘</span></div><div class="sub">近5天 ' + (c5 == null ? '—' : (c5 >= 0 ? '+' : '') + (c5 * 100).toFixed(1) + '%') + ' · MA5 ' + f0(P.ma) + (P.reb ? '（收盘在其上，反弹）' : '（收盘在其下）') + ' · 主力 ' + esc(P.dom || '—') + '</div></div>';
     const fd = IS.dir === 'na' ? '数据不足' : IS.dir, fc = IS.dir === '偏空' ? 'var(--bear)' : IS.dir === '偏多' ? 'var(--bull)' : 'var(--ink)';
-    const fs = '<div class="cell half"><div class="cl">基本面（库存·开工率·产量·进口）</div><div class="fund"><div><div class="big" style="color:' + fc + '">' + esc(fd) + '<small class="num">' + (IS.n ? '空' + IS.bear + ' 多' + IS.bull : '') + '</small></div></div></div><div class="sub">' + (IS.warns.length ? '⚠ ' + esc(IS.warns[0]) : IS.goods.length ? esc(IS.goods[0]) : IS.n ? '已录入 ' + IS.n + '/' + IS.tot + ' 项 · 最近 ' + esc(IS.last.slice(5)) + (IS.stale ? ' · ' + IS.stale + ' 项过期' : '') : '还没录入，点右侧趋势墙的格子，或展开「手动录入指标」') + '</div></div>';
+    const fs = '<div class="cell half"><div class="cl">基本面（库存·产能利用率·产量·进口）</div><div class="fund"><div><div class="big" style="color:' + fc + '">' + esc(fd) + '<small class="num">' + (IS.n ? '空' + IS.bear + ' 多' + IS.bull : '') + '</small></div></div></div><div class="sub">' + (IS.warns.length ? '⚠ ' + esc(IS.warns[0]) : IS.goods.length ? esc(IS.goods[0]) : IS.n ? '自动 ' + IS.n + '/' + IS.tot + ' 项 · 最近 ' + esc(IS.last.slice(5)) + (IS.stale ? ' · ' + IS.stale + ' 项过期' : '') : '指标数据还没抓到（等 Actions 自动抓取）') + '</div></div>';
     const wv = WX.v, wt = !wv ? (WX.busy ? '正在取…' : '未取') : wv.level === 'block' ? '暂缓做空' : wv.level === 'warn' ? '轻度异常' : wv.level === 'ok' ? '正常' : '没取到', wcol = wv && wv.level === 'block' ? 'var(--bull)' : wv && wv.level === 'warn' ? 'var(--amber)' : 'var(--ink)';
     const wx = '<div class="cell half"><div class="cl">开割天气（泰北·泰东北·越南·印尼巨港）</div><div class="big" style="font-size:clamp(20px,3.1vh,28px);color:' + wcol + '">' + esc(wt) + '</div><div class="sub">' + (wv ? esc(wv.text.replace(/^主产区天气异常：/, '')) : '') + ' <button class="lnk" data-ru="wxre">重新取</button>' + (WX.at ? ' <span class="dim">' + new Date(WX.at + 8 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') + '</span>' : '') + '</div></div>';
     return '<section class="band ruband">' + pv + fs + wx + '</section>';
@@ -3639,7 +3635,7 @@ function ruIndMerge(man, auto) {
     return (ST ? '<p class="hl">' + ST.years + ' 个3月里 ' + ST.n + ' 年出信号成交：平均 <b>' + p1(ST.mean) + '</b>，胜率 ' + ST.win.toFixed(0) + '%，最好 ' + p1(ST.best) + '，最差 ' + p1(ST.worst) + '（t=' + ST.t.toFixed(1) + '）。<span class="dim">样本只有 ' + ST.n + ' 年，多重检验后不显著，仓位要小。</span></p>' : '') + '<div class="mbars rubars">' + bars + '</div><div class="mleg"><span>每根柱子=当年3月按这条规则的收益%（含成本）；绿=赚，红=亏</span></div>';
   }
   function remindHtml(P) {
-    const yy = P.nextWin ? +P.nextWin.slice(0, 4) : +todayBJ().slice(0, 4), L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5且天气正常 → 次日挂限价空'], ['(每周)', '3月里每周录一次库存、开工率（右侧「手动录入指标」）'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常、开割延迟、需求走强 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
+    const yy = P.nextWin ? +P.nextWin.slice(0, 4) : +todayBJ().slice(0, 4), L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5且天气正常 → 次日挂限价空'], ['(每周)', '3月里每周看一眼趋势墙的库存、产能利用率（自动更新，无需录入）'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常、开割延迟、需求走强 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
     const alert = P.st === 'go' || P.st === 'exit' || P.st === 'holdwx' || P.st === 'blocked';
     return '<ul class="rurm">' + L.map(x => '<li><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</li>').join('') + '</ul><p class="' + (alert ? 'ruhot' : 'dim') + '">' + (alert ? '👉 今天要处理：' + esc(P.head) : '今天没有要处理的事。') + '</p><p class="dim">手机推送（准备期、窗口开始、出信号含挂单价和止损价、被天气拦住、最后交易日平仓）已随 v102.0 接入现有推送。</p>';
   }
@@ -3669,7 +3665,7 @@ function ruIndMerge(man, auto) {
   }
 
   function aboutHtml() {
-    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色/青岛出入库率）、轮胎开工率、产量、进口，目前手动录入（来源：隆众/Mysteel 定期报告），逐个改自动抓取。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有「延迟开割」「需求超预期走强」两个手动开关和天气严重异常会拦住信号</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
+    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有「延迟开割」「需求超预期走强」两个手动判断和天气严重异常会拦住信号</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
   }
 
   function overviewHtml() {
@@ -3692,26 +3688,17 @@ function ruIndMerge(man, auto) {
     if (VIEW === 'ru') { const e = document.getElementById('ruEnt'); if (e && ENT_OPEN) e.open = true; drawChart(); }
   }
   function setView(v) { VIEW = v; lsSet('fut-view', v); if (v !== 'meal' && !WX.rs && !WX.busy) loadWx().then(paint); paint(); try { window.scrollTo(0, 0); const a = $('#ruApp'); if (a) a.scrollTop = 0; } catch (_) {} if (v === 'meal') { try { window.dispatchEvent(new Event('resize')); } catch (_) {} } }
-  const IND_KEYS = ['stk', 'dark', 'light', 'qin', 'qout', 'qg', 'bg', 'prod', 'prodY', 'imp', 'impY'];
-  function saveInd() {
-    const d = (($('#ruIndD') || {}).value || todayBJ()).trim(); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false; let n = 0;
-    IND_KEYS.forEach(k => { const el = document.querySelector('[data-ind="' + k + '"]'); if (!el || el.value.trim() === '') return; const v = parseFloat(el.value.replace(/,/g, '')); if (isNaN(v)) return; const ls = (IND[k] || []).filter(p => p.d !== d); ls.push({ d, v }); ls.sort((a, b) => a.d < b.d ? -1 : 1); IND[k] = ls.slice(-60); n++; });
-    if (n) { lsSet('ru-ind', IND); IND_LAST = { d, n }; } return n;
-  }
-  let IND_LAST = null;
   document.addEventListener('toggle', e => { if (e.target && e.target.id === 'ruEnt') ENT_OPEN = e.target.open; }, true);
   window.addEventListener('resize', () => { if (VIEW === 'ru') drawChart(); });
   document.addEventListener('click', e => {
     const b = e.target.closest('#vSeg button'); if (b) return setView(b.dataset.v);
     const oc = e.target.closest('.ov-c'); if (oc) return setView(oc.dataset.v);
     const tl = e.target.closest('.rutile[data-ik]');
-    if (tl) { const k = tl.dataset.ik; if (k === 'wx') { const d = [...document.querySelectorAll('.ruabout')].find(x => /天气明细/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } return; } const ent = document.getElementById('ruEnt'); if (ent) { ent.open = true; ENT_OPEN = true; const inp = document.querySelector('[data-ind="' + k + '"]'); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } } return; }
+    if (tl) { if (tl.dataset.ik === 'wx') { const d = [...document.querySelectorAll('.ruabout')].find(x => /天气明细/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } } return; }
     const t = e.target.closest('[data-ru]'); if (!t) return; const a = t.dataset.ru;
     if (a === 'wxre') { WX.rs = null; loadWx(true).then(paint); paint(); }
     if (a === 'span') { CH.span = +t.dataset.n || 120; paint(); }
     if (a === 'goplan') { const d = document.querySelector('.rucheck'); if (d) d.scrollIntoView({ block: 'nearest' }); }
-    if (a === 'indsave') { if (!saveInd()) { alert_('没有可保存的数字：至少填一项，统计日期格式 YYYY-MM-DD'); return; } ENT_OPEN = true; paint(); }
-    if (a === 'indundo') { const all = [].concat(...IND_KEYS.map(k => (IND[k] || []).map(p => p.d))).sort(), ld = all[all.length - 1]; if (!ld) return; IND_KEYS.forEach(k => { if (IND[k]) IND[k] = IND[k].filter(p => p.d !== ld); }); lsSet('ru-ind', IND); ENT_OPEN = true; paint(); }
     if (a === 'stopped') { OPT.stopY = +todayBJ().slice(0, 4); lsSet('ru-stopY', OPT.stopY); OPT.pos = null; lsSet('ru-pos', null); paint(); }
     if (a === 'close') { OPT.pos = null; lsSet('ru-pos', null); paint(); }
     if (a === 'open') { const d = ($('#ruPd').value || todayBJ()).trim(), px = +$('#ruPp').value, lots = +$('#ruPl').value; if (!(px > 0)) return; const pc = ($('#ruPc').value || '').trim().toUpperCase() || (planNow().dom || ''); OPT.pos = { d, px, lots: lots > 0 ? lots : null, contract: pc }; lsSet('ru-pos', OPT.pos); paint(); }
@@ -3726,7 +3713,7 @@ function ruIndMerge(man, auto) {
     const m = { ruEq: ['eq', 'ru-eq'], ruRisk: ['risk', 'ru-risk'], ruMg: ['margin', 'ru-margin'] }[e.target && e.target.id]; if (!m) return;
     const v = +e.target.value; if (!(v > 0)) return; OPT[m[0]] = v; lsSet(m[1], v); paint();
   });
-  window.__ru = { plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow, saveInd };
+  window.__ru = { plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow };
   Promise.all([loadLive(), loadAuto()]).then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
   paint();
 })();
