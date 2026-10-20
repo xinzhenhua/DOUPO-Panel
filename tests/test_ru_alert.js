@@ -18,7 +18,10 @@ o = compute(S, L, { level: 'ok', text: '主产区天气正常' }); const g = o.e
 has('含限价', /≥19\d{3}|≥1\d{4}/.test(g.title)); has('含止损价', /止损 \d+/.test(g.body)); has('提醒手动项', /手动/.test(g.body));
 eq('同一天重复计算key不变(防重复)', keys(compute(S, L, { level: 'ok', text: 'x' })).filter(k => k.includes('|go|')), ['ru|2027|go|' + L]);
 // 天气拦截
+o = compute(S, L, { level: 'block', text: '泰国南部 严重偏旱' }); has('天气异常默认不拦单：仍出go、没有被拦/天气转坏事件', keys(o).some(k => k.includes('|go|')) && !keys(o).some(k => k.includes('|blk|') || k.includes('|wxb|')));
+require('../scripts/ru_alert.js').RUP.WXBLOCK = true;
 o = compute(S, L, { level: 'block', text: '泰国南部 严重偏旱' }); has('被拦下事件', keys(o).includes('ru|2027|blk|' + L)); has('天气转坏事件', keys(o).some(k => k.includes('|wxb|'))); has('不出go', !keys(o).some(k => k.includes('|go|')));
+require('../scripts/ru_alert.js').RUP.WXBLOCK = false;
 // 天气没取到不拦
 o = compute(S, L, { level: 'unknown', text: 'x' }); has('天气未知仍出信号', keys(o).some(k => k.includes('|go|')));
 // 数据没更新到3月

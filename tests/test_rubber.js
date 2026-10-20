@@ -31,7 +31,9 @@ const pw = P.ruPlan(S2, S2.d[S2.d.length - 1], null, null); eq('3月下跌中 �
 // 反弹：最后一天收盘>MA5
 const S3 = mk('2027-02-22', [200, 199, 198, 197, 196, 195, 194, 193, 197]); const lastD3 = S3.d[S3.d.length - 1];
 const pg = P.ruPlan(S3, lastD3, { level: 'ok', text: '主产区天气正常' }, null); eq('3月反弹 → 做空信号', pg.st, 'go'); eq('限价=收盘×1.003向上取5', pg.order.lim, P.ruTickUp(197 * 100 * 1.003)); eq('止损=限价×1.05', pg.order.stop, Math.round(pg.order.lim * 1.05));
-eq('天气严重异常 → 暂缓', P.ruPlan(S3, lastD3, { level: 'block', text: '泰国南部 严重偏旱' }, null).st, 'blocked');
+eq('天气严重异常：默认只提示，不拦单 → 仍出做空信号', P.ruPlan(S3, lastD3, { level: 'block', text: '泰国南部 严重偏旱' }, null).st, 'go');
+P.RUP.WXBLOCK = true;
+eq('天气严重异常(WXBLOCK开) → 暂缓', P.ruPlan(S3, lastD3, { level: 'block', text: '泰国南部 严重偏旱' }, null).st, 'blocked');
 eq('天气轻度异常 → 仍出信号', P.ruPlan(S3, lastD3, { level: 'warn', text: 'x' }, null).st, 'go');
 eq('天气没取到 → 不拦', P.ruPlan(S3, lastD3, { level: 'unknown', text: 'x' }, null).st, 'go');
 // 数据没更新到3月
@@ -40,7 +42,7 @@ eq('今天3/1，最新价是2月最后一天 → 等第一个3月收盘', P.ruPl
 // 持仓
 const posd = { d: '2027-03-02', px: 19700, lots: 1 };
 let ph = P.ruPlan(S3, lastD3, { level: 'ok', text: '' }, posd); eq('持仓 → 持有', ph.st, 'hold'); near('浮盈(真实价)', ph.pos.r, -(19700 / 19700 - 1) * 100, 0.01); eq('止损价', Math.round(ph.pos.stop), Math.round(19700 * 1.05));
-ph = P.ruPlan(S3, lastD3, { level: 'block', text: '云南 严重偏旱' }, posd); eq('持仓+天气异常 → 考虑离场', ph.st, 'holdwx');
+ph = P.ruPlan(S3, lastD3, { level: 'block', text: '云南 严重偏旱' }, posd); eq('持仓+天气异常(WXBLOCK开) → 考虑离场', ph.st, 'holdwx'); P.RUP.WXBLOCK = false; eq('持仓+天气异常：默认不提示离场', P.ruPlan(S3, lastD3, { level: 'block', text: '云南 严重偏旱' }, posd).st, 'hold');
 const Sx = mk('2027-02-22', [200, 199, 198, 197, 196, 195, 194, 193, 197 * 1.06]); eq('触及止损 → 平仓', P.ruPlan(Sx, Sx.d[Sx.d.length - 1], null, { d: '2027-03-02', px: 19700, lots: 1 }).st, 'exit');
 eq('3/31 持仓 → 该平仓', P.ruPlan(S3, '2027-03-31', null, posd).st, 'exit');
 eq('4月还拿着 → 平仓', P.ruPlan(S3, '2027-04-08', null, posd).st, 'exit');

@@ -49,7 +49,7 @@ function compute(S, today, wx, ind, pol) {
     const reb = pl.reb;
     if (reb) ev.push({ type: 'ru', key: 'ru|' + y + '|blk|' + L, title: '【橡胶】反弹信号被拦下：暂缓做空', body: pl.bad.join('；') + '\n价格已站上MA5，但过滤条件不满足，不开仓。' });
   }
-  if (inMar && wx && wx.level === 'block') ev.push({ type: 'ru', key: 'ru|' + y + '|wxb|' + today, title: '【橡胶】主产区天气异常：持有空单者考虑离场', body: wx.text + '\n你的规则：开割后天气持续异常，空头逻辑被破坏。（如果你没有橡胶空单，忽略本条）' });
+  if (P.RUP.WXBLOCK && inMar && wx && wx.level === 'block') ev.push({ type: 'ru', key: 'ru|' + y + '|wxb|' + today, title: '【橡胶】主产区天气异常：持有空单者考虑离场', body: wx.text + '\n你的规则：开割后天气持续异常，空头逻辑被破坏。（如果你没有橡胶空单，忽略本条）' });
   if (today === yE) ev.push({ type: 'ru', key: 'ru|' + y + '|exit', title: '【橡胶】今天是3月最后交易日：持有空单收盘前平仓', body: '季节窗口结束，不留到4月（开割后供应利空已兑现，历史上没有优势）。如果换过月，别忘了平的是你实际持有的那个合约。' });
   if (mmdd > '03-31' && mmdd <= '04-03') ev.push({ type: 'ru', key: 'ru|' + y + '|late', title: '【橡胶】3月已过：如还有橡胶空单请立即平仓', body: '规则是3月最后一个交易日平仓，不留到4月。' });
   return { priceDate: L, gate: { ok: true }, side: 0, plan: { st: pl.st, head: pl.head }, events: ev };
@@ -69,4 +69,4 @@ function plan(S, today, pos, ind, pol) {
   const wx = null;
   return P.ruPlan(S, today, wx, pos || null, { surge: P.ruDemandSurge(ind || {}, today), policy: P.ruPolicyAlert(pol || {}, today, pos ? pos.d : null), reson: P.ruResonance(ind || {}, today) });
 }
-module.exports = { compute, loadSeries, plan };
+module.exports = { compute, loadSeries, plan, RUP: P.RUP };

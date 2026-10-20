@@ -4,7 +4,7 @@
  * 天气筛选（泰国南部/东北、越南东南、云南、海南，Open-Meteo）：严重异常不做空。天气条件没有历史回测，只作为 Ted 要求的过滤。
  * 纯函数放在 RU_BEGIN..RU_END 之间，tests/test_rubber.js 按标记抽出来测。 */
 /* RU_BEGIN */
-const RUP = { STOP: 5, LIM: 0.3, MA: 5, COST: 3e-4, TON: 10, TICK: 5, MON: 3, PRE_FROM: '02-10', AVG_DROP: 5.8, RISK: 2, MARGIN: 12, USE_CAP: 30 };
+const RUP = { STOP: 5, LIM: 0.3, MA: 5, COST: 3e-4, TON: 10, TICK: 5, MON: 3, PRE_FROM: '02-10', AVG_DROP: 5.8, RISK: 2, MARGIN: 12, USE_CAP: 30, WXBLOCK: false };   // WXBLOCK=false：天气只在仪表盘显示，不拦单、不提示离场（你定的默认）；改 true 恢复旧行为
 const RUREG = [   // 3月只盯"开割预期"能否兑现：第一优先级=泰国北部/东北部、越南东南部（kind:open，干旱高温=开割推迟）；第二优先级=印尼南部巨港（kind:wet，降雨偏多=割胶受阻）。西双版纳(4月才割胶)、泰国南部(割胶尾声)、海南 不看
   { k: 'thn', n: '泰国北部（清莱）', lat: 19.9, lon: 99.83, tz: 'Asia/Bangkok', core: true, kind: 'open', pri: 1 },
   { k: 'the', n: '泰国东北（廊开/乌隆）', lat: 17.4, lon: 102.8, tz: 'Asia/Bangkok', core: true, kind: 'open', pri: 1 },
@@ -63,7 +63,7 @@ function ruWxVerdict(rs) {
   const ok = rs.filter(r => r && !r.err);
   if (!ok.length) return { level: 'unknown', text: '天气数据没取到：不用天气过滤' };
   const blk = ok.filter(r => r.core && r.sev >= 2), sum = ok.reduce((a, r) => a + r.sev, 0), warn = ok.filter(r => r.sev >= 1);
-  if (blk.length || sum >= 3) return { level: 'block', text: '主产区天气异常：' + (blk.length ? blk.map(r => r.n + ' ' + r.msg).join('、') : warn.map(r => r.n + ' ' + r.msg).join('、')) + '，暂缓做空' };
+  if (blk.length || sum >= 3) return { level: 'block', text: '主产区天气异常：' + (blk.length ? blk.map(r => r.n + ' ' + r.msg).join('、') : warn.map(r => r.n + ' ' + r.msg).join('、')) };
   if (warn.length) return { level: 'warn', text: '有产区轻度异常：' + warn.map(r => r.n + ' ' + r.msg).join('、') + '（不拦，留意）' };
   return { level: 'ok', text: '主产区天气正常' };
 }
@@ -107,7 +107,7 @@ function ruPlan(S, today, wx, pos, man) {
   const n = S.d.length, L = S.d[n - 1], y = +today.slice(0, 4), mmdd = today.slice(5), real = S.r[n - 1] != null ? S.r[n - 1] : null, scale = real ? S.c[n - 1] / real : null;
   const inMar = +today.slice(5, 7) === RUP.MON, pre = mmdd >= RUP.PRE_FROM && mmdd < '03-01', yE = ruLastWeekdayOfMarch(y);
   const dom = S.m && S.m[n - 1] ? 'RU' + S.m[n - 1] : null, yy = String(y).slice(2), bad = [];
-  if (wx && wx.level === 'block') bad.push(wx.text);
+  if (RUP.WXBLOCK && wx && wx.level === 'block') bad.push(wx.text + '，暂缓做空');
   if (man && man.surge && man.surge.on) bad.push(man.surge.text);
   if (man && man.policy && man.policy.on) bad.push(man.policy.text);
   if (man && man.reson && man.reson.on) bad.push(man.reson.text);
@@ -126,7 +126,7 @@ function ruPlan(S, today, wx, pos, man) {
     return o;
   }
   if (!inMar) {
-    if (pre) { o.st = 'pre'; o.head = '准备期：3月季节窗口 ' + o.daysTo + ' 天后开始'; o.sub = '3月1日起，价格收盘站上5日均线（反弹）且天气正常，才挂单做空；现在不动'; }
+    if (pre) { o.st = 'pre'; o.head = '准备期：3月季节窗口 ' + o.daysTo + ' 天后开始'; o.sub = '3月1日起，价格收盘站上5日均线（反弹）才挂单做空（天气只在页面提示，不拦单）；现在不动'; }
     else { o.st = 'sleep'; o.head = '休眠：只在3月做'; o.sub = '下一个窗口 ' + nextWin + '（还有 ' + o.daysTo + ' 天）。2月10日起进入准备期'; }
     return o;
   }
@@ -137,7 +137,7 @@ function ruPlan(S, today, wx, pos, man) {
   if (bad.length) { o.st = 'blocked'; o.head = '暂缓做空'; o.sub = bad.join('；'); return o; }
   if (!reb) { o.st = 'wait'; o.head = '等反弹：收盘还在5日线下，不追空'; o.sub = '收盘 ' + (real ? Math.round(real) : '—') + (o.ma ? ' 低于 MA5 ' + Math.round(o.ma) : '') + '；逢反弹站上5日线再挂空单'; return o; }
   const lim = real ? ruTickUp(real * (1 + RUP.LIM / 100)) : null;
-  o.st = 'go'; o.head = '做空信号：明日挂限价 ' + (lim ? '≥ ' + lim : ''); o.sub = '收盘站上MA5（反弹），天气' + (wx && wx.level === 'warn' ? '轻度异常' : wx && wx.level === 'ok' ? '正常' : '未知') + '；次日有效，没成交就作废，不追';
+  o.st = 'go'; o.head = '做空信号：明日挂限价 ' + (lim ? '≥ ' + lim : ''); o.sub = '收盘站上MA5（反弹），天气' + (wx && wx.level === 'block' ? '异常（只提示，不拦单）' : wx && wx.level === 'warn' ? '轻度异常' : wx && wx.level === 'ok' ? '正常' : '未知') + '；次日有效，没成交就作废，不追';
   o.order = { contract: dom, lim, stop: lim ? Math.round(lim * (1 + RUP.STOP / 100)) : null, ref: lim ? Math.round(lim * (1 - RUP.AVG_DROP / 100)) : null };
   return o;
 }
@@ -322,9 +322,9 @@ function ruIndSummary(ind, today) {
   function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = W < 520 ? 230 : 260; el.innerHTML = chartHtml(planNow(), W, H); }
   function sigHtml(P, IS, eqLots) {
     const tone = { go: 'short', exit: 'wait', holdwx: 'wait', hold: 'short', blocked: 'wait', wait: 'wait', pre: 'wait', sleep: 'wait', stale: 'wait', done: 'wait' }[P.st] || 'wait', cls = P.st === 'stale' ? 'gate' : tone;
-    const DS = ruDemandSurge(indAll(), todayBJ()), PA = policyNow(), RS_ = ruResonance(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
+    const DS = ruDemandSurge(indAll(), todayBJ()), PA = policyNow(), RS_ = ruResonance(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block' ? true : (RUP.WXBLOCK ? false : null);
     const chips = chip(P.inMar ? true : null, P.inMar ? '3月窗口' : '不在3月窗口') + (P.inMar || P.pre ? chip(P.reb, '收盘≥MA5（反弹）' + (P.ma ? ' ' + f0(P.ma) : '')) : '')
-      + (wv ? chip(wxOk, wv.level === 'block' ? '天气：暂缓' : wv.level === 'warn' ? '天气：轻度异常' : wv.level === 'ok' ? '天气正常' : '天气未取到', wv.text) : '')
+      + (wv ? chip(wxOk, wv.level === 'block' ? (RUP.WXBLOCK ? '天气：暂缓' : '天气：异常（只提示）') : wv.level === 'warn' ? '天气：轻度异常' : wv.level === 'ok' ? '天气正常' : '天气未取到', wv.text) : '')
       + chip(DS.on ? false : null, DS.on ? '需求爆发（自动）' : '需求未爆发', DS.text) + chip(RS_.on ? false : null, RS_.on ? '低产+需求强共振' : '无共振', RS_.text) + chip(PA.on ? false : POL ? true : null, PA.on ? '政策突袭预警' : POL ? '无政策突袭' : '政策快讯未取到', PA.text)
       + '<span class="sc sep">止损 ' + RUP.STOP + '% · 月底平仓 · 不设止盈</span>';
     const sizeLn = P.order && eqLots && eqLots.lots >= 1 ? '<div class="sb">建议总共 <b>' + eqLots.lots + ' 手</b>（共担：权益 ' + f0(eqLots.E) + ' × 阶梯占用 ' + Math.round(eqLots.u * 100) + '% × 份额 ' + (eqLots.share === 1 ? '全部' : '1/2（豆粕有持仓）') + '；止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）' + (eqLots.lots >= 2 ? '，可分2批：先一半，次日再反弹再加' : '') + '</div>' : '';
@@ -344,7 +344,7 @@ function ruIndSummary(ind, today) {
     const pv = '<div class="cell pv"><div class="cl">RU 主连价格与均线</div><div class="px"><span class="p">' + f0(P.real) + '</span><span class="c ' + (chg > 0 ? 'bull' : chg < 0 ? 'bear' : '') + '">' + (chg == null ? '' : (chg >= 0 ? '+' : '') + (chg * 100).toFixed(2) + '%') + '</span><span class="dim" style="font-size:11.5px;margin-left:6px">' + esc(P.last.slice(5)) + ' 收盘</span></div><div class="sub">近5天 ' + (c5 == null ? '—' : (c5 >= 0 ? '+' : '') + (c5 * 100).toFixed(1) + '%') + ' · MA5 ' + f0(P.ma) + (P.reb ? '（收盘在其上，反弹）' : '（收盘在其下）') + ' · 主力 ' + esc(P.dom || '—') + '</div></div>';
     const fd = IS.dir === 'na' ? '数据不足' : IS.dir, fc = IS.dir === '偏空' ? 'var(--bear)' : IS.dir === '偏多' ? 'var(--bull)' : 'var(--ink)';
     const fs = '<div class="cell half"><div class="cl">基本面（库存·产能利用率·产量·进口）</div><div class="fund"><div><div class="big" style="color:' + fc + '">' + esc(fd) + '<small class="num">' + (IS.n ? '空' + IS.bear + ' 多' + IS.bull : '') + '</small></div></div></div><div class="sub">' + (IS.warns.length ? '⚠ ' + esc(IS.warns[0]) : IS.goods.length ? esc(IS.goods[0]) : IS.n ? '自动 ' + IS.n + '/' + IS.tot + ' 项 · 最近 ' + esc(IS.last.slice(5)) + (IS.stale ? ' · ' + IS.stale + ' 项过期' : '') : '指标数据还没抓到（等 Actions 自动抓取）') + '</div></div>';
-    const wv = WX.v, wt = !wv ? (WX.busy ? '正在取…' : '未取') : wv.level === 'block' ? '暂缓做空' : wv.level === 'warn' ? '轻度异常' : wv.level === 'ok' ? '正常' : '没取到', wcol = wv && wv.level === 'block' ? 'var(--bull)' : wv && wv.level === 'warn' ? 'var(--amber)' : 'var(--ink)';
+    const wv = WX.v, wt = !wv ? (WX.busy ? '正在取…' : '未取') : wv.level === 'block' ? (RUP.WXBLOCK ? '暂缓做空' : '异常（只提示，不拦单）') : wv.level === 'warn' ? '轻度异常' : wv.level === 'ok' ? '正常' : '没取到', wcol = wv && wv.level === 'block' ? 'var(--bull)' : wv && wv.level === 'warn' ? 'var(--amber)' : 'var(--ink)';
     const wx = '<div class="cell half"><div class="cl">开割天气（泰北·泰东北·越南·印尼巨港）</div><div class="big" style="font-size:clamp(20px,3.1vh,28px);color:' + wcol + '">' + esc(wt) + '</div><div class="sub">' + (wv ? esc(wv.text.replace(/^主产区天气异常：/, '')) : '') + ' <button class="lnk" data-ru="wxre">重新取</button>' + (WX.at ? ' <span class="dim">' + new Date(WX.at + 8 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') + '</span>' : '') + '</div></div>';
     return '<section class="band ruband">' + pv + fs + wx + '</section>';
   }
@@ -359,7 +359,7 @@ function ruIndSummary(ind, today) {
     return (ST ? '<p class="hl">' + ST.years + ' 个3月里 ' + ST.n + ' 年出信号成交：平均 <b>' + p1(ST.mean) + '</b>，胜率 ' + ST.win.toFixed(0) + '%，最好 ' + p1(ST.best) + '，最差 ' + p1(ST.worst) + '（t=' + ST.t.toFixed(1) + '）。<span class="dim">样本只有 ' + ST.n + ' 年，多重检验后不显著，仓位要小。</span></p>' : '') + '<div class="mbars rubars">' + bars + '</div><div class="mleg"><span>每根柱子=当年3月按这条规则的收益%（含成本）；绿=赚，红=亏</span></div>';
   }
   function remindHtml(P) {
-    const yy = P.nextWin ? +P.nextWin.slice(0, 4) : +todayBJ().slice(0, 4), L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5且天气正常 → 次日挂限价空'], ['(每周)', '3月里每周看一眼趋势墙的库存、产能利用率（自动更新，无需录入）'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常、开割延迟、需求走强 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
+    const yy = P.nextWin ? +P.nextWin.slice(0, 4) : +todayBJ().slice(0, 4), L = [['02-10', '准备期开始：开始看天气和价格'], ['03-01', '窗口开始：每个收盘后看一次；收盘站上MA5 → 次日挂限价空（天气只提示，不拦单）'], ['(每周)', '3月里每周看一眼趋势墙的库存、产能利用率（自动更新，无需录入）'], ['(每天)', '持仓时：止损价（+' + RUP.STOP + '%）、天气转异常、开割延迟、需求走强 → 考虑离场'], [ruLastWeekdayOfMarch(yy).slice(5), '3月最后一个交易日：收盘前平仓']];
     const alert = P.st === 'go' || P.st === 'exit' || P.st === 'holdwx' || P.st === 'blocked';
     return '<ul class="rurm">' + L.map(x => '<li><b>' + esc(x[0]) + '</b> ' + esc(x[1]) + '</li>').join('') + '</ul><p class="' + (alert ? 'ruhot' : 'dim') + '">' + (alert ? '👉 今天要处理：' + esc(P.head) : '今天没有要处理的事。') + '</p><p class="dim">手机推送（准备期、窗口开始、出信号含挂单价和止损价、被天气拦住、最后交易日平仓）已随 v102.0 接入现有推送。</p>';
   }
