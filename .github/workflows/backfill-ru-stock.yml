@@ -1,0 +1,54 @@
+name: 橡胶库存回填
+
+# 手动触发（Actions 标签页 → 橡胶库存回填 → Run workflow）。
+# 从隆众搜索接口按半年窗口取《中国天然橡胶社会库存周数据分析》列表，逐篇点进正文取深色胶/浅色胶，
+# 缺的项用「深色+浅色=社会总库存」算出；结果写 data/ru_ind_auto.json（页面库存三格自动读取）。
+# 日志里每周一行（总/深/浅，哪些是算出的），把日志末尾"结果"那行发给我即可核对。
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: "回填几年（默认 6；0=只做近 70 天增量）"
+        default: "6"
+      no_bodies:
+        description: "只用列表摘要、不点正文（true/false；true 时只有总库存）"
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 语法检查
+        run: python -m compileall -q -f .
+      - name: 单元测试
+        run: python3 test_ru_stock.py
+      - name: 回填
+        env:
+          YEARS: ${{ github.event.inputs.years }}
+          NO_BODIES: ${{ github.event.inputs.no_bodies }}
+        run: |
+          ARGS="--years ${YEARS:-6}"
+          if [ "${YEARS:-6}" = "0" ]; then ARGS=""; fi
+          if [ "$NO_BODIES" = "true" ]; then ARGS="$ARGS --no-bodies"; fi
+          python3 ru_stock.py $ARGS
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ru_ind_auto.json
+          git diff --cached --quiet && echo "没有变化" && exit 0
+          git commit -m "橡胶库存回填 $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git pull --rebase origin ${GITHUB_REF_NAME} || true
+          git push

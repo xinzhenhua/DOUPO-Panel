@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {ruIndMerge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -118,4 +118,7 @@ eq('周数据>10天没更新 → 过期', P.ruIndTrend(P.RUIND.find(d => d.k ===
 eq('变化小于阈值 → 不明显(0)', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 100.5 }] }, T0).m, 0);
 eq('只录入一期 → 无较上期、含义0', P.ruIndTrend(P.RUIND.find(d => d.k === 'qg'), { qg: [{ d: '2027-03-09', v: 60 }] }, T0).m, 0);
 eq('偏空占优≥2 → 偏空', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qout: I1.qout }, T0).dir, '偏空');
+const MG = P.ruIndMerge({ stk: [{ d: '2026-10-04', v: 100 }, { d: '2026-10-11', v: 999 }], qg: [{ d: '2026-10-09', v: 60 }] }, { stk: [{ d: '2026-10-11', v: 110.4 }, { d: '2026-09-27', v: 109.6 }], dark: [{ d: '2026-10-11', v: 74.5 }] });
+eq('合并：同日以自动为准', MG.stk.find(p => p.d === '2026-10-11').v, 110.4); eq('合并：自动没有的日期保留手动并升序', MG.stk.map(p => p.d).join(), '2026-09-27,2026-10-04,2026-10-11');
+eq('合并：只有手动的指标原样保留', MG.qg.length, 1); eq('合并：只有自动的指标', MG.dark[0].v, 74.5); eq('合并：空输入', JSON.stringify(P.ruIndMerge(null, null)), '{}');
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);

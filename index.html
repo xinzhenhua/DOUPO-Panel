@@ -3474,6 +3474,12 @@ function ruIndSummary(ind, today) {
   const fresh = E.filter(t => !t.stale).length, last = E.reduce((a, t) => t.last.d > a ? t.last.d : a, '');
   return { T, by, n: E.length, tot: RUIND.length, bear, bull, dir, warns, goods, fresh, last, stale: E.length - fresh };
 }
+/* 自动抓取的序列(data/ru_ind_auto.json)与手动录入合并：同日期以自动为准，自动没有的日期保留手动点；各自升序 */
+function ruIndMerge(man, auto) {
+  const out = {}; const ks = new Set([].concat(Object.keys(man || {}), Object.keys(auto || {})));
+  ks.forEach(k => { const a = Array.isArray(auto && auto[k]) ? auto[k] : null, m = Array.isArray(man && man[k]) ? man[k] : []; if (!a || !a.length) { if (m.length) out[k] = m; return; } const ad = new Set(a.map(p => p.d)); out[k] = a.concat(m.filter(p => !ad.has(p.d))).sort((x, y) => x.d < y.d ? -1 : 1); });
+  return out;
+}
 /* RU_END */
 (function () {
   'use strict';
@@ -3488,6 +3494,7 @@ function ruIndSummary(ind, today) {
   const OPT = { eq: lsGet('ru-eq', 500000), risk: lsGet('ru-risk', RUP.RISK), margin: lsGet('ru-margin', RUP.MARGIN), pos: lsGet('ru-pos', null), stopY: lsGet('ru-stopY', null), man: lsGet('ru-man', { st: '', note: '', qg: '', bg: '', stk: '', demand: false, d: '' }) };
   const CH = { span: 120 };
   /* 手动录入的指标序列 {k:[{d,v}]}；旧版（只有全钢/半钢/库存三个数）自动迁移 */
+  let AUTO = {}, AUTOINFO = null;   // 自动抓取的指标序列（只读）；IND 只存手动录入
   let IND = lsGet('ru-ind', null);
   if (!IND) { IND = {}; const o = lsGet('ru-man', null); if (o && o.d) ['qg', 'bg', 'stk'].forEach(k => { const v = parseFloat(o[k]); if (v > 0) IND[k] = [{ d: o.d, v }]; }); lsSet('ru-ind', IND); }
   /* 接上 data/ru_live.json（Actions 追加的最新真实日线 {d,o,h,l,c}）：按快照最后一天的 调整价/真实价 比例换算 */
@@ -3495,6 +3502,8 @@ function ruIndSummary(ind, today) {
     if (!j || !j.d || !j.d.length) return; const n = S.d.length, f = S.c[n - 1] / S.r[n - 1];
     for (let i = 0; i < j.d.length; i++) { if (j.d[i] <= S.d[S.d.length - 1]) continue; S.d.push(j.d[i]); S.o.push(j.o[i] * f); S.h.push(j.h[i] * f); S.l.push(j.l[i] * f); S.c.push(j.c[i] * f); S.r.push(j.c[i]); S.m.push(j.m && j.m[i] ? String(j.m[i]).replace(/^RU/, '') : S.m[S.m.length - 1]); }
   }
+  const indAll = () => ruIndMerge(IND, AUTO);
+  async function loadAuto() { try { const r = await fetch('data/ru_ind_auto.json?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AUTO = {}; ['stk', 'dark', 'light'].forEach(k => { if (Array.isArray(j[k]) && j[k].length) AUTO[k] = j[k].filter(p => p && /^\d{4}-\d{2}-\d{2}$/.test(p.d) && p.v > 0); }); AUTOINFO = { updated: j.updated || '', calc: new Set(j.calc || []), warn: j.warn || [] }; } catch (_) {} }
   async function loadLive() { try { const r = await fetch('data/ru_live.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) mergeLive(await r.json()); } catch (_) {} }
   /* ---- 天气（浏览器直连 Open-Meteo，免密钥；每6小时缓存一次） ---- */
   async function jget(u) { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); }
@@ -3518,7 +3527,7 @@ function ruIndSummary(ind, today) {
   /* ---- 渲染 ---- */
   const chip = (ok, t, tip) => '<span class="sc ' + (ok == null ? '' : ok ? 'y' : 'n') + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + (ok == null ? '' : ok ? '✓ ' : '✗ ') + esc(t) + '</span>';
   function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, Object.assign({}, OPT.man, { stopY: OPT.stopY })); }
-  const indNow = () => ruIndSummary(IND, todayBJ());
+  const indNow = () => ruIndSummary(indAll(), todayBJ());
   const ago = n => n <= 0 ? '今天' : n + '天前';
   /* 迷你曲线：和豆粕趋势墙同一种画法（面积+线+末点） */
   function spark(vs, color, W, H) {
@@ -3535,7 +3544,7 @@ function ruIndSummary(ind, today) {
     const tint = t.m > 0 ? 'tb2' : t.m < 0 ? 'tx2' : '', side = t.m > 0 ? 'sb' : t.m < 0 ? 'sx' : '', bd = t.m ? '<span class="bd ' + (t.m > 0 ? 'up' : 'down') + '">' + (t.m > 0 ? '偏多' : '偏空') + '</span>' : (t.stale ? '<span class="bd m">过期</span>' : '');
     const chg = df.mode === 'lvl' ? (t.yy ? (t.yy.v >= 0 ? '+' : '') + fnum(t.yy.v) + '%' : '—') : t.delta == null ? '—' : (t.delta >= 0 ? '↑' : '↓') + fnum(Math.abs(t.delta), 1) + (df.mode === 'pct' ? '%' : '点');
     const chgM = df.mode === 'lvl' ? t.m : t.m;
-    return '<button class="tile ' + side + ' ' + tint + ' rutile" data-ik="' + df.k + '" aria-label="' + esc(df.n) + '，最新' + fnum(t.last.v) + esc(df.u) + '，点击录入"><div class="t1"><span class="n">' + esc(df.n) + '</span>' + bd + '</div>'
+    return '<button class="tile ' + side + ' ' + tint + ' rutile" data-ik="' + df.k + '" aria-label="' + esc(df.n) + '，最新' + fnum(t.last.v) + esc(df.u) + '，点击录入"><div class="t1"><span class="n">' + esc(df.n) + (AUTO[df.k] && AUTO[df.k].some(p => p.d === t.last.d) ? '<small class="dim" title="自动抓取自隆众周报' + (AUTOINFO && AUTOINFO.calc.has(t.last.d + ':' + df.k) ? '（该值由 深色+浅色=总库存 算出）' : '') + '"> 自动' + (AUTOINFO && AUTOINFO.calc.has(t.last.d + ':' + df.k) ? '*' : '') + '</small>' : '') + '</span>' + bd + '</div>'
       + '<div class="t2"><span class="v">' + fnum(t.last.v) + '</span><span class="u">' + esc(df.u) + '</span></div>'
       + '<div class="sk">' + (t.pts.length >= 3 ? spark(t.pts.map(p => p.v), mcolor(t.m), 120, 40) : '<div class="na">已录 ' + t.n + ' 期，满3期画曲线</div>') + '</div>'
       + '<div class="chips"><div class="chip"><div class="l">' + (df.mode === 'lvl' ? '同比' : '较上期') + '</div><div class="a" style="color:' + mcolor(chgM) + '">' + esc(chg) + '</div></div><div class="chip"><div class="l">上期</div><div class="a">' + (t.prev ? fnum(t.prev.v) : '—') + '</div></div><div class="chip' + (t.stale ? ' na' : '') + '"><div class="l">统计日</div><div class="a"' + (t.stale ? ' style="color:var(--amber)"' : '') + '>' + esc(t.last.d.slice(5)) + '</div></div></div></button>';
@@ -3553,7 +3562,7 @@ function ruIndSummary(ind, today) {
   }
   function wallHtml(IS) {
     const groups = [['供给', IS.T.filter(t => t.def.g === '供给').map(indTile)], ['库存', IS.T.filter(t => t.def.g === '库存').map(indTile)], ['需求', IS.T.filter(t => t.def.g === '需求').map(indTile)], ['天气', RUREG.map(wxTile)]];
-    let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">四类指标目前手动录入（点格子录入），天气自动取。颜色：对价格多空的含义</span></div>'
+    let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">社会总库存/深色胶/浅色胶已自动抓取（隆众周报），其余指标手动录入（点格子录入），天气自动取。颜色：对价格多空的含义</span></div>'
       + '<div class="why" style="padding:6px 20px">每一格一个指标。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口增加、产量同比增加偏空；开工率回升、去库偏多。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、延迟开割、需求超预期走强（你手动勾选）才会拦住做空。</div><div class="tiles blocks rutiles">';
     groups.forEach(g => { h += '<div class="bh"><span>' + g[0] + '</span><i>' + g[1].length + '项</i></div><div class="blk"><div class="rail"><span>' + g[0] + '</span></div><div class="bg" style="grid-template-columns:repeat(' + g[1].length + ',minmax(0,1fr))">' + g[1].join('') + '</div></div>'; });
     return h + '</div>' + entryHtml(IS);
@@ -3561,11 +3570,11 @@ function ruIndSummary(ind, today) {
   /* 手动录入面板：统计日期 + 各指标；保存后每项追加一个点（同一天覆盖） */
   function entryHtml(IS) {
     const m = OPT.man, ageM = m.d ? ruDaysBetween(m.d, todayBJ()) : null, f = (k, n, u, ph) => '<label>' + n + (u ? '(' + u + ')' : '') + '<input data-ind="' + k + '" inputmode="decimal" placeholder="' + esc(ph || '') + '"></label>';
-    const last = k => { const l = IND[k]; return l && l.length ? '上次 ' + fnum(l[l.length - 1].v) : ''; };
+    const last = k => { const l = indAll()[k]; return l && l.length ? '上次 ' + fnum(l[l.length - 1].v) : ''; };
     const sel = [['', '没录入'], ['stop', '还在停割'], ['trial', '部分产区试割'], ['ok', '正常开割'], ['delay', '延迟开割（干旱/洪涝）']].map(x => '<option value="' + x[0] + '"' + (m.st === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('');
     const staleTxt = IS.n ? (IS.stale ? IS.stale + ' 项已过期（周数据>10天、月数据>45天没更新）' : '数据都是新的') : '还没录入过';
     return '<details class="ruent" id="ruEnt"><summary>手动录入指标 <small class="dim">（' + esc(staleTxt) + '）</small></summary><div class="entb">'
-      + '<p class="dim">来源：隆众资讯/Mysteel 的定期报告（标题和发布时间见下面）。每周看一次，填你要更新的那几项，其余留空；只记在这台设备上。自动抓取之后会逐个替换这里。</p>'
+      + '<p class="dim">来源：隆众资讯/Mysteel 的定期报告（标题和发布时间见下面）。每周看一次，填你要更新的那几项，其余留空；只记在这台设备上。社会总库存/深色胶/浅色胶已自动抓取，同一天以自动为准，这三项不用再填；其余自动抓取逐个接入中。</p>'
       + '<div class="ruin"><label>统计日期<input id="ruIndD" value="' + todayBJ() + '"></label></div>'
       + '<h4>周数据（库存周报：周一/二；开工率：周四/五）</h4><div class="ruin">' + f('stk', '社会总库存', '万吨', last('stk')) + f('dark', '深色胶库存', '万吨', last('dark')) + f('light', '浅色胶库存', '万吨', last('light')) + f('qin', '青岛入库率', '%', last('qin')) + f('qout', '青岛出库率', '%', last('qout')) + f('qg', '全钢胎开工率', '%', last('qg')) + f('bg', '半钢胎开工率', '%', last('bg')) + '</div>'
       + '<h4>月数据（次月中下旬）</h4><div class="ruin">' + f('prod', '全球产量', '万吨', last('prod')) + f('prodY', '产量累计同比', '%', last('prodY')) + f('imp', '进口量', '万吨', last('imp')) + f('impY', '进口同比', '%', last('impY')) + '</div>'
@@ -3717,8 +3726,8 @@ function ruIndSummary(ind, today) {
     const m = { ruEq: ['eq', 'ru-eq'], ruRisk: ['risk', 'ru-risk'], ruMg: ['margin', 'ru-margin'] }[e.target && e.target.id]; if (!m) return;
     const v = +e.target.value; if (!(v > 0)) return; OPT[m[0]] = v; lsSet(m[1], v); paint();
   });
-  window.__ru = { plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => IND, indSummary: indNow, saveInd };
-  loadLive().then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
+  window.__ru = { plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow, saveInd };
+  Promise.all([loadLive(), loadAuto()]).then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
   paint();
 })();
 </script>
