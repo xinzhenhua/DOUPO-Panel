@@ -6,7 +6,7 @@ const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const src = fs.readFileSync(path.join(root, 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */');
-const P = new Function(src.slice(a, b) + '\nreturn {RUP,RUREG,ruPlan,ruDemandSurge,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch};')();
+const P = new Function(src.slice(a, b) + '\nreturn {RUP,RUREG,ruPlan,ruDemandSurge,ruPolicyAlert,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch};')();
 const readJson = (p, d) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return d; } };
 
 function loadSeries(dataDir) {
@@ -35,9 +35,9 @@ async function fetchWx(today) {
 function bjToday(nowMs) { return new Date((nowMs != null ? nowMs : Date.now()) + 8 * 3600e3).toISOString().slice(0, 10); }
 
 /* 纯计算：wx 可注入（测试用）。返回 {priceDate,gate,side,plan,events} */
-function compute(S, today, wx, ind) {
+function compute(S, today, wx, ind, pol) {
   const y = today.slice(0, 4), ev = [], mmdd = today.slice(5), L = S.d[S.d.length - 1];
-  const pl = P.ruPlan(S, today, wx, null, { surge: P.ruDemandSurge(ind, today) }), yE = P.ruLastWeekdayOfMarch(+y);
+  const pl = P.ruPlan(S, today, wx, null, { surge: P.ruDemandSurge(ind, today), policy: P.ruPolicyAlert(pol, today, null) }), yE = P.ruLastWeekdayOfMarch(+y);
   const inMar = +today.slice(5, 7) === 3 && today <= yE;
   if (pl.pre) ev.push({ type: 'ru', key: 'ru|' + y + '|pre', title: '【橡胶】3月季节窗口 ' + pl.daysTo + ' 天后开始（准备期）', body: '橡胶只在3月做空：3/1起，收盘站上5日线(反弹)且主产区天气正常，才在次日挂限价空单(≥收盘+0.3%)。\n现在不动，先看页面「橡胶」里的天气和开割进度；开割延迟/需求走强就手动录入，页面会自动暂缓。' });
   if (inMar && L >= y + '-03-01') ev.push({ type: 'ru', key: 'ru|' + y + '|open', title: '【橡胶】3月窗口开始', body: '规则：收盘站上MA5才出信号；5%止损；' + yE + ' 收盘无条件平仓；止损后今年不再开。\n最新价格日 ' + L + '。' });
@@ -59,7 +59,7 @@ async function main(argv) {
   const S = loadSeries(o.data || 'data'); if (!S) { console.error('[橡胶提醒] 找不到快照'); return; }
   const today = o.today || bjToday(); let wx = null;
   if (!o.nowx && +today.slice(5, 7) === 3) { try { wx = P.ruWxVerdict(await fetchWx(today)); } catch (_) { } }
-  const out = compute(S, today, wx, readJson(path.join(o.data || 'data', 'ru_ind_auto.json'), {})), txt = JSON.stringify(out, null, 1);
+  const out = compute(S, today, wx, readJson(path.join(o.data || 'data', 'ru_ind_auto.json'), {}), readJson(path.join(o.data || 'data', 'ru_policy.json'), {})), txt = JSON.stringify(out, null, 1);
   if (o.out) fs.writeFileSync(o.out, txt); else console.log(txt);
   console.error(`[橡胶提醒] ${today} · 价格日 ${out.priceDate} · ${out.plan.st} · 事件 ${out.events.length}`);
 }

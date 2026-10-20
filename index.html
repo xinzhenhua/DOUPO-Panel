@@ -3403,6 +3403,12 @@ function ruDemandSurge(ind, today) {
   o.text = o.on ? '需求意外爆发：全钢胎产能利用率 ' + last.v + '%（周期止 ' + last.d + '，较上周升、同比 +' + yy.v + ' 点），防空头被逼仓' : '未触发（全钢胎 ' + last.v + '%，同比 ' + (yy ? (yy.v >= 0 ? '+' : '') + yy.v + '点' : '—') + '；需3/15后、≥' + RUSURGE.LEVEL + '%且周升、同比≥+' + RUSURGE.YOY + '点）';
   return o;
 }
+/* 政策突袭预警（供给端突发：主产国限出口/联合减产类快讯，关键词法，由 ru_policy.py 抓隆众快讯）。
+ * 新开仓看近10天命中；已持仓只看开仓日之后的命中。只是触发器：命中后请你人工核实，不是回测过的信号 */
+function ruPolicyAlert(pol, today, since) {
+  const it = (pol && pol.items) || [], lo = since && since > ruAddDays(today, -10) ? since : ruAddDays(today, -10), hits = it.filter(x => x.d >= lo && x.d <= today);
+  return { on: hits.length > 0, hits, text: hits.length ? '政策突袭预警：' + hits.slice(-2).map(x => x.d.slice(5) + ' ' + x.title).join('；') + '（请核实，供给端突发可能逼空）' : '近10天无主产国限出口类快讯' };
+}
 /* 当前该做什么。S 序列（含 r 真实收盘），today 北京日期，wx 天气结论，pos 记录的空单 {d,px,lots}|null */
 function ruPlan(S, today, wx, pos, man) {
   const n = S.d.length, L = S.d[n - 1], y = +today.slice(0, 4), mmdd = today.slice(5), real = S.r[n - 1] != null ? S.r[n - 1] : null, scale = real ? S.c[n - 1] / real : null;
@@ -3410,6 +3416,7 @@ function ruPlan(S, today, wx, pos, man) {
   const dom = S.m && S.m[n - 1] ? 'RU' + S.m[n - 1] : null, yy = String(y).slice(2), bad = [];
   if (wx && wx.level === 'block') bad.push(wx.text);
   if (man && man.surge && man.surge.on) bad.push(man.surge.text);
+  if (man && man.policy && man.policy.on) bad.push(man.policy.text);
   const o = { today, last: L, real, dom, bad, inMar, pre, exitD: yE, wx, st: 'sleep', head: '', sub: '', chips: [], order: null, mar05: 'RU' + yy + '05', mar09: 'RU' + yy + '09' };
   const nextWin = (mmdd >= '04-01' ? (y + 1) : y) + '-03-01'; o.nextWin = nextWin; o.daysTo = Math.round((new Date(nextWin + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5);
   const ma = ruMA(S.c, n - 1, RUP.MA), reb = ma != null && S.c[n - 1] >= ma; o.reb = reb; o.ma = ma != null && scale ? ma / scale : null;
@@ -3532,7 +3539,10 @@ function ruIndSummary(ind, today) {
   }
   /* ---- 渲染 ---- */
   const chip = (ok, t, tip) => '<span class="sc ' + (ok == null ? '' : ok ? 'y' : 'n') + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + (ok == null ? '' : ok ? '✓ ' : '✗ ') + esc(t) + '</span>';
-  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, { stopY: OPT.stopY, surge: ruDemandSurge(indAll(), todayBJ()) }); }
+  let POL = null;
+  const policyNow = () => ruPolicyAlert(POL, todayBJ(), OPT.pos && OPT.pos.px ? OPT.pos.d : null);
+  async function loadPolicy() { try { const r = await fetch('data/ru_policy.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) POL = await r.json(); } catch (_) {} }
+  function planNow() { return ruPlan(S, todayBJ(), WX.v, OPT.pos && OPT.pos.px ? OPT.pos : null, { stopY: OPT.stopY, surge: ruDemandSurge(indAll(), todayBJ()), policy: policyNow() }); }
   const indNow = () => ruIndSummary(indAll(), todayBJ());
   const ago = n => n <= 0 ? '今天' : n + '天前';
   /* 迷你曲线：和豆粕趋势墙同一种画法（面积+线+末点） */
@@ -3575,14 +3585,14 @@ function ruIndSummary(ind, today) {
     const groups = [['供给', gt('供给')], ['库存', gt('库存')], ['青岛', gt('青岛')], ['需求', gt('需求')], ['天气', RUREG.map(wxTile)]];
     const upd = AUTOINFO && AUTOINFO.updated ? '，抓取于 ' + esc(AUTOINFO.updated) : '';
     let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">库存/青岛/产能利用率/产量/进口全部由 Actions 自动抓取隆众周报月报' + upd + '；天气自动取。颜色：对价格多空的含义</span></div>'
-      + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、或“需求爆发”（3/15后全钢胎产能利用率≥75%且周升、同比≥+8点，自动判断）才会拦住做空。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
+      + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、“需求爆发”（3/15后全钢胎产能利用率≥75%且周升、同比≥+8点）、“政策突袭预警”（主产国限出口类快讯）才会拦住做空，三者都是自动判断。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
     groups.forEach(g => { h += '<div class="bh"><span>' + g[0] + '</span><i>' + g[1].length + '项</i></div><div class="blk"><div class="rail"><span>' + g[0] + '</span></div><div class="bg" style="grid-template-columns:repeat(' + g[1].length + ',minmax(0,1fr))">' + g[1].join('') + '</div></div>'; });
     return h + '</div>' + entryHtml(IS);
   }
   /* 数据来源说明 + 需求爆发离场条件（全部自动，没有任何手动录入） */
   function entryHtml(IS) {
     const DS = ruDemandSurge(indAll(), todayBJ());
-    return '<details class="ruabout"><summary>数据来源与自动离场条件（点开）</summary><ul class="rurm"><li><b>需求爆发（自动，会拦做空/提示持仓离场）</b>：3月15日之后的统计周，全钢胎产能利用率 ≥' + RUSURGE.LEVEL + '% 且较上周上升、同比 ≥+' + RUSURGE.YOY + ' 个点，三条同时满足。当前：' + esc(DS.text) + '</li><li>库存：「中国天然橡胶社会库存周数据分析」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>产能利用率：「中国轮胎产能利用率周数据统计」（全钢胎/半钢胎）</li><li>产量：「全球天然橡胶产量月数据统计」（ANRPC预测）</li><li>进口：「中国天然橡胶进口量月数据统计」（海关终值，预估已剔除）</li></ul></details>';
+    return '<details class="ruabout"><summary>数据来源与自动离场条件（点开）</summary><ul class="rurm"><li><b>需求爆发（自动，会拦做空/提示持仓离场）</b>：3月15日之后的统计周，全钢胎产能利用率 ≥' + RUSURGE.LEVEL + '% 且较上周上升、同比 ≥+' + RUSURGE.YOY + ' 个点，三条同时满足。当前：' + esc(DS.text) + '</li><li><b>政策突袭预警（自动，关键词法）</b>：隆众天胶快讯里 主产国(泰国/印尼/马来西亚/ITRC/三国)＋限制出口/减产类动作，且非放宽。命中即暂缓新做空、提示持仓离场，请人工核实；没有回测，有误报漏报，官方渠道未接入。' + (policyNow().hits.length ? '近期命中：' + policyNow().hits.map(x => esc(x.d) + ' ' + (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title) + '</a>' : esc(x.title))).join('；') : '近10天无命中') + (POL && POL.updated ? '（抓取于 ' + esc(POL.updated) + '）' : '') + '</li><li>库存：「中国天然橡胶社会库存周数据分析」「青岛地区天然橡胶样本库存和出入库率周数据分析」</li><li>产能利用率：「中国轮胎产能利用率周数据统计」（全钢胎/半钢胎）</li><li>产量：「全球天然橡胶产量月数据统计」（ANRPC预测）</li><li>进口：「中国天然橡胶进口量月数据统计」（海关终值，预估已剔除）</li></ul></details>';
   }
   /* 价格图：近N个交易日收盘（按最近真实价换算）+ MA5 + 历年3月窗口底色 + 挂单价/止损线 */
   function chartHtml(P, W, H) {
@@ -3603,10 +3613,10 @@ function ruIndSummary(ind, today) {
   function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = W < 520 ? 230 : 260; el.innerHTML = chartHtml(planNow(), W, H); }
   function sigHtml(P, IS, eqLots) {
     const tone = { go: 'short', exit: 'wait', holdwx: 'wait', hold: 'short', blocked: 'wait', wait: 'wait', pre: 'wait', sleep: 'wait', stale: 'wait', done: 'wait' }[P.st] || 'wait', cls = P.st === 'stale' ? 'gate' : tone;
-    const DS = ruDemandSurge(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
+    const DS = ruDemandSurge(indAll(), todayBJ()), PA = policyNow(), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block';
     const chips = chip(P.inMar ? true : null, P.inMar ? '3月窗口' : '不在3月窗口') + (P.inMar || P.pre ? chip(P.reb, '收盘≥MA5（反弹）' + (P.ma ? ' ' + f0(P.ma) : '')) : '')
       + (wv ? chip(wxOk, wv.level === 'block' ? '天气：暂缓' : wv.level === 'warn' ? '天气：轻度异常' : wv.level === 'ok' ? '天气正常' : '天气未取到', wv.text) : '')
-      + chip(DS.on ? false : DS.last ? null : null, DS.on ? '需求爆发（自动）' : '需求未爆发', DS.text)
+      + chip(DS.on ? false : null, DS.on ? '需求爆发（自动）' : '需求未爆发', DS.text) + chip(PA.on ? false : POL ? true : null, PA.on ? '政策突袭预警' : POL ? '无政策突袭' : '政策快讯未取到', PA.text)
       + '<span class="sc sep">止损 ' + RUP.STOP + '% · 月底平仓 · 不设止盈</span>';
     const sizeLn = P.order && eqLots && eqLots.lots >= 1 ? '<div class="sb">建议总共 <b>' + eqLots.lots + ' 手</b>（止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.loss / OPT.eq * 100).toFixed(1) + '%）' + (eqLots.lots >= 2 ? '，可分2批：先一半，次日再反弹再加' : '') + '</div>' : '';
     const left = '<button class="sg ' + cls + '" data-ru="goplan" aria-label="橡胶入场信号：' + esc(P.head) + '"><div class="cl">橡胶 RU · 3月季节性做空 · 最近收盘（' + esc(P.last.slice(5)) + '）' + (P.real ? ' ' + f0(P.real) : '') + '</div><div class="hd">' + esc(P.head) + '</div><div class="sb">' + esc(P.sub) + '</div>' + sizeLn + '<div class="scs">' + chips + '</div></button>';
@@ -3669,7 +3679,7 @@ function ruIndSummary(ind, today) {
   }
 
   function aboutHtml() {
-    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有天气严重异常和“需求爆发”（3/15后全钢胎产能利用率≥75%、周升、同比≥+8点，自动判断）会拦住信号</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
+    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有天气严重异常、“需求爆发”（3/15后全钢胎产能利用率≥75%、周升、同比≥+8点）和“政策突袭预警”（主产国限出口类快讯）会拦住信号，均为自动判断</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
   }
 
   function overviewHtml() {
@@ -3710,8 +3720,8 @@ function ruIndSummary(ind, today) {
     const m = { ruEq: ['eq', 'ru-eq'], ruRisk: ['risk', 'ru-risk'], ruMg: ['margin', 'ru-margin'] }[e.target && e.target.id]; if (!m) return;
     const v = +e.target.value; if (!(v > 0)) return; OPT[m[0]] = v; lsSet(m[1], v); paint();
   });
-  window.__ru = { surge: () => ruDemandSurge(indAll(), todayBJ()), plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow };
-  Promise.all([loadLive(), loadAuto()]).then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
+  window.__ru = { policy: policyNow, setPolicy: j => { POL = j; }, surge: () => ruDemandSurge(indAll(), todayBJ()), plan: planNow, paint, setView, loadWx, S: () => S, view: () => VIEW, history: () => ruHistory(S), size: ruSize, ind: () => indAll(), auto: () => AUTO, loadAuto, indSummary: indNow };
+  Promise.all([loadLive(), loadAuto(), loadPolicy()]).then(() => { paint(); if (VIEW !== 'meal') loadWx().then(paint); });
   paint();
 })();
 </script>

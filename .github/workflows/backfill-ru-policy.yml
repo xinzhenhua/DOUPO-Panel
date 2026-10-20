@@ -1,0 +1,43 @@
+name: 橡胶政策预警回看
+
+# 手动触发：回看 N 天的天胶快讯，列出命中关键词的标题，用来检验关键词（例如 days=3800 看 2016-03 三国限出口能否命中）。
+# 日志里每个命中一行；把"命中"行和"结果"行发给我即可调关键词。
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "回看天数（默认 400）"
+        default: "400"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-writes
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python3 test_ru_policy.py
+      - name: 回看
+        env:
+          DAYS: ${{ github.event.inputs.days }}
+        run: python3 ru_policy.py --days "${DAYS:-400}" --out /tmp/ru_policy_backfill.json
+      - name: 当前预警（近14天）
+        run: python3 ru_policy.py
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ru_policy.json
+          git diff --cached --quiet && echo "没有变化" && exit 0
+          git commit -m "橡胶政策预警 $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git pull --rebase origin ${GITHUB_REF_NAME} || true
+          git push

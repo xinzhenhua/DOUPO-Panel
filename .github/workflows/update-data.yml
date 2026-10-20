@@ -143,6 +143,12 @@ jobs:
         continue-on-error: true
         run: python3 ru_ind.py
 
+      # v102.4：橡胶政策突袭预警(隆众天胶快讯关键词)。每天夜盘后一次，和指标同一个时点；失败不影响其它步骤。
+      - name: 橡胶政策突袭预警(v102.4)
+        if: ${{ github.event.schedule == '5 15 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.src != 'cron' || steps.bj.outputs.hh == '23')) }}
+        continue-on-error: true
+        run: python3 ru_policy.py
+
       # v102.0：橡胶3月提醒（准备期/窗口开始/做空信号/被天气拦住/最后交易日平仓）。独立的已发记录 data/ru_alert_state.json。
       - name: 橡胶提醒(v102.0)
         continue-on-error: true
@@ -194,7 +200,7 @@ jobs:
           git add data/history/ 2>/dev/null || true
           git add data/main_adj.json data/alert_state.json 2>/dev/null || true
           git add data/widget.json 2>/dev/null || true
-          git add data/ru_live.json data/ru_alert_state.json data/ru_ind_auto.json 2>/dev/null || true   # v102.0 橡胶
+          git add data/ru_live.json data/ru_alert_state.json data/ru_ind_auto.json data/ru_policy.json 2>/dev/null || true   # v102.0 橡胶
           git add data/usda_last_good.json 2>/dev/null || true   # v101.86：USDA 三项上次成功的存档（USDA 偶尔 503，失败时沿用）
           git add data/push_subs.json 2>/dev/null || true
           # 龙虎榜每日原始前20名留档(v101.19)

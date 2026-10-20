@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {ruPolicyAlert,ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -126,4 +126,9 @@ eq('偏空占优≥2 → 偏空', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qou
 const IQ = { qin: [{ d: '2027-03-02', v: 1 }, { d: '2027-03-09', v: 2 }, { d: '2027-03-16', v: 3 }, { d: '2027-03-23', v: 4 }] }; eq('chg模式：近4周累计', P.ruIndTrend(P.RUIND.find(d => d.k === 'qin'), IQ, '2027-03-24').d4, 10);
 eq('产能利用率：环比高但同比<3 → 不提示(国庆/春节环比失真)', P.ruIndSummary({ qg: [{ d: '2027-03-02', v: 40 }, { d: '2027-03-09', v: 60 }], qgY: [{ d: '2027-03-09', v: 1 }] }, T0).warns.length, 0);
 eq('指标个数=10且不含手动字段', [P.RUIND.length, P.RUIND.every(d => d.src)], [10, true]);
+const PO = { items: [{ d: '2027-03-12', title: '三国联合限制橡胶出口' }, { d: '2027-02-01', title: '旧闻' }] };
+eq('政策突袭：近10天命中 → on', P.ruPolicyAlert(PO, '2027-03-15', null).on, true); eq('政策突袭：超过10天 → off', P.ruPolicyAlert(PO, '2027-03-25', null).on, false);
+eq('政策突袭：持仓只看开仓日之后(开仓3/13，命中3/12 → off)', P.ruPolicyAlert(PO, '2027-03-15', '2027-03-13').on, false); eq('政策突袭：持仓开仓3/10 → on', P.ruPolicyAlert(PO, '2027-03-15', '2027-03-10').on, true);
+eq('政策突袭：无文件不报错', P.ruPolicyAlert(null, '2027-03-15', null).on, false);
+eq('政策命中 → 暂缓做空；持仓 → 考虑离场', [P.ruPlan(S4, L4, okw, null, { policy: { on: true, text: 'x' } }).st, P.ruPlan(S4, L4, okw, { d: '2027-03-02', px: 19700, lots: 1, contract: 'RU2705' }, { policy: { on: true, text: 'x' } }).st], ['blocked', 'holdwx']);
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);
