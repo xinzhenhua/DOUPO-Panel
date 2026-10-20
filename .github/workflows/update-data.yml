@@ -32,7 +32,11 @@ on:
     - cron: "5 13 * * 1-5"  # 北京时间21:05(夜盘开盘后)，UTC 13:05，周一至周五(周五夜盘属下周一交易日；周日晚上没有夜盘)
     - cron: "5 14 * * 1-5"  # 北京时间22:05，UTC 14:05
     - cron: "5 15 * * 1-5"  # 北京时间23:05(夜盘刚收盘)，UTC 15:05——也覆盖持仓排名/USDA出口销售等数据更新
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      src:
+        description: "触发来源：cron=外部定时(cron-job.org)触发，每日一次的重步骤只在北京时间23点那次跑；留空=手动，全部跑"
+        default: ""
 
 permissions:
   contents: write  # 需要这个权限才能把抓到的数据提交回仓库
@@ -50,6 +54,11 @@ jobs:
     steps:
       - name: 拉取仓库代码
         uses: actions/checkout@v4
+
+      # 北京时间的小时：外部定时(cron-job.org，src=cron)每天触发十几次，每日一次的重步骤(季节性累积/橡胶库存)只在23点那次跑
+      - name: 记录北京时间小时
+        id: bj
+        run: echo "hh=$(TZ=Asia/Shanghai date +%H)" >> "$GITHUB_OUTPUT"
 
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
@@ -93,7 +102,7 @@ jobs:
       #   只在夜盘收盘后的那一次(UTC 15:05，北京23:05，生意社18:30后已出当天数据)和手动运行时做，免得每小时白跑。
       #   continue-on-error：失败不影响基本面主数据；失败原因看这一步的日志。
       - name: 季节性数据每日累积(现货+期货)
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '5 15 * * 1-5' }}
+        if: ${{ github.event.schedule == '5 15 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.src != 'cron' || steps.bj.outputs.hh == '23')) }}
         continue-on-error: true
         run: |
           python3 fetch_seasonal_raw.py --only spot_daily,refresh,multi --out data/raw/seasonal
@@ -130,7 +139,7 @@ jobs:
 
       # v102.2：橡胶社会库存/深色胶/浅色胶(隆众周报，列表→正文两步)。每天夜盘后一次（周报周二~周三出）；失败不影响其它步骤。
       - name: 橡胶库存周报(v102.2)
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '5 15 * * 1-5' }}
+        if: ${{ github.event.schedule == '5 15 * * 1-5' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.src != 'cron' || steps.bj.outputs.hh == '23')) }}
         continue-on-error: true
         run: python3 ru_stock.py
 
