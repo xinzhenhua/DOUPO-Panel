@@ -373,7 +373,7 @@ function ruIndSummary(ind, today) {
   function ruHtml() {
     const SC = shareCtx(), P = planNow(), IS = indNow(), eqLots = SC && P.order && P.real ? ruShareSize(SC.E, SC.u, SC.share, P.order.lim, SC.mr, SC.mode, 0.10) : null, H = ruHistory(S), ST = ruStats(H);
     const spans = [[60, '60日'], [120, '120日'], [250, '250日']].map(x => '<button data-ru="span" data-n="' + x[0] + '" aria-pressed="' + (CH.span === x[0]) + '">' + x[1] + '</button>').join('');
-    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div><div class="hl">黄底=历年3月窗口；黄线=MA5。收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
+    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div><div class="hl">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
       + '<h3 class="ruh">历年3月按这条规则的结果</h3>' + histBars(H, ST)
       + '<details class="ruabout"><summary>天气明细与口径</summary>' + wxDetail() + '</details>'
       + '<details class="ruabout"><summary>规则依据与局限</summary>' + aboutHtml() + '</details></section>';
