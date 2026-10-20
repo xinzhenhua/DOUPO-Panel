@@ -27,9 +27,9 @@ async function fetchWx(today) {
       const [fc, hs] = await Promise.all([
         jget('https://api.open-meteo.com/v1/forecast?' + base + '&daily=precipitation_sum,temperature_2m_max&past_days=35&forecast_days=7'),
         jget('https://archive-api.open-meteo.com/v1/archive?' + base + '&start_date=' + years[0] + '-01-01&end_date=' + years[4] + '-12-31&daily=precipitation_sum,temperature_2m_max')]);
-      const r = P.ruRegionWx({ d: fc.daily.time, p: fc.daily.precipitation_sum, tx: fc.daily.temperature_2m_max }, { d: hs.daily.time, p: hs.daily.precipitation_sum, tx: hs.daily.temperature_2m_max }, today, years);
-      return Object.assign({ k: g.k, n: g.n, core: g.core }, r);
-    } catch (e) { return { k: g.k, n: g.n, core: g.core, err: String(e && e.message || e) }; }
+      const r = P.ruRegionWx({ d: fc.daily.time, p: fc.daily.precipitation_sum, tx: fc.daily.temperature_2m_max }, { d: hs.daily.time, p: hs.daily.precipitation_sum, tx: hs.daily.temperature_2m_max }, today, years, g.kind);
+      return Object.assign({ k: g.k, n: g.n, core: g.core, kind: g.kind, pri: g.pri }, r);
+    } catch (e) { return { k: g.k, n: g.n, core: g.core, kind: g.kind, pri: g.pri, err: String(e && e.message || e) }; }
   }));
 }
 function bjToday(nowMs) { return new Date((nowMs != null ? nowMs : Date.now()) + 8 * 3600e3).toISOString().slice(0, 10); }

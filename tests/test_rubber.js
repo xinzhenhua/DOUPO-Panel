@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -79,4 +79,43 @@ eq('核心区严重 → block', P.ruWxVerdict([reg('a', true, 2, '严重偏旱')
 eq('非核心区严重(单个) → warn不拦', P.ruWxVerdict([reg('a', true, 0, '正常'), reg('b', false, 2, '严重偏旱')]).level, 'warn');
 eq('注意累计3 → block', P.ruWxVerdict([reg('a', true, 1, 'x'), reg('b', false, 1, 'x'), reg('c', false, 1, 'x')]).level, 'block');
 eq('全部取失败 → unknown不拦', P.ruWxVerdict([{ err: 'x' }, { err: 'y' }]).level, 'unknown');
+
+// ---- v102.1：天气产区调整（泰北/泰东北/越南东南=开割节奏；印尼巨港=降雨偏多）
+eq('产区=泰北/泰东北/越南东南/印尼巨港', P.RUREG.map(g => g.k), ['thn', 'the', 'vn', 'id']);
+eq('不再看西双版纳/泰国南部/海南', P.RUREG.some(g => /西双版纳|泰国南部|海南/.test(g.n)), false);
+eq('前三个第一优先(open)，印尼第二优先(wet)', P.RUREG.map(g => g.kind + g.pri), ['open1', 'open1', 'open1', 'wet2']);
+eq('只有印尼不是核心', P.RUREG.filter(g => !g.core).map(g => g.k), ['id']);
+const wToday = '2027-03-20', yrs = [2022, 2023, 2024, 2025, 2026];
+function mkwx(pPerDay, txPast, normPerDay, txNorm, p7perDay) {
+  const day = (d, n) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+  const fc = { d: [], p: [], tx: [] }; for (let i = -34; i <= 7; i++) { fc.d.push(day(wToday, i)); fc.p.push(i > -7 && i <= 0 && p7perDay != null ? p7perDay : pPerDay); fc.tx.push(txPast); }
+  const hist = { d: [], p: [], tx: [] }; yrs.forEach(y => { for (let i = -34; i <= 0; i++) { hist.d.push(day(y + wToday.slice(4), i)); hist.p.push(normPerDay); hist.tx.push(txNorm); } });
+  return [fc, hist];
+}
+let [f1, h1] = mkwx(0.1, 36, 1.2, 33);                    // 近30天几乎无雨(同期36mm)+比常年热3℃
+let r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'open'); eq('开割产区：严重偏旱+偏热 → 严重(2)', r1.sev, 2); eq('带高温标记', /高温/.test(r1.msg), true);
+eq('一周无雨且均温≥33 → ur 提示为真', r1.ur, true);
+let r1w = P.ruRegionWx(f1, h1, wToday, yrs, 'wet'); eq('印尼(wet)：干旱+高温不算异常', r1w.sev, 0); eq('印尼(wet)干旱说明', /对空头无影响/.test(r1w.msg), true);
+[f1, h1] = mkwx(1.2, 33, 1.2, 33); r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'open'); eq('降水气温都正常 → 0', r1.sev, 0); eq('正常不触发ur(7天累计>5mm)', r1.ur, false);
+[f1, h1] = mkwx(3.4, 31, 1.2, 31); r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'wet'); eq('印尼降雨283%、多66mm→偏多(1)', r1.sev, 1); eq('文字=降雨偏多', /降雨偏多/.test(r1.msg), true);
+[f1, h1] = mkwx(4.7, 31, 1.2, 31); r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'wet'); eq('印尼降雨392%、多105mm→严重(2)', r1.sev, 2);
+[f1, h1] = mkwx(0.1, 33, 1.2, 33); r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'open'); eq('仅严重偏旱(不偏热) → 严重(2)', r1.sev, 2);
+[f1, h1] = mkwx(0.8, 33.5, 2, 33); r1 = P.ruRegionWx(f1, h1, wToday, yrs, 'open'); eq('30天降水40%（少36mm）、均温偏热0.5 → 偏旱注意(1)', r1.sev, 1);
+eq('印尼单独严重不拦(非核心)', P.ruWxVerdict([{ core: true, sev: 0, n: 'a', msg: '正常' }, { core: false, sev: 2, n: '印尼', msg: '降雨严重偏多' }]).level, 'warn');
+eq('印尼严重+泰北注意 累计≥3 → 拦', P.ruWxVerdict([{ core: true, sev: 1, n: 'a', msg: 'x' }, { core: false, sev: 2, n: '印尼', msg: 'y' }]).level, 'block');
+// ---- 四类指标
+const T0 = '2027-03-10', I1 = { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 103 }], dark: [{ d: '2027-03-02', v: 50 }, { d: '2027-03-09', v: 47 }], qg: [{ d: '2027-03-02', v: 60 }, { d: '2027-03-09', v: 64 }], qin: [{ d: '2027-03-02', v: 8 }, { d: '2027-03-09', v: 14 }], qout: [{ d: '2027-03-02', v: 9 }, { d: '2027-03-09', v: 6 }], prod: [{ d: '2027-02-20', v: 38 }], prodY: [{ d: '2027-02-20', v: 4 }], imp: [{ d: '2027-02-20', v: 30 }], impY: [{ d: '2027-02-20', v: -8 }] };
+const S1 = P.ruIndSummary(I1, T0), by = S1.by;
+eq('社会库存+3% → 偏空(-1)', by.stk.m, -1); eq('深色胶-6% → 偏多(+1)', by.dark.m, 1); eq('全钢开工率+4点 → 偏多(+1)', by.qg.m, 1);
+eq('青岛入库率+6点 → 偏空(-1)', by.qin.m, -1); eq('青岛出库率-3点 → 偏空(-1)', by.qout.m, -1);
+eq('产量同比+4% → 偏空(-1)', by.prod.m, -1); eq('进口同比-8% → 偏多(+1)', by.imp.m, 1);
+eq('没录入的指标 n=0 m=0', [by.light.n, by.light.m], [0, 0]); eq('录入项数', [S1.n, S1.tot], [7, 9]);
+eq('空4(库存/入库/出库/产量)、多3(深色/开工率/进口) → 中性', [S1.bear, S1.bull, S1.dir], [4, 3, '中性']);
+eq('深色胶去库≥3% → 提示警惕', S1.warns.some(w => /深色胶.*去库/.test(w)), true); eq('全钢开工率+4点≥3 → 提示需求回升', S1.warns.some(w => /全钢胎开工率.*升 4\.0/.test(w)), true);
+eq('青岛入库大升出库走低 → 利空佐证', S1.goods.some(w => /青岛入库率/.test(w)), true);
+eq('不足3项 → 数据不足', P.ruIndSummary({ stk: I1.stk }, T0).dir, 'na');
+eq('周数据>10天没更新 → 过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), I1, '2027-03-25').stale, true); eq('月数据30天内不过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'prod'), I1, '2027-03-25').stale, false);
+eq('变化小于阈值 → 不明显(0)', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 100.5 }] }, T0).m, 0);
+eq('只录入一期 → 无较上期、含义0', P.ruIndTrend(P.RUIND.find(d => d.k === 'qg'), { qg: [{ d: '2027-03-09', v: 60 }] }, T0).m, 0);
+eq('偏空占优≥2 → 偏空', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qout: I1.qout }, T0).dir, '偏空');
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);

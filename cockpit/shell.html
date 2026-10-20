@@ -485,7 +485,34 @@ body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .ses
 .ruck{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:6px 0}.ruin select{padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);font:inherit}.rurm{padding-left:18px;margin:4px 0}.rurm li{margin:3px 0}.ruhot{font-weight:600;color:var(--bear)}.ruabout{margin-top:22px}.ruabout p{margin:8px 0;font-size:13.5px}
 .ovg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ov-c{border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;background:var(--surface)}.ov-c:hover{background:var(--focusS)}.ov-c h4{font-size:13px;color:var(--ink3);font-weight:500}.ov-c .hd{font-size:18px;font-weight:700;margin:4px 0}.ovn{margin-top:10px;font-size:12.5px}
 @media(max-width:700px){.ovg{grid-template-columns:1fr}.rutb thead{display:none}.rutb tr{display:block;border-bottom:1px solid var(--line2);padding:4px 0}.rutb td{display:block;border:0;padding:2px 8px}.rusg .hd{font-size:20px}.ruin input{width:100%}.ruin label{flex:1 1 40%}}
-@media(max-width:899px){.brand{display:none}}
+
+/* ===== 橡胶页：复用豆粕页的信号条/背景卡/价格图/趋势墙样式，下面只补差异 ===== */
+.ruapp .main{display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);flex:none;min-height:0}
+.ruapp .chart{overflow:visible}
+.ruapp .rwall .tiles.blocks{flex:none}
+.ruapp .rwall .blk{flex:none}
+.ruapp .rwall .tile{min-height:136px}
+.ruapp .rwall .tile.pend{min-height:96px;cursor:pointer}
+.ruapp .rwall .tile.pend .sk{min-height:48px}
+.ruapp .rwall .tile small{font-size:11px}
+.ruapp .bh{display:none}
+.ruapp .wr{display:none}
+.ruapp .rwall .why{padding:6px 20px;font-size:12.5px;color:var(--ink3);line-height:1.5}
+.rukl{width:100%;min-height:230px;margin:2px 0 4px}.rukl svg{display:block;max-width:100%}.rukl .lv,.rukl .lw{font-size:11px;fill:var(--ink2);font-family:var(--num)}.rukl .lw{fill:var(--ink3)}
+.ruh{font-size:13px;font-weight:600;margin:18px 0 6px;color:var(--ink2)}
+.rucheck{gap:18px;white-space:nowrap}.ruci{font-size:12.5px;color:var(--ink)}.ruci i{font-style:normal;color:var(--ink3);margin-right:6px}
+.rubars{margin:6px 0 2px}.rubars .mc .mb{height:72px}.rubars .mc .mv{font-size:10.5px}
+.ruent{border-top:1px solid var(--line)}.ruent summary{cursor:pointer;padding:12px 20px;font-weight:600;font-size:13.5px}.ruent .entb{padding:0 20px 18px}.ruent h4{font-size:12.5px;color:var(--ink2);margin:12px 0 2px}
+.ruapp .rusig .sg.short .hd{color:var(--bear)}
+@media(max-width:899px){
+  .ruapp .main{display:block}
+  .ruapp .wr{display:inline}
+  .ruapp .bh{display:flex}.ruapp .rail{display:none}.ruapp .blk{display:block}.ruapp .bg{display:block!important}.ruapp .rwall .tiles.blocks{display:block}
+  .ruapp .rwall .tile,.ruapp .rwall .tile.pend{min-height:0}
+  .ruapp .rwall .why{padding:6px 14px}.ruent summary{padding:12px 14px}.ruent .entb{padding:0 14px 18px}
+  .rucheck{height:40px}
+  .ruapp .tile.wxt{grid-template-areas:"n n" "v v" "c c"}.ruapp .tile.wxt .sk{display:none}
+}@media(max-width:899px){.brand{display:none}}
 </style>
 </head>
 <body>
