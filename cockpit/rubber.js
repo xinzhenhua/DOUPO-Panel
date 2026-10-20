@@ -205,7 +205,7 @@ function ruIndSummary(ind, today) {
   const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
   const f0 = x => x == null || isNaN(x) ? '—' : Math.round(x).toLocaleString('en-US'), p1 = x => x == null || isNaN(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
-  let S = { d: RU.d.slice(), o: RU.o.slice(), h: RU.h.slice(), l: RU.l.slice(), c: RU.c.slice(), r: RU.r.slice(), m: (RU.m || []).slice() }, WX = { rs: null, v: null, at: null, busy: false }, VIEW = lsGet('fut-view2', 'ru');
+  let S = { d: RU.d.slice(), o: RU.o.slice(), h: RU.h.slice(), l: RU.l.slice(), c: RU.c.slice(), r: RU.r.slice(), m: (RU.m || []).slice() }, WX = { rs: null, v: null, at: null, busy: false }, VIEW = lsGet('fut-view2', 'meal');
   /* 橡胶持仓记在账户 account.json 的 ruTrades 里（和豆粕同一个账户：权益共享、自动云同步）；旧版记在本机 ru-pos 的，启动时迁移过来 */
   const K = () => window.__cockpit || {};
   const acct = () => { try { return K().acctGet(); } catch (_) { return null; } };

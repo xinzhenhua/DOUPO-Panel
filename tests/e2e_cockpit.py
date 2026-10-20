@@ -575,7 +575,7 @@ def main():
         ctx = b.new_context(viewport={'width': w_, 'height': h_}); pg = ctx.new_page(); e12 = []; pg.on('pageerror', lambda e: e12.append(str(e)))
         pg.add_init_script("window.__RU_TODAY='2026-03-12';window.__RU_WX_MOCK=" + json.dumps(MOCKWX) + ";")
         pg.goto('http://127.0.0.1:%d/index.html' % port); pg.wait_for_function("window.__ru", timeout=30000); pg.wait_for_timeout(500)
-        ok('组合页(%d宽)：默认进橡胶页，顶部有 总览/豆粕/橡胶 切换' % w_, pg.evaluate("document.querySelectorAll('#vSeg button').length === 3 && document.querySelector('#vSeg [data-v=ru]').getAttribute('aria-pressed') === 'true' && document.body.classList.contains('v-ru')"))
+        ok('组合页(%d宽)：默认进豆粕页，顶部有 总览/豆粕/橡胶 切换' % w_, pg.evaluate("document.querySelectorAll('#vSeg button').length === 3 && document.querySelector('#vSeg [data-v=meal]').getAttribute('aria-pressed') === 'true' && !document.body.classList.contains('v-ru')"))
         pg.evaluate("(c) => { const S = window.__ru.S(); const k = S.d.findIndex(x => x > c); for (const a of ['d','o','h','l','c','r']) S[a].length = k; }", '2026-03-11')
         pg.evaluate("(() => { const b = document.querySelector('[data-mode=trade]'); if (b && !document.body.classList.contains('mode-trade')) b.click(); })()"); pg.evaluate('window.__ru.paint()'); pg.click('#vSeg [data-v=ru]'); pg.wait_for_timeout(500)
         ok('橡胶页(%d宽)：出做空信号，写明明日限价和止损价' % w_, pg.evaluate("(() => { const t = document.getElementById('ruApp').innerText; return t.includes('做空信号') && t.includes('止损价') && /≥ 17,?2\\d\\d/.test(t); })()"))
