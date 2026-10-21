@@ -3575,16 +3575,52 @@ function ruIndTrend(df, ind, today) {
   const age = today ? ruDaysBetween(last.d, today) : 0;
   return { n, def: df, last, prev, delta, d4, yy, m, age, stale: age > RUIND_STALE[df.freq], pts: ls.slice(-24) };
 }
-/* 综合：偏空/偏多/中性/数据不足 + 提示 */
+/* 综合：算法和豆粕基本面完全一致（豆粕页 DIRECTION_RATIO / tallyVotes / weightedComposite / computeDimensions / computeConfidence）：
+ * ①每个指标投 +1偏多 / -1偏空 / 0中性 一票；"讲同一件事"的合并成1票（社会/深色/浅色库存→库存；青岛库存/入库/出库→青岛），组内加权平均≥0.5→+1、≤-0.5→-1，否则0，缺一项不影响其余；
+ * ②净倾向 = Σ(票×票权) ÷ Σ票权（中性票也在分母里，所以"空3多1、其余中性"不够偏空）；≥+22%偏多、≤-22%偏空，否则"信号混合"；有效票<5不下结论；
+ * ③数据质量：晚一期(超过正常间隔)票权×0.5，晚两期以上不计票；④分供给端/需求端两个维度，两侧方向相反=分歧；⑤置信度从满分往下扣（覆盖率/分歧/多空一致性/数据质量）。
+ * 这些门槛沿用豆粕的值；橡胶的各指标阈值、组内权重和票权（全部=1）都是暂定、没有回测。 */
+const RUDIR = 0.22, RUMINV = 5, RUQD = 0.5, RUQC = { mid: 0.85, low: 0.65 };
+const RUVOTES = [
+  { k: 'prod', n: '全球产量', side: 'supply', w: 1, subs: [['prod', 1]] },
+  { k: 'imp', n: '进口量', side: 'supply', w: 1, subs: [['imp', 1]] },
+  { k: 'inv', n: '社会库存', side: 'supply', w: 1, subs: [['stk', 2], ['dark', 1], ['light', 1]] },
+  { k: 'qd', n: '青岛库存与出入库', side: 'supply', w: 1, subs: [['qd', 2], ['qin', 1], ['qout', 1]] },
+  { k: 'qg', n: '全钢胎产能利用率', side: 'demand', w: 1, subs: [['qg', 1]] },
+  { k: 'bg', n: '半钢胎产能利用率', side: 'demand', w: 1, subs: [['bg', 1]] }
+];
+const RUDIM = [['supply', '供给端'], ['demand', '需求端']];
+function ruTally(vs) {
+  const v = vs.filter(x => x.signal !== null), W = v.reduce((a, x) => a + x.weight, 0), score = v.reduce((a, x) => a + x.signal * x.weight, 0), ratio = W ? score / W : null;
+  return { n: v.length, total: vs.length, weight: W, score, ratio, dir: ratio === null ? null : ratio >= RUDIR ? 1 : ratio <= -RUDIR ? -1 : 0, bullW: v.filter(x => x.signal === 1).reduce((a, x) => a + x.weight, 0), bearW: v.filter(x => x.signal === -1).reduce((a, x) => a + x.weight, 0) };
+}
 function ruIndSummary(ind, today) {
-  const T = RUIND.map(d => ruIndTrend(d, ind, today)), E = T.filter(t => t.n > 0), bear = E.filter(t => t.m < 0).length, bull = E.filter(t => t.m > 0).length, by = {}; T.forEach(t => { by[t.def.k] = t; });
-  const dir = E.length < 3 ? 'na' : bear - bull >= 2 ? '偏空' : bull - bear >= 2 ? '偏多' : '中性', warns = [], goods = [];
+  const T = RUIND.map(d => ruIndTrend(d, ind, today)), E = T.filter(t => t.n > 0), by = {}; T.forEach(t => { by[t.def.k] = t; });
+  const sub = k => { const t = by[k]; if (!t || !t.n) return null; const lim = RUIND_STALE[t.def.freq]; if (t.age > 2 * lim) return null; return { m: t.m, q: t.age > lim ? RUQD : 1 }; };   // 晚一期：票权×0.5；晚两期以上：不计票
+  const votes = RUVOTES.map(g => {
+    const av = g.subs.map(([k, w]) => ({ s: sub(k), w })).filter(x => x.s), tw = av.reduce((a, x) => a + x.w, 0);
+    if (!av.length) return { key: g.k, label: g.n, side: g.side, signal: null, weight: g.w, late: false };
+    const avg = av.reduce((a, x) => a + x.s.m * x.w, 0) / tw, q = av.reduce((a, x) => a + x.s.q * x.w, 0) / tw;
+    return { key: g.k, label: g.n, side: g.side, signal: avg >= 0.5 ? 1 : avg <= -0.5 ? -1 : 0, weight: g.w * q, late: q < 1 };
+  });
+  const all = ruTally(votes), dims = {}; RUDIM.forEach(([k, nm]) => { const d = ruTally(votes.filter(v => v.side === k)); d.name = nm; d.thin = d.n > 0 && d.n < 2; dims[k] = d; });
+  const bear = votes.filter(v => v.signal === -1).length, bull = votes.filter(v => v.signal === 1).length;
+  const dir = all.n < RUMINV ? 'na' : all.ratio >= RUDIR ? '偏多' : all.ratio <= -RUDIR ? '偏空' : '中性';
+  const okd = Object.values(dims).filter(d => d.n >= 2 && d.dir !== null), div = okd.some(d => d.dir === 1) && okd.some(d => d.dir === -1);
+  const cov = votes.length ? all.n / votes.length : 0, dirW = all.bullW + all.bearW, agree = dirW ? Math.max(all.bullW, all.bearW) / dirW : null, qual = all.total ? votes.filter(v => v.signal !== null).reduce((a, v) => a + (v.late ? RUQD : 1), 0) / Math.max(1, all.n) : 1;
+  let lv = 2; const why = [];
+  if (cov < 0.6) { lv -= 2; why.push('有效指标只有' + all.n + '/' + votes.length); } else if (cov < 0.8) { lv -= 1; why.push('有效指标' + all.n + '/' + votes.length + '（低于80%）'); }
+  if (div) { lv -= 1; why.push('供给端和需求端方向相反（分歧）'); }
+  if (agree !== null && agree < 0.7) { lv -= 1; why.push('多空一致性只有' + Math.round(agree * 100) + '%（低于70%）'); }
+  if (qual < RUQC.low) { lv -= 2; why.push('数据质量偏低'); } else if (qual < RUQC.mid) { lv -= 1; why.push('数据质量一般（有晚一期的指标）'); }
+  lv = Math.max(0, lv);
+  const warns = [], goods = [];
   const dk = by.dark; if (dk && dk.delta != null && dk.delta <= -3) warns.push('深色胶库存较上期降 ' + Math.abs(dk.delta).toFixed(1) + '%（意外大幅去库：空头要警惕）');
   ['qg', 'bg'].forEach(k => { const t = by[k]; if (t && t.delta != null && t.delta >= 3 && t.yy && t.yy.v >= 3) warns.push(t.def.n + '较上期升 ' + t.delta.toFixed(1) + ' 个点、且比去年同期高 ' + t.yy.v.toFixed(1) + ' 个点（需求明显强于去年；只有3/15后、≥75%且同比≥+8点才会触发“需求爆发”离场条件）'); });
   if (by.qin && by.qout && by.qin.delta != null && by.qout.delta != null && by.qin.delta >= 5 && by.qout.delta <= -2) goods.push('青岛入库率大升、出库率走低：现货压力在积聚（强化空头逻辑）');
   if (by.stk && by.stk.delta != null && by.stk.delta >= 3) goods.push('社会库存较上期升 ' + by.stk.delta.toFixed(1) + '%（累库，强化空头逻辑）');
   const fresh = E.filter(t => !t.stale).length, last = E.reduce((a, t) => t.last.d > a ? t.last.d : a, '');
-  return { T, by, n: E.length, tot: RUIND.length, bear, bull, dir, warns, goods, fresh, last, stale: E.length - fresh };
+  return { T, by, n: E.length, tot: RUIND.length, votes, nv: all.n, nvTot: votes.length, ratio: all.ratio, score: all.score, bear, bull, dir, dims, div, conf: dir === 'na' || dir === '中性' ? null : ['低', '中', '高'][lv], confWhy: why, warns, goods, fresh, last, stale: E.length - fresh };
 }
 /* RU_END */
 (function () {
@@ -3734,7 +3770,8 @@ function ruIndSummary(ind, today) {
     const n = S.d.length, f = S.r[n - 1] / S.c[n - 1], chg = n > 1 ? S.c[n - 1] / S.c[n - 2] - 1 : null, c5 = n > 5 ? S.c[n - 1] / S.c[n - 6] - 1 : null;
     const pv = '<div class="cell pv"><div class="cl">RU 主连价格与均线</div><div class="px"><span class="p">' + f0(P.real) + '</span><span class="c ' + (chg > 0 ? 'bull' : chg < 0 ? 'bear' : '') + '">' + (chg == null ? '' : (chg >= 0 ? '+' : '') + (chg * 100).toFixed(2) + '%') + '</span><span class="dim" style="font-size:11.5px;margin-left:6px">' + esc(P.last.slice(5)) + ' 收盘</span></div><div class="sub">近5天 ' + (c5 == null ? '—' : (c5 >= 0 ? '+' : '') + (c5 * 100).toFixed(1) + '%') + ' · MA5 ' + f0(P.ma) + (P.reb ? '（收盘在其上，反弹）' : '（收盘在其下）') + ' · 主力 ' + esc(P.dom || '—') + '</div></div>';
     const fd = IS.dir === 'na' ? '数据不足' : IS.dir, fc = IS.dir === '偏空' ? 'var(--bear)' : IS.dir === '偏多' ? 'var(--bull)' : 'var(--ink)';
-    const fs = '<div class="cell half"><div class="cl">基本面（库存·产能利用率·产量·进口）</div><div class="fund"><div><div class="big" style="color:' + fc + '">' + esc(fd) + '<small class="num">' + (IS.n ? '空' + IS.bear + ' 多' + IS.bull : '') + '</small></div></div></div><div class="sub">' + (IS.warns.length ? '⚠ ' + esc(IS.warns[0]) : IS.goods.length ? esc(IS.goods[0]) : IS.n ? '自动 ' + IS.n + '/' + IS.tot + ' 项 · 最近 ' + esc(IS.last.slice(5)) + (IS.stale ? ' · ' + IS.stale + ' 项过期' : '') : '指标数据还没抓到（等 Actions 自动抓取）') + '</div></div>';
+    const pc = r => r == null ? '—' : (r > 0 ? '+' : '') + Math.round(r * 100) + '%', dimTxt = ['supply', 'demand'].map(k => IS.dims[k].name + ' ' + (IS.dims[k].n ? pc(IS.dims[k].ratio) + (IS.dims[k].thin ? '(样本少)' : '') : '—')).join(' · ');
+    const fs = '<div class="cell half"><div class="cl">基本面（供给·需求加权净倾向，算法同豆粕）</div><div class="fund"><div><div class="big" style="color:' + fc + '">' + esc(IS.dir === '中性' ? '信号混合' : fd) + '<small class="num">' + (IS.nv >= RUMINV ? ' 净倾向 ' + pc(IS.ratio) + (IS.conf ? ' · 置信' + IS.conf : '') : '') + '</small></div></div></div><div class="sub" title="' + esc('空' + IS.bear + ' 多' + IS.bull + ' 共' + IS.nv + '票；' + IS.confWhy.join('；')) + '">' + (IS.nv ? dimTxt + (IS.div ? ' · 分歧' : '') + ' · ' : '') + (IS.warns.length ? '⚠ ' + esc(IS.warns[0]) : IS.goods.length ? esc(IS.goods[0]) : IS.n ? '自动 ' + IS.n + '/' + IS.tot + ' 项 · 最近 ' + esc(IS.last.slice(5)) + (IS.stale ? ' · ' + IS.stale + ' 项过期' : '') : '指标数据还没抓到（等 Actions 自动抓取）') + '</div></div>';
     const wv = WX.v, wt = !wv ? (WX.busy ? '正在取…' : '未取') : wv.level === 'block' ? (RUP.WXBLOCK ? '暂缓做空' : '异常（只提示，不拦单）') : wv.level === 'warn' ? '轻度异常' : wv.level === 'ok' ? '正常' : '没取到', wcol = wv && wv.level === 'block' ? 'var(--bull)' : wv && wv.level === 'warn' ? 'var(--amber)' : 'var(--ink)';
     const wx = '<div class="cell half"><div class="cl">开割天气（泰北·泰东北·越南·印尼巨港）</div><div class="big" style="font-size:clamp(20px,3.1vh,28px);color:' + wcol + '">' + esc(wt) + '</div><div class="sub">' + (wv ? esc(wv.text.replace(/^主产区天气异常：/, '')) : '') + ' <button class="lnk" data-ru="wxre">重新取</button>' + (WX.at ? ' <span class="dim">' + new Date(WX.at + 8 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') + '</span>' : '') + '</div></div>';
     return '<section class="band ruband">' + pv + fs + wx + '</section>';
@@ -3787,7 +3824,7 @@ function ruIndSummary(ind, today) {
   }
 
   function aboutHtml() {
-    return '<p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有天气严重异常、“需求爆发”（3/15后全钢胎产能利用率≥75%、周升、同比≥+8点）、“政策突袭预警”（主产国限出口类快讯）和“低产+需求强共振”（产量同比≤-2%且两种轮胎产能利用率同比都≥+3点）会拦住信号，均为自动判断</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
+    return '<p><b>基本面怎么算（和豆粕一样）</b>：每个指标投一票（偏多+1、偏空-1、不明显0），社会/深色/浅色库存合并成1票、青岛库存与出入库合并成1票，避免同一件事重复计票；净倾向 = 票的加权和 ÷ 有效票权合计（中性票也算在分母里）；进入 ±22% 才算偏多/偏空，否则“信号混合”；有效票少于5不下结论；数据晚一期票权×0.5、晚两期不计；另看供给端/需求端两侧是否一致，一侧偏多一侧偏空 = 分歧，并给置信度。所有票权都是1、各指标阈值是常识性的暂定值，<b>没有回测</b>，基本面只做展示，不参与出信号和拦单。</p><p><b>逻辑</b>：天然橡胶11月到次年2-3月停割，3月中下旬起泰国北部、越南先试割，4月规模开割。3月是「停割利多出尽 + 开割供应增量预期」的兑现窗口，交易的是开割预期，不是开割现实。</p><p><b>回测</b>：2013–2026 年3月做空，平均约 +5.7%/年，14年里11年赚（79%）；前半段（2013-19）+5.6%、后半段（2020-26）+5.8%，20号胶同向（2020–26 年3月7年6年跌）。3月是12个月里最强的，但多重检验后仍不显著。</p><p><b>入场</b>：不追空。3月内收盘站上5日均线（反弹）才出信号，次日限价卖出≥收盘价+0.3%。三种「逢反弹」写法（站上MA5/MA10、距低点反弹1.5%、贴近前10日高点）回测平均都在 +4.1%~+5.7%，差别在噪声内，按你的文字取最简单的MA5。</p><p><b>离场</b>：5%止损（盘中最高价触及）；3月最后一个交易日收盘平仓。止盈6%/8%回测更差（砍掉大跌里的盈利），所以不设止盈；「参考目标」只是历史平均跌幅。</p><p><b>天气</b>：3月交易的是「开割预期」，所以只看会影响开割节奏的产区：泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟）和印尼南部巨港（降雨偏多→割胶受阻）。西双版纳4月才割胶、泰国南部在割胶尾声，不看。判定用降水/气温相对近5年同期的异常，<b>没有历史天气回测</b>，只作为风险开关。</p><p><b>指标</b>：库存（社会/深色/浅色）、青岛库存与出入库率、全钢/半钢胎产能利用率、全球产量、进口，全部由 Actions 自动抓取（来源：隆众/Mysteel 周报月报），页面不能录入。它们在趋势墙里显示方向（偏空/偏多），但阈值没有回测，<b>只有天气严重异常、“需求爆发”（3/15后全钢胎产能利用率≥75%、周升、同比≥+8点）、“政策突袭预警”（主产国限出口类快讯）和“低产+需求强共振”（产量同比≤-2%且两种轮胎产能利用率同比都≥+3点）会拦住信号，均为自动判断</b>。没有做：多NR空RU套利（没有价差回测）。</p><p><b>换合约</b>：回测用的是主力连续价格，3月一般是 5 月合约（RU05），3月下旬（约19~30日）主力常换到 9 月合约。已经持有的单子不用换：拿着原合约到月底平仓（它仍有足够成交量）。想换也行：同一天先平旧合约、再空新主力合约，回测的连续价格就是这么算的，实际多付两次手续费和滑点。新开仓一律做当时的主力合约。止损后当月不再重新开仓（回测里每年只做一次，止损后再开没有验证）。</p><p><b>限制</b>：每年最多一笔；单品种一个月的结果不能当系统策略，仓位要小。</p>';
   }
 
   function overviewHtml() {

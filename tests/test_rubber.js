@@ -117,14 +117,35 @@ eq('社会库存+3% → 偏空(-1)', by.stk.m, -1); eq('深色胶-6% → 偏多(
 eq('青岛入库率周变化+14点 → 偏空(-1)', by.qin.m, -1); eq('青岛出库率周变化-3点 → 偏空(-1)', by.qout.m, -1);
 eq('产量同比+4% → 偏空(-1)', by.prod.m, -1); eq('进口同比-8% → 偏多(+1)', by.imp.m, 1);
 eq('没录入的指标 n=0 m=0', [by.light.n, by.light.m], [0, 0]); eq('录入项数', [S1.n, S1.tot], [7, 10]);
-eq('空4(库存/入库/出库/产量)、多3(深色/产能利用率/进口) → 中性', [S1.bear, S1.bull, S1.dir], [4, 3, '中性']);
+eq('合并后5票：产量空、进口多、库存组(社会空w2+深色多w1→-0.33→0)、青岛组(入库空+出库空→空)、全钢多 → 空2多2 净倾向0 → 中性', [S1.bear, S1.bull, S1.dir, S1.ratio, S1.nv], [2, 2, '中性', 0, 5]);
 eq('深色胶去库≥3% → 提示警惕', S1.warns.some(w => /深色胶.*去库/.test(w)), true); eq('全钢产能利用率环比+4且同比+5 → 提示需求回升', S1.warns.some(w => /全钢胎产能利用率.*升 4\.0/.test(w)), true);
 eq('青岛入库大升出库走低 → 利空佐证', S1.goods.some(w => /青岛入库率/.test(w)), true);
 eq('不足3项 → 数据不足', P.ruIndSummary({ stk: I1.stk }, T0).dir, 'na');
 eq('周数据>10天没更新 → 过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), I1, '2027-03-25').stale, true); eq('月数据30天内不过期', P.ruIndTrend(P.RUIND.find(d => d.k === 'prod'), I1, '2027-03-25').stale, false);
 eq('变化小于阈值 → 不明显(0)', P.ruIndTrend(P.RUIND.find(d => d.k === 'stk'), { stk: [{ d: '2027-03-02', v: 100 }, { d: '2027-03-09', v: 100.5 }] }, T0).m, 0);
 eq('只录入一期 → 无较上期、含义0', P.ruIndTrend(P.RUIND.find(d => d.k === 'qg'), { qg: [{ d: '2027-03-09', v: 60 }] }, T0).m, 0);
-eq('偏空占优≥2 → 偏空', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qout: I1.qout }, T0).dir, '偏空');
+eq('只有库存+青岛2组 → 有效票<5 → 数据不足', P.ruIndSummary({ stk: I1.stk, qin: I1.qin, qout: I1.qout }, T0).dir, 'na');
+// ---- v102.11 基本面算法与豆粕一致：加权票、中性票占分母、±22%、供给/需求维度、晚一期降权、置信度
+const MK = (k, m) => { const d = '2027-03-09', pc = (a, b) => [{ d: '2027-03-02', v: a }, { d, v: b }], o = {};
+  if (k === 'prod') { o.prod = [{ d, v: 100 }]; o.prodY = [{ d, v: m === 0 ? 0 : -m * 4 }]; } else if (k === 'imp') { o.imp = [{ d, v: 50 }]; o.impY = [{ d, v: m === 0 ? 0 : -m * 8 }]; }
+  else if (['stk', 'dark', 'light', 'qd'].includes(k)) o[k] = pc(100, m === 0 ? 100 : 100 - m * 3);
+  else if (k === 'qin') o.qin = [{ d, v: m === 0 ? 0 : -m * 4 }]; else if (k === 'qout') o.qout = [{ d, v: m === 0 ? 0 : m * 4 }];
+  else { o[k] = pc(60, 62); o[k + 'Y'] = [{ d, v: m * 5 }]; } return o; };
+const MKS = spec => Object.assign({}, ...Object.entries(spec).map(([k, m]) => MK(k, m)));
+const six = (a, b, c, d, e, f) => MKS({ prod: a, imp: b, stk: c, qd: d, qg: e, bg: f });
+let X = P.ruIndSummary(six(-1, -1, -1, -1, 1, 0), T0);
+eq('6票：空4 多1 中性1 → 净倾向(-4+1)/6=-50% → 偏空', [X.bear, X.bull, X.dir, Math.round(X.ratio * 100)], [4, 1, '偏空', -50]);
+X = P.ruIndSummary(six(-1, -1, 0, 0, 0, 0), T0); eq('空2 其余4票中性：-2/6=-33% → 偏空（中性票在分母里）', [X.dir, Math.round(X.ratio * 100)], ['偏空', -33]);
+X = P.ruIndSummary(six(-1, 0, 0, 0, 0, 0), T0); eq('只有1票偏空 其余5票中性：-17% 不到22% → 信号混合(中性)', [X.dir, Math.round(X.ratio * 100)], ['中性', -17]);
+X = P.ruIndSummary(six(-1, -1, 1, 0, 0, 0), T0); eq('空2多1中性3：-1/6=-17% → 中性（旧算法“空-多≥2”这里会错判偏空）', X.dir, '中性');
+X = P.ruIndSummary(six(1, 1, 1, 1, -1, 0), T0); eq('空1多4：+50% → 偏多', X.dir, '偏多');
+X = P.ruIndSummary(six(-1, -1, -1, -1, 1, 1), T0); eq('供给端4票全空(-100%) 需求端2票全多(+100%) → 分歧、置信度降级', [X.div, X.dims.supply.dir, X.dims.demand.dir, X.conf !== '高'], [true, -1, 1, true]);
+eq('维度：供给端=产量/进口/库存/青岛，需求端=全钢/半钢', [X.dims.supply.total, X.dims.demand.total], [4, 2]);
+X = P.ruIndSummary(six(-1, -1, -1, -1, -1, -1), T0); eq('6票全空：偏空，置信度高', [X.dir, X.conf, X.div], ['偏空', '高', false]);
+X = P.ruIndSummary(six(-1, -1, -1, -1, -1, 0), '2027-03-24'); eq('周数据晚一期(>10天)：票权×0.5，仍计票；全空时方向不变但质量分降', [X.dir, X.votes.find(v => v.key === 'inv').late, X.votes.find(v => v.key === 'inv').weight], ['偏空', true, 0.5]);
+X = P.ruIndSummary(six(-1, -1, -1, -1, -1, -1), '2027-04-10'); eq('周数据晚两期以上(>20天)：不计票', [X.votes.find(v => v.key === 'inv').signal, X.votes.find(v => v.key === 'qg').signal], [null, null]);
+X = P.ruIndSummary(MKS({ stk: -1, dark: 1, light: 1 }), T0); eq('库存组合并：社会库存空w2、深/浅多各w1 → 平均0 → 0票', X.votes.find(v => v.key === 'inv').signal, 0);
+eq('库存组缺深/浅色胶 → 只剩社会库存仍能成票', P.ruIndSummary(MKS({ stk: -1 }), T0).votes.find(v => v.key === 'inv').signal, -1);
 const IQ = { qin: [{ d: '2027-03-02', v: 1 }, { d: '2027-03-09', v: 2 }, { d: '2027-03-16', v: 3 }, { d: '2027-03-23', v: 4 }] }; eq('chg模式：近4周累计', P.ruIndTrend(P.RUIND.find(d => d.k === 'qin'), IQ, '2027-03-24').d4, 10);
 eq('产能利用率：环比高但同比<3 → 不提示(国庆/春节环比失真)', P.ruIndSummary({ qg: [{ d: '2027-03-02', v: 40 }, { d: '2027-03-09', v: 60 }], qgY: [{ d: '2027-03-09', v: 1 }] }, T0).warns.length, 0);
 eq('指标个数=10且不含手动字段', [P.RUIND.length, P.RUIND.every(d => d.src)], [10, true]);
