@@ -3892,8 +3892,15 @@ function ruIndSummary(ind, today) {
   }
   function openRuAbout(focusWx) { try { K().openSheet('说明：怎么读橡胶页', ruAboutHtml()); if (focusWx) setTimeout(() => { const e = document.getElementById('ruWx'); if (e) e.scrollIntoView({ block: 'start' }); }, 60); } catch (_) {} }
   function logHtml() {
-    const A = acct(), L = ((A && A.ruTrades) || []).filter(t => t.exitD).slice(-8).reverse(); if (!L.length) return '';
-    return '<table class="tb3x tbpl"><thead><tr><th>开仓</th><th>平仓</th><th>手数</th><th>盈亏(元)</th></tr></thead><tbody>' + L.map(t => { const pnl = -(t.exitPx - t.entryPx) * t.lots * RUP.TON; return '<tr><td>' + esc(t.entryD.slice(2)) + ' @' + f0(t.entryPx) + '</td><td>' + esc(t.exitD.slice(2)) + ' @' + f0(t.exitPx) + (t.stop ? ' 止损' : '') + '</td><td class="n">' + t.lots + '</td><td class="n" style="color:' + (pnl >= 0 ? 'var(--bear)' : 'var(--bull)') + '">' + (pnl >= 0 ? '+' : '') + f0(pnl) + '</td></tr>'; }).join('') + '</tbody></table><p class="dim">橡胶盈亏已计入账户权益（和豆粕共用）；手续费按账户设置里的每手手续费。</p>';
+    const A = acct(), all = ((A && A.ruTrades) || []), done = all.filter(t => t.exitD), op = all.find(t => !t.exitD), L = done.slice(-8).reverse();
+    const pnlOf = t => -(t.exitPx - t.entryPx) * t.lots * RUP.TON, sum = done.reduce((t, x) => t + pnlOf(x), 0), win = done.filter(x => pnlOf(x) > 0).length;
+    const col = v => 'color:' + (v >= 0 ? 'var(--bear)' : 'var(--bull)');
+    const head = '<h3 class="ruh">交易记录</h3>';
+    if (!L.length && !op) return head + '<p class="dim">还没有橡胶交易记录。在「我的橡胶空单」里记一笔开仓，平仓后会出现在这里（盈亏自动计入账户权益，和豆粕共用）。</p>';
+    const row = t => { const pnl = pnlOf(t); return '<tr><td>' + esc(t.entryD.slice(2)) + '</td><td class="n">' + t.lots + '</td><td class="n">' + f0(t.entryPx) + '</td><td>' + esc(t.exitD.slice(2)) + (t.stop ? ' <span class="dim">止损</span>' : '') + '</td><td class="n">' + f0(t.exitPx) + '</td><td class="n" style="' + col(pnl) + '">' + (pnl >= 0 ? '+' : '') + f0(pnl) + '</td></tr>'; };
+    const openRow = op ? '<tr><td>' + esc(op.entryD.slice(2)) + '</td><td class="n">' + op.lots + '</td><td class="n">' + f0(op.entryPx) + '</td><td colspan="3" class="dim">持仓中（做空' + (op.contract ? ' ' + esc(op.contract) : '') + '）</td></tr>' : '';
+    return head + (done.length ? '<p class="hl">已平仓 ' + done.length + ' 笔，胜 ' + win + ' 笔，合计 <b style="' + col(sum) + '">' + (sum >= 0 ? '+' : '') + f0(sum) + ' 元</b>（不含手续费）</p>' : '')
+      + '<table class="tb3x tbpl"><thead><tr><th>开仓日</th><th>手数</th><th>开仓价</th><th>平仓日</th><th>平仓价</th><th>盈亏(元)</th></tr></thead><tbody>' + openRow + L.map(row).join('') + '</tbody></table><p class="dim">橡胶盈亏已计入账户权益（和豆粕共用）；手续费按账户设置里的每手手续费。</p>';
   }
 
   function posHtml(P, eqLots) {
