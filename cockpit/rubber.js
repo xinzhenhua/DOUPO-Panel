@@ -431,7 +431,7 @@ function ruIndSummary(ind, today) {
     const band = path(hi) + hi.map((_, k) => 'L' + x(N - 1 - k).toFixed(1) + ' ' + y(lo[N - 1 - k]).toFixed(1)).join('') + 'Z';
     return '<svg class="rupl" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="橡胶主连近3年收盘价与260日高低通道"><path d="' + band + '" fill="var(--amber)" opacity=".10"/><path d="' + path(hi) + '" fill="none" stroke="var(--amber)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="' + path(lo) + '" fill="none" stroke="var(--focus)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="' + path(S.c.slice(i0)) + '" fill="none" stroke="var(--ink)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
   }
-  function tradeCols(P, H, ST, spans) {
+  function tradeCols(P, H, ST, spans, plan) {
     const PS = ruPosStats(S), MS = ruMonthStats(S), cm = +todayBJ().slice(5, 7), cur = MS[cm - 1];
     const r20 = PS.r20, rp = r20.pos == null ? 0.5 : Math.min(1, Math.max(0, r20.pos));
     const c1 = '<section class="rutc" aria-label="橡胶价格与持仓"><div class="ch-h"><span class="t">' + esc(P.dom || 'RU') + ' 价格与持仓</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div>'
@@ -440,18 +440,18 @@ function ruIndSummary(ind, today) {
       + '<div class="rukl" id="ruKl2"></div>'
       + '<div class="rurg"><div class="rl"><span>最近20个交易日的高低之间</span><b>' + (r20.pos == null ? '—' : Math.round(rp * 100) + '%') + '</b></div><div class="rtk"><i style="left:' + (rp * 100).toFixed(1) + '%"></i></div><div class="rl2"><span>低点 ' + f0(r20.lo) + '</span><span>高点 ' + f0(r20.hi) + '</span></div></div></section>';
     const pb = (t, w) => '<div class="rupb"><div class="rl"><span>' + t + '</span><b>' + (w.pct == null ? '—' : (w.pct * 100).toFixed(1) + '%分位 ' + bandWord(w.pct)) + '</b></div><div class="rtk"><i style="left:' + (w.pct == null ? 50 : (w.pct * 100).toFixed(1)) + '%"></i></div><div class="rl2"><span>' + (t.includes('260') ? '260天铁底 ' + f0(w.lo) : '最低端') + '</span><span>' + (t.includes('260') ? '260天铁顶 ' + f0(w.hi) : '最高端（调整价，只看分位）') + '</span></div></div>';
-    const c2 = '<section class="rutc" aria-label="橡胶价格位置"><div class="ch-h"><span class="t">价格位置 · 主力连续价</span></div>'
+    const c2 = '<section class="rutc rupos" aria-label="橡胶价格位置"><div class="ch-h"><span class="t">价格位置 · 主力连续价</span></div>'
       + '<div class="hl">现价 <b>' + f0(P.real) + '</b>：' + (PS.w260.pct == null ? '—' : PS.w260.pct >= 0.8 ? '处在近一年的高位带' : PS.w260.pct <= 0.2 ? '处在近一年的低位带' : '处在近一年的中间带') + '（高于近260天 ' + (PS.w260.pct == null ? '—' : Math.round(PS.w260.pct * 100)) + '% 的收盘价）</div>'
       + '<div class="why">橙色虚线=近260天收盘最高，蓝色虚线=最低，淡黄底=两线之间；线是主连换月调整价，数字按最近真实价换算。分位=最新收盘比窗口内多少比例的收盘价高。只是位置参考，不参与出信号。</div>'
       + '<div class="rukl">' + posLongSvg() + '</div>' + pb('近260日', PS.w260) + pb('全部历史（' + PS.years.toFixed(0) + '年）', PS.all) + '</section>';
     const bars = MS.map(x => { const h = x.up == null ? 0 : Math.round(x.up * 100), col = x.up == null ? 'var(--line)' : x.up >= 0.6 ? 'var(--bull)' : x.up <= 0.4 ? 'var(--bear)' : 'var(--ink3)'; return '<div class="mc' + (x.m === cm ? ' now' : '') + '" title="' + x.m + '月：近 ' + x.n + ' 年 ' + x.upN + ' 年上涨"><span class="mv">' + (x.up == null ? '—' : h) + '</span><div class="mb"><i style="height:' + Math.max(3, h) + '%;background:' + col + ';opacity:' + (x.m === RUP.MON ? 1 : .55) + '"></i></div><span class="mm">' + x.m + '月' + (x.m === RUP.MON ? '★' : '') + '</span><span class="mr" style="color:' + (x.avg == null ? 'var(--ink3)' : x.avg >= 0 ? 'var(--bull)' : 'var(--bear)') + '">' + (x.avg == null ? '—' : (x.avg >= 0 ? '+' : '') + x.avg.toFixed(1)) + '</span></div>'; }).join('');
-    const c3 = '<section class="rutc" aria-label="橡胶同期规律"><div class="ch-h"><span class="t">同期规律 · 各月上涨概率</span></div>'
+    const c3 = '<section class="rutc rupos" aria-label="橡胶同期规律"><div class="ch-h"><span class="t">同期规律 · 各月上涨概率</span></div>'
       + '<div class="hl"><b>' + cm + '月</b>：近 ' + cur.n + ' 年 ' + cur.upN + ' 年上涨（' + (cur.up == null ? '—' : Math.round(cur.up * 100)) + '%），平均 ' + (cur.avg == null ? '—' : (cur.avg >= 0 ? '+' : '') + cur.avg.toFixed(1) + '%') + '</div>'
       + '<div class="why">柱子=该月上涨年份占比(%)，下方数字=该月平均涨跌(%)；★=本策略做空的3月。用的是主连换月调整价的月末收盘，样本约13年，单月样本很少，只作背景，不参与出信号。</div>'
       + '<div class="mbars rumb">' + bars + '</div><div class="mleg"><span>红=上涨年份多，绿=下跌年份多；下方数字=平均涨跌%</span></div>'
       + (ST ? '<p class="hl rust">★3月按本规则做空：' + ST.years + ' 个3月里 ' + ST.n + ' 年出信号成交，平均 <b>' + p1(ST.mean) + '</b>，胜率 ' + ST.win.toFixed(0) + '%（t=' + ST.t.toFixed(1) + '，多重检验后不显著，仓位要小）</p>' : '')
       + '</section>';
-    return '<div class="rutcols">' + c1 + c2 + c3 + '</div>';
+    return '<div class="rutcols">' + c1 + c2 + c3 + plan + '</div>';
   }
   let RUPLAN = null;     // null=自动（有持仓或有信号就展开，和豆粕一样）；点右上角「计划」后按手动
   const planAuto = P => !!(ruPos() || P.st === 'go' || P.st === 'exit' || P.st === 'holdwx');
@@ -464,9 +464,10 @@ function ruIndSummary(ind, today) {
       + '<h3 class="ruh">历年3月按这条规则的结果</h3>' + histBars(H, ST)
       + '</section>';
     /* 交易页：信号条 + 要点条 + 三栏图（计划面板展开时换成「共担手数/我的空单/记录/提醒」）；研究页：背景卡 + 价格图 + 历史 + 趋势墙 */
-    const plan = '<div class="rutplan"><div class="rutp"><h3 class="ruh">共担资金与手数</h3>' + (eqLots ? '<div class="hl">现在信号价位建议 <b>' + eqLots.lots + ' 手</b>（占用保证金约 ' + f0(eqLots.margin) + ' 元，止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）；份额 ' + (eqLots.share === 1 ? '全部预算' : '1/2（豆粕有持仓，两边平分）') + '。</div>' : '<p class="dim">出信号后这里按「权益×阶梯占用÷持仓品种数」给手数；权益、保证金率在豆粕页的账户设置里，两个品种共用。</p>') + (K().shareHtml ? K().shareHtml() : '')
-      + '<h3 class="ruh">我的橡胶空单</h3>' + posHtml(P, eqLots) + logHtml() + '<h3 class="ruh">提醒</h3>' + remindHtml(P) + '</div></div>';
-    const trade = '<div class="rutr">' + checksHtml(P) + tradeCols(P, H, ST, spans) + plan + '</div>';
+    const SH = K().shareHtml ? K().shareHtml() : '';
+    const plan = '<section class="rutc rupl2" aria-label="共担资金与交易记录"><div class="ch-h"><span class="t">共担资金与手数</span></div>' + (eqLots ? '<div class="hl">现在信号价位建议 <b>' + eqLots.lots + ' 手</b>（占用保证金约 ' + f0(eqLots.margin) + ' 元，止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）；份额 ' + (eqLots.share === 1 ? '全部预算' : '1/2（豆粕有持仓，两边平分）') + '。</div>' : '<p class="dim">出信号后这里按「权益×阶梯占用÷持仓品种数」给手数；权益、保证金率在豆粕页的账户设置里，两个品种共用。</p>') + SH + logHtml() + '</section>'
+      + '<section class="rutc rupl2" aria-label="我的橡胶空单"><div class="ch-h"><span class="t">我的橡胶空单</span></div>' + posHtml(P, eqLots) + '<h3 class="ruh">提醒</h3>' + remindHtml(P) + '</section>';
+    const trade = '<div class="rutr">' + checksHtml(P) + tradeCols(P, H, ST, spans, plan) + '</div>';
     return sigHtml(P, IS, eqLots) + trade + '<div class="rure">' + bandHtml(P, IS) + '<main class="main rumain">' + chartCol + '<section class="wall rwall" aria-label="趋势墙">' + wallHtml(IS) + '</section></main></div>';
   }
   /* 右上角「说明」：橡胶页自己的说明（豆粕页的说明按钮是豆粕内容，这里不用） */
