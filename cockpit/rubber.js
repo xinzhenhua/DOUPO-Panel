@@ -296,7 +296,7 @@ function ruIndSummary(ind, today) {
     let h = '<div class="wh"><span class="t">趋势墙</span><span class="hint">库存/青岛/产能利用率/产量/进口全部由 Actions 自动抓取隆众周报月报' + upd + '；天气自动取。颜色：对价格多空的含义</span></div>'
       + '<div class="why" style="padding:6px 20px">每一格一个指标，页面上不能录入。绿色=对价格偏空（强化空头逻辑），红色=偏多（削弱空头逻辑）。库存上升、进口/产量同比增加偏空；轮胎产能利用率同比走高、去库偏多。产量/进口看累计同比，轮胎产能利用率看同比(百分点)，青岛出入库率是较上周的变化。阈值是常识性的提示线，<b>没有回测，不会单独拦单</b>——只有天气严重异常、“需求爆发”（3/15后全钢胎产能利用率≥75%且周升、同比≥+8点）、“政策突袭预警”（主产国限出口类快讯）、“低产+需求强共振”（产量同比≤-2%且两种轮胎产能利用率同比都≥+3点）才会拦住做空，均为自动判断。' + (AUTOINFO && AUTOINFO.warn.length ? '<br><span class="dim">抓取提示：' + esc(AUTOINFO.warn.slice(0, 3).join('；')) + '</span>' : '') + '</div><div class="tiles blocks rutiles">';
     groups.forEach(g => { h += '<div class="bh"><span>' + g[0] + '</span><i>' + g[1].length + '项</i></div><div class="blk"><div class="rail"><span>' + g[0] + '</span></div><div class="bg" style="grid-template-columns:repeat(' + g[1].length + ',minmax(0,1fr))">' + g[1].join('') + '</div></div>'; });
-    return h + '</div>' + entryHtml(IS);
+    return h + '</div>';
   }
   /* 数据来源说明 + 需求爆发离场条件（全部自动，没有任何手动录入） */
   function entryHtml(IS) {
@@ -319,7 +319,7 @@ function ruIndSummary(ind, today) {
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="橡胶主连近' + N + '个交易日收盘价和5日均线">' + g + ax + ls + '<path d="' + m5 + '" fill="none" stroke="var(--amber)" stroke-width="1.3" opacity=".9"/><path d="' + c + '" fill="none" stroke="var(--ink)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="' + x(n - 1).toFixed(1) + '" cy="' + y(lp).toFixed(1) + '" r="3" fill="var(--ink)"/>'
       + (y(lp) - T > 16 ? '<text x="' + (W - R + 4) + '" y="' + T + '" class="lv">' + f0(hi) + '</text>' : '') + '<text x="' + (W - R + 4) + '" y="' + (H - B) + '" class="lv">' + f0(lo) + '</text><text x="' + (W - R + 4) + '" y="' + (y(lp) - 6).toFixed(1) + '" class="lv" fill="var(--ink)" font-weight="600">' + f0(lp) + '</text></svg>';
   }
-  function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = W < 520 ? 230 : 260; el.innerHTML = chartHtml(planNow(), W, H); }
+  function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = window.innerWidth >= 900 && el.clientHeight >= 100 ? Math.floor(el.clientHeight) : (W < 520 ? 230 : 260); el.innerHTML = chartHtml(planNow(), W, H); }
   function sigHtml(P, IS, eqLots) {
     const tone = { go: 'short', exit: 'wait', holdwx: 'wait', hold: 'short', blocked: 'wait', wait: 'wait', pre: 'wait', sleep: 'wait', stale: 'wait', done: 'wait' }[P.st] || 'wait', cls = P.st === 'stale' ? 'gate' : tone;
     const DS = ruDemandSurge(indAll(), todayBJ()), PA = policyNow(), RS_ = ruResonance(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block' ? true : (RUP.WXBLOCK ? false : null);
@@ -373,14 +373,14 @@ function ruIndSummary(ind, today) {
   function ruHtml() {
     const SC = shareCtx(), P = planNow(), IS = indNow(), eqLots = SC && P.order && P.real ? ruShareSize(SC.E, SC.u, SC.share, P.order.lim, SC.mr, SC.mode, 0.10) : null, H = ruHistory(S), ST = ruStats(H);
     const spans = [[60, '60日'], [120, '120日'], [250, '250日']].map(x => '<button data-ru="span" data-n="' + x[0] + '" aria-pressed="' + (CH.span === x[0]) + '">' + x[1] + '</button>').join('');
-    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div><div class="hl">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
+    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div><button class="lnk ruinfob" data-ru="info" title="天气明细、规则依据、数据来源">说明与明细</button></div><div class="hl cap">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
       + '<h3 class="ruh">历年3月按这条规则的结果</h3>' + histBars(H, ST)
-      + '<details class="ruabout"><summary>天气明细与口径</summary>' + wxDetail() + '</details>'
-      + '<details class="ruabout"><summary>规则依据与局限</summary>' + aboutHtml() + '</details></section>';
+      + '</section>';
+    const infoP = '<div class="ruinfop" id="ruInfo"><div class="ruinfh"><b>说明与明细</b><button class="lnk" data-ru="infox">关闭</button></div><details class="ruabout"><summary>天气明细与口径</summary>' + wxDetail() + '</details><details class="ruabout"><summary>规则依据与局限</summary>' + aboutHtml() + '</details>' + entryHtml(IS) + '</div>';
     /* 交易页：信号 + 要点 + 共担手数 + 我的持仓 + 记录 + 提醒；研究页：背景卡 + 价格图 + 历史 + 趋势墙 */
     const trade = '<div class="rutr"><div class="rutp">' + checksHtml(P) + '<h3 class="ruh">共担资金与手数</h3>' + (eqLots ? '<div class="hl">现在信号价位建议 <b>' + eqLots.lots + ' 手</b>（占用保证金约 ' + f0(eqLots.margin) + ' 元，止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）；份额 ' + (eqLots.share === 1 ? '全部预算' : '1/2（豆粕有持仓，两边平分）') + '。</div>' : '<p class="dim">出信号后这里按「权益×阶梯占用÷持仓品种数」给手数；权益、保证金率在豆粕页的账户设置里，两个品种共用。</p>') + (K().shareHtml ? K().shareHtml() : '')
       + '<h3 class="ruh">我的橡胶空单</h3>' + posHtml(P, eqLots) + logHtml() + '<h3 class="ruh">提醒</h3>' + remindHtml(P) + '</div></div>';
-    return sigHtml(P, IS, eqLots) + trade + '<div class="rure">' + bandHtml(P, IS) + '<main class="main rumain">' + chartCol + '<section class="wall rwall" aria-label="趋势墙">' + wallHtml(IS) + '</section></main></div>';
+    return sigHtml(P, IS, eqLots) + trade + '<div class="rure">' + bandHtml(P, IS) + '<main class="main rumain">' + chartCol + '<section class="wall rwall" aria-label="趋势墙">' + wallHtml(IS) + '</section></main>' + infoP + '</div>';
   }
   function logHtml() {
     const A = acct(), L = ((A && A.ruTrades) || []).filter(t => t.exitD).slice(-8).reverse(); if (!L.length) return '';
@@ -419,13 +419,16 @@ function ruIndSummary(ind, today) {
   }
   function setView(v) { VIEW = v; lsSet('fut-view2', v); if (v !== 'meal' && !WX.rs && !WX.busy) loadWx().then(paint); paint(); try { window.scrollTo(0, 0); const a = $('#ruApp'); if (a) a.scrollTop = 0; } catch (_) {} if (v === 'meal') { try { window.dispatchEvent(new Event('resize')); } catch (_) {} } }
   window.addEventListener('resize', () => { if (VIEW === 'ru') drawChart(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const ip = $('#ruInfo'); if (ip) ip.classList.remove('open'); } });
   document.addEventListener('click', e => {
     const b = e.target.closest('#vSeg button'); if (b) return setView(b.dataset.v);
     const oc = e.target.closest('.ov-c'); if (oc) return setView(oc.dataset.v);
     const tl = e.target.closest('.rutile[data-ik]');
-    if (tl) { if (tl.dataset.ik === 'wx') { const d = [...document.querySelectorAll('.ruabout')].find(x => /天气明细/.test(x.textContent)); if (d) { d.open = true; d.scrollIntoView({ block: 'center' }); } } return; }
+    if (tl) { if (tl.dataset.ik === 'wx') { const d = [...document.querySelectorAll('.ruabout')].find(x => /天气明细/.test(x.textContent)); if (d) { const ip = $('#ruInfo'); if (ip) ip.classList.add('open'); d.open = true; d.scrollIntoView({ block: 'center' }); } } return; }
     const t = e.target.closest('[data-ru]'); if (!t) return; const a = t.dataset.ru;
     if (a === 'wxre') { WX.rs = null; loadWx(true).then(paint); paint(); }
+    if (a === 'info') { const ip = $('#ruInfo'); if (ip) ip.classList.toggle('open'); }
+    if (a === 'infox') { const ip = $('#ruInfo'); if (ip) ip.classList.remove('open'); }
     if (a === 'span') { CH.span = +t.dataset.n || 120; paint(); }
     if (a === 'goplan') { const d = document.querySelector('.rucheck'); if (d) d.scrollIntoView({ block: 'nearest' }); }
     const msg = m => { const e = $('#ruMsg'); if (e) e.textContent = m; else { const b = document.querySelector('.rutp'); if (b) { const d = document.createElement('div'); d.className = 'ruwx warn'; d.textContent = m; b.prepend(d); } } };

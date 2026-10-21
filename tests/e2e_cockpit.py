@@ -601,6 +601,14 @@ def main():
         ok('橡胶页(%d宽)：10项指标全部「自动」（青岛库存58、全钢胎产能利用率53.3、进口49…）' % w_, pg.evaluate("(() => { const T = k => document.querySelector('.rutile[data-ik=' + k + ']'); const ks = ['prod', 'imp', 'stk', 'dark', 'light', 'qd', 'qin', 'qout', 'qg', 'bg']; return ks.every(k => T(k) && T(k).innerText.includes('自动')) && T('qd').innerText.includes('58') && T('qg').innerText.includes('53.3') && T('qg').innerText.includes('产能利用率') && T('imp').innerText.includes('49') && !document.getElementById('ruApp').innerText.includes('开工率'); })()"))
         ok('橡胶页(%d宽)：产能利用率同比为负 → 不提示需求回升，不拦单' % w_, pg.evaluate("(() => { const t = document.querySelector('#ruApp .band').innerText; return !t.includes('产能利用率较上期升') && window.__ru.plan().st !== 'blocked'; })()"))
         ok('橡胶页(%d宽)：价格图不溢出、不横向滚动' % w_, pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('#ruKl svg').getBoundingClientRect().width <= document.getElementById('ruKl').clientWidth + 1"))
+        if w_ >= 900:   # v102.10 规则：电脑页一屏装下，不滚动（新品种页同样）
+            for md in ('research', 'trade'):
+                pg.evaluate("(m) => { const b = document.querySelector('[data-mode=' + m + ']'); if (b) b.click(); }", md); pg.wait_for_timeout(300)
+                ok('橡胶页(%d宽×%d高)：%s页一屏装下、不滚动' % (w_, h_, md), pg.evaluate("(() => { const a = document.getElementById('ruApp'); return a.scrollHeight <= a.clientHeight + 1 && document.documentElement.scrollHeight <= innerHeight + 1; })()"))
+            pg.evaluate("() => { const b = document.querySelector('[data-mode=research]'); if (b) b.click(); }"); pg.wait_for_timeout(300)
+            _clip = pg.evaluate("[...document.querySelectorAll('#ruApp .rutile:not(.pend)')].filter(t => t.scrollHeight > t.clientHeight + 1).map(t => [t.className, t.scrollHeight, t.clientHeight, t.clientWidth, document.querySelector('#ruApp .sigbar').offsetHeight])")
+            ok('橡胶研究页(%d宽×%d高)：趋势墙每格内容没被裁掉' % (w_, h_), not _clip, _clip)
+            ok('橡胶研究页(%d宽)：「说明与明细」默认收起，点开出现天气明细/规则依据/数据来源' % w_, pg.evaluate("(() => { const p = document.getElementById('ruInfo'); const c0 = getComputedStyle(p).display === 'none'; document.querySelector('[data-ru=info]').click(); const o = getComputedStyle(p).display !== 'none' && /天气明细/.test(p.innerText) && /规则依据/.test(p.innerText) && /数据来源/.test(p.innerText); document.querySelector('[data-ru=infox]').click(); return c0 && o && getComputedStyle(p).display === 'none'; })()"))
         pg.click('#vSeg [data-v=all]'); pg.wait_for_timeout(300)
         ok('总览(%d宽)：同时显示豆粕和橡胶两张卡' % w_, pg.evaluate("document.querySelectorAll('#ruApp .ov-c').length === 2"))
         pg.click('#vSeg [data-v=meal]'); pg.wait_for_timeout(400)

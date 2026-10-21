@@ -522,6 +522,42 @@ body.v-ru.mode-research .rutr{display:none}
   .rucheck{height:40px}
   .ruapp .tile.wxt{grid-template-areas:"n n" "v v" "c c"}.ruapp .tile.wxt .sk{display:none}
 }@media(max-width:899px){.brand{display:none}}
+
+/* v102.10 橡胶页（电脑）一屏装下、不滚动；规则：以后每个新品种的电脑页都必须一屏，说明类内容放「说明与明细」弹层 */
+.ruinfop{margin:0}.ruinfh{display:none}.ruinfob{display:none}
+@media(min-width:900px){
+  body.v-ru .ruapp{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+  body.v-ru .ruapp>.sigbar{flex:none}
+  body.v-ru:not(.mode-trade) .ruapp .rure{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+  body.v-ru .ruapp .rure>.band{flex:none}
+  body.v-ru .ruapp .rure>.band .cell{padding:8px 20px}
+  .ruapp .rumain{flex:1 1 0;min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
+  .ruapp .rumain>.chart{overflow:hidden;padding:10px 20px 8px}
+  .ruapp .chart .ch-h{flex:none}
+  .ruapp .chart .hl.cap{font-size:12px;line-height:1.4;margin:0 0 2px;flex:none}
+  .ruapp .rukl{flex:1 1 0;min-height:90px;margin:0;overflow:hidden}
+  .ruapp .chart .ruh{margin:8px 0 2px;flex:none}
+  .ruapp .chart p.hl{margin:0 0 2px;font-size:12.5px;line-height:1.4;flex:none}
+  .ruapp .chart .rubars{flex:none;margin:2px 0 0}.ruapp .chart .rubars .mc .mb{height:46px}
+  .ruapp .chart .mleg{flex:none;margin:0}
+  .ruapp .rwall{overflow:hidden}
+  .ruapp .rwall .wh{height:34px}.ruapp .rwall .wh .t{white-space:nowrap}
+  .ruapp .rwall .tiles.blocks{flex:1 1 0;min-height:0}
+  .ruapp .rwall .blk{flex:1 1 0;min-height:0}
+  .ruapp .rwall .tile,.ruapp .rwall .tile.pend{min-height:0}
+  .ruapp .rwall .tile:not(.pend){grid-template-rows:auto minmax(0,1fr) auto;padding:7px 12px 6px 16px;gap:1px}
+  .ruapp .rwall .tile:not(.pend):not(.wxt) .t2{grid-row:2;grid-column:1;align-self:center;z-index:1}
+  .ruapp .rwall .tile:not(.pend):not(.wxt) .sk{grid-row:2;grid-column:1;margin:2px -2px 2px 46%;min-height:0}
+  .ruapp .rwall .tile:not(.pend):not(.wxt) .chips{grid-row:3}
+  .ruapp .rwall .tile.pend{grid-template-rows:auto minmax(0,1fr)}
+  .ruapp .rwall .tile.wxt{grid-template-rows:auto minmax(0,1fr) auto;padding:5px 12px 4px 16px;gap:0}.ruapp .rwall .tile.wxt .sk{display:none}.ruapp .rwall .tile.wxt .t2 .v{font-size:15px!important}.ruapp .rwall .tile.wxt .t1{min-height:18px}
+  .ruapp .rwall .tile.pend .sk{min-height:0}
+  .ruapp .rwall .blk:last-child{flex-grow:.85}
+  .ruinfob{display:inline-block;margin-left:10px}
+  .ruinfop{display:none;position:fixed;z-index:60;top:60px;right:16px;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 84px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.22)}
+  .ruinfop.open{display:block}
+  .ruinfh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+}
 </style>
 </head>
 <body>
