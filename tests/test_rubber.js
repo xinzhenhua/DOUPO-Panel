@@ -2,7 +2,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'rubber.js'), 'utf8');
 const a = src.indexOf('/* RU_BEGIN */'), b = src.indexOf('/* RU_END */'); if (a < 0 || b < 0) { console.log('找不到 RU_BEGIN/RU_END'); process.exit(1); }
-const P = new Function(src.slice(a, b) + '\nreturn {ruResonance,ruPolicyAlert,ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruShareSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays};')();
+const P = new Function(src.slice(a, b) + '\nreturn {ruResonance,ruPolicyAlert,ruDemandSurge,RUIND,ruIndTrend,ruIndSummary,RUP,RUREG,ruSimYear,ruHistory,ruStats,ruPlan,ruSize,ruShareSize,ruRegionWx,ruWxVerdict,ruLastWeekdayOfMarch,ruTickUp,ruMA,ruAddDays,ruMonthStats,ruPosStats};')();
 const HIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'cockpit', 'ru_hist.json'), 'utf8'));
 let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('✗', n, '\n  得到', JSON.stringify(x), '\n  期望', JSON.stringify(y))); };
 const near = (n, x, y, t = 0.02) => { const ok = Math.abs(x - y) <= t; ok ? pass++ : (fail++, console.log('✗', n, x, '≠', y)); };
@@ -164,4 +164,12 @@ eq('共担手数：200万×60%×1/2÷(10×17235×12%)=29', P.ruShareSize(2e6, .6
 eq('共担手数：独占(share=1)是共担的2倍左右', P.ruShareSize(2e6, .6, 1, 17235, .12, 'real', .12).lots, 58);
 eq('共担手数：资金不足一手→0', P.ruShareSize(20000, .6, .5, 17235, .12, 'real', .12).lots, 0);
 eq('共担手数：无权益不报错', P.ruShareSize(0, .6, .5, 17235, .12, 'real', .12).lots, 0);
+// ---- 交易页：同期规律 / 价格位置
+{ const days=[]; const d=[],c=[]; for(let y=2020;y<=2022;y++)for(let m=1;m<=12;m++){ d.push(y+'-'+String(m).padStart(2,'0')+'-15'); d.push(y+'-'+String(m).padStart(2,'0')+'-28'); }
+  d.forEach((_,i)=>c.push(100+i)); const MS=P.ruMonthStats({d,c});
+  eq('月度统计：12个月', MS.length, 12); eq('单调上涨→每月上涨率100%', MS.every(x=>x.up===1), true);
+  eq('跳过首尾月：1月有2年样本(2021,2022)', MS[0].n, 2); eq('跳过末月：12月有2年样本', MS[11].n, 2); }
+{ const n=300,c=[],h=[],l=[],r=[]; for(let i=0;i<n;i++){c.push(100+i);h.push(101+i);l.push(99+i);r.push((100+i)*2);}
+  const Q=P.ruPosStats({c,h,l,r}); near('最新价在历史最高→分位100%', Q.all.pct, 1, 1e-9); near('价格按真实价换算(×2)', Q.w260.hi, 399*2, 1e-6);
+  near('1周涨幅', Q.chg1w, 399/394-1, 1e-9); eq('近20日位置在0..1', Q.r20.pos>=0&&Q.r20.pos<=1, true); }
 console.log('结果：%d项通过，%d项失败', pass, fail); process.exit(fail ? 1 : 0);

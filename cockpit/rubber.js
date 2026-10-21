@@ -15,6 +15,19 @@ function ruMA(c, i, n) { if (i < n - 1) return null; let s = 0; for (let k = i -
 function ruAddDays(d, n) { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 function ruLastWeekdayOfMarch(y) { let d = y + '-03-31'; for (;;) { const w = new Date(d + 'T00:00:00Z').getUTCDay(); if (w !== 0 && w !== 6) return d; d = ruAddDays(d, -1); } }
 function ruTickUp(x) { return Math.ceil(x / RUP.TICK - 1e-9) * RUP.TICK; }
+/* 各月历史表现（用换月调整后的收盘价，只算数据完整的月份）：每个自然月 月末收盘 ÷ 上月末收盘 − 1；返回12个月的 上涨年数/上涨概率/平均涨跌% */
+function ruMonthStats(S) {
+  const ends = []; for (let i = 0; i < S.d.length; i++) { const ym = S.d[i].slice(0, 7); if (!ends.length || ends[ends.length - 1][0] !== ym) ends.push([ym, i]); else ends[ends.length - 1][1] = i; }
+  const by = {}; for (let k = 1; k < ends.length - 1; k++) { const m = +ends[k][0].slice(5, 7); (by[m] = by[m] || []).push(S.c[ends[k][1]] / S.c[ends[k - 1][1]] - 1); }
+  return Array.from({ length: 12 }, (_, i) => { const a = by[i + 1] || [], n = a.length, up = a.filter(x => x > 0).length; return { m: i + 1, n, upN: up, up: n ? up / n : null, avg: n ? a.reduce((t, x) => t + x, 0) / n * 100 : null }; });
+}
+/* 价格位置：1周/1月/3月涨跌，近260日与全部历史的分位（最新收盘比窗口内多少比例的收盘价高），近20日高低区间位置。价格按最近真实价换算 */
+function ruPosStats(S) {
+  const n = S.c.length, c = S.c, f = S.r[n - 1] / c[n - 1], x = c[n - 1], chg = k => n > k ? x / c[n - 1 - k] - 1 : null;
+  const win = w => { const a = c.slice(-Math.min(w, n)), lo = Math.min(...a), hi = Math.max(...a); return { pct: a.length > 1 ? a.filter(v => v < x).length / (a.length - 1) : null, hi: hi * f, lo: lo * f, n: a.length }; };
+  const h20 = Math.max(...S.h.slice(-20)), l20 = Math.min(...S.l.slice(-20));
+  return { chg1w: chg(5), chg1m: chg(21), chg3m: chg(63), w260: win(260), all: win(n), r20: { hi: h20 * f, lo: l20 * f, pos: h20 > l20 ? (x - l20) / (h20 - l20) : null }, years: n / 245 };
+}
 /* 历史上每年3月按同一条规则会怎样（用换月调整价）：首个「收盘≥MA5」的3月交易日出信号，次日限价卖出≥收盘×1.003，成交价=max(限价,次日开盘)；5%止损按盘中最高价；否则3月最后一天收盘平仓 */
 function ruSimYear(S, y) {
   const idx = []; for (let i = 0; i < S.d.length; i++) if (S.d[i].slice(0, 7) === y + '-03') idx.push(i);
@@ -355,7 +368,7 @@ function ruIndSummary(ind, today) {
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="橡胶主连近' + N + '个交易日收盘价和5日均线">' + g + ax + ls + '<path d="' + m5 + '" fill="none" stroke="var(--amber)" stroke-width="1.3" opacity=".9"/><path d="' + c + '" fill="none" stroke="var(--ink)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="' + x(n - 1).toFixed(1) + '" cy="' + y(lp).toFixed(1) + '" r="3" fill="var(--ink)"/>'
       + (y(lp) - T > 16 ? '<text x="' + (W - R + 4) + '" y="' + T + '" class="lv">' + f0(hi) + '</text>' : '') + '<text x="' + (W - R + 4) + '" y="' + (H - B) + '" class="lv">' + f0(lo) + '</text><text x="' + (W - R + 4) + '" y="' + (y(lp) - 6).toFixed(1) + '" class="lv" fill="var(--ink)" font-weight="600">' + f0(lp) + '</text></svg>';
   }
-  function drawChart() { const el = document.getElementById('ruKl'); if (!el) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = window.innerWidth >= 900 && el.clientHeight >= 100 ? Math.floor(el.clientHeight) : (W < 520 ? 230 : 260); el.innerHTML = chartHtml(planNow(), W, H); }
+  function drawChart() { const P0 = planNow(); ['ruKl', 'ruKl2'].forEach(id => { const el = document.getElementById(id); if (!el || !el.clientWidth) return; const W = Math.max(280, Math.floor(el.clientWidth || 600)), H = window.innerWidth >= 900 && el.clientHeight >= 100 ? Math.floor(el.clientHeight) : (W < 520 ? 230 : 260); el.innerHTML = chartHtml(P0, W, H); }); }
   function sigHtml(P, IS, eqLots) {
     const tone = { go: 'short', exit: 'wait', holdwx: 'wait', hold: 'short', blocked: 'wait', wait: 'wait', pre: 'wait', sleep: 'wait', stale: 'wait', done: 'wait' }[P.st] || 'wait', cls = P.st === 'stale' ? 'gate' : tone;
     const DS = ruDemandSurge(indAll(), todayBJ()), PA = policyNow(), RS_ = ruResonance(indAll(), todayBJ()), wv = WX.v, wxOk = !wv || wv.level === 'unknown' ? null : wv.level !== 'block' ? true : (RUP.WXBLOCK ? false : null);
@@ -372,7 +385,7 @@ function ruIndSummary(ind, today) {
       right = '<div class="sg pos ' + (P.st === 'exit' || P.st === 'holdwx' ? 'exit' : 'hold') + '"><div class="cl">空 ' + esc(OPTpos.contract || '') + ' ' + esc(OPTpos.lots || '') + ' 手 @' + f0(OPTpos.px) + ' · ' + esc((OPTpos.d || '').slice(5)) + '</div><div class="hd big" style="color:' + (up ? 'var(--bear)' : 'var(--bull)') + '">' + p1(P.pos.r) + '</div><div class="sb">止损价 ' + f0(P.pos.stop) + '（距现价 ' + (P.pos.stopGap == null ? '—' : P.pos.stopGap.toFixed(1) + '%') + '）<br>到 ' + esc(P.exitD.slice(5)) + ' 收盘平仓</div></div>';
     } else if (P.order) {
       right = '<div class="sg"><div class="cl">建议价格（' + esc(P.dom || '当前主力') + '）</div><div class="hd big">≥ ' + f0(P.order.lim) + '<small> 限价空</small></div><div class="sb">止损 ' + f0(P.order.stop) + '（+' + RUP.STOP + '%）· 参考目标 ' + f0(P.order.ref) + '（历史平均跌 ' + RUP.AVG_DROP + '%，不设止盈）<br>离场 ' + esc(P.exitD) + ' 收盘 · 次日没成交就作废，不追</div></div>';
-    } else right = '<div class="sg"><div class="cl">当前主力合约</div><div class="hd big">' + esc(P.dom || '—') + '</div><div class="sb">' + (P.inMar || P.pre ? '3月下旬主力常从 ' + esc(P.mar05) + ' 换到 ' + esc(P.mar09) + '；新开仓做当时主力，已持有的不用换。' : '下一个窗口 ' + esc(P.nextWin) + '（还有 ' + P.daysTo + ' 天）') + '</div></div>';
+    } else { const SC0 = shareCtx(); right = '<div class="sg"><div class="cl">持仓</div><div class="hd big">空仓</div><div class="sb">' + (SC0 ? '账户权益 ' + f0(SC0.E) + ' 元（自动，与豆粕共用）' : '账户权益读不到') + '<br>主力 ' + esc(P.dom || '—') + ' · ' + (P.inMar || P.pre ? '3月下旬主力常从 ' + esc(P.mar05) + ' 换到 ' + esc(P.mar09) + '，新开仓做当时主力' : '下一个窗口 ' + esc(P.nextWin) + '（还有 ' + P.daysTo + ' 天）') + '</div></div>'; }
     return '<section class="sigbar rusig">' + left + right + '</section>';
   }
   function bandHtml(P, IS) {
@@ -407,18 +420,63 @@ function ruIndSummary(ind, today) {
     WX.rs.forEach(r => { h += r.err ? '<tr><td>' + esc(r.n) + '</td><td colspan="4" class="dim">没取到（' + esc(r.err) + '）</td></tr>' : '<tr class="' + (r.sev >= 2 ? 'bad' : r.sev ? 'warn' : '') + '"><td>' + esc(r.n) + ' <small class="dim">' + (r.pri === 1 ? '第一优先' : '第二优先') + '</small></td><td>' + f0(r.p30) + ' mm' + (r.n30 != null ? '<br><small class="dim">近5年同期均值 ' + f0(r.n30) + '（' + (r.ratio * 100).toFixed(0) + '%）</small>' : '') + '</td><td>' + (r.t7 == null ? '—' : r.t7.toFixed(1) + '℃') + (r.tn != null ? '<br><small class="dim">近5年同期 ' + r.tn.toFixed(1) + '℃</small>' : '') + '</td><td>' + f0(r.f7) + ' mm</td><td>' + esc(r.msg) + (r.ur ? '<br><small>⚑ 一周无雨且均温≥33℃</small>' : '') + '</td></tr>'; });
     return h + '</tbody></table><p class="dim ruft">只看会影响「开割预期能否兑现」的产区：<b>第一优先</b>=泰国北部/东北部、越南东南部（干旱+高温→试割不畅、开割推迟，对空头是扰动）；<b>第二优先</b>=印尼南部巨港（降雨持续偏多→割胶受阻，供应阶段性收紧）。不看：西双版纳（4月才割胶）、泰国南部（割胶尾声）、海南。数据：Open-Meteo（再分析+预报模型，不是气象站实测）。判定：近30天降水不到近5年同期的 25%（且少30mm以上）=严重偏旱，50%=偏旱；偏热（7天均温比近5年同期高2℃）叠加偏旱升一级，单独高3.5℃以上=高温；印尼降雨超过同期200%（多60mm）=偏多、300%（多100mm）=严重偏多。你的阈值「连续一周累计降水<5mm 且均温≥33℃」显示为 ⚑，但<b>不单独拦单</b>：泰国东北3月平均最高温本来就常在33℃以上，这条绝对阈值几乎每年3月都会触发（我这里连不上 Open-Meteo，看上表「近5年同期」一列自己核对）。拦单规则：第一优先产区出现严重异常，或各区「注意」累计≥3。<b>这些阈值没有历史天气回测。</b></p>';
   }
+  /* 交易页三栏（和豆粕交易页同一布局）：价格与持仓 / 价格位置 / 同期规律 */
+  const bandWord = p => p == null ? '—' : p >= 0.8 ? '高位带' : p <= 0.2 ? '低位带' : '中间带';
+  const chgSp = x => x == null ? '<span class="dim">—</span>' : '<b class="' + (x > 0 ? 'bull' : x < 0 ? 'bear' : '') + '">' + (x > 0 ? '↑' : x < 0 ? '↓' : '→') + Math.abs(x * 100).toFixed(1) + '%</b>';
+  function posLongSvg() {
+    const n = S.c.length, N = Math.min(750, n), i0 = n - N, w = Math.min(260, n), f = S.r[n - 1] / S.c[n - 1];
+    const hi = [], lo = []; for (let i = i0; i < n; i++) { const a = S.c.slice(Math.max(0, i - w + 1), i + 1); hi.push(Math.max(...a)); lo.push(Math.min(...a)); }
+    const all = S.c.slice(i0).concat(hi, lo), mx = Math.max(...all), mn = Math.min(...all), W = 400, H = 200, x = k => k / (N - 1) * W, y = v => 6 + (mx - v) / (mx - mn || 1) * (H - 12);
+    const path = a => a.map((v, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ' ' + y(v).toFixed(1)).join('');
+    const band = path(hi) + hi.map((_, k) => 'L' + x(N - 1 - k).toFixed(1) + ' ' + y(lo[N - 1 - k]).toFixed(1)).join('') + 'Z';
+    return '<svg class="rupl" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="橡胶主连近3年收盘价与260日高低通道"><path d="' + band + '" fill="var(--amber)" opacity=".10"/><path d="' + path(hi) + '" fill="none" stroke="var(--amber)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="' + path(lo) + '" fill="none" stroke="var(--focus)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="' + path(S.c.slice(i0)) + '" fill="none" stroke="var(--ink)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  function tradeCols(P, H, ST, spans) {
+    const PS = ruPosStats(S), MS = ruMonthStats(S), cm = +todayBJ().slice(5, 7), cur = MS[cm - 1];
+    const r20 = PS.r20, rp = r20.pos == null ? 0.5 : Math.min(1, Math.max(0, r20.pos));
+    const c1 = '<section class="rutc" aria-label="橡胶价格与持仓"><div class="ch-h"><span class="t">' + esc(P.dom || 'RU') + ' 价格与持仓</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div>'
+      + '<div class="rutst"><span class="k">价格</span><span>1周 ' + chgSp(PS.chg1w) + '</span><span>1月 ' + chgSp(PS.chg1m) + '</span><span>3月 ' + chgSp(PS.chg3m) + '</span></div>'
+      + '<div class="why">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）；有信号/持仓时图上画出限价线、止损线、开仓线。</div>'
+      + '<div class="rukl" id="ruKl2"></div>'
+      + '<div class="rurg"><div class="rl"><span>最近20个交易日的高低之间</span><b>' + (r20.pos == null ? '—' : Math.round(rp * 100) + '%') + '</b></div><div class="rtk"><i style="left:' + (rp * 100).toFixed(1) + '%"></i></div><div class="rl2"><span>低点 ' + f0(r20.lo) + '</span><span>高点 ' + f0(r20.hi) + '</span></div></div></section>';
+    const pb = (t, w) => '<div class="rupb"><div class="rl"><span>' + t + '</span><b>' + (w.pct == null ? '—' : (w.pct * 100).toFixed(1) + '%分位 ' + bandWord(w.pct)) + '</b></div><div class="rtk"><i style="left:' + (w.pct == null ? 50 : (w.pct * 100).toFixed(1)) + '%"></i></div><div class="rl2"><span>' + (t.includes('260') ? '260天铁底 ' + f0(w.lo) : '最低端') + '</span><span>' + (t.includes('260') ? '260天铁顶 ' + f0(w.hi) : '最高端（调整价，只看分位）') + '</span></div></div>';
+    const c2 = '<section class="rutc" aria-label="橡胶价格位置"><div class="ch-h"><span class="t">价格位置 · 主力连续价</span></div>'
+      + '<div class="hl">现价 <b>' + f0(P.real) + '</b>：' + (PS.w260.pct == null ? '—' : PS.w260.pct >= 0.8 ? '处在近一年的高位带' : PS.w260.pct <= 0.2 ? '处在近一年的低位带' : '处在近一年的中间带') + '（高于近260天 ' + (PS.w260.pct == null ? '—' : Math.round(PS.w260.pct * 100)) + '% 的收盘价）</div>'
+      + '<div class="why">橙色虚线=近260天收盘最高，蓝色虚线=最低，淡黄底=两线之间；线是主连换月调整价，数字按最近真实价换算。分位=最新收盘比窗口内多少比例的收盘价高。只是位置参考，不参与出信号。</div>'
+      + '<div class="rukl">' + posLongSvg() + '</div>' + pb('近260日', PS.w260) + pb('全部历史（' + PS.years.toFixed(0) + '年）', PS.all) + '</section>';
+    const bars = MS.map(x => { const h = x.up == null ? 0 : Math.round(x.up * 100), col = x.up == null ? 'var(--line)' : x.up >= 0.6 ? 'var(--bull)' : x.up <= 0.4 ? 'var(--bear)' : 'var(--ink3)'; return '<div class="mc' + (x.m === cm ? ' now' : '') + '" title="' + x.m + '月：近 ' + x.n + ' 年 ' + x.upN + ' 年上涨"><span class="mv">' + (x.up == null ? '—' : h) + '</span><div class="mb"><i style="height:' + Math.max(3, h) + '%;background:' + col + ';opacity:' + (x.m === RUP.MON ? 1 : .55) + '"></i></div><span class="mm">' + x.m + '月' + (x.m === RUP.MON ? '★' : '') + '</span><span class="mr" style="color:' + (x.avg == null ? 'var(--ink3)' : x.avg >= 0 ? 'var(--bull)' : 'var(--bear)') + '">' + (x.avg == null ? '—' : (x.avg >= 0 ? '+' : '') + x.avg.toFixed(1)) + '</span></div>'; }).join('');
+    const c3 = '<section class="rutc" aria-label="橡胶同期规律"><div class="ch-h"><span class="t">同期规律 · 各月上涨概率</span></div>'
+      + '<div class="hl"><b>' + cm + '月</b>：近 ' + cur.n + ' 年 ' + cur.upN + ' 年上涨（' + (cur.up == null ? '—' : Math.round(cur.up * 100)) + '%），平均 ' + (cur.avg == null ? '—' : (cur.avg >= 0 ? '+' : '') + cur.avg.toFixed(1) + '%') + '</div>'
+      + '<div class="why">柱子=该月上涨年份占比(%)，下方数字=该月平均涨跌(%)；★=本策略做空的3月。用的是主连换月调整价的月末收盘，样本约13年，单月样本很少，只作背景，不参与出信号。</div>'
+      + '<div class="mbars rumb">' + bars + '</div><div class="mleg"><span>红=上涨年份多，绿=下跌年份多；下方数字=平均涨跌%</span></div>'
+      + (ST ? '<p class="hl rust">★3月按本规则做空：' + ST.years + ' 个3月里 ' + ST.n + ' 年出信号成交，平均 <b>' + p1(ST.mean) + '</b>，胜率 ' + ST.win.toFixed(0) + '%（t=' + ST.t.toFixed(1) + '，多重检验后不显著，仓位要小）</p>' : '')
+      + '</section>';
+    return '<div class="rutcols">' + c1 + c2 + c3 + '</div>';
+  }
+  let RUPLAN = null;     // null=自动（有持仓或有信号就展开，和豆粕一样）；点右上角「计划」后按手动
+  const planAuto = P => !!(ruPos() || P.st === 'go' || P.st === 'exit' || P.st === 'holdwx');
+  const planOn = P => RUPLAN == null ? planAuto(P || planNow()) : RUPLAN;
+  function applyPlan() { if (VIEW !== 'ru') { document.body.classList.remove('ru-plan'); return; } const on = planOn(); document.body.classList.toggle('ru-plan', on); const b = $('#planBtn'); if (b) b.setAttribute('aria-pressed', String(on)); }
   function ruHtml() {
     const SC = shareCtx(), P = planNow(), IS = indNow(), eqLots = SC && P.order && P.real ? ruShareSize(SC.E, SC.u, SC.share, P.order.lim, SC.mr, SC.mode, 0.10) : null, H = ruHistory(S), ST = ruStats(H);
     const spans = [[60, '60日'], [120, '120日'], [250, '250日']].map(x => '<button data-ru="span" data-n="' + x[0] + '" aria-pressed="' + (CH.span === x[0]) + '">' + x[1] + '</button>').join('');
-    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div><button class="lnk ruinfob" data-ru="info" title="天气明细、规则依据、数据来源">说明与明细</button></div><div class="hl cap">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
+    const chartCol = '<section class="chart" aria-label="橡胶价格与历史"><div class="ch-h"><span class="t">RU 主连收盘与5日线</span><div class="seg" role="group" aria-label="显示多久">' + spans + '</div></div><div class="why">白线=收盘价；黄线=5日均线(MA5)；' + (S.d.slice(-CH.span).some(d => d.slice(5, 7) === '03') ? '浅黄底色=历年3月窗口。' : '这段时间不含3月，所以没有黄底色（切到120/250日可以看到3月窗口）。') + '收盘站上黄线才是「反弹」，出信号后次日挂限价（见上方建议价格）。</div><div class="rukl" id="ruKl"></div>'
       + '<h3 class="ruh">历年3月按这条规则的结果</h3>' + histBars(H, ST)
       + '</section>';
-    const infoP = '<div class="ruinfop" id="ruInfo"><div class="ruinfh"><b>说明与明细</b><button class="lnk" data-ru="infox">关闭</button></div><details class="ruabout"><summary>天气明细与口径</summary>' + wxDetail() + '</details><details class="ruabout"><summary>规则依据与局限</summary>' + aboutHtml() + '</details>' + entryHtml(IS) + '</div>';
-    /* 交易页：信号 + 要点 + 共担手数 + 我的持仓 + 记录 + 提醒；研究页：背景卡 + 价格图 + 历史 + 趋势墙 */
-    const trade = '<div class="rutr"><div class="rutp">' + checksHtml(P) + '<h3 class="ruh">共担资金与手数</h3>' + (eqLots ? '<div class="hl">现在信号价位建议 <b>' + eqLots.lots + ' 手</b>（占用保证金约 ' + f0(eqLots.margin) + ' 元，止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）；份额 ' + (eqLots.share === 1 ? '全部预算' : '1/2（豆粕有持仓，两边平分）') + '。</div>' : '<p class="dim">出信号后这里按「权益×阶梯占用÷持仓品种数」给手数；权益、保证金率在豆粕页的账户设置里，两个品种共用。</p>') + (K().shareHtml ? K().shareHtml() : '')
+    /* 交易页：信号条 + 要点条 + 三栏图（计划面板展开时换成「共担手数/我的空单/记录/提醒」）；研究页：背景卡 + 价格图 + 历史 + 趋势墙 */
+    const plan = '<div class="rutplan"><div class="rutp"><h3 class="ruh">共担资金与手数</h3>' + (eqLots ? '<div class="hl">现在信号价位建议 <b>' + eqLots.lots + ' 手</b>（占用保证金约 ' + f0(eqLots.margin) + ' 元，止损亏约 ' + f0(eqLots.loss) + ' 元≈权益 ' + (eqLots.lossPct * 100).toFixed(1) + '%）；份额 ' + (eqLots.share === 1 ? '全部预算' : '1/2（豆粕有持仓，两边平分）') + '。</div>' : '<p class="dim">出信号后这里按「权益×阶梯占用÷持仓品种数」给手数；权益、保证金率在豆粕页的账户设置里，两个品种共用。</p>') + (K().shareHtml ? K().shareHtml() : '')
       + '<h3 class="ruh">我的橡胶空单</h3>' + posHtml(P, eqLots) + logHtml() + '<h3 class="ruh">提醒</h3>' + remindHtml(P) + '</div></div>';
-    return sigHtml(P, IS, eqLots) + trade + '<div class="rure">' + bandHtml(P, IS) + '<main class="main rumain">' + chartCol + '<section class="wall rwall" aria-label="趋势墙">' + wallHtml(IS) + '</section></main>' + infoP + '</div>';
+    const trade = '<div class="rutr">' + checksHtml(P) + tradeCols(P, H, ST, spans) + plan + '</div>';
+    return sigHtml(P, IS, eqLots) + trade + '<div class="rure">' + bandHtml(P, IS) + '<main class="main rumain">' + chartCol + '<section class="wall rwall" aria-label="趋势墙">' + wallHtml(IS) + '</section></main></div>';
   }
+  /* 右上角「说明」：橡胶页自己的说明（豆粕页的说明按钮是豆粕内容，这里不用） */
+  function ruAboutHtml() {
+    const en = entryHtml(indNow()).replace('<details class="ruabout">', '<details class="ruabout" open>');
+    return '<h3>怎么读这页</h3><p>顶部「交易/研究」切换：研究页=背景卡+价格图+历年3月结果+趋势墙；交易页=信号条+要点条+三栏图（价格与持仓/价格位置/同期规律）。右上角「计划」展开：共担资金与手数、记录我的橡胶空单、提醒；出信号或有持仓时自动展开。「解释」打开每一块的白话说明。账户权益、出入金、保证金率在豆粕页设置，两个品种共用。</p>'
+      + '<h3>基本面怎么算（和豆粕一样）</h3><p>每个指标投一票（偏多+1、偏空-1、不明显0），社会/深色/浅色库存合并成1票、青岛库存与出入库合并成1票，避免同一件事重复计票；净倾向 = 票的加权和 ÷ 有效票权合计（中性票也算在分母里）；进入 ±22% 才算偏多/偏空，否则“信号混合”；有效票少于5不下结论；数据晚一期票权×0.5、晚两期不计；另看供给端/需求端两侧是否一致，一侧偏多一侧偏空 = 分歧，并给置信度。所有票权都是1、各指标阈值是常识性的暂定值，<b>没有回测</b>，基本面只做展示，不参与出信号和拦单。</p>'
+      + '<h3>规则依据与局限</h3>' + aboutHtml().replace('<p><b>基本面怎么算（和豆粕一样）</b>', '<p hidden><b>') + '<h3 id="ruWx">天气明细与口径</h3>' + wxDetail() + '<h3>数据来源与自动离场条件</h3>' + en;
+  }
+  function openRuAbout(focusWx) { try { K().openSheet('说明：怎么读橡胶页', ruAboutHtml()); if (focusWx) setTimeout(() => { const e = document.getElementById('ruWx'); if (e) e.scrollIntoView({ block: 'start' }); }, 60); } catch (_) {} }
   function logHtml() {
     const A = acct(), L = ((A && A.ruTrades) || []).filter(t => t.exitD).slice(-8).reverse(); if (!L.length) return '';
     return '<table class="tb3x tbpl"><thead><tr><th>开仓</th><th>平仓</th><th>手数</th><th>盈亏(元)</th></tr></thead><tbody>' + L.map(t => { const pnl = -(t.exitPx - t.entryPx) * t.lots * RUP.TON; return '<tr><td>' + esc(t.entryD.slice(2)) + ' @' + f0(t.entryPx) + '</td><td>' + esc(t.exitD.slice(2)) + ' @' + f0(t.exitPx) + (t.stop ? ' 止损' : '') + '</td><td class="n">' + t.lots + '</td><td class="n" style="color:' + (pnl >= 0 ? 'var(--bear)' : 'var(--bull)') + '">' + (pnl >= 0 ? '+' : '') + f0(pnl) + '</td></tr>'; }).join('') + '</tbody></table><p class="dim">橡胶盈亏已计入账户权益（和豆粕共用）；手续费按账户设置里的每手手续费。</p>';
@@ -453,19 +511,27 @@ function ruIndSummary(ind, today) {
     if (VIEW === 'meal') { app.innerHTML = ''; return; }
     app.innerHTML = VIEW === 'all' ? '<div class="ruin2">' + overviewHtml() + '</div>' : ruHtml();
     if (VIEW === 'ru') drawChart();
+    applyPlan();
   }
   function setView(v) { VIEW = v; lsSet('fut-view2', v); if (v !== 'meal' && !WX.rs && !WX.busy) loadWx().then(paint); paint(); try { window.scrollTo(0, 0); const a = $('#ruApp'); if (a) a.scrollTop = 0; } catch (_) {} if (v === 'meal') { try { window.dispatchEvent(new Event('resize')); } catch (_) {} } }
   window.addEventListener('resize', () => { if (VIEW === 'ru') drawChart(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { const ip = $('#ruInfo'); if (ip) ip.classList.remove('open'); } });
+  /* 切交易/研究、开关解释、改窗口大小后，图要按新尺寸重画 */
+  { let tm = null; const rd = () => { if (VIEW !== 'ru') return; clearTimeout(tm); tm = setTimeout(() => { try { drawChart(); } catch (_) {} }, 60); };
+    new MutationObserver(rd).observe(document.body, { attributes: true, attributeFilter: ['class'] }); window.addEventListener('resize', rd); }
+  /* 右上角 说明/计划：橡胶页接管（抢在豆粕的处理之前），豆粕页不受影响 */
+  document.addEventListener('click', e => {
+    if (VIEW !== 'ru') return; const b = e.target.closest('#abBtn,#planBtn'); if (!b) return;
+    e.stopPropagation(); e.preventDefault();
+    if (b.id === 'abBtn') openRuAbout(); else { RUPLAN = !planOn(); applyPlan(); }
+  }, true);
+  document.addEventListener('keydown', e => { if (VIEW === 'ru' && e.key === '?' && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) { e.stopPropagation(); e.preventDefault(); openRuAbout(); } }, true);
   document.addEventListener('click', e => {
     const b = e.target.closest('#vSeg button'); if (b) return setView(b.dataset.v);
     const oc = e.target.closest('.ov-c'); if (oc) return setView(oc.dataset.v);
     const tl = e.target.closest('.rutile[data-ik]');
-    if (tl) { if (tl.dataset.ik === 'wx') { const d = [...document.querySelectorAll('.ruabout')].find(x => /天气明细/.test(x.textContent)); if (d) { const ip = $('#ruInfo'); if (ip) ip.classList.add('open'); d.open = true; d.scrollIntoView({ block: 'center' }); } } return; }
+    if (tl) { if (tl.dataset.ik === 'wx') { openRuAbout(true); } return; }
     const t = e.target.closest('[data-ru]'); if (!t) return; const a = t.dataset.ru;
     if (a === 'wxre') { WX.rs = null; loadWx(true).then(paint); paint(); }
-    if (a === 'info') { const ip = $('#ruInfo'); if (ip) ip.classList.toggle('open'); }
-    if (a === 'infox') { const ip = $('#ruInfo'); if (ip) ip.classList.remove('open'); }
     if (a === 'span') { CH.span = +t.dataset.n || 120; paint(); }
     if (a === 'goplan') { const d = document.querySelector('.rucheck'); if (d) d.scrollIntoView({ block: 'nearest' }); }
     const msg = m => { const e = $('#ruMsg'); if (e) e.textContent = m; else { const b = document.querySelector('.rutp'); if (b) { const d = document.createElement('div'); d.className = 'ruwx warn'; d.textContent = m; b.prepend(d); } } };

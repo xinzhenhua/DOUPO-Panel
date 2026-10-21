@@ -471,7 +471,8 @@ body.holding .tbcv tr.tdx td:last-child{display:table-cell}
 .ruapp{display:none}
 body.v-ru .app>:not(.bar):not(.ruapp),body.v-all .app>:not(.bar):not(.ruapp){display:none!important}
 body.v-ru .ruapp,body.v-all .ruapp{display:block;flex:1 1 auto;overflow:auto}
-body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .sess,body.v-all .sess,body.v-all #syncDot,body.v-all .modes,body.v-ru #flBtn,body.v-all #flBtn,body.v-ru #setBtn,body.v-all #setBtn,body.v-ru #planBtn,body.v-all #planBtn,body.v-ru #exBtn,body.v-all #exBtn,body.v-ru #abBtn,body.v-all #abBtn,body.v-ru .sync,body.v-all .sync{display:none!important}
+body.v-ru #cBtn,body.v-all #cBtn,body.v-ru #cPop,body.v-all #cPop,body.v-ru .sess,body.v-all .sess,body.v-all #syncDot,body.v-all .modes,body.v-ru #flBtn,body.v-all #flBtn,body.v-ru #setBtn,body.v-all #setBtn,body.v-all #planBtn,body.v-all #exBtn,body.v-all #abBtn,body.v-ru .sync,body.v-all .sync{display:none!important}
+body.v-ru:not(.mode-trade) #planBtn{display:none!important}
 .ruin2{max-width:900px;margin:0 auto;padding:18px 20px 60px}
 .ruin2 h2{font-size:16px;margin:26px 0 6px} .ruin2 h3{font-size:14px;font-weight:700;margin:22px 0 6px}
 .rusg{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:var(--surface)}
@@ -524,7 +525,6 @@ body.v-ru.mode-research .rutr{display:none}
 }@media(max-width:899px){.brand{display:none}}
 
 /* v102.10 橡胶页（电脑）一屏装下、不滚动；规则：以后每个新品种的电脑页都必须一屏，说明类内容放「说明与明细」弹层 */
-.ruinfop{margin:0}.ruinfh{display:none}.ruinfob{display:none}
 @media(min-width:900px){
   body.v-ru .ruapp{display:flex;flex-direction:column;overflow:hidden;min-height:0}
   body.v-ru .ruapp>.sigbar{flex:none}
@@ -534,7 +534,6 @@ body.v-ru.mode-research .rutr{display:none}
   .ruapp .rumain{flex:1 1 0;min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
   .ruapp .rumain>.chart{overflow:hidden;padding:10px 20px 8px}
   .ruapp .chart .ch-h{flex:none}
-  .ruapp .chart .hl.cap{font-size:12px;line-height:1.4;margin:0 0 2px;flex:none}
   .ruapp .rukl{flex:1 1 0;min-height:90px;margin:0;overflow:hidden}
   .ruapp .chart .ruh{margin:8px 0 2px;flex:none}
   .ruapp .chart p.hl{margin:0 0 2px;font-size:12.5px;line-height:1.4;flex:none}
@@ -553,11 +552,35 @@ body.v-ru.mode-research .rutr{display:none}
   .ruapp .rwall .tile.wxt{grid-template-rows:auto minmax(0,1fr) auto;padding:5px 12px 4px 16px;gap:0}.ruapp .rwall .tile.wxt .sk{display:none}.ruapp .rwall .tile.wxt .t2 .v{font-size:15px!important}.ruapp .rwall .tile.wxt .t1{min-height:18px}
   .ruapp .rwall .tile.pend .sk{min-height:0}
   .ruapp .rwall .blk:last-child{flex-grow:.85}
-  .ruinfob{display:inline-block;margin-left:10px}
-  .ruinfop{display:none;position:fixed;z-index:60;top:60px;right:16px;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 84px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.22)}
-  .ruinfop.open{display:block}
-  .ruinfh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 }
+/* v102.12 橡胶交易页=豆粕交易页同款三栏；计划面板；解释(.why)只在解释模式显示 */
+.ruapp .why{display:none}body.ex .ruapp .why{display:block;font-size:12px;line-height:1.45;color:var(--ink2);margin:0 0 4px}
+.rutcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.rutc{padding:12px 20px 10px;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;min-height:0}
+.rutc:last-child{border-right:0}
+.rutr>.rucheck{padding:8px 20px}.rutc .rukl{flex:1 1 0;min-height:90px;margin:4px 0}
+.rutst{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin:4px 0}.rutst .k{color:var(--ink3)}
+.rurg,.rupb{margin:6px 0}.rl,.rl2{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink2)}.rl2{color:var(--ink3);font-size:12px}
+.rtk{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--focus),var(--line) 25%,var(--line) 75%,var(--amber));margin:5px 0;opacity:.8}
+.rtk i{position:absolute;top:-4px;width:3px;height:14px;background:var(--ink);border-radius:2px;transform:translateX(-50%)}
+.rupl{width:100%;height:100%;display:block}
+.rumb{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:6px 0}
+.rumb .mc{display:flex;flex-direction:column;align-items:center;gap:2px}.rumb .mc.now{background:var(--surface2,rgba(127,127,127,.12));border-radius:4px}
+.rumb .mb{height:90px;width:70%;display:flex;align-items:flex-end}.rumb .mb i{display:block;width:100%;border-radius:2px 2px 0 0}
+.rumb .mv,.rumb .mr{font-size:10.5px}.rumb .mm{font-size:11px;color:var(--ink3)}
+.rust{font-size:12.5px}
+.rutplan{display:none;padding:10px 20px 24px;overflow:auto}
+body.ru-plan .rutcols{display:none}body.ru-plan .rutplan{display:block}
+@media(min-width:900px){
+  body.ex .ruapp .rwall .why{max-height:3.6em;overflow:auto;flex:none}
+  body.ex .ruapp .rure .band .why{display:none}
+  body.v-ru.mode-trade .rutr{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:0;max-width:none}
+  body.v-ru.mode-trade .rutr>.rutcols{flex:1 1 0;min-height:0}
+  body.v-ru.mode-trade .rutr>.rutplan{flex:1 1 0;min-height:0}
+  body.v-ru.mode-trade .rutr>.rucheck,body.v-ru.mode-trade .rutr>.checks{flex:none}
+  .rutc .rumb .mb{height:clamp(40px,12vh,110px)}
+}
+@media(max-width:899px){.rutcols{grid-template-columns:1fr}.rutc{border-right:0;border-bottom:1px solid var(--line);padding:12px 14px}.rutc .rukl{height:230px;flex:none}.rutplan{padding:10px 14px 24px}}
 </style>
 </head>
 <body>
