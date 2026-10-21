@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T08:28:03.803354+00:00",
+  "generatedAt": "2026-10-21T08:35:40.029307+00:00",
   "series": [
     {
       "key": "capital_rank",
@@ -38,27 +38,27 @@
       "perSeries": {
         "capital_gs_net": {
           "added": 0,
-          "total": 121,
+          "total": 122,
           "conflicts": 0
         },
         "capital_jpm_net": {
           "added": 0,
-          "total": 1070,
+          "total": 1071,
           "conflicts": 0
         },
         "capital_ubs_net": {
           "added": 0,
-          "total": 245,
+          "total": 246,
           "conflicts": 0
         },
         "capital_zl_net": {
           "added": 0,
-          "total": 1129,
+          "total": 1130,
           "conflicts": 0
         },
         "capital_gt_net": {
           "added": 0,
-          "total": 1123,
+          "total": 1124,
           "conflicts": 0
         }
       },
@@ -67,7 +67,7 @@
       "notes": [
         "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
       ],
-      "ranAt": "2026-10-21T08:28:03.803354+00:00",
+      "ranAt": "2026-10-21T08:35:40.029307+00:00",
       "fromPreviousRun": false
     }
   ],
@@ -319,7 +319,7 @@
         "p50": 141.4,
         "p75": 173.8,
         "p80": 180.7,
-        "p90": 195.2,
+        "p90": 195.35,
         "p95": 203.5
       },
       "pointsPerYear": {
@@ -1383,13 +1383,13 @@
             "2025": {
               "n": 80,
               "skipped": 0,
-              "high": 58.8,
+              "high": 57.5,
               "low": 0.0
             },
             "2026": {
               "n": 51,
               "skipped": 0,
-              "high": 17.6,
+              "high": 19.6,
               "low": 0.0
             }
           }
@@ -1441,14 +1441,14 @@
             "2026": {
               "n": 51,
               "skipped": 0,
-              "high": 7.8,
+              "high": 9.8,
               "low": 0.0
             }
           }
         },
         "agreement": {
           "n": 616,
-          "agreeShare": 43.3,
+          "agreeShare": 43.5,
           "opposite": 10
         },
         "thresholdSensitivity": {
@@ -1464,7 +1464,7 @@
               "hi": 85,
               "lo": 15,
               "n": 616,
-              "highShare": 20.6,
+              "highShare": 20.8,
               "lowShare": 18.2
             },
             {
@@ -1478,7 +1478,7 @@
               "hi": 75,
               "lo": 25,
               "n": 616,
-              "highShare": 27.6,
+              "highShare": 27.8,
               "lowShare": 30.5
             }
           ],
@@ -1494,28 +1494,28 @@
               "hi": 85,
               "lo": 15,
               "n": 616,
-              "highShare": 17.9,
+              "highShare": 17.5,
               "lowShare": 18.3
             },
             {
               "hi": 80,
               "lo": 20,
               "n": 616,
-              "highShare": 21.6,
+              "highShare": 21.8,
               "lowShare": 22.4
             },
             {
               "hi": 75,
               "lo": 25,
               "n": 616,
-              "highShare": 26.6,
+              "highShare": 26.8,
               "lowShare": 27.9
             }
           ]
         },
         "autocorr": {
-          "rho": 0.814,
-          "effectiveN": 63.2,
+          "rho": 0.812,
+          "effectiveN": 63.8,
           "n": 616
         },
         "caveats": [
@@ -2220,7 +2220,7 @@
           {
             "year": 2027,
             "n": 51,
-            "median": 10.87,
+            "median": 10.59,
             "q1": 9.84,
             "q3": 11.34
           }
@@ -2336,7 +2336,7 @@
             "2026": {
               "n": 51,
               "skipped": 0,
-              "high": 68.6,
+              "high": 66.7,
               "low": 0.0
             }
           }
@@ -2370,13 +2370,13 @@
             "2023": {
               "n": 82,
               "skipped": 0,
-              "high": 29.3,
-              "low": 7.3
+              "high": 28.0,
+              "low": 8.5
             },
             "2024": {
               "n": 80,
               "skipped": 0,
-              "high": 7.5,
+              "high": 3.8,
               "low": 11.2
             },
             "2025": {
@@ -2388,15 +2388,15 @@
             "2026": {
               "n": 51,
               "skipped": 0,
-              "high": 2.0,
-              "low": 43.1
+              "high": 3.9,
+              "low": 31.4
             }
           }
         },
         "agreement": {
           "n": 616,
-          "agreeShare": 48.1,
-          "opposite": 27
+          "agreeShare": 48.7,
+          "opposite": 22
         },
         "thresholdSensitivity": {
           "today(含年水平漂移)": [
@@ -2418,14 +2418,14 @@
               "hi": 80,
               "lo": 20,
               "n": 616,
-              "highShare": 24.8,
+              "highShare": 24.7,
               "lowShare": 21.9
             },
             {
               "hi": 75,
               "lo": 25,
               "n": 616,
-              "highShare": 29.5,
+              "highShare": 29.4,
               "lowShare": 29.4
             }
           ],
@@ -2435,28 +2435,28 @@
               "lo": 10,
               "n": 616,
               "highShare": 14.0,
-              "lowShare": 12.8
+              "lowShare": 12.7
             },
             {
               "hi": 85,
               "lo": 15,
               "n": 616,
               "highShare": 16.9,
-              "lowShare": 19.2
+              "lowShare": 18.0
             },
             {
               "hi": 80,
               "lo": 20,
               "n": 616,
-              "highShare": 20.6,
-              "lowShare": 22.1
+              "highShare": 20.1,
+              "lowShare": 21.3
             },
             {
               "hi": 75,
               "lo": 25,
               "n": 616,
-              "highShare": 25.3,
-              "lowShare": 28.1
+              "highShare": 25.5,
+              "lowShare": 27.6
             }
           ]
         },
