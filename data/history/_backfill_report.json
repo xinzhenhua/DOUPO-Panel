@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T08:26:50.726776+00:00",
+  "generatedAt": "2026-10-23T08:35:36.752522+00:00",
   "series": [
     {
       "key": "capital_rank",
@@ -38,27 +38,27 @@
       "perSeries": {
         "capital_gs_net": {
           "added": 0,
-          "total": 123,
+          "total": 124,
           "conflicts": 0
         },
         "capital_jpm_net": {
           "added": 0,
-          "total": 1072,
+          "total": 1073,
           "conflicts": 0
         },
         "capital_ubs_net": {
           "added": 0,
-          "total": 247,
+          "total": 248,
           "conflicts": 0
         },
         "capital_zl_net": {
           "added": 0,
-          "total": 1131,
+          "total": 1132,
           "conflicts": 0
         },
         "capital_gt_net": {
           "added": 0,
-          "total": 1125,
+          "total": 1126,
           "conflicts": 0
         }
       },
@@ -67,7 +67,7 @@
       "notes": [
         "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
       ],
-      "ranAt": "2026-10-23T08:26:50.726776+00:00",
+      "ranAt": "2026-10-23T08:35:36.752522+00:00",
       "fromPreviousRun": false
     }
   ],
@@ -317,8 +317,8 @@
         "p20": 74.5,
         "p25": 80.3,
         "p50": 141.85,
-        "p75": 173.8,
-        "p80": 181.0,
+        "p75": 173.78,
+        "p80": 180.7,
         "p90": 195.33,
         "p95": 203.46
       },
@@ -1273,9 +1273,9 @@
           {
             "year": 2027,
             "n": 53,
-            "median": 171.5,
-            "q1": 165.7,
-            "q3": 177.8
+            "median": 171.4,
+            "q1": 165.6,
+            "q3": 177.3
           }
         ],
         "monthSufficiency": {
@@ -1436,19 +1436,19 @@
               "n": 80,
               "skipped": 0,
               "high": 27.5,
-              "low": 27.5
+              "low": 26.2
             },
             "2026": {
               "n": 53,
               "skipped": 0,
-              "high": 9.4,
-              "low": 0.0
+              "high": 11.3,
+              "low": 1.9
             }
           }
         },
         "agreement": {
           "n": 618,
-          "agreeShare": 43.5,
+          "agreeShare": 43.4,
           "opposite": 10
         },
         "thresholdSensitivity": {
@@ -1478,7 +1478,7 @@
               "hi": 75,
               "lo": 25,
               "n": 618,
-              "highShare": 27.8,
+              "highShare": 27.7,
               "lowShare": 30.6
             }
           ],
@@ -1488,7 +1488,7 @@
               "lo": 10,
               "n": 618,
               "highShare": 13.1,
-              "lowShare": 12.5
+              "lowShare": 12.1
             },
             {
               "hi": 85,
@@ -1501,7 +1501,7 @@
               "hi": 80,
               "lo": 20,
               "n": 618,
-              "highShare": 21.7,
+              "highShare": 21.8,
               "lowShare": 22.2
             },
             {
@@ -1515,7 +1515,7 @@
         },
         "autocorr": {
           "rho": 0.809,
-          "effectiveN": 65.3,
+          "effectiveN": 65.1,
           "n": 618
         },
         "caveats": [
@@ -2376,7 +2376,7 @@
             "2024": {
               "n": 80,
               "skipped": 0,
-              "high": 11.2,
+              "high": 10.0,
               "low": 11.2
             },
             "2025": {
@@ -2388,14 +2388,14 @@
             "2026": {
               "n": 53,
               "skipped": 0,
-              "high": 1.9,
+              "high": 3.8,
               "low": 41.5
             }
           }
         },
         "agreement": {
           "n": 618,
-          "agreeShare": 47.6,
+          "agreeShare": 47.9,
           "opposite": 27
         },
         "thresholdSensitivity": {
@@ -2411,7 +2411,7 @@
               "hi": 85,
               "lo": 15,
               "n": 618,
-              "highShare": 18.4,
+              "highShare": 18.6,
               "lowShare": 18.4
             },
             {
@@ -2455,14 +2455,14 @@
               "hi": 75,
               "lo": 25,
               "n": 618,
-              "highShare": 25.2,
+              "highShare": 25.4,
               "lowShare": 27.7
             }
           ]
         },
         "autocorr": {
-          "rho": 0.903,
-          "effectiveN": 31.5,
+          "rho": 0.901,
+          "effectiveN": 32.2,
           "n": 618
         },
         "caveats": [
