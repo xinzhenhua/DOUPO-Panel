@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-23T10:36:31.773987+00:00",
+  "generatedAt": "2026-10-23T11:36:35.221683+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 347.3,
-    "change": 0.0,
-    "changePct": 0.0,
+    "price": 347.7,
+    "change": 0.4,
+    "changePct": 0.12,
     "asOf": "2026-10-23T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -873,10 +873,7 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f3f5d505790>, 'Connection to x",
-    "carriedFrom": "2026-10-23T10:29:40.074812+00:00"
+    }
   },
   "sowInventory": {
     "available": true,
@@ -1092,7 +1089,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1284.5,
+        "zsCents": 1286.25,
         "zsDate": "2026-10-23",
         "zsExact": true,
         "zsNote": "",
@@ -1104,18 +1101,18 @@
         "brazil": {
           "beanPrice": 3807.0,
           "breakeven": 2968.8,
-          "impliedPremium": 61.9,
+          "impliedPremium": 60.1,
           "available": true,
-          "zsCents": 1284.5,
+          "zsCents": 1286.25,
           "fx": 6.6743,
           "mealPrice": 2980.0,
           "oilPrice": 8792.0,
-          "beanCost": 4090.9,
-          "mealCost": 3330.4,
-          "mealCostLow": 3155.0,
-          "mealCostHigh": 3505.8,
-          "gap": -350.4,
-          "gapPct": -10.5,
+          "beanCost": 4095.7,
+          "mealCost": 3336.6,
+          "mealCostLow": 3161.2,
+          "mealCostHigh": 3511.9,
+          "gap": -356.6,
+          "gapPct": -10.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1136,18 +1133,18 @@
         "us": {
           "beanPrice": 3807.0,
           "breakeven": 2968.8,
-          "impliedPremium": -57.3,
+          "impliedPremium": -59.0,
           "available": true,
-          "zsCents": 1284.5,
+          "zsCents": 1286.25,
           "fx": 6.6743,
           "mealPrice": 2980.0,
           "oilPrice": 8792.0,
-          "beanCost": 4789.5,
-          "mealCost": 4220.3,
-          "mealCostLow": 4027.9,
-          "mealCostHigh": 4412.7,
-          "gap": -1240.3,
-          "gapPct": -29.4,
+          "beanCost": 4794.8,
+          "mealCost": 4227.1,
+          "mealCostLow": 4034.7,
+          "mealCostHigh": 4419.5,
+          "gap": -1247.1,
+          "gapPct": -29.5,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1168,7 +1165,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1271.25,
+        "zsCents": 1272.25,
         "zsDate": "2026-10-23",
         "zsExact": true,
         "zsNote": "",
@@ -1180,18 +1177,18 @@
         "brazil": {
           "beanPrice": 3754.0,
           "breakeven": 2875.3,
-          "impliedPremium": 55.9,
+          "impliedPremium": 54.9,
           "available": true,
-          "zsCents": 1271.25,
+          "zsCents": 1272.25,
           "fx": 6.6743,
           "mealPrice": 2891.0,
           "oilPrice": 8902.0,
-          "beanCost": 3927.8,
-          "mealCost": 3096.7,
-          "mealCostLow": 2921.3,
-          "mealCostHigh": 3272.1,
-          "gap": -205.7,
-          "gapPct": -6.6,
+          "beanCost": 3930.5,
+          "mealCost": 3100.2,
+          "mealCostLow": 2924.8,
+          "mealCostHigh": 3275.6,
+          "gap": -209.2,
+          "gapPct": -6.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1216,7 +1213,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1253.0,
+        "zsCents": 1254.0,
         "zsDate": "2026-10-23",
         "zsExact": true,
         "zsNote": "",
@@ -1228,18 +1225,18 @@
         "brazil": {
           "beanPrice": 4075.0,
           "breakeven": 3231.7,
-          "impliedPremium": 190.7,
+          "impliedPremium": 189.7,
           "available": true,
-          "zsCents": 1253.0,
+          "zsCents": 1254.0,
           "fx": 6.6743,
           "mealPrice": 3276.0,
           "oilPrice": 9125.0,
-          "beanCost": 4210.7,
-          "mealCost": 3404.5,
-          "mealCostLow": 3229.1,
-          "mealCostHigh": 3579.9,
-          "gap": -128.5,
-          "gapPct": -3.8,
+          "beanCost": 4213.4,
+          "mealCost": 3408.0,
+          "mealCostLow": 3232.6,
+          "mealCostHigh": 3583.4,
+          "gap": -132.0,
+          "gapPct": -3.9,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1260,18 +1257,18 @@
         "us": {
           "beanPrice": 4075.0,
           "breakeven": 3231.7,
-          "impliedPremium": 63.0,
+          "impliedPremium": 62.0,
           "available": true,
-          "zsCents": 1253.0,
+          "zsCents": 1254.0,
           "fx": 6.6743,
           "mealPrice": 3276.0,
           "oilPrice": 9125.0,
-          "beanCost": 4730.6,
-          "mealCost": 4066.8,
-          "mealCostLow": 3874.4,
-          "mealCostHigh": 4259.2,
-          "gap": -790.8,
-          "gapPct": -19.4,
+          "beanCost": 4733.6,
+          "mealCost": 4070.7,
+          "mealCostLow": 3878.3,
+          "mealCostHigh": 4263.1,
+          "gap": -794.7,
+          "gapPct": -19.5,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -21792,7 +21789,5 @@
       ]
     }
   },
-  "carriedKeys": [
-    "hogRatio"
-  ]
+  "carriedKeys": []
 }
