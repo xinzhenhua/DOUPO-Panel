@@ -101,7 +101,7 @@ function compute(dataDir, opts) {
     });
   }
   return { today, priceDate: lastD, adj: !!adj, px, side, gate: { ok: gate.ok, level: gate.level, reasons: gate.reasons, warn: gate.warn }, fsum: F.min, fsumAll: F.sum, foreign: F.parts,
-           sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK, basisOK: sig.basisOK, basisBlocked: !!sig.basisBlocked, contangoShort: !!sig.contangoShort, basis: sig.basis },
+           sig: { pct: sig.pct, confirm: sig.confirm, delev: sig.delev, lowOK: sig.lowOK, below20: !!sig.below20, highOK: !!sig.highOK, trendDn: sig.trendDn, longOK: sig.longOK, shortOK: sig.shortOK, basisOK: sig.basisOK, basisBlocked: !!sig.basisBlocked, contangoShort: !!sig.contangoShort, basis: sig.basis },
            basis: B,
            position: pos, manage: mg ? { action: mg.action, r: mg.r, peakR: mg.peakR } : null, events: ev };
 }

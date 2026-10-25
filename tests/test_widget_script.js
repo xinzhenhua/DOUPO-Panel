@@ -1,45 +1,61 @@
-// widget/豆粕小组件.js（Scriptable 脚本）：用假的 Scriptable 环境跑一遍，核对「显示哪个品种」的规则。不联网。
-const fs = require('fs'), path = require('path'), vm = require('vm');
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'widget', '豆粕小组件.js'), 'utf8');
-let pass = 0, fail = 0; const eq = (n, x, y) => { const ok = JSON.stringify(x) === JSON.stringify(y); ok ? pass++ : (fail++, console.log('❌', n, '期望', y, '实际', x)); if (ok) console.log('✅', n); };
-const bjNow = Date.parse('2026-03-12T05:00:00Z');
-const soy = (o) => Object.assign({ v: 2, updatedAt: new Date(bjNow).toISOString(), contract: { key: 'jan', name: '1月合约', symbol: 'M2701' }, price: { c: 3267, dt: '2026-03-12 15:00', prev: 3287 }, signal: { state: 'wait', label: '观望', why: 'x', priceDate: '2026-03-12', ref: 3267, stop: null, pct: 87, fsum: 0, delev: false, gateOk: true }, position: null }, o || {});
-const ruO = (o) => Object.assign({ symbol: 'RU2705', price: { c: 17000, prev: 16900, d: '2026-03-12' }, state: 'wait', act: 'wait', head: '等反弹：x', sub: 's', order: null, position: null }, o || {});
-async function run(data, family, nowMs) {
-  const texts = []; let widgetSet = null;
-  class Col { constructor(h) { this.h = h; } static dynamic(a) { return a; } static white() { return new Col('#fff'); } }
-  const mkStack = () => ({ addText(t) { texts.push(String(t)); return { font: null, textColor: null, lineLimit: 1, minimumScaleFactor: 1 }; }, addSpacer() {}, addStack() { return mkStack(); }, centerAlignContent() {}, layoutVertically() {}, setPadding() {} });
-  class LW { constructor() { Object.assign(this, mkStack()); } }
-  const Req = class { constructor(u) { this.u = u; } async loadJSON() { if (/widget\.json/.test(this.u)) return data; throw new Error('offline'); } async load() { throw new Error('offline'); } };
-  const ctx = { Request: Req, ListWidget: LW, Color: Col, Font: { boldSystemFont: () => 1, systemFont: () => 1, boldMonospacedSystemFont: () => 1 }, FileManager: { local: () => ({ documentsDirectory: () => '/tmp', joinPath: (a, b) => a + '/' + b, fileExists: () => false, readString: () => '', writeString: () => {} }) },
-    config: { widgetFamily: family, runsInWidget: true }, Script: { setWidget: w => { widgetSet = w; }, complete() {} }, console, Date: class extends Date { constructor(...a) { a.length ? super(...a) : super(nowMs); } static now() { return nowMs; } }, Math, JSON, Promise, String, Number, isNaN, parseFloat, encodeURIComponent, Object, Array };
-  await vm.runInNewContext('(async()=>{' + SRC + '\n})()', ctx);
-  return texts;
+// widget/豆粕小组件.js（Scriptable 脚本）：用一个假的 Scriptable 运行环境把各尺寸「画」一遍，检查文字内容。不联网、不需要手机。
+const fs = require('fs'), path = require('path'), os = require('os');
+const ROOT = path.join(__dirname, '..'), BW = require(path.join(ROOT, 'scripts', 'build_widget.js'));
+const SRC = fs.readFileSync(path.join(ROOT, 'widget', '豆粕小组件.js'), 'utf8');
+let pass = 0, fail = 0;
+const ok = (n, c, extra) => { c ? (pass++, console.log('✅', n)) : (fail++, console.log('❌', n, extra || '')); };
+
+const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsc-'));
+class El { constructor(t) { this.t = t; this.kids = []; } addText(x) { const e = new El('T:' + x); this.kids.push(e); return e; } addStack() { const e = new El('S'); this.kids.push(e); return e; }
+  addSpacer() {} setPadding() {} layoutVertically() {} centerAlignContent() {} topAlignContent() {} }
+class ListWidget extends El { constructor() { super('W'); } }
+const texts = (e, a) => { a = a || []; if (e.t.startsWith('T:')) a.push(e.t.slice(2)); e.kids.forEach(k => texts(k, a)); return a; };
+
+async function render(family, data, o) {
+  o = o || {}; const out = [];
+  const env = { Color: class { static dynamic(a) { return a; } static white() { return {}; } }, Font: { boldSystemFont() {}, systemFont() {}, boldMonospacedSystemFont() {} }, Size: class {}, ListWidget,
+    Request: class { constructor(u) { this.u = u; } async loadJSON() { if (this.u.includes('widget.json')) { if (o.offline) throw new Error('net'); return data; } if (this.u.includes('eastmoney')) return { data: { f43: o.px || 3280, f86: o.ts || Date.UTC(2026, 9, 23, 15, 0, 0) / 1000 } }; throw new Error('x'); } async load() { throw new Error('x'); } },
+    FileManager: { local: () => ({ joinPath: (a, b) => path.join(cacheDir, b), documentsDirectory: () => cacheDir, fileExists: p => fs.existsSync(p), readString: p => fs.readFileSync(p, 'utf8'), writeString: (p, s) => fs.writeFileSync(p, s) }) },
+    config: { widgetFamily: family, runsInWidget: true }, Script: { setWidget: w => out.push(w), complete() {} } };
+  const names = Object.keys(env), fn = new (Object.getPrototypeOf(async function () {}).constructor)(...names, SRC);
+  await fn(...names.map(k => env[k]));
+  return texts(out[0]).join('\n');
 }
+
+const REAL_NOW = Date.now;
+Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市），测试不依赖现在是几点
 (async () => {
-  const has = (t, k) => t.some(x => x.includes(k));
-  let t = await run({ ...soy(), ru: ruO() }, 'medium', bjNow);
-  eq('都没信号没持仓 → 显示豆粕', [has(t, '豆粕'), has(t, '橡胶 RU')], [true, false]);
-  t = await run({ ...soy(), ru: ruO({ state: 'go', act: 'go', head: '做空信号', order: { lim: 17100, stop: 17955 } }) }, 'medium', bjNow);
-  eq('橡胶有入场信号 → 弹出橡胶，且写建议限价', [has(t, '橡胶 RU2705'), has(t, '建议限价 ≥ 17,100')], [true, true]);
-  t = await run({ ...soy(), ru: ruO({ state: 'hold', act: 'hold', head: '持有空单', position: { side: -1, lots: 3, entryPx: 17200, entryD: '2026-03-04', contract: null, r: 1, stop: 18060, action: '持有' } }) }, 'medium', bjNow);
-  eq('橡胶持仓、豆粕空仓 → 显示橡胶，并提示另一个', [has(t, '橡胶 RU2705'), has(t, '另：豆粕：观望')], [true, true]);
-  const soyHold = soy({ signal: { state: 'hold', label: '持有', why: '', ref: 3267, stop: null, pct: 50, fsum: 0, delev: false, gateOk: true, priceDate: '2026-03-12' }, position: { side: 1, lots: 2, entryPx: 3200, entryD: '2026-03-01', contract: 'M2701', r: 2, peakR: 2, action: '持有', stop: 3100, trail: null } });
-  t = await run({ ...soyHold, ru: ruO() }, 'medium', bjNow);
-  eq('豆粕持仓、橡胶无 → 显示豆粕持仓', [has(t, '豆粕 M2701'), has(t, '另：橡胶')], [true, true]);
-  const ruHold = ruO({ state: 'hold', act: 'hold', position: { side: -1, lots: 3, entryPx: 17200, entryD: '2026-03-04', contract: null, r: 1, stop: 18060, action: '持有' } });
-  const a = await run({ ...soyHold, ru: ruHold }, 'medium', bjNow), b = await run({ ...soyHold, ru: ruHold }, 'medium', bjNow + 300000);
-  eq('同时持仓 → 轮换：相邻5分钟显示不同品种', [has(a, '豆粕 M2701') !== has(b, '豆粕 M2701'), has(a, '轮换中')], [true, true]);
-  t = await run({ ...soyHold, ru: ruO({ state: 'go', act: 'go', order: { lim: 17100, stop: 17955 } }) }, 'medium', bjNow);
-  eq('豆粕持仓 + 橡胶出入场信号 → 信号弹出（橡胶），另一行写豆粕持仓', [has(t, '橡胶 RU2705'), has(t, '另：豆粕多2手')], [true, true]);
-  const soyLong = soy({ signal: { state: 'long', label: '做多入场', why: 'w', ref: 3300, stop: 3200, pct: 20, fsum: 100, delev: false, gateOk: true, priceDate: '2026-03-12' } });
-  const c = await run({ ...soyLong, ru: ruO({ state: 'go', act: 'go', order: { lim: 17100, stop: 17955 } }) }, 'medium', bjNow), d = await run({ ...soyLong, ru: ruO({ state: 'go', act: 'go', order: { lim: 17100, stop: 17955 } }) }, 'medium', bjNow + 300000);
-  eq('同时有信号 → 轮换', has(c, '橡胶 RU2705') !== has(d, '橡胶 RU2705'), true);
-  t = await run({ ...soy(), ru: ruO({ state: 'exit', act: 'exit', head: '止损：平空单', position: { side: -1, lots: 1, entryPx: 17200, entryD: '2026-03-04', contract: null, r: -5, stop: 18060, action: '该平' } }) }, 'small', bjNow);
-  eq('橡胶该平 → 弹出橡胶（小尺寸）', has(t, '橡胶 RU2705'), true);
-  t = await run(soy(), 'medium', bjNow);
-  eq('旧版 widget.json（v1，没有 ru）→ 只显示豆粕，不报错', [has(t, '豆粕 M2701'), has(t, '另：')], [true, false]);
-  t = await run({ ...soy(), ru: ruO() }, 'accessoryRectangular', bjNow);
-  eq('锁屏矩形小组件能画', has(t, '豆粕'), true);
+  const real = BW.build(path.join(ROOT, 'data'), { nowMs: Date.UTC(2026, 9, 24, 8, 0, 0) });   // 真实数据：10月 → 1月合约
+  const clone = f => { const d = JSON.parse(JSON.stringify(real)); return f ? f(d) : d; };
+
+  const lg = await render('large', clone());
+  ok('大号：做多4条 + 做空3条逐条打勾', lg.includes('做多条件') && lg.includes('做空条件') && lg.includes('价格分位 ≤50%') && lg.includes('价格分位 ≥70%') && /[✓✗]/.test(lg));
+  ok('大号：「价格分位」那句原因不再重复（旧版同一句出现两次）', !/不在低位/.test(lg));
+  ok('大号：外资线写出离去杠杆线还差多少手', /外资 .* \/ 线 −20,000/.test(lg) && /距去杠杆线 [\d,]+ 手|已到去杠杆线/.test(lg));
+  const sm = await render('small', clone());
+  ok('小号：补一句为什么观望', sm.includes('观望') && /分位\d+% 不在低位/.test(sm));
+  const md = await render('medium', clone());
+  ok('中号：右侧打勾 + 外资线', /(做多|做空)条件/.test(md) && /外资 .* \/ 线/.test(md));
+  ok('状态词统一：休市写「休市·收盘」，不再出现「离线缓存」', [lg, sm, md].every(t => t.includes('休市·收盘 23:00') && !t.includes('离线缓存')));
+  const lk = await render('accessoryRectangular', clone());
+  ok('锁屏矩形：带状态点和分位', /🟢|🟠|🔴|🔵/.test(lk) && lk.includes('分位'));
+  ok('橡胶休眠时三种桌面尺寸都不占位', ![lg, sm, md].some(t => t.includes('橡胶')));
+
+  const noData = clone(d => { d.signal.state = 'nodata'; d.signal.label = '数据不足'; d.signal.gateOk = false; d.signal.lv = 'bad'; d.signal.chk = null; d.signal.why = '外资席位5日数据缺失'; return d; });
+  ok('数据不足：锁屏是橙点', (await render('accessoryRectangular', noData)).includes('🟠'));
+  ok('数据不足：大号不画打勾表，只写原因', !(await render('large', noData)).includes('做多条件'));
+  const sig = clone(d => { d.signal.state = 'long'; d.signal.label = '做多入场'; d.signal.ref = 3100; d.signal.stop = 2976; return d; });
+  ok('有入场信号：锁屏是红点', (await render('accessoryRectangular', sig)).includes('🔴'));
+  const holdD = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null }; d.signal.state = 'hold'; d.signal.label = '持有'; return d; });
+  const hl = await render('large', holdD);
+  ok('持仓：大号显示开仓/止损，不画入场打勾表', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做多条件'));
+  const v2 = clone(d => { d.v = 2; delete d.signal.chk; delete d.signal.fx; delete d.signal.lv; return d; });
+  const v2t = await render('large', v2);
+  ok('旧版 v2 文件也能显示（没有打勾表，退回原因一句话）', v2t.includes('观望') && v2t.includes('不在低位'));
+  const off = await render('medium', clone(), { offline: true });
+  ok('取不到 widget.json、用缓存：标「离线·缓存」', off.includes('离线·缓存'));
+  const ruGo = clone(d => { d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });
+  ok('橡胶出做空信号时弹出橡胶', (await render('medium', ruGo)).includes('橡胶'));
+  fs.rmSync(cacheDir, { recursive: true, force: true });
   console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
-})();
+})().catch(e => { console.error('异常', e); process.exit(1); });

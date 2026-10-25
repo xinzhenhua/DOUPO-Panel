@@ -40,8 +40,15 @@ eq('价格 = prices.json 对应合约最新一根', w.price.c, +lastBar.close);
 eq('价格时间到分钟', w.price.dt, String(lastBar.datetime).slice(0, 16));
 eq('空仓 → 无持仓字段', w.position, null);
 eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short', 'nodata'].includes(w.signal.state), true);
-eq('版本号', w.v, 2);
+eq('版本号（v3：加逐条条件 chk / 外资线 fx / 数据等级 lv）', w.v, 3);
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
+{ const c = w.signal.chk, A = require(path.join(ROOT, 'scripts', 'plan_alert.js')).compute(tmp, { nowMs: mk(10), prices, position: { flat: true } });
+  eq('chk 做多4条/做空3条，每项 [ok,值]', [c.L.length, c.S.length, c.L.every(x => x.length === 2), c.S.every(x => x.length === 2)], [4, 3, true, true]);
+  eq('chk 做多四条 = lowOK/confirm/非去杠杆/基差', c.L.map(x => x[0]), [A.sig.lowOK ? 1 : 0, A.sig.confirm ? 1 : 0, A.sig.delev ? 0 : 1, A.basis.v == null ? null : (A.basis.v >= 0 ? 1 : 0)]);
+  eq('chk 做空三条 = 去杠杆/收盘<MA20/分位≥70', c.S.map(x => x[0]), [A.sig.delev ? 1 : 0, A.sig.below20 ? 1 : 0, A.sig.highOK ? 1 : 0]);
+  eq('chk 与 signal.longOK 一致：四条全满足 ⇔ 做多', c.L.every(x => x[0] !== 0), !!A.sig.longOK);
+  eq('fx = 最弱外资席位5日变化 + 去杠杆线 -20000', [w.signal.fx.v, w.signal.fx.line], [Math.round(A.fsum), -20000]);
+  eq('数据等级 lv 取自 gate.level', w.signal.lv, A.gate.level); }
 
 const px = w.signal.ref;   // 信号用的收盘参考价(换月调整价)
 const sym = w.contract.symbol;
@@ -80,6 +87,7 @@ fs.unlinkSync(path.join(tmp, 'latest.json'));
 w = run({ flat: true });
 eq('缺外资数据 → 数据不足', w.signal.state, 'nodata');
 eq('数据不足时带原因', w.signal.why.length > 0, true);
+eq('数据不足时不给打勾表（外资数据缺失时条件不可信）', [w.signal.chk, w.signal.lv], [null, 'bad']);
 
 
 // 4 橡胶部分：account.json 的未平仓 ruTrades → ru.position；3月出反弹信号/持仓状态；小组件里的止损% 和 cockpit/rubber.js 一致
@@ -99,7 +107,7 @@ eq('数据不足时带原因', w.signal.why.length > 0, true);
   eq('10月不在3月窗口 → act=wait（不出信号）', BW.buildRu(tmp, mk(10)).act, 'wait');
   fs.unlinkSync(path.join(tmp, 'ru_live.json')); const ro = BW.buildRu(tmp, mk(10));
   eq('橡胶价格就是 ru_hist 最后一根（缺 ru_live 也能出）', ro && ro.price != null, true);
-  eq('widget.json 版本=2，含 ru', [BW.build(tmp, { nowMs: mk(10) }).v, 'ru' in BW.build(tmp, { nowMs: mk(10) })], [2, true]);
+  eq('widget.json 版本=3，含 ru', [BW.build(tmp, { nowMs: mk(10) }).v, 'ru' in BW.build(tmp, { nowMs: mk(10) })], [3, true]);
 }
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* iOS 小组件数据（v101.82）：把「当前交易合约的价格 + 入场/离场信号 + 持仓」压成一个很小的 data/widget.json，给手机桌面小组件读。
+/* iOS 小组件数据（v101.82；v3 起加逐条入场条件 chk / 外资离去杠杆线 fx / 数据等级 lv）：把「当前交易合约的价格 + 入场/离场信号 + 持仓」压成一个很小的 data/widget.json，给手机桌面小组件读。
  * 逻辑只有一份：信号直接调 scripts/plan_alert.js 的 compute()（它又用页面同一份 PLAN 纯函数），小组件和驾驶舱不可能算出两个结论。
  *   node scripts/build_widget.js --data data --out data/widget.json [--now 2026-10-16T05:00:00Z]
  * 交易合约 = 驾驶舱 autoKey() 的同一规则：北京时间当前月份 ∈ recommendedMonths（4-7→5月合约，12-3→1月合约，8-11→9月… 以 cockpit/static.json 为准）。 */
@@ -72,17 +72,35 @@ function build(dataDir, opts) {
   }
 
   const why = A.gate.ok ? PA.loadPlan().planWhy(A.sig) : (A.gate.reasons || []).join('；');
+  const chk = A.gate.ok ? buildChecks(A, TP) : null;
+  const fxPart = (A.foreign || []).length ? A.foreign.reduce((a, q) => q.v < a.v ? q : a) : null;
+  const warn1 = (A.gate.warn || [])[0] || null;
   return {
-    v: 2,
+    v: 3,
     updatedAt: new Date(nowMs).toISOString(),
     contract: { key, name: NAME[key], symbol: pc.symbol || null },
     price: lb ? { c: +lb.close, dt: String(lb.datetime).slice(0, 16), prev } : null,
     signal: { state, label, why, priceDate: A.priceDate, ref: A.px == null ? null : Math.round(A.px),
               stop: A.side !== 0 && A.px != null ? Math.round(A.px * (1 - A.side * TP.STOP / 100)) : null,
               pct: A.sig.pct == null ? null : Math.round(A.sig.pct), fsum: A.fsum, delev: !!A.sig.delev,
-              gateOk: A.gate.ok },
+              gateOk: A.gate.ok,
+              lv: A.gate.level || (A.gate.ok ? 'ok' : 'bad'),               // 数据等级 ok/part/bad：小组件锁屏的状态点用
+              warn: warn1 ? String(warn1).slice(0, 40) : null,
+              fx: fxPart ? { v: Math.round(fxPart.v), k: String(fxPart.k).replace('期货', ''), line: TP.DELEV } : null,   // 最弱外资席位5日变化 + 去杠杆线
+              chk },
     position: pos,
     ru: opts.noRu ? null : buildRu(dataDir, nowMs)
+  };
+}
+
+/* 逐条入场条件（和页面「条件表」同一批：做多 4 条、做空 3 条）。每项 [ok, 值]：ok = 1 满足 / 0 不满足 / null 没数据（基差缺失时按原规则不过滤）。
+ * 标签文字放在小组件脚本里（省 widget.json 体积）；顺序必须和脚本里的 CHK_LONG / CHK_SHORT 一致。 */
+function buildChecks(A, TP) {
+  const s = A.sig, pct = s.pct == null ? null : Math.round(s.pct);
+  const hasB = A.basis && A.basis.v != null, bv = hasB ? +(A.basis.v * 100).toFixed(2) : null;
+  return {
+    L: [[s.lowOK ? 1 : 0, pct], [s.confirm ? 1 : 0, null], [s.delev ? 0 : 1, null], [hasB ? (A.basis.v >= TP.BASIS_MIN ? 1 : 0) : null, bv]],
+    S: [[s.delev ? 1 : 0, null], [s.below20 ? 1 : 0, null], [s.highOK ? 1 : 0, pct]]
   };
 }
 
@@ -114,4 +132,4 @@ function main(argv) {
   console.error(`[小组件] ${o.contract.symbol} ${o.price ? o.price.c : '—'} · ${o.signal.label} · ${out}`);
 }
 if (require.main === module) main(process.argv.slice(2));
-module.exports = { build, autoKey, prevCloseOf, buildRu, RA_STOP };
+module.exports = { build, autoKey, prevCloseOf, buildRu, buildChecks, RA_STOP };
