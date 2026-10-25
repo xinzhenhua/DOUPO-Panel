@@ -51,7 +51,9 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   ok('持仓：大号显示开仓/止损，不画入场打勾表', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做多条件'));
   const v2 = clone(d => { d.v = 2; delete d.signal.chk; delete d.signal.fx; delete d.signal.lv; return d; });
   const v2t = await render('large', v2);
-  ok('旧版 v2 文件也能显示（没有打勾表，退回原因一句话）', v2t.includes('观望') && v2t.includes('不在低位'));
+  ok('旧版 v2 文件也画打勾表：分位/外资两条真实，其余标「待更新」，外资线用合计', v2t.includes('观望') && v2t.includes('做多条件') && v2t.includes('待更新') && /外资 合计 .* \/ 线 −20,000/.test(v2t));
+const v2m = await render('medium', v2);
+ok('旧版 v2 文件中号也有打勾表（不是一大片空白）', /(做多|做空)条件/.test(v2m) && v2m.includes('待更新'));
   const off = await render('medium', clone(), { offline: true });
   ok('取不到 widget.json、用缓存：标「离线·缓存」', off.includes('离线·缓存'));
   const ruGo = clone(d => { d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });
