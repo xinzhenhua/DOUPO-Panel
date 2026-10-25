@@ -7,7 +7,7 @@ const ok = (n, c, extra) => { c ? (pass++, console.log('✅', n)) : (fail++, con
 
 const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsc-'));
 class El { constructor(t) { this.t = t; this.kids = []; } addText(x) { const e = new El('T:' + x); this.kids.push(e); return e; } addStack() { const e = new El('S'); this.kids.push(e); return e; }
-  addSpacer() {} setPadding() {} layoutVertically() {} centerAlignContent() {} topAlignContent() {} }
+  addSpacer() {} setPadding() {} layoutVertically() {} centerAlignContent() {} topAlignContent() {} bottomAlignContent() {} }
 class ListWidget extends El { constructor() { super('W'); } }
 const texts = (e, a) => { a = a || []; if (e.t.startsWith('T:')) a.push(e.t.slice(2)); e.kids.forEach(k => texts(k, a)); return a; };
 
@@ -29,17 +29,18 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   const clone = f => { const d = JSON.parse(JSON.stringify(real)); return f ? f(d) : d; };
 
   const lg = await render('large', clone());
-  ok('大号：做多4条 + 做空3条逐条打勾', lg.includes('做多条件') && lg.includes('做空条件') && lg.includes('价格分位 ≤50%') && lg.includes('价格分位 ≥70%') && /[✓✗]/.test(lg));
+  ok('大号：只画最接近出信号的那一边（做空 2/3），另一边只写进度（做多 2/4）', lg.includes('做空条件') && !lg.includes('做多条件') && lg.includes('做多 2/4') && lg.includes('✗') && lg.includes('✓'));
   ok('大号：「价格分位」那句原因不再重复（旧版同一句出现两次）', !/不在低位/.test(lg));
   ok('大号：外资线写出离去杠杆线还差多少手', /外资 .* \/ 线 −20,000/.test(lg) && /距去杠杆线 [\d,]+ 手|已到去杠杆线/.test(lg));
   const sm = await render('small', clone());
-  ok('小号：补一句为什么观望', sm.includes('观望') && /分位\d+% 不在低位/.test(sm));
+  ok('小号：信号条带「空2/3」+ 小标签（✗去杠杆 ✓MA20 ✓高位87%），和页面同款', sm.includes('观望') && sm.includes('空2/3') && sm.includes('✗去杠杆') && sm.includes('✓MA20') && sm.includes('✓高位87%'));
   const md = await render('medium', clone());
-  ok('中号：右侧打勾 + 外资线', /(做多|做空)条件/.test(md) && /外资 .* \/ 线/.test(md));
+  ok('中号：只显示最接近的一边（✗去杠杆 ✓MA20 ✓高位87%）+ 另一边进度 + 外资线', md.includes('做空') && md.includes('做多 2/4') && md.includes('✗去杠杆') && !md.includes('✗低位87%') && /外资 .* \/ 线/.test(md));
+ok('大号/中号：空白处是基本面（供需/结构/技术/综合）', lg.includes('基本面') && lg.includes('供需') && lg.includes('综合') && md.includes('基本面') && md.includes('综合'));
   ok('状态词统一：休市写「休市·收盘」，不再出现「离线缓存」', [lg, sm, md].every(t => t.includes('休市·收盘 23:00') && !t.includes('离线缓存')));
   const lk = await render('accessoryRectangular', clone());
-  ok('锁屏矩形：带状态点和分位', /🟢|🟠|🔴|🔵/.test(lk) && lk.includes('分位'));
-  ok('橡胶休眠时三种桌面尺寸都不占位', ![lg, sm, md].some(t => t.includes('橡胶')));
+  ok('锁屏矩形：状态点 + 最接近那边的进度 + 差哪条', /🟢/.test(lk) && lk.includes('空2/3') && lk.includes('差去杠杆'));
+  ok('橡胶休眠：小/中/大号都显示一句（小：橡胶休眠；中：距3月开窗N天；大：橡胶：休眠 · 下一个窗口…）', sm.includes('橡胶休眠') && /橡胶休眠·距3月开窗\d+天/.test(md) && /橡胶：休眠 · 下一个窗口/.test(lg));
 
   const noData = clone(d => { d.signal.state = 'nodata'; d.signal.label = '数据不足'; d.signal.gateOk = false; d.signal.lv = 'bad'; d.signal.chk = null; d.signal.why = '外资席位5日数据缺失'; return d; });
   ok('数据不足：锁屏是橙点', (await render('accessoryRectangular', noData)).includes('🟠'));
@@ -53,7 +54,7 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   const v2t = await render('large', v2);
   ok('旧版 v2 文件也画打勾表：分位/外资两条真实，其余标「待更新」，外资线用合计', v2t.includes('观望') && v2t.includes('做多条件') && v2t.includes('待更新') && /外资 合计 .* \/ 线 −20,000/.test(v2t));
 const v2m = await render('medium', v2);
-ok('旧版 v2 文件中号也有打勾表（不是一大片空白）', /(做多|做空)条件/.test(v2m) && v2m.includes('待更新'));
+ok('旧版 v2 文件中号也有小标签（不是一大片空白）', v2m.includes('做多') && v2m.includes('做空') && v2m.includes('–反弹'));
   const off = await render('medium', clone(), { offline: true });
   ok('取不到 widget.json、用缓存：标「离线·缓存」', off.includes('离线·缓存'));
   const ruGo = clone(d => { d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });

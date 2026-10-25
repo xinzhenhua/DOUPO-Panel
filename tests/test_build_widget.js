@@ -40,7 +40,12 @@ eq('价格 = prices.json 对应合约最新一根', w.price.c, +lastBar.close);
 eq('价格时间到分钟', w.price.dt, String(lastBar.datetime).slice(0, 16));
 eq('空仓 → 无持仓字段', w.position, null);
 eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short', 'nodata'].includes(w.signal.state), true);
-eq('版本号（v3：加逐条条件 chk / 外资线 fx / 数据等级 lv）', w.v, 3);
+eq('版本号（v4：加基本面 fund；v3 的 chk/fx/lv 仍在）', w.v, 4);
+eq('没有 history/systems 文件时 fund 为 null（小组件不画基本面块）', w.fund, null);
+{ const d2 = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-')); fs.mkdirSync(path.join(d2, 'history'));
+  fs.writeFileSync(path.join(d2, 'history', 'systems_jan.json'), JSON.stringify({ points: [{ d: '2026-10-23', x: { compDir: '偏空', compRatio: -0.5 } }, { d: '2026-10-24', x: { fundDir: '偏空', fundN: 12, structDir: '偏多', tech: '偏多', compDir: '偏空', compRatio: -0.2827, confidence: '高' } }] }));
+  eq('readFund 取最后一条，综合倾向取整百分数', BW.readFund(d2, 'jan'), { d: '2026-10-24', fund: '偏空', fn: 12, st: '偏多', tech: '偏多', comp: '偏空', cp: -28, conf: '高' });
+  eq('readFund 合约文件不存在 → null', BW.readFund(d2, 'may'), null); }
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
 { const c = w.signal.chk, A = require(path.join(ROOT, 'scripts', 'plan_alert.js')).compute(tmp, { nowMs: mk(10), prices, position: { flat: true } });
   eq('chk 做多4条/做空3条，每项 [ok,值]', [c.L.length, c.S.length, c.L.every(x => x.length === 2), c.S.every(x => x.length === 2)], [4, 3, true, true]);
@@ -107,7 +112,7 @@ eq('数据不足时不给打勾表（外资数据缺失时条件不可信）', [
   eq('10月不在3月窗口 → act=wait（不出信号）', BW.buildRu(tmp, mk(10)).act, 'wait');
   fs.unlinkSync(path.join(tmp, 'ru_live.json')); const ro = BW.buildRu(tmp, mk(10));
   eq('橡胶价格就是 ru_hist 最后一根（缺 ru_live 也能出）', ro && ro.price != null, true);
-  eq('widget.json 版本=3，含 ru', [BW.build(tmp, { nowMs: mk(10) }).v, 'ru' in BW.build(tmp, { nowMs: mk(10) })], [3, true]);
+  eq('widget.json 版本=4，含 ru', [BW.build(tmp, { nowMs: mk(10) }).v, 'ru' in BW.build(tmp, { nowMs: mk(10) })], [4, true]);
 }
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
