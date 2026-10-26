@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* iOS 小组件数据（v101.82；v3 起加逐条入场条件 chk / 外资离去杠杆线 fx / 数据等级 lv；v4 加基本面 fund）：把「当前交易合约的价格 + 入场/离场信号 + 持仓」压成一个很小的 data/widget.json，给手机桌面小组件读。
+/* iOS 小组件数据（v101.82；v3 起加逐条入场条件 chk / 外资离去杠杆线 fx / 数据等级 lv；v4 加基本面综合 fund）：把「当前交易合约的价格 + 入场/离场信号 + 持仓」压成一个很小的 data/widget.json，给手机桌面小组件读。
  * 逻辑只有一份：信号直接调 scripts/plan_alert.js 的 compute()（它又用页面同一份 PLAN 纯函数），小组件和驾驶舱不可能算出两个结论。
  *   node scripts/build_widget.js --data data --out data/widget.json [--now 2026-10-16T05:00:00Z]
  * 交易合约 = 驾驶舱 autoKey() 的同一规则：北京时间当前月份 ∈ recommendedMonths（4-7→5月合约，12-3→1月合约，8-11→9月… 以 cockpit/static.json 为准）。 */
@@ -94,15 +94,18 @@ function build(dataDir, opts) {
   };
 }
 
-/* 基本面：取 data/history/systems_<合约>.json 最后一条（Actions 每小时记录一次的「系统方向」，和驾驶舱页面同一份评分引擎算出）。
- * fund=基本面(供需) st=结构 tech=技术 comp=综合 cp=综合倾向% fn=基本面有效票数；文件缺失/没有点 → null，小组件就不画这块。 */
+/* 基本面（只取「综合」及其变动）：data/history/systems_<合约>.json 每个自然日一条（Actions 每小时用驾驶舱同一份评分引擎记录），
+ * 按交易日去重后取：comp 综合方向、cp 综合倾向%（−100~+100）、conf 置信度、
+ * c1 较上一个交易日的变化（百分点）、c5 较 5 个交易日前的变化、pd 上一交易日的方向、h 近 10 个交易日的倾向%（画走势柱）。
+ * 文件缺失/没有综合倾向 → null，小组件就不画这块。 */
 function readFund(dataDir, key) {
-  const h = readJson(path.join(dataDir, 'history', 'systems_' + key + '.json'), null), pts = h && h.points;
+  const hist = readJson(path.join(dataDir, 'history', 'systems_' + key + '.json'), null), pts = hist && hist.points;
   if (!pts || !pts.length) return null;
-  const q = pts[pts.length - 1], x = q.x || {};
-  if (!x.compDir && !x.fundDir) return null;
-  return { d: q.d, fund: x.fundDir || null, fn: x.fundN || 0, st: x.structDir || null, tech: x.tech || null, comp: x.compDir || null,
-           cp: x.compRatio == null ? null : Math.round(x.compRatio * 100), conf: x.confidence || null };
+  const byDay = new Map();   // 交易日 → 当天最后一条（周末/节假日重复记录的合并掉）
+  for (const q of pts) { const x = q.x || {}; if (x.compRatio == null) continue; byDay.set(x.priceDate || q.d, { d: q.d, dir: x.compDir || null, cp: Math.round(x.compRatio * 100), conf: x.confidence || null }); }
+  const arr = [...byDay.values()]; if (!arr.length) return null;
+  const cur = arr[arr.length - 1], at = k => arr.length > k ? arr[arr.length - 1 - k] : null, p1 = at(1), p5 = at(5);
+  return { d: cur.d, comp: cur.dir, cp: cur.cp, conf: cur.conf, c1: p1 ? cur.cp - p1.cp : null, c5: p5 ? cur.cp - p5.cp : null, pd: p1 ? p1.dir : null, h: arr.slice(-10).map(r => r.cp) };
 }
 
 /* 逐条入场条件（和页面「条件表」同一批：做多 4 条、做空 3 条）。每项 [ok, 值]：ok = 1 满足 / 0 不满足 / null 没数据（基差缺失时按原规则不过滤）。

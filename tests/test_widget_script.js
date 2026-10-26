@@ -1,4 +1,4 @@
-// widget/豆粕小组件.js（Scriptable 脚本）：用一个假的 Scriptable 运行环境把各尺寸「画」一遍，检查文字内容。不联网、不需要手机。
+// widget/豆粕小组件.js（Scriptable 脚本）：用一个假的 Scriptable 运行环境把各尺寸「画」一遍，检查文字内容和版面结构。不联网、不需要手机。
 const fs = require('fs'), path = require('path'), os = require('os');
 const ROOT = path.join(__dirname, '..'), BW = require(path.join(ROOT, 'scripts', 'build_widget.js'));
 const SRC = fs.readFileSync(path.join(ROOT, 'widget', '豆粕小组件.js'), 'utf8');
@@ -6,59 +6,93 @@ let pass = 0, fail = 0;
 const ok = (n, c, extra) => { c ? (pass++, console.log('✅', n)) : (fail++, console.log('❌', n, extra || '')); };
 
 const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsc-'));
-class El { constructor(t) { this.t = t; this.kids = []; } addText(x) { const e = new El('T:' + x); this.kids.push(e); return e; } addStack() { const e = new El('S'); this.kids.push(e); return e; }
+class El { constructor(t) { this.t = t; this.kids = []; }
+  addText(x) { const e = new El('T:' + x); this.kids.push(e); return e; } addStack() { const e = new El('S'); this.kids.push(e); return e; }
+  addImage(img) { const e = new El('I'); e.img = img; this.kids.push(e); return e; }
   addSpacer() {} setPadding() {} layoutVertically() {} centerAlignContent() {} topAlignContent() {} bottomAlignContent() {} }
 class ListWidget extends El { constructor() { super('W'); } }
 const texts = (e, a) => { a = a || []; if (e.t.startsWith('T:')) a.push(e.t.slice(2)); e.kids.forEach(k => texts(k, a)); return a; };
+const countImg = e => (e.t === 'I' ? 1 : 0) + e.kids.reduce((n, k) => n + countImg(k), 0);
+const stacks = (e, a) => { a = a || []; if (e.t === 'S') a.push(e); e.kids.forEach(k => stacks(k, a)); return a; };
+const isPill = st => st.kids.some(k => k.t.startsWith('T:') && /^[✓✗–]/.test(k.t.slice(2)));   // 小标签 = 直接带 ✓/✗/– 文字的 stack
+const pillsIn = st => st.kids.filter(k => k.t === 'S' && isPill(k)).length;
+const maxPillsPerRow = root => Math.max(0, ...stacks(root).map(pillsIn));            // 同一行有几个标签（要求 ≤1：一行一个）
+const countPills = root => stacks(root).filter(isPill).length;
+
+class Rect { constructor(x, y, w, h) { Object.assign(this, { x, y, w, h }); } }
+class DrawContext { constructor() { this.n = 0; } setFillColor() {} fillRect() { this.n++; } addPath() {} fillPath() {} getImage() { return { drawn: this.n }; } }
+class Path { addRoundedRect() {} }
 
 async function render(family, data, o) {
   o = o || {}; const out = [];
-  const env = { Color: class { static dynamic(a) { return a; } static white() { return {}; } }, Font: { boldSystemFont() {}, systemFont() {}, boldMonospacedSystemFont() {} }, Size: class {}, ListWidget,
-    Request: class { constructor(u) { this.u = u; } async loadJSON() { if (this.u.includes('widget.json')) { if (o.offline) throw new Error('net'); return data; } if (this.u.includes('eastmoney')) return { data: { f43: o.px || 3280, f86: o.ts || Date.UTC(2026, 9, 23, 15, 0, 0) / 1000 } }; throw new Error('x'); } async load() { throw new Error('x'); } },
+  const env = { Color: class { static dynamic(a) { return a; } static white() { return {}; } }, Font: { boldSystemFont() {}, systemFont() {}, boldMonospacedSystemFont() {} }, Size: class {}, ListWidget, Rect, DrawContext, Path, Device: { isUsingDarkAppearance: () => false },
+    Request: class { constructor(u) { this.u = u; } async loadJSON() { if (this.u.includes('widget.json')) { if (o.offline) throw new Error('net'); return data; } if (this.u.includes('eastmoney')) return { data: { f43: o.px || 3280, f86: Date.UTC(2026, 9, 23, 15, 0, 0) / 1000 } }; throw new Error('x'); } async load() { throw new Error('x'); } },
     FileManager: { local: () => ({ joinPath: (a, b) => path.join(cacheDir, b), documentsDirectory: () => cacheDir, fileExists: p => fs.existsSync(p), readString: p => fs.readFileSync(p, 'utf8'), writeString: (p, s) => fs.writeFileSync(p, s) }) },
     config: { widgetFamily: family, runsInWidget: true }, Script: { setWidget: w => out.push(w), complete() {} } };
   const names = Object.keys(env), fn = new (Object.getPrototypeOf(async function () {}).constructor)(...names, SRC);
   await fn(...names.map(k => env[k]));
-  return texts(out[0]).join('\n');
+  return { text: texts(out[0]).join('\n'), root: out[0] };
 }
 
-const REAL_NOW = Date.now;
 Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市），测试不依赖现在是几点
 (async () => {
-  const real = BW.build(path.join(ROOT, 'data'), { nowMs: Date.UTC(2026, 9, 24, 8, 0, 0) });   // 真实数据：10月 → 1月合约
-  const clone = f => { const d = JSON.parse(JSON.stringify(real)); return f ? f(d) : d; };
+  const real = BW.build(path.join(ROOT, 'data'), { nowMs: Date.UTC(2026, 9, 24, 8, 0, 0) });
+  // 用固定的信号数字做基准（仓库里的实时数据每天都在变，写死真实数字的测试一换数据就会失败）；价格、橡胶等仍取真实数据
+  const fixed = d => { const sg = d.signal; Object.assign(sg, { state: 'wait', label: '观望', gateOk: true, lv: 'ok', pct: 87, fsum: -11567, delev: false, ref: 3276, priceDate: '2026-10-23',
+    fx: { v: -11567, k: '高盛', line: -20000 }, chk: { L: [[0, 87], [0, null], [1, null], [1, 1.53]], S: [[0, null], [1, null], [1, 87]] } });
+    d.fund = { d: '2026-10-26', comp: '偏空', cp: -28, conf: '高', c1: 0, c5: 13, pd: '偏空', h: [-22, -22, -26, -39, -41, -34, -39, -39, -28, -28] }; d.position = null; return d; };
+  const clone = f => { const d = fixed(JSON.parse(JSON.stringify(real))); return f ? f(d) : d; };
+  ok('测试数据里有综合基本面', !!(real.fund && real.fund.cp != null));
 
-  const lg = await render('large', clone());
-  ok('大号：只画最接近出信号的那一边（做空 2/3），另一边只写进度（做多 2/4）', lg.includes('做空条件') && !lg.includes('做多条件') && lg.includes('做多 2/4') && lg.includes('✗') && lg.includes('✓'));
-  ok('大号：「价格分位」那句原因不再重复（旧版同一句出现两次）', !/不在低位/.test(lg));
-  ok('大号：外资线写出离去杠杆线还差多少手', /外资 .* \/ 线 −20,000/.test(lg) && /距去杠杆线 [\d,]+ 手|已到去杠杆线/.test(lg));
-  const sm = await render('small', clone());
-  ok('小号：信号条带「空2/3」+ 小标签（✗去杠杆 ✓MA20 ✓高位87%），和页面同款', sm.includes('观望') && sm.includes('空2/3') && sm.includes('✗去杠杆') && sm.includes('✓MA20') && sm.includes('✓高位87%'));
-  const md = await render('medium', clone());
-  ok('中号：只显示最接近的一边（✗去杠杆 ✓MA20 ✓高位87%）+ 另一边进度 + 外资线', md.includes('做空') && md.includes('做多 2/4') && md.includes('✗去杠杆') && !md.includes('✗低位87%') && /外资 .* \/ 线/.test(md));
-ok('大号/中号：空白处是基本面（供需/结构/技术/综合）', lg.includes('基本面') && lg.includes('供需') && lg.includes('综合') && md.includes('基本面') && md.includes('综合'));
-  ok('状态词统一：休市写「休市·收盘」，不再出现「离线缓存」', [lg, sm, md].every(t => t.includes('休市·收盘 23:00') && !t.includes('离线缓存')));
-  const lk = await render('accessoryRectangular', clone());
+  const L = await render('large', clone()), S = await render('small', clone()), M = await render('medium', clone());
+  const lg = L.text, sm = S.text, md = M.text;
+
+  // ① 大号信号列表改成和小号/中号一样的小标签（✓/✗ 圆角标签），一行一个
+  ok('大号：信号条件是小标签（全称+当前值），不再是逐行打勾', lg.includes('✗外资去杠杆 −11,567') && lg.includes('✓收盘<MA20') && lg.includes('✓价格分位≥70% 87%'));
+  ok('大号：只画最接近出信号的那一边，另一边只写进度', lg.includes('做空条件') && !lg.includes('做多条件') && lg.includes('做多 2/4'));
+  ok('大号：3 个标签，每行一个', countPills(L.root) === 3 && maxPillsPerRow(L.root) <= 1);
+  // ② 小号、中号：一行一个
+  ok('小号：3 个标签，每行一个', countPills(S.root) === 3 && maxPillsPerRow(S.root) <= 1);
+  ok('中号：3 个标签，每行一个', countPills(M.root) === 3 && maxPillsPerRow(M.root) <= 1);
+  ok('小号：标签 = ✗去杠杆 ✓MA20 ✓高位87%（简称）', sm.includes('✗去杠杆') && sm.includes('✓MA20') && sm.includes('✓高位87%'));
+  ok('中号：外资标签带手数 ✗去杠杆 −11,567', md.includes('✗去杠杆 −11,567'));
+  // ③ 小号：列表在观望按钮右侧，按钮在下
+  const rowS = stacks(S.root).find(st => st.kids.filter(k => k.t === 'S').length === 2 && texts(st.kids.filter(k => k.t === 'S')[0]).includes('观望') && texts(st.kids.filter(k => k.t === 'S')[1]).some(t => t.startsWith('✗去杠杆')));
+  ok('小号：同一行里，左边是观望按钮（+进度「空 2/3」），右边是标签列表', !!rowS && texts(rowS.kids.filter(k => k.t === 'S')[0]).includes('空 2/3'));
+  // ④ 基本面只显示综合 + 变动，风格同仪表盘（倾向条 + 红多绿空）
+  ok('大号/中号：只有「综合」，没有供需/结构/技术逐项', !/供需|结构 |技术 /.test(lg + md) && lg.includes('基本面·综合') && md.includes('综合'));
+  ok('大号：综合 偏空 −28%，较上一交易日、较5个交易日前的变动', lg.includes('偏空') && lg.includes('−28%') && lg.includes('较上一交易日') && lg.includes('较5个交易日前'));
+  ok('中号：综合 + 较前日 / 5日 变动', md.includes('偏空') && md.includes('−28%') && md.includes('较前日') && md.includes('5日'));
+  ok('倾向条画出来：大号 2 张图（倾向条+近10日走势柱）、中号 1 张、小号 0 张', countImg(L.root) === 2 && countImg(M.root) === 1 && countImg(S.root) === 0);
+  ok('倾向条图确实画了东西（底条+刻度+填充+中线）', (stacks(L.root).concat([L.root]).length > 0) && JSON.stringify(L.root).includes('"drawn"'));
+  ok('大号：不再重复写「价格分位」一句话', !/不在低位/.test(lg));
+  ok('大号：外资线写出距去杠杆线还差多少手', /外资 .* \/ 线 −20,000/.test(lg) && /距去杠杆线 [\d,]+ 手|已到去杠杆线/.test(lg));
+
+  // 橡胶休眠：三种尺寸都显示
+  ok('橡胶休眠：小/中/大号都显示一句', sm.includes('橡胶休眠') && /橡胶休眠·距3月开窗\d+天/.test(md) && /橡胶：休眠 · 下一个窗口/.test(lg));
+  ok('状态词统一：休市·收盘 23:00，不再出现「离线缓存」', [lg, sm, md].every(t => t.includes('休市·收盘 23:00') && !t.includes('离线缓存')));
+
+  const lk = (await render('accessoryRectangular', clone())).text;
   ok('锁屏矩形：状态点 + 最接近那边的进度 + 差哪条', /🟢/.test(lk) && lk.includes('空2/3') && lk.includes('差去杠杆'));
-  ok('橡胶休眠：小/中/大号都显示一句（小：橡胶休眠；中：距3月开窗N天；大：橡胶：休眠 · 下一个窗口…）', sm.includes('橡胶休眠') && /橡胶休眠·距3月开窗\d+天/.test(md) && /橡胶：休眠 · 下一个窗口/.test(lg));
-
   const noData = clone(d => { d.signal.state = 'nodata'; d.signal.label = '数据不足'; d.signal.gateOk = false; d.signal.lv = 'bad'; d.signal.chk = null; d.signal.why = '外资席位5日数据缺失'; return d; });
-  ok('数据不足：锁屏是橙点', (await render('accessoryRectangular', noData)).includes('🟠'));
-  ok('数据不足：大号不画打勾表，只写原因', !(await render('large', noData)).includes('做多条件'));
+  ok('数据不足：锁屏是橙点', (await render('accessoryRectangular', noData)).text.includes('🟠'));
+  ok('数据不足：大号不画标签，只写原因', countPills((await render('large', noData)).root) === 0);
   const sig = clone(d => { d.signal.state = 'long'; d.signal.label = '做多入场'; d.signal.ref = 3100; d.signal.stop = 2976; return d; });
-  ok('有入场信号：锁屏是红点', (await render('accessoryRectangular', sig)).includes('🔴'));
+  ok('有入场信号：锁屏是红点', (await render('accessoryRectangular', sig)).text.includes('🔴'));
   const holdD = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null }; d.signal.state = 'hold'; d.signal.label = '持有'; return d; });
-  const hl = await render('large', holdD);
-  ok('持仓：大号显示开仓/止损，不画入场打勾表', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做多条件'));
-  const v2 = clone(d => { d.v = 2; delete d.signal.chk; delete d.signal.fx; delete d.signal.lv; return d; });
-  const v2t = await render('large', v2);
-  ok('旧版 v2 文件也画打勾表：分位/外资两条真实，其余标「待更新」，外资线用合计', v2t.includes('观望') && v2t.includes('做多条件') && v2t.includes('待更新') && /外资 合计 .* \/ 线 −20,000/.test(v2t));
-const v2m = await render('medium', v2);
-ok('旧版 v2 文件中号也有小标签（不是一大片空白）', v2m.includes('做多') && v2m.includes('做空') && v2m.includes('–反弹'));
-  const off = await render('medium', clone(), { offline: true });
+  const hl = (await render('large', holdD)).text;
+  ok('持仓：大号显示开仓/止损，不画入场标签', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做空条件'));
+
+  // 旧文件兼容
+  const v2 = clone(d => { d.v = 2; delete d.signal.chk; delete d.signal.fx; delete d.signal.lv; delete d.fund; return d; });
+  const v2L = await render('large', v2), v2M = await render('medium', v2), v2S = await render('small', v2);
+  ok('旧版 v2 文件：用合成条件画标签，没有基本面也不报错', v2L.text.includes('观望') && countPills(v2L.root) >= 3 && v2M.text.includes('–反弹') && countPills(v2S.root) >= 3 && !v2L.text.includes('基本面·综合'));
+  const noFund = clone(d => { d.fund = null; return d; });
+  ok('没有 fund 字段：大号/中号不画基本面，也不报错', !(await render('large', noFund)).text.includes('基本面·综合') && countImg((await render('medium', noFund)).root) === 0);
+  const off = (await render('medium', clone(), { offline: true })).text;
   ok('取不到 widget.json、用缓存：标「离线·缓存」', off.includes('离线·缓存'));
   const ruGo = clone(d => { d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });
-  ok('橡胶出做空信号时弹出橡胶', (await render('medium', ruGo)).includes('橡胶'));
+  ok('橡胶出做空信号时显示橡胶状态', (await render('medium', ruGo)).text.includes('橡胶'));
   fs.rmSync(cacheDir, { recursive: true, force: true });
   console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('异常', e); process.exit(1); });

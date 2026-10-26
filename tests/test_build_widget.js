@@ -43,8 +43,16 @@ eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short',
 eq('版本号（v4：加基本面 fund；v3 的 chk/fx/lv 仍在）', w.v, 4);
 eq('没有 history/systems 文件时 fund 为 null（小组件不画基本面块）', w.fund, null);
 { const d2 = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-')); fs.mkdirSync(path.join(d2, 'history'));
-  fs.writeFileSync(path.join(d2, 'history', 'systems_jan.json'), JSON.stringify({ points: [{ d: '2026-10-23', x: { compDir: '偏空', compRatio: -0.5 } }, { d: '2026-10-24', x: { fundDir: '偏空', fundN: 12, structDir: '偏多', tech: '偏多', compDir: '偏空', compRatio: -0.2827, confidence: '高' } }] }));
-  eq('readFund 取最后一条，综合倾向取整百分数', BW.readFund(d2, 'jan'), { d: '2026-10-24', fund: '偏空', fn: 12, st: '偏多', tech: '偏多', comp: '偏空', cp: -28, conf: '高' });
+  const P = (d, pd, r, dir) => ({ d, x: { priceDate: pd, compDir: dir || '偏空', compRatio: r, confidence: '高' } });
+  fs.writeFileSync(path.join(d2, 'history', 'systems_jan.json'), JSON.stringify({ points: [
+    P('2026-10-15', '2026-10-15', -0.10, '中性'), P('2026-10-16', '2026-10-16', -0.20), P('2026-10-19', '2026-10-19', -0.34), P('2026-10-20', '2026-10-20', -0.39),
+    P('2026-10-21', '2026-10-21', -0.39), P('2026-10-22', '2026-10-22', -0.28),
+    P('2026-10-23', '2026-10-23', -0.2827), P('2026-10-24', '2026-10-23', -0.2827), P('2026-10-25', '2026-10-23', -0.2827)] }));   // 周末重复记录，按交易日合并
+  const F = BW.readFund(d2, 'jan');
+  eq('readFund：综合方向/倾向/置信度，取最后一条', [F.comp, F.cp, F.conf, F.d], ['偏空', -28, '高', '2026-10-25']);
+  eq('readFund：较上一交易日 = −28−(−28) = 0；较5个交易日前（10-16 的 −20）= −28−(−20) = −8', [F.c1, F.c5], [0, -8]);
+  eq('readFund：上一交易日方向', F.pd, '偏空');
+  eq('readFund：走势按交易日去重（周末不重复），最多10个', F.h, [-10, -20, -34, -39, -39, -28, -28]);
   eq('readFund 合约文件不存在 → null', BW.readFund(d2, 'may'), null); }
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
 { const c = w.signal.chk, A = require(path.join(ROOT, 'scripts', 'plan_alert.js')).compute(tmp, { nowMs: mk(10), prices, position: { flat: true } });
