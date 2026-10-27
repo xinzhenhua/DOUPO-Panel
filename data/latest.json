@@ -952,34 +952,8 @@
       }
     },
     "may": {
-      "available": true,
-      "contractMonth": 5,
-      "date": "2026-10-27",
-      "datesAligned": true,
-      "mealSymbol": "M2705",
-      "mealPrice": 2854.0,
-      "oilSymbol": "Y2705",
-      "oilPrice": 8657.0,
-      "beanSymbol": "B2705",
-      "beanPrice": 3674.0,
-      "grossMargin": 167.9,
-      "yieldMeal": 0.785,
-      "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
-      "history": {
-        "n": 638,
-        "minPoints": 12,
-        "asOf": "2026-10-27",
-        "since": "2018-12-03",
-        "percentile": 78.5,
-        "min": 39.0,
-        "max": 238.2,
-        "median": 140.85,
-        "seasonal": null,
-        "cohort": null,
-        "sparse": null,
-        "window": null
-      }
+      "available": false,
+      "reason": "以下合约价格缺失，无法计算压榨利润: 豆二B2705(akshare日K线接口调用失败: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10))"
     },
     "jan": {
       "available": true,
