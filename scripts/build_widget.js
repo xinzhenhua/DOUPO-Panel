@@ -96,7 +96,7 @@ function build(dataDir, opts) {
 
 /* 基本面（只取「综合」及其变动）：data/history/systems_<合约>.json 每个自然日一条（Actions 每小时用驾驶舱同一份评分引擎记录），
  * 按交易日去重后取：comp 综合方向、cp 综合倾向%（−100~+100）、conf 置信度、
- * c1 较上一个交易日的变化（百分点）、c5 较 5 个交易日前的变化、pd 上一交易日的方向、h 近 10 个交易日的倾向%（画走势柱）。
+ * c1 较上一个交易日的变化（百分点）、c5 较 5 个交易日前的变化、pd 上一交易日的方向。
  * 文件缺失/没有综合倾向 → null，小组件就不画这块。 */
 function readFund(dataDir, key) {
   const hist = readJson(path.join(dataDir, 'history', 'systems_' + key + '.json'), null), pts = hist && hist.points;
@@ -105,7 +105,7 @@ function readFund(dataDir, key) {
   for (const q of pts) { const x = q.x || {}; if (x.compRatio == null) continue; byDay.set(x.priceDate || q.d, { d: q.d, dir: x.compDir || null, cp: Math.round(x.compRatio * 100), conf: x.confidence || null }); }
   const arr = [...byDay.values()]; if (!arr.length) return null;
   const cur = arr[arr.length - 1], at = k => arr.length > k ? arr[arr.length - 1 - k] : null, p1 = at(1), p5 = at(5);
-  return { d: cur.d, comp: cur.dir, cp: cur.cp, conf: cur.conf, c1: p1 ? cur.cp - p1.cp : null, c5: p5 ? cur.cp - p5.cp : null, pd: p1 ? p1.dir : null, h: arr.slice(-10).map(r => r.cp) };
+  return { d: cur.d, comp: cur.dir, cp: cur.cp, conf: cur.conf, c1: p1 ? cur.cp - p1.cp : null, c5: p5 ? cur.cp - p5.cp : null, pd: p1 ? p1.dir : null };
 }
 
 /* 逐条入场条件（和页面「条件表」同一批：做多 4 条、做空 3 条）。每项 [ok, 值]：ok = 1 满足 / 0 不满足 / null 没数据（基差缺失时按原规则不过滤）。

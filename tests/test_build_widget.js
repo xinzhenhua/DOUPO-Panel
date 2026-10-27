@@ -52,7 +52,6 @@ eq('没有 history/systems 文件时 fund 为 null（小组件不画基本面块
   eq('readFund：综合方向/倾向/置信度，取最后一条', [F.comp, F.cp, F.conf, F.d], ['偏空', -28, '高', '2026-10-25']);
   eq('readFund：较上一交易日 = −28−(−28) = 0；较5个交易日前（10-16 的 −20）= −28−(−20) = −8', [F.c1, F.c5], [0, -8]);
   eq('readFund：上一交易日方向', F.pd, '偏空');
-  eq('readFund：走势按交易日去重（周末不重复），最多10个', F.h, [-10, -20, -34, -39, -39, -28, -28]);
   eq('readFund 合约文件不存在 → null', BW.readFund(d2, 'may'), null); }
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
 { const c = w.signal.chk, A = require(path.join(ROOT, 'scripts', 'plan_alert.js')).compute(tmp, { nowMs: mk(10), prices, position: { flat: true } });

@@ -40,7 +40,7 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   // 用固定的信号数字做基准（仓库里的实时数据每天都在变，写死真实数字的测试一换数据就会失败）；价格、橡胶等仍取真实数据
   const fixed = d => { const sg = d.signal; Object.assign(sg, { state: 'wait', label: '观望', gateOk: true, lv: 'ok', pct: 87, fsum: -11567, delev: false, ref: 3276, priceDate: '2026-10-23',
     fx: { v: -11567, k: '高盛', line: -20000 }, chk: { L: [[0, 87], [0, null], [1, null], [1, 1.53]], S: [[0, null], [1, null], [1, 87]] } });
-    d.fund = { d: '2026-10-26', comp: '偏空', cp: -28, conf: '高', c1: 0, c5: 13, pd: '偏空', h: [-22, -22, -26, -39, -41, -34, -39, -39, -28, -28] }; d.position = null; return d; };
+    d.fund = { d: '2026-10-26', comp: '偏空', cp: -28, conf: '高', c1: 0, c5: 13, pd: '偏空' }; d.position = null; return d; };
   const clone = f => { const d = fixed(JSON.parse(JSON.stringify(real))); return f ? f(d) : d; };
   ok('测试数据里有综合基本面', !!(real.fund && real.fund.cp != null));
 
@@ -63,7 +63,7 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   ok('大号/中号：只有「综合」，没有供需/结构/技术逐项', !/供需|结构 |技术 /.test(lg + md) && lg.includes('基本面·综合') && md.includes('综合'));
   ok('大号：综合 偏空 −28%，较上一交易日、较5个交易日前的变动', lg.includes('偏空') && lg.includes('−28%') && lg.includes('较上一交易日') && lg.includes('较5个交易日前'));
   ok('中号：综合 + 较前日 / 5日 变动', md.includes('偏空') && md.includes('−28%') && md.includes('较前日') && md.includes('5日'));
-  ok('倾向条画出来：大号 2 张图（倾向条+近10日走势柱）、中号 1 张、小号 0 张', countImg(L.root) === 2 && countImg(M.root) === 1 && countImg(S.root) === 0);
+  ok('倾向条画出来：大号 1 张、中号 1 张、小号 0 张（不再画近10日走势柱）', countImg(L.root) === 1 && countImg(M.root) === 1 && countImg(S.root) === 0);
   ok('倾向条图确实画了东西（底条+刻度+填充+中线）', (stacks(L.root).concat([L.root]).length > 0) && JSON.stringify(L.root).includes('"drawn"'));
   ok('大号：不再重复写「价格分位」一句话', !/不在低位/.test(lg));
   ok('大号：外资线写出距去杠杆线还差多少手', /外资 .* \/ 线 −20,000/.test(lg) && /距去杠杆线 [\d,]+ 手|已到去杠杆线/.test(lg));

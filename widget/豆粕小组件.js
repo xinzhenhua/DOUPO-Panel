@@ -262,16 +262,6 @@ function compImage(w, h, ratio) {
   dc.setFillColor(P.line); dc.fillRect(new Rect(Math.round(w / 2), 0, 1, h));
   return dc.getImage();
 }
-function sparkImage(vals, w, h) {   // 近 N 个交易日的综合倾向：每天一根柱，中线上红下绿，细线=±22% 方向阈值；纵轴满刻度 ±50%
-  const dc = newDC(w, h), P = palette(), n = vals.length, slot = w / Math.max(n, 1), bw = Math.max(3, slot * 0.58), mid = h / 2, R = 50;
-  dc.setFillColor(P.tick); [22, -22].forEach(t => dc.fillRect(new Rect(0, Math.round(mid - t / R * (mid - 1)), w, 1)));
-  vals.forEach((v, i) => {
-    const bh = Math.max(1, Math.min(1, Math.abs(v) / R) * (mid - 1)), x = i * slot + (slot - bw) / 2;
-    dc.setFillColor(v >= 0 ? P.bull : P.bear); dc.fillRect(new Rect(x, v >= 0 ? mid - bh : mid, bw, bh));
-  });
-  dc.setFillColor(P.line); dc.fillRect(new Rect(0, Math.round(mid), w, 1));
-  return dc.getImage();
-}
 function addImg(parent, img, w, h) { const im = parent.addImage(img); im.imageSize = new Size(w, h); return im; }
 function addChg(parent, label, v, size) {   // 「较前日 ▲6点」：涨(更偏多)红、跌(更偏空)绿、持平灰
   const h = parent.addStack(); h.centerAlignContent();
@@ -286,7 +276,7 @@ function addCompMid(parent, g, w) {
   parent.addSpacer(1); addImg(parent, compImage(w * 2, 16, f.cp / 100), w, 8); parent.addSpacer(1);
   const r = parent.addStack(); r.centerAlignContent(); addChg(r, "较前日", f.c1, 9); r.addSpacer(6); addChg(r, "5日", f.c5, 9);
 }
-// 大号：标题 + 倾向条 + 变动两项 + 近10个交易日走势柱
+// 大号：标题 + 倾向条 + 变动两项
 function addCompBig(parent, g, w) {
   const f = fundOf(g); if (!f) return;
   const h = parent.addStack(); h.centerAlignContent();
@@ -295,7 +285,6 @@ function addCompBig(parent, g, w) {
   parent.addSpacer(3); addImg(parent, compImage(w * 2, 22, f.cp / 100), w, 11); parent.addSpacer(4);
   const r = parent.addStack(); r.centerAlignContent(); addChg(r, "较上一交易日", f.c1, 11); r.addSpacer(10); addChg(r, "较5个交易日前", f.c5, 11);
   if (f.pd && f.comp && f.pd !== f.comp) { r.addSpacer(8); addTxt(r, `（前日${f.pd}）`, 10, C.warn, false); }
-  if (f.h && f.h.length > 1) { parent.addSpacer(4); addImg(parent, sparkImage(f.h, w * 2, 48), w, 24); }
 }
 // 橡胶：休眠时也显示（用户要求三种尺寸都看得到）。mode: short 小号 / mid 中号 / long 大号
 function rubberOf(g) { return g.kind === "soy" ? (g.other || []).find(x => x.kind === "ru") || null : null; }
