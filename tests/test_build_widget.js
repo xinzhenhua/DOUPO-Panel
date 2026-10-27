@@ -43,16 +43,19 @@ eq('空仓状态只能是 观望/入场/数据不足', ['wait', 'long', 'short',
 eq('版本号（v4：加基本面 fund；v3 的 chk/fx/lv 仍在）', w.v, 4);
 eq('没有 history/systems 文件时 fund 为 null（小组件不画基本面块）', w.fund, null);
 { const d2 = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-')); fs.mkdirSync(path.join(d2, 'history'));
-  const P = (d, pd, r, dir) => ({ d, x: { priceDate: pd, compDir: dir || '偏空', compRatio: r, confidence: '高' } });
+  const P = (d, pd, r, dir) => ({ d, v: r, x: { priceDate: pd, fundDir: dir || '偏空', compDir: '偏多', compRatio: 0.9, confidence: '高' } });   // v102.15：取 v/fundDir（页面「基本面」卡），不取 compRatio（综合）
   fs.writeFileSync(path.join(d2, 'history', 'systems_jan.json'), JSON.stringify({ points: [
     P('2026-10-15', '2026-10-15', -0.10, '中性'), P('2026-10-16', '2026-10-16', -0.20), P('2026-10-19', '2026-10-19', -0.34), P('2026-10-20', '2026-10-20', -0.39),
     P('2026-10-21', '2026-10-21', -0.39), P('2026-10-22', '2026-10-22', -0.28),
     P('2026-10-23', '2026-10-23', -0.2827), P('2026-10-24', '2026-10-23', -0.2827), P('2026-10-25', '2026-10-23', -0.2827)] }));   // 周末重复记录，按交易日合并
   const F = BW.readFund(d2, 'jan');
-  eq('readFund：综合方向/倾向/置信度，取最后一条', [F.comp, F.cp, F.conf, F.d], ['偏空', -28, '高', '2026-10-25']);
+  eq('readFund：基本面方向/倾向/置信度，取最后一条（不是综合 compRatio=0.9）', [F.comp, F.cp, F.conf, F.d], ['偏空', -28, '高', '2026-10-25']);
   eq('readFund：较上一交易日 = −28−(−28) = 0；较5个交易日前（10-16 的 −20）= −28−(−20) = −8', [F.c1, F.c5], [0, -8]);
   eq('readFund：上一交易日方向', F.pd, '偏空');
   eq('readFund 合约文件不存在 → null', BW.readFund(d2, 'may'), null); }
+if (w.signal.en) eq('signal.en 含建议手数/占用/止损亏（有账户权益时）', [typeof w.signal.en.lots, w.signal.en.lots >= 0], ['number', true]);
+{ const hs = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'history', 'systems_' + w.contract.key + '.json'), 'utf8')).points; const last = hs[hs.length - 1];
+  if (w.fund && last && last.v != null) eq('小组件基本面 = 仪表盘基本面卡同一个数(快照 v)', w.fund.cp, Math.round(last.v * 100)); }
 eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
 { const c = w.signal.chk, A = require(path.join(ROOT, 'scripts', 'plan_alert.js')).compute(tmp, { nowMs: mk(10), prices, position: { flat: true } });
   eq('chk 做多4条/做空3条，每项 [ok,值]', [c.L.length, c.S.length, c.L.every(x => x.length === 2), c.S.every(x => x.length === 2)], [4, 3, true, true]);

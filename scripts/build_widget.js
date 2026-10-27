@@ -68,7 +68,8 @@ function build(dataDir, opts) {
     pos = { side: sg, lots: p.lots, entryPx: p.entryPx, entryD: p.entryD, contract: pj.contract || null,
             r, peakR, action: A.manage ? A.manage.action : null,
             stop: Math.round(p.entryPx * (1 - sg * TP.STOP / 100)),
-            trail: on ? Math.round(peak * (1 - sg * TP.TRAIL / 100)) : null };
+            trail: on ? Math.round(peak * (1 - sg * TP.TRAIL / 100)) : null,
+            act: Math.round(p.entryPx * (1 + sg * TP.ACT / 100)), on, peak: Math.round(peak), tr: TP.TRAIL };   // v102.15 持仓：启动价/是否已启动/持仓最高(低)价
   }
 
   const why = A.gate.ok ? PA.loadPlan().planWhy(A.sig) : (A.gate.reasons || []).join('；');
@@ -82,7 +83,7 @@ function build(dataDir, opts) {
     fund: readFund(dataDir, key),
     price: lb ? { c: +lb.close, dt: String(lb.datetime).slice(0, 16), prev } : null,
     signal: { state, label, why, priceDate: A.priceDate, ref: A.px == null ? null : Math.round(A.px),
-              en: A.side !== 0 && A.px != null ? (e => ({ lim: e.lim, stop: e.stop, act: e.act, trail: e.trailAtAct, pct: TP.LIM.pct, fill: TP.LIM.fill, tr: TP.TRAIL }))(PA.loadPlan().planEntry(A.px, A.side)) : null,   // v102.14 入场建议：限价(收盘价回调0.3%)、止损(从限价算)、移动止盈启动价/初始移动止损
+              en: A.side !== 0 && A.px != null ? (PL => { const e = PL.planEntry(A.px, A.side), ac = readJson(path.join(dataDir, 'account.json')) || {}, ruOpen = (ac.ruTrades || []).some(x => x && !x.exitD), eq = PL.planEquity({ init: ac.init, flows: ac.flows, fee: ac.fee, trades: (ac.trades || []).filter(t => t.exitD), ruTrades: (ac.ruTrades || []).filter(t => t.exitD) }, null).equity, z = eq > 0 ? PL.planSize({ equity: eq, margin: (+ac.margin || 10) / 100, price: A.px, side: A.side, mode: ac.mode || 'real', share: 1 / (1 + (ruOpen ? 1 : 0)) }) : null; return { lim: e.lim, stop: e.stop, act: e.act, trail: e.trailAtAct, pct: TP.LIM.pct, fill: TP.LIM.fill, tr: TP.TRAIL, lots: z && z.lots ? z.lots : 0, use: z && z.lots ? Math.round(z.usage * 100) : null, loss: z && z.lots ? Math.round(z.lossStop) : null, eq: eq > 0 ? Math.round(eq) : null }; })(PA.loadPlan()) : null,   // v102.14 入场建议：限价(收盘价回调0.3%)、止损(从限价算)、移动止盈启动价/初始移动止损
               stop: A.side !== 0 && A.px != null ? PA.loadPlan().planEntry(A.px, A.side).stop : null,
               pct: A.sig.pct == null ? null : Math.round(A.sig.pct), fsum: A.fsum, delev: !!A.sig.delev,
               gateOk: A.gate.ok,
@@ -95,15 +96,15 @@ function build(dataDir, opts) {
   };
 }
 
-/* 基本面（只取「综合」及其变动）：data/history/systems_<合约>.json 每个自然日一条（Actions 每小时用驾驶舱同一份评分引擎记录），
- * 按交易日去重后取：comp 综合方向、cp 综合倾向%（−100~+100）、conf 置信度、
+/* 基本面（v102.15 起和仪表盘「基本面」卡同一个数：快照 v=基本面净倾向、x.fundDir=方向；之前误取了含月差/量价的「综合」compRatio，所以和页面不一致）：data/history/systems_<合约>.json 每个自然日一条（Actions 每小时用驾驶舱同一份评分引擎记录），
+ * 按交易日去重后取：comp 基本面方向、cp 基本面倾向%（−100~+100）、conf 置信度、
  * c1 较上一个交易日的变化（百分点）、c5 较 5 个交易日前的变化、pd 上一交易日的方向。
  * 文件缺失/没有综合倾向 → null，小组件就不画这块。 */
 function readFund(dataDir, key) {
   const hist = readJson(path.join(dataDir, 'history', 'systems_' + key + '.json'), null), pts = hist && hist.points;
   if (!pts || !pts.length) return null;
   const byDay = new Map();   // 交易日 → 当天最后一条（周末/节假日重复记录的合并掉）
-  for (const q of pts) { const x = q.x || {}; if (x.compRatio == null) continue; byDay.set(x.priceDate || q.d, { d: q.d, dir: x.compDir || null, cp: Math.round(x.compRatio * 100), conf: x.confidence || null }); }
+  for (const q of pts) { const x = q.x || {}; if (q.v == null) continue; byDay.set(x.priceDate || q.d, { d: q.d, dir: x.fundDir || null, cp: Math.round(q.v * 100), conf: x.confidence || null }); }
   const arr = [...byDay.values()]; if (!arr.length) return null;
   const cur = arr[arr.length - 1], at = k => arr.length > k ? arr[arr.length - 1 - k] : null, p1 = at(1), p5 = at(5);
   return { d: cur.d, comp: cur.dir, cp: cur.cp, conf: cur.conf, c1: p1 ? cur.cp - p1.cp : null, c5: p5 ? cur.cp - p5.cp : null, pd: p1 ? p1.dir : null };

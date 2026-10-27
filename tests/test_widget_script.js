@@ -60,7 +60,7 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   const rowS = stacks(S.root).find(st => st.kids.filter(k => k.t === 'S').length === 2 && texts(st.kids.filter(k => k.t === 'S')[0]).includes('观望') && texts(st.kids.filter(k => k.t === 'S')[1]).some(t => t.startsWith('✗去杠杆')));
   ok('小号：同一行里，左边是观望按钮（+进度「空 2/3」），右边是标签列表', !!rowS && texts(rowS.kids.filter(k => k.t === 'S')[0]).includes('空 2/3'));
   // ④ 基本面只显示综合 + 变动，风格同仪表盘（倾向条 + 红多绿空）
-  ok('大号/中号：只有「综合」，没有供需/结构/技术逐项', !/供需|结构 |技术 /.test(lg + md) && lg.includes('基本面·综合') && md.includes('综合'));
+  ok('大号/中号：只有「基本面」一个数（和仪表盘基本面卡一致），没有供需/结构/技术逐项', !/供需|结构 |技术 /.test(lg + md) && lg.includes('基本面') && !lg.includes('基本面·综合') && md.includes('基本面'));
   ok('大号：综合 偏空 −28%，较上一交易日、较5个交易日前的变动', lg.includes('偏空') && lg.includes('−28%') && lg.includes('较上一交易日') && lg.includes('较5个交易日前'));
   ok('中号：综合 + 较前日 / 5日 变动', md.includes('偏空') && md.includes('−28%') && md.includes('较前日') && md.includes('5日'));
   ok('倾向条画出来：大号 1 张、中号 1 张、小号 0 张（不再画近10日走势柱）', countImg(L.root) === 1 && countImg(M.root) === 1 && countImg(S.root) === 0);
@@ -97,6 +97,16 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   const hl = (await render('large', holdD)).text;
   ok('持仓：大号显示开仓/止损，不画入场标签', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做空条件'));
 
+  /* v102.15 持仓：显示盈亏、开仓/最高浮盈、止损或移动止损(距现价%)、启动价/已启动规则 */
+  const posA = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null, act: 3115, on: false, peak: 3300, tr: 4 }; d.signal.state = 'hold'; d.signal.label = '持有'; return d; });
+  const pa = (await render('large', posA)).text;
+  ok('持仓(未启动)·大号：止损、启动价 3,115、最高浮盈', pa.includes('止损 3,521') && pa.includes('3,115') && pa.includes('最高浮盈'));
+  ok('持仓(未启动)·中号/小号：显示止损和启动价', (await render('medium', posA)).text.includes('3,115') && (await render('small', posA)).text.includes('止损 3,521'));
+  const posB = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 9, peakR: 9, action: '持有', stop: 3521, trail: 3280, act: 3115, on: true, peak: 3154, tr: 4 }; d.signal.state = 'hold'; d.signal.label = '持有'; return d; });
+  const pb = (await render('large', posB)).text;
+  ok('持仓(已启动)·大号：移动止损 3,280、从最低价 3,154 回落4%', pb.includes('移动止损 3,280') && pb.includes('3,154') && pb.includes('回落4%'));
+  ok('有信号·建议手数：大号显示"建议开 51 手"', (await render('large', clone(d => { d.signal.state = 'short'; d.signal.label = '做空入场'; d.signal.en = { lim: 3210, stop: 3338, act: 2953, trail: 3071, pct: 0.3, fill: 83, tr: 4, lots: 51, use: 60, loss: 65484 }; return d; }))).text.includes('建议开 51 手'));
+  ok('基本面标签：大号写"基本面"而不是"基本面·综合"', !(await render('large', clone())).text.includes('基本面·综合'));
   // 旧文件兼容
   const v2 = clone(d => { d.v = 2; delete d.signal.chk; delete d.signal.fx; delete d.signal.lv; delete d.fund; return d; });
   const v2L = await render('large', v2), v2M = await render('medium', v2), v2S = await render('small', v2);

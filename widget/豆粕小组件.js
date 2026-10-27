@@ -272,7 +272,7 @@ function addChg(parent, label, v, size) {   // 「较前日 ▲6点」：涨(更
 function addCompMid(parent, g, w) {
   const f = fundOf(g); if (!f) return;
   const h = parent.addStack(); h.centerAlignContent();
-  addTxt(h, "综合 ", 10, C.sub, false); addTxt(h, f.comp || "—", 11, dirColor(f.comp), true); h.addSpacer(4); addTxt(h, sgn(f.cp, 0) + "%", 11, dirColor(f.comp), true);
+  addTxt(h, "基本面 ", 10, C.sub, false); addTxt(h, f.comp || "—", 11, dirColor(f.comp), true); h.addSpacer(4); addTxt(h, sgn(f.cp, 0) + "%", 11, dirColor(f.comp), true);
   parent.addSpacer(1); addImg(parent, compImage(w * 2, 16, f.cp / 100), w, 8); parent.addSpacer(1);
   const r = parent.addStack(); r.centerAlignContent(); addChg(r, "较前日", f.c1, 9); r.addSpacer(6); addChg(r, "5日", f.c5, 9);
 }
@@ -280,7 +280,7 @@ function addCompMid(parent, g, w) {
 function addCompBig(parent, g, w) {
   const f = fundOf(g); if (!f) return;
   const h = parent.addStack(); h.centerAlignContent();
-  addTxt(h, "基本面·综合", 13, C.text, true); h.addSpacer(8); addTxt(h, f.comp || "—", 13, dirColor(f.comp), true); h.addSpacer(4); addTxt(h, sgn(f.cp, 0) + "%", 13, dirColor(f.comp), true);
+  addTxt(h, "基本面", 13, C.text, true); h.addSpacer(8); addTxt(h, f.comp || "—", 13, dirColor(f.comp), true); h.addSpacer(4); addTxt(h, sgn(f.cp, 0) + "%", 13, dirColor(f.comp), true);
   h.addSpacer(); addTxt(h, `${f.conf ? "置信" + f.conf + " · " : ""}${f.d ? f.d.slice(5) : ""}`, 10, C.sub, false);
   parent.addSpacer(3); addImg(parent, compImage(w * 2, 22, f.cp / 100), w, 11); parent.addSpacer(4);
   const r = parent.addStack(); r.centerAlignContent(); addChg(r, "较上一交易日", f.c1, 11); r.addSpacer(10); addChg(r, "较5个交易日前", f.c5, 11);
@@ -382,10 +382,15 @@ function addFooter(w, g, family) {
   const line = family === "small" ? `${rb ? rb.t + " · " : ""}刷新 ${hhmm(g.now)}` : `${rb ? rb.t + " · " : ""}${d}刷新 ${hhmm(g.now)}`;
   addTxt(w, line, 9, rb && !rb.sleep ? C.info : C.gray, false);
 }
-function addPosLines(parent, g, size) {
+function addPosLines(parent, g, size, mode) {   // v102.15 持仓：开仓价/最高浮盈、当前止损(或移动止损)+离现价多远、启动价或已启动的移动止盈规则
   const p = g.data.position; if (!p) return;
-  addTxt(parent, `开仓 ${f0(p.entryPx)}（${p.entryD.slice(5)}）`, size, C.sub, false);
-  addTxt(parent, p.trail != null ? `移动止损 ${f0(p.trail)}` : `止损 ${f0(p.stop)}`, size, C.sub, false);
+  const lg = p.side > 0, px = g.px, line = p.trail != null ? p.trail : p.stop;
+  const gap = px != null && line != null ? p.side * (px - line) / px * 100 : null;   // 现价离止损线还有多少%（正=还没触及）
+  const peakR = g.data.position.peakR;
+  if (mode !== "tight") addTxt(parent, `开仓 ${f0(p.entryPx)}（${p.entryD.slice(5)}）` + (peakR != null ? ` · 最高浮盈 ${sgn(peakR, 1)}%` : ""), size, C.sub, false);
+  addTxt(parent, `${p.trail != null ? "移动止损" : "止损"} ${f0(line)}` + (gap != null ? `（距现价 ${gap.toFixed(1)}%）` : ""), size, gap != null && gap < 1 ? C.warn : C.text, true);
+  if (p.on) addTxt(parent, `已启动：从${lg ? "最高" : "最低"}价 ${f0(p.peak)} 回落${p.tr || 4}%平仓，止损随新${lg ? "高" : "低"}每0.5%上移`, size - (mode === "tight" ? 2 : 1), C.sub, false);
+  else if (p.act != null) addTxt(parent, `启动价 ${f0(p.act)}（浮盈8%）后改移动止损，回落${p.tr || 4}%平仓`, size - (mode === "tight" ? 2 : 1), C.sub, false);
 }
 function addOther(w, g) {   // 另一个品种：橡胶休眠（只在3月做）时不占位
   const o = (g.other || []).filter(x => !(x.kind === "ru" && x.sleep));
@@ -412,8 +417,9 @@ function buildHome(g, family) {
   const entryLines = (parent, sz, mode) => {
     const lim = E ? E.lim : s.ref, st = E ? E.stop : s.stop, k = E ? E.pct : 0.3, tr = E ? E.tr : 4;
     addTxt(parent, `${lg ? "做多" : "做空"}限价 ${lg ? "≤" : "≥"} ${f0(lim)}`, sz + 1, C.text, true);
-    if (mode === "tight") { addTxt(parent, `止损 ${f0(st)}`, sz, C.text, false); if (E) addTxt(parent, `启动 ${f0(E.act)} · 回落${tr}%`, sz, C.sub, false); return; }
+    if (mode === "tight") { addTxt(parent, `止损 ${f0(st)}` + (E && E.lots ? ` · 开${E.lots}手` : ""), sz, C.text, false); if (E) addTxt(parent, `启动 ${f0(E.act)} · 回落${tr}%`, sz, C.sub, false); return; }
     addTxt(parent, `（收盘价${lg ? "回调" : "反弹"}${k}%，没成交就作废）`, sz - 2, C.sub, false);
+    if (E && E.lots) addTxt(parent, `建议开 ${E.lots} 手（占用权益 ${E.use}%，止损亏约 ${f0(E.loss)} 元）`, sz, C.text, true);
     addTxt(parent, `止损 ${f0(st)}（4%）` + (E ? ` · 启动 ${f0(E.act)}` : ""), sz, C.text, false);
     if (E) addTxt(parent, `启动后从${lg ? "最高" : "最低"}价回落${tr}%平仓，止损随新${lg ? "高" : "低"}每0.5%上移`, sz - 2, C.sub, false);
   };
@@ -438,7 +444,7 @@ function buildHome(g, family) {
       const right = row.addStack(); right.layoutVertically(); addTagRows(right, si.tags, 10, "");
     } else {
       addSignalBar(w, g, true); w.addSpacer(3);
-      if (p && g.pnl) addTxt(w, sigLine(g), 12, C.text, true); else addTxt(w, shortWhy(g), 11, C.sub, false, { lines: 2 });
+      if (p && g.pnl) { addTxt(w, sigLine(g), 12, C.text, true); addPosLines(w, g, 10, "tight"); } else addTxt(w, shortWhy(g), 11, C.sub, false, { lines: 2 });
     }
   } else if (family === "medium") {
     // 左：价格 + 信号条 + 两边进度；右：最接近那边的条件（一行一个）+ 综合倾向条
@@ -450,7 +456,7 @@ function buildHome(g, family) {
     const right = row.addStack(); right.layoutVertically();
     if (isSig) { entryLines(right, 11, "tight"); right.addSpacer(3); addCompMid(right, g, 164); }
     else if (chk) { addTagRows(right, sideInfo(g, sd, "m").tags, 10, "tight"); addCompMid(right, g, 164); }
-    else if (p) { addTxt(right, sigLine(g), 13, C.text, true); right.addSpacer(2); addPosLines(right, g, 11); addCompMid(right, g, 164); }
+    else if (p) { addTxt(right, sigLine(g), 13, C.text, true); right.addSpacer(2); addPosLines(right, g, 10, "tight"); addCompMid(right, g, 164); }
     else { addTxt(right, s.why || shortWhy(g), 11, C.sub, false, { lines: 4 }); right.addSpacer(3); addCompMid(right, g, 164); }
   } else {   // large：用弹性间距把各块均匀撑开
     priceText(w, g, 36);

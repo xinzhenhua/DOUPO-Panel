@@ -12,7 +12,7 @@ function loadPlan() {
   const src = fs.readFileSync(path.join(ROOT, 'cockpit', 'ui.js'), 'utf8');
   const a = src.indexOf('/* PLAN_BEGIN'), b = src.indexOf('/* PLAN_END */');
   if (a < 0 || b < 0) throw new Error('ui.js 里找不到 PLAN_BEGIN/PLAN_END 标记');
-  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planEntry,planSignals,planBasis,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
+  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planEntry,planEquity,planSignals,planBasis,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
 }
 const readJson = p => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; } };
 const readText = p => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } };
