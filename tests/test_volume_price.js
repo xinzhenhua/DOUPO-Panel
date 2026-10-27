@@ -99,6 +99,11 @@ check('★真实的整条K线、现在是9月30日：最新K线是9月14日、�
 a = volumePriceAnalysis(BARS.filter(b=>b.date <= '2026-08-18'), 'M2609', E.bjToMs(2026,8,19,10,0));
 check('★8月18日数据、新鲜但门槛没过 → status=gated，原因是移仓/交割期', a.status === 'gated' && a.gate.includes('移仓/交割期'));
 check('K线不足25根 → status=insufficient，写明根数', volumePriceAnalysis(BARS.slice(0,10), 'M2609').status === 'insufficient' && volumePriceAnalysis(BARS.slice(0,10), 'M2609').reason.includes('10根'));
+{ const a25 = volumePriceAnalysis(BARS.slice(0,25), 'M2609');   // ★2026-10-27 线上崩溃：9月合约刚好25根K线，vpAt 没返回 dzp，渲染时 a.dzp.toFixed 报错整页起不来
+  check('★刚好25根K线 → status=insufficient，不崩', a25.status === 'insufficient' && a25.reason.includes('26根'));
+  check('26根K线 → 能算出完整结果（有 dzp/pc）', (() => { const a = volumePriceAnalysis(BARS.slice(0,26), 'M2609'); return a.status !== 'insufficient' && typeof a.dzp === 'number' && typeof a.pc === 'number'; })());
+  let thrown = null; try { renderVolumePrice({available:true, symbol:'M2609', bars: BARS.slice(0,25)}, new Date().toISOString()); } catch(e){ thrown = e; }
+  check('★刚好25根K线渲染不抛异常', thrown === null, thrown && thrown.message); }
 check('没有持仓量字段 → insufficient，不报错', volumePriceAnalysis(BARS.map(b=>({close:b.close, date:b.date, volume:b.volume})), 'M2609').status === 'insufficient');
 check('null/undefined不报错', volumePriceAnalysis(null, 'M2609').status === 'insufficient' && volumePriceAnalysis(undefined, 'M2609').status === 'insufficient');
 window._nowMs = null;

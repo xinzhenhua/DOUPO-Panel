@@ -3050,7 +3050,7 @@ function vpAt(bars, i, startMs){
 /** 量价分析(最新一根)：返回{status:'ok'|'gated'|'stale'|'insufficient', ...}。 */
 function volumePriceAnalysis(bars, symbol, atMs){
   atMs = atMs == null ? clockNow() : atMs;
-  if(!Array.isArray(bars) || bars.length < VP.MIN_BARS) return {status:'insufficient', reason:`K线只有${bars ? bars.length : 0}根，不足${VP.MIN_BARS}根`};
+  if(!Array.isArray(bars) || bars.length < VP.MIN_BARS + 1) return {status:'insufficient', reason:`K线只有${bars ? bars.length : 0}根，需要至少${VP.MIN_BARS + 1}根`};   // vpAt要求最后一根下标>=MIN_BARS，所以至少MIN_BARS+1根；刚好MIN_BARS根时vpAt返回的结果没有dzp，旧版会崩
   const last = bars[bars.length-1];
   if(last.hold == null || last.volume == null) return {status:'insufficient', reason:'K线里没有持仓量/成交量字段'};
   const fr = freshnessOf({cadence:'trading', maxAgeDays:30}, last.date, atMs);
@@ -3083,7 +3083,8 @@ function renderVolumePrice(dailyData, genAt){
     updateOverallAlert(); return;
   }
   badge.textContent = '🟢 已同步 ' + fmtTime(genAt); badge.className = 'badge badge-auto';
-  const a = volumePriceAnalysis(dailyData.bars, dailyData.symbol);
+  let a = volumePriceAnalysis(dailyData.bars, dailyData.symbol);
+  if(a.status !== 'insufficient' && (a.dzp == null || a.pc == null)) a = {status:'insufficient', reason: a.gate || '量价分析结果不完整'};   // 兜底：缺字段就当数据不足
   if(a.status === 'insufficient'){
     window._vpStatus = 'insufficient'; window._vpReason = a.reason;
     el.innerHTML = `<div class="alert-box neutral"><span class="at">数据不足，暂不计分</span>${a.reason}</div>`;
@@ -3125,7 +3126,12 @@ function refreshVolumePriceForContract(month){
   const data = window._syncedData;
   if(!data) return;
   const prefix = {sep:'M09', may:'M05', jan:'M01'}[month];
-  renderVolumePrice(data['dce'+prefix+'Daily'], data.generatedAt);
+  try { renderVolumePrice(data['dce'+prefix+'Daily'], data.generatedAt); }
+  catch(e){   // 量价是可选面板：出错只影响这一块，不能让整页（含驾驶舱）起不来
+    window._vpSignal = null; window._vpQuality = null; window._vpStatus = 'unavailable'; window._vpReason = '量价面板出错：' + (e && e.message);
+    const el = document.getElementById('vpContent'); if(el) el.innerHTML = `<div class="alert-box neutral"><span class="at">量价关系暂不可用</span>${window._vpReason}</div>`;
+    try { updateOverallAlert(); } catch(e2){}
+  }
 }
 
 // ===================== 季节性(v101.14)：只展示，不计分 =====================
