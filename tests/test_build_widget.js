@@ -62,6 +62,12 @@ eq('文件很小(<2KB)', JSON.stringify(w).length < 2048, true);
   eq('fx = 最弱外资席位5日变化 + 去杠杆线 -20000', [w.signal.fx.v, w.signal.fx.line], [Math.round(A.fsum), -20000]);
   eq('数据等级 lv 取自 gate.level', w.signal.lv, A.gate.level); }
 
+if (w.signal.state === 'long' || w.signal.state === 'short') {   // v102.14 有信号时：限价=收盘价回调/反弹0.3%，止损/启动价从限价算
+  const sg = w.signal.state === 'long' ? 1 : -1, e = w.signal.en;
+  eq('signal.en 限价 = 收盘价×(1∓0.3%)', e.lim, Math.round(w.signal.ref * (1 - sg * 0.003)), 1);
+  eq('signal.en 止损 = 限价×(1∓4%)；signal.stop 同值', [e.stop, w.signal.stop], [Math.round(e.lim * (1 - sg * 0.04)), e.stop], 1);
+  eq('signal.en 启动价 = 限价×(1±8%)', e.act, Math.round(e.lim * (1 + sg * 0.08)), 1);
+} else eq('无信号时 signal.en=null', w.signal.en, null);
 const px = w.signal.ref;   // 信号用的收盘参考价(换月调整价)
 const sym = w.contract.symbol;
 // 多单：开仓日取近半年里一个比现价低很多的日子，浮盈远超启动价8%（注意：开仓价和当天收盘差>2%会被页面逻辑按换月折算，所以必须用真实历史收盘价）

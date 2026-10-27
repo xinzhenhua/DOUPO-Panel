@@ -79,6 +79,20 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   ok('数据不足：大号不画标签，只写原因', countPills((await render('large', noData)).root) === 0);
   const sig = clone(d => { d.signal.state = 'long'; d.signal.label = '做多入场'; d.signal.ref = 3100; d.signal.stop = 2976; return d; });
   ok('有入场信号：锁屏是红点', (await render('accessoryRectangular', sig)).text.includes('🔴'));
+  /* v102.14 入场建议：限价(收盘价回调0.3%)、止损、移动止盈启动价 —— 小/中/大/锁屏都要显示，且不再把收盘价当限价 */
+  const en = { lim: 3090, stop: 2966, act: 3337, trail: 3203, pct: 0.3, fill: 83, tr: 4 };
+  const sigEn = clone(d => { d.signal.state = 'long'; d.signal.label = '做多入场'; d.signal.ref = 3100; d.signal.stop = 2966; d.signal.en = en; return d; });
+  for (const fam of ['small', 'medium', 'large']) {
+    const t = (await render(fam, sigEn)).text;
+    ok(`有信号·${fam}号：显示限价 ≤ 3,090 和止损 2,966，不显示收盘价当限价`, t.includes('3,090') && t.includes('2,966') && !t.includes('≤ 3,100'));
+  }
+  const tl = (await render('large', sigEn)).text;
+  ok('有信号·大号：显示移动止盈启动价 3,337、回落4%、每0.5%上移', tl.includes('3,337') && tl.includes('回落4%') && tl.includes('0.5%'));
+  ok('有信号·中号：显示启动价 3,337', (await render('medium', sigEn)).text.includes('3,337'));
+  const lk2 = (await render('accessoryRectangular', sigEn)).text;
+  ok('有信号·锁屏：显示限价和止损', lk2.includes('3,090') && lk2.includes('2,966'));
+  const sigShort = clone(d => { d.signal.state = 'short'; d.signal.label = '做空入场'; d.signal.en = { lim: 3110, stop: 3234, act: 2861, trail: 2975, pct: 0.3, fill: 83, tr: 4 }; return d; });
+  ok('做空信号·大号：限价 ≥ 3,110', (await render('large', sigShort)).text.includes('≥ 3,110'));
   const holdD = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null }; d.signal.state = 'hold'; d.signal.label = '持有'; return d; });
   const hl = (await render('large', holdD)).text;
   ok('持仓：大号显示开仓/止损，不画入场标签', hl.includes('开仓 3,386') && hl.includes('止损 3,521') && !hl.includes('做空条件'));

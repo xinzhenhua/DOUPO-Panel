@@ -12,7 +12,7 @@ function loadPlan() {
   const src = fs.readFileSync(path.join(ROOT, 'cockpit', 'ui.js'), 'utf8');
   const a = src.indexOf('/* PLAN_BEGIN'), b = src.indexOf('/* PLAN_END */');
   if (a < 0 || b < 0) throw new Error('ui.js 里找不到 PLAN_BEGIN/PLAN_END 标记');
-  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planSignals,planBasis,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
+  return new Function(src.slice(a, b) + '\nreturn {TPLAN,planEntry,planSignals,planBasis,planForeign,planManage,planGate,planHold,planWhy,planTier,planSize};')();
 }
 const readJson = p => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; } };
 const readText = p => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { return ''; } };
@@ -59,9 +59,9 @@ function compute(dataDir, opts) {
   const tail = '\n\n（提醒按收盘后的数据算；入场挂限价单、平仓开盘市价，都在下一个交易日。手数、止损价、账户权益请打开驾驶舱看。）';
   if (!gate.ok) ev.push({ type: 'gate', key: 'gate|' + today, title: '【豆粕】数据不足，信号暂停', body: '信号和离场判断暂时不可信：' + gate.reasons.join('；') + '。\n先别按页面上的信号操作，检查 Actions 是否正常运行。' });
   if (side !== 0 && !pos) {
-    const stop = px * (1 - side * TP.STOP / 100);
+    const en = P.planEntry(px, side);
     ev.push({ type: 'entry', side, key: 'entry|' + lastD + '|' + side, title: '【豆粕】' + (side > 0 ? '做多' : '做空') + '入场信号（数据日 ' + lastD + '）',
-      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手，' + (B.v == null ? '基差无数据（不过滤）' : '基差 ' + (B.v >= 0 ? '+' : '') + (B.v * 100).toFixed(2) + '%（生意社 ' + B.d.slice(5) + '）') + '，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日挂限价单——' + (side > 0 ? '做多 ≤ ' : '做空 ≥ ') + f0(px) + '（信号日收盘价），当日有效，没成交就作废、不追；止损 ' + TP.STOP + '%（约 ' + f0(stop) + '）；浮盈 ≥' + TP.ACT + '% 后从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '% 平仓。' + tail });
+      body: P.planWhy(sig) + '。\n价格分位 ' + (sig.pct == null ? '—' : sig.pct.toFixed(0) + '%') + '，外资最弱席位 ' + F.minK + ' 5日 ' + f2(F.min) + ' 手，' + (B.v == null ? '基差无数据（不过滤）' : '基差 ' + (B.v >= 0 ? '+' : '') + (B.v * 100).toFixed(2) + '%（生意社 ' + B.d.slice(5) + '）') + '，收盘参考价 ' + f0(px) + '。\n建议：下一个交易日挂限价单——' + (side > 0 ? '做多 ≤ ' : '做空 ≥ ') + f0(en.lim) + '（信号日收盘价 ' + f0(en.close) + (side > 0 ? ' 回调 ' : ' 反弹 ') + TP.LIM.pct + '%，成交率约 ' + TP.LIM.fill + '%；想更容易成交可挂 ' + f0(en.close) + '，成交率约 ' + TP.LIM.closeFill + '%），当日有效，没成交就作废、不追；' + (side > 0 ? '低开' : '高开') + '跳空按开盘价成交。\n止损价 ' + f0(en.stop) + '（入场价 ' + TP.STOP + '%）；移动止盈启动价 ' + f0(en.act) + '（浮盈 ' + TP.ACT + '%），到了就把固定止损改成移动止损，初始约 ' + f0(en.trailAtAct) + '（从' + (side > 0 ? '最高' : '最低') + '价回落 ' + TP.TRAIL + '%），之后每多赚 0.5% 把止损上移一次，触及平仓。' + tail });
   }
   if (pos && mg && mg.action !== '持有') {
     ev.push({ type: 'exit', key: 'exit|' + lastD + '|' + pos.entryD + '|' + mg.action, title: '【豆粕】持仓该平了：' + mg.action + '（' + sd + pos.lots + '手）',

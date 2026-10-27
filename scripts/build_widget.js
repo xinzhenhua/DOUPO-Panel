@@ -82,7 +82,8 @@ function build(dataDir, opts) {
     fund: readFund(dataDir, key),
     price: lb ? { c: +lb.close, dt: String(lb.datetime).slice(0, 16), prev } : null,
     signal: { state, label, why, priceDate: A.priceDate, ref: A.px == null ? null : Math.round(A.px),
-              stop: A.side !== 0 && A.px != null ? Math.round(A.px * (1 - A.side * TP.STOP / 100)) : null,
+              en: A.side !== 0 && A.px != null ? (e => ({ lim: e.lim, stop: e.stop, act: e.act, trail: e.trailAtAct, pct: TP.LIM.pct, fill: TP.LIM.fill, tr: TP.TRAIL }))(PA.loadPlan().planEntry(A.px, A.side)) : null,   // v102.14 入场建议：限价(收盘价回调0.3%)、止损(从限价算)、移动止盈启动价/初始移动止损
+              stop: A.side !== 0 && A.px != null ? PA.loadPlan().planEntry(A.px, A.side).stop : null,
               pct: A.sig.pct == null ? null : Math.round(A.sig.pct), fsum: A.fsum, delev: !!A.sig.delev,
               gateOk: A.gate.ok,
               lv: A.gate.level || (A.gate.ok ? 'ok' : 'bad'),               // 数据等级 ok/part/bad：小组件锁屏的状态点用

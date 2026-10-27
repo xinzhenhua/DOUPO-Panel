@@ -1735,8 +1735,16 @@ const TPLAN = {
   BT_MARGIN: .10, TON: 10,            // 回测保证金10%；每手10吨
   SHORT_PCT: 70,                      // v101.89 做空：外资去杠杆 + 收盘<MA20 + 260日分位≥70
   FX_TH: 20000,                       // v101.87 候选规则「外资加杠杆做多」：任一外资席位5日持仓变化 ≥ +2万手（去杠杆的镜像）
+  LIM: { pct: 0.3, fill: 83, closeFill: 95 },   // v102.14 默认入场＝次日限价单：信号日收盘价回调(做多)/反弹(做空)0.3%；成交率约83%；挂收盘价成交率约95%
   BASIS_MIN: 0, BASIS_AGE: 7          // v101.84 做多多一条：生意社基差(现货÷主力合约−1) ≥ 0；基差数据日和价格日相差超过7天就不用（不过滤，按原规则）
 };
+/* v102.14 入场建议（页面/推送/小组件共用）：入场价＝收盘价回调0.3%的限价；止损、移动止盈启动价都从「入场价」算；
+ * 移动止盈：最高浮盈≥ACT% 后，从持仓最高(低)价回落 TRAIL% 平仓；止损线随新高每多 0.5%（按入场价）上移一次。 */
+function planEntry(px, side) {
+  const sg = side >= 0 ? 1 : -1, lim = Math.round(px * (1 - sg * TPLAN.LIM.pct / 100));
+  return { side: sg, close: Math.round(px), lim, stop: Math.round(lim * (1 - sg * TPLAN.STOP / 100)), act: Math.round(lim * (1 + sg * TPLAN.ACT / 100)),
+           trailAtAct: Math.round(lim * (1 + sg * TPLAN.ACT / 100) * (1 - sg * TPLAN.TRAIL / 100)) };   // trailAtAct：刚到启动价时的移动止损位（＝启动价回落4%）
+}
 function planTier(E) { for (const [lim, u] of TPLAN.TIERS) if (E < lim) return u; return TPLAN.TIERS[TPLAN.TIERS.length - 1][1]; }
 function planPct(cs, w) { w = w || 260; const win = cs.slice(-w); if (win.length < 200) return null; const last = cs[cs.length - 1]; return win.filter(v => v <= last).length / win.length * 100; }
 function planMA(cs, n) { if (cs.length < n) return null; let s = 0; for (let i = cs.length - n; i < cs.length; i++) s += cs[i]; return s / n; }
@@ -1788,14 +1796,15 @@ function planSignals(cs, fsum, basis, opt) {   // basis：planBasis(...).v；不
 /* mode='real'：手数按你填的实际保证金算（占用=你说的资金占比）；mode='bt'：按回测的10%保证金/名义杠杆算（保证金高于10%时实际占用会更高）*/
 function planSize(o) {
   const E = o.equity, m = o.margin, px = o.price, side = o.side >= 0 ? 1 : -1, u = planTier(E) * (o.share > 0 && o.share <= 1 ? o.share : 1), den = o.mode === 'bt' ? TPLAN.BT_MARGIN : m;   // share：与其它品种共担时的份额（1/持仓品种数）
-  const lots = Math.floor(E * u / (TPLAN.TON * px * den));
+  const ent = planEntry(px, side), ex = ent.lim;   // v102.14 手数/止损/启动价都按入场限价算，不再按信号日收盘价
+  const lots = Math.floor(E * u / (TPLAN.TON * ex * den));
   if (!(lots >= 1)) return { u, lots: 0 };
-  const L = lots * TPLAN.TON, notional = L * px, margin = notional * m;
-  const stopPx = px * (1 - side * TPLAN.STOP / 100), lossStop = notional * TPLAN.STOP / 100, actPx = px * (1 + side * TPLAN.ACT / 100);
-  const liqPx = side > 0 ? (L * px - E) / (L * (1 - m)) : (E + L * px) / (L * (1 + m));       // 风险度(保证金/权益)=100% 的价格
-  const eqAtStop = E - lossStop, riskAtStop = margin * (stopPx / px) / eqAtStop;
-  return { u, lots, notional, margin, usage: margin / E, leverage: notional / E, stopPx, lossStop, lossPct: lossStop / E, actPx, liqPx,
-           liqGapPct: Math.abs(liqPx - stopPx) / px * 100, riskAtStop, riskNow: margin / E };
+  const L = lots * TPLAN.TON, notional = L * ex, margin = notional * m;
+  const stopPx = ex * (1 - side * TPLAN.STOP / 100), lossStop = notional * TPLAN.STOP / 100, actPx = ex * (1 + side * TPLAN.ACT / 100);
+  const liqPx = side > 0 ? (L * ex - E) / (L * (1 - m)) : (E + L * ex) / (L * (1 + m));       // 风险度(保证金/权益)=100% 的价格
+  const eqAtStop = E - lossStop, riskAtStop = margin * (stopPx / ex) / eqAtStop;
+  return { u, lots, entryPx: ex, notional, margin, usage: margin / E, leverage: notional / E, stopPx, lossStop, lossPct: lossStop / E, actPx, liqPx,
+           liqGapPct: Math.abs(liqPx - stopPx) / ex * 100, riskAtStop, riskNow: margin / E };
 }
 function planManage(o) {   // o: {side, entry, peak, last, ma20, fsum=最弱席位5日变化(多单离场用), fall=三家合计5日变化(空单离场用；不传则用fsum)}
   const side = o.side >= 0 ? 1 : -1, r = side * (o.last / o.entry - 1) * 100;
@@ -1908,7 +1917,7 @@ function planReview(trades, per) {   // 已平仓交易的「预计 vs 实际」
 const TBT = {   // 回测（2017-12~2026-10，信号收盘价、止损/移动止盈按收盘判断，40笔）里同方向的统计；脚本见 scratchpad/mp/bt4.py
   long: { n: 26, win: .538, avgWin: 9.1, avgLoss: -2.6, avg: 3.7, days: 29 },
   short: { n: 12, win: .583, avgWin: 2.0, avgLoss: -0.8, avg: 0.8, days: 6 },   // v101.89 新做空规则（去杠杆+收盘<MA20+分位≥70，2022年起12笔）
-  LIM: { pct: 0.3, fill: 83, med: 1022, close: 830, open: 735 },   // 次日限价=收盘价回调0.3%：成交率83%，50万起5年终值中位（见回测摘要）
+  LIM: { pct: TPLAN.LIM.pct, fill: TPLAN.LIM.fill, med: 1022, close: 830, open: 735 },   // 次日限价=收盘价回调0.3%：成交率83%，50万起5年终值中位（见回测摘要）
   SEDGE: .0022,   // 空单有外资翻转模型后需要的每日优势（让推演的胜率≈64%、平均≈+1.0%、持有≈4~5天，对上回测空单的统计；脚本 scratchpad/mp/flipmc.py）
   FLIPH: [.02, .11, .15, .25, .25, .20],   // 外资三家5日合计从「去杠杆」翻回≥0 的每日概率（第1天,第2天…第6天起恒定）：回测期45个空单信号日，翻转的中位天数4~5天（flip.py）
   EDGE: .0009, H: 60, FAN: 20     // 每天顺着持仓方向的平均优势 0.09%（让推演的平均收益≈回测的平均单笔收益）；推演60个交易日，画未来20个交易日
@@ -2146,6 +2155,7 @@ function liveTxt() {   // 盘中价（小时线），只在比日线新时显示
   try { const lv = D.live && D.live[S.key], kd = lastDayD(); if (!lv || !kd || lv.dt.slice(0, 10) <= kd) return ''; return ` · 盘中 ${fmtD(lv.c)}（${lv.dt.slice(5)}）`; } catch (_) { return ''; }
 }
 const limPx = s => Math.round(s.px * (1 - s.side * TBT.LIM.pct / 100));
+const ENTRYNOTE = (px, side) => { const e = planEntry(px, side); return `建议入场 ${side > 0 ? '≤' : '≥'} ${fmtD(e.lim)}（收盘价${side > 0 ? '回调' : '反弹'}${TPLAN.LIM.pct}%的限价单）｜止损 ${fmtD(e.stop)}（${TPLAN.STOP}%）｜移动止盈启动价 ${fmtD(e.act)}（浮盈${TPLAN.ACT}%），之后从${side > 0 ? '最高' : '最低'}价回落${TPLAN.TRAIL}%平仓，止损随新${side > 0 ? '高' : '低'}每0.5%上移`; };
 const LIMNOTE = () => `挂回调${TBT.LIM.pct}%：成交率约 ${TBT.LIM.fill}%（没成交就作废、不追），但回测收益更高——5年终值中位 ${TBT.LIM.med.toLocaleString('en-US')}万，高于挂收盘价 ${TBT.LIM.close}万、次日开盘市价 ${TBT.LIM.open}万。`;
 /* ---- 数据灯 ↔ 趋势墙 对账（v101.55）：数据灯看“这一次抓取成功没有”，趋势墙看“历史里最新的点”，两边口径不同，对不上时要说清楚 ---- */
 const IND_SER = { crush: 'crush', stock: 'stock', stu: 'stu', basis: 'basis', arrival: 'arrival', import: 'import', hogratio: 'hog', poultry: 'poultry', feed: 'feed', rmspread: 'rm' };
@@ -2204,7 +2214,7 @@ function renderSig() {
   const dsl = `<span class="dsw ${s.dl.cls}" id="dataLine"><span class="dsb" role="button" tabindex="0" data-dsl="1" aria-expanded="${dsOpen}" aria-label="数据状态：${esc({ ok: '齐全', part: '基本够用', bad: '不足' }[s.dl.cls])}，点开看详情"><i>${dsIc}</i><u>${dsOpen ? '收起' : '数据'}</u></span>${dsOpen ? `<span class="dst">${esc(s.dl.t)}<br><small>判定：缺外资数据/价格或超过7天没更新=不足；4–7天没更新、缺个别席位、席位只有估算值=基本够用；其余=齐全。</small></span>` : ''}</span>`;
   let left, right;
   if (!s.pos) {
-    left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 最近收盘${lastBarD()} ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
+    left = `<button class="sg ${cls}" data-goplan="1" aria-label="入场信号：${head}。${esc(sub)}。点击查看交易计划"><div class="cl">入场信号（收盘后看一次）· 最近收盘${lastBarD()} ${fmtD(s.px)}</div><div class="hd">${head}</div><div class="sb">${esc(sub)}</div>${s.side && !blocked ? `<div class="sb sb2"><b>${esc(ENTRYNOTE(s.px, s.side))}</b></div>` : ''}${s.size && !blocked ? `<div class="sb sb2">${esc(LIMNOTE())}</div>` : ''}
     <div class="scs${blocked ? ' dim' : ''}">${chip(sg.lowOK, '低位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%'))}${chip(sg.confirm, '反弹确认')}${chip(!sg.delev, '外资未去杠杆')}${basisChip(sg, s.B)}<span class="sc sep">空</span>${chip(sg.delev, '外资去杠杆')}${chip(sg.below20, '收盘&lt;MA20')}${chip(sg.highOK, '高位' + (sg.pct == null ? '' : ' ' + sg.pct.toFixed(0) + '%') + '≥' + TPLAN.SHORT_PCT)}${candChips(sg)}<span class="sc sep">外资5日 ${F.used.length ? '最弱 ' + F.minK.replace('期货', '') + ' ' + f2(F.min) + ' 手' : '无数据'}</span></div>${dsl}</button>`;
     right = s.other ? (() => { const o = s.other, ck = ['sep', 'may', 'jan'].find(k => String((D.contracts[k] || {}).symbol || '').toLowerCase() === String(o.contract || (D.contracts[autoKey()] || {}).symbol || '').toLowerCase()); return `<button class="sg" ${ck ? `data-ck="${ck}"` : 'data-goplan="toggle"'} aria-label="持仓在另一个合约，点击切换过去"><div class="cl">持仓在另一个合约</div><div class="hd">${esc(o.contract || '—')}</div><div class="sb">${sdName(o.side)} ${fmtD(o.lots)} 手 · 点这里切过去看</div></button>`; })() : `<button class="sg" data-goplan="toggle" aria-label="持仓：空仓。点击展开或收起交易计划"><div class="cl">持仓</div><div class="hd">空仓</div><div class="sb">账户权益 ${fmtD(s.E.equity)} 元（自动）${s.side && s.size ? '<br>成交后点这里「记录开仓」' : ''}</div></button>`;
   } else {
@@ -2230,8 +2240,8 @@ function sizeHtml(z, side, m, mode, eq, px) {
     <tr><td>权益所在阶梯 → 占用</td><td class="n">${fmtD(eq)} 元 → ${Math.round(z.u * 100)}%</td></tr>
     <tr><td><b>开仓手数（${sd}）</b></td><td class="n"><b>${fmtD(z.lots)} 手</b>（名义 ${fmtD(z.notional)} 元 · ${z.leverage.toFixed(1)} 倍）</td></tr>
     <tr><td>占用保证金（按 ${(m * 100).toFixed(1)}%）</td><td class="n">${fmtD(z.margin)} 元（占权益 ${pc1(z.usage)}）</td></tr>
-    <tr><td>止损价（${TPLAN.STOP}%）</td><td class="n">${fmtD(z.stopPx)}　亏 ${fmtD(z.lossStop)} 元（权益 ${pc1(z.lossPct)}）</td></tr>
-    <tr><td>移动止盈启动价（最高浮盈 ${TPLAN.ACT}%）</td><td class="n">${fmtD(z.actPx)}；之后从持仓${side > 0 ? '最高' : '最低'}价回落 ${TPLAN.TRAIL}% 平仓</td></tr>
+    <tr><td>止损价（入场价 ${TPLAN.STOP}%）</td><td class="n">${fmtD(z.stopPx)}　亏 ${fmtD(z.lossStop)} 元（权益 ${pc1(z.lossPct)}）</td></tr>
+    <tr><td>移动止盈启动价（最高浮盈 ${TPLAN.ACT}%）</td><td class="n">${fmtD(z.actPx)}；之后从持仓${side > 0 ? '最高' : '最低'}价回落 ${TPLAN.TRAIL}% 平仓（刚启动时约 ${fmtD(planEntry(px, side).trailAtAct)}）；止损线随新${side > 0 ? '高' : '低'}每多 0.5% 上移一次</td></tr>
     <tr><td>风险度到 100%（追保/强平线）的价格</td><td class="n">${fmtD(z.liqPx)}（距止损价 ${z.liqGapPct.toFixed(1)}%）</td></tr>
     <tr><td>止损触发时的风险度</td><td class="n">${pc1(z.riskAtStop)}</td></tr></tbody></table>`;
   if (z.riskAtStop >= .8) h += `<div class="plw">⚠️ 止损价处风险度已到 ${pc1(z.riskAtStop)}，离 100% 追保线很近：盘中跳空、涨停/跌停来不及止损就可能被追保或强平。建议用「按我的实际保证金占用」口径，或把占用降下来。</div>`;

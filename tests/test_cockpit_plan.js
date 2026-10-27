@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planBasis,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
+const code=src.slice(a,b)+'\nreturn {TPLAN,planEntry,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planBasis,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -27,17 +27,19 @@ eq('信号 去杠杆阈值边界 -20000 含',P.planSignals(cs,-20000).delev,true
 let dcs=Array(260).fill(0).map((_,i)=>200-i*0.5); const hiDip=[...Array(250)].map((_,i)=>i+1).concat([250,249,248,247,246,245,244,243,242,241]);   // 高位回落：分位≈96%，收盘在MA20下方
 eq('空头(v101.89) 高位+收盘<MA20+去杠杆→可做空',P.planSignals(hiDip,-30000).shortOK,true); eq('空头 无去杠杆→不做空',P.planSignals(hiDip,0).shortOK,false);
 eq('空头 一路下跌(分位低，不在高位)+去杠杆→不做空',P.planSignals(dcs,-30000).shortOK,false);
-// 仓位计算(手算)：权益50万 价3400 保证金13% 占用60% → floor(300000/(10*3400*0.13))=floor(67.87)=67 手
+// 仓位计算(手算)：v102.14 起按「入场限价」算——信号收盘 3400 做多 → 限价 3390(回调0.3%)；权益50万 保证金13% 占用60% → floor(300000/(10*3390*0.13))=floor(68.07)=68 手
 let z=P.planSize({equity:500000,margin:.13,price:3400,side:1,mode:'real'});
-eq('手数(实际保证金13%)=67',z.lots,67); eq('名义金额',z.notional,2278000); eq('占用保证金',z.margin,296140,1e-6); eq('实际占用',z.usage,296140/500000,1e-9);
-eq('止损价=3264',z.stopPx,3264,1e-9); eq('止损亏损=91120',z.lossStop,91120,1e-6); eq('止损亏损占权益',z.lossPct,91120/500000,1e-12);
-eq('风险度100%价(多)≈3050.4',z.liqPx,(670*3400-500000)/(670*0.87),1e-9); eq('启动价(最高浮盈8%)=3672',z.actPx,3672,1e-9);
-// 回测口径：按10%保证金 → 88 手；保证金13%时风险度在止损价附近≈98%
+eq('入场限价(多)=3390',z.entryPx,3390); eq('planEntry多：限价/止损/启动价/初始移动止损',JSON.stringify(P.planEntry(3400,1)),JSON.stringify({side:1,close:3400,lim:3390,stop:3254,act:3661,trailAtAct:3515}));
+eq('planEntry空：限价3410 止损3546 启动3137',JSON.stringify([P.planEntry(3400,-1).lim,P.planEntry(3400,-1).stop,P.planEntry(3400,-1).act]),JSON.stringify([3410,3546,3137]));
+eq('手数(实际保证金13%)=68',z.lots,68); eq('名义金额',z.notional,2305200); eq('占用保证金',z.margin,2305200*.13,1e-6); eq('实际占用',z.usage,2305200*.13/500000,1e-9);
+eq('止损价=入场价×0.96=3254.4',z.stopPx,3254.4,1e-9); eq('止损亏损',z.lossStop,2305200*.04,1e-6); eq('止损亏损占权益',z.lossPct,2305200*.04/500000,1e-12);
+eq('风险度100%价(多)',z.liqPx,(680*3390-500000)/(680*0.87),1e-9); eq('启动价(最高浮盈8%)=入场价×1.08=3661.2',z.actPx,3661.2,1e-9);
+// 回测口径：按10%保证金 → 88 手
 let y=P.planSize({equity:500000,margin:.13,price:3400,side:1,mode:'bt'});
-eq('手数(回测口径)=88',y.lots,88); eq('回测口径·风险100%价(多)≈3254.96',y.liqPx,(880*3400-500000)/(880*0.87),1e-9);
-eq('回测口径·止损处风险度',y.riskAtStop,(2992000*0.13*0.96)/(500000-119680),1e-9);
-let sh=P.planSize({equity:500000,margin:.10,price:3400,side:-1,mode:'real'}); eq('空头手数=88',sh.lots,88); eq('空头止损价=3536',sh.stopPx,3536,1e-9);
-eq('空头风险100%价',sh.liqPx,(500000+880*3400)/(880*1.10),1e-9);
+eq('手数(回测口径)=88',y.lots,88); eq('回测口径·风险100%价(多)',y.liqPx,(880*3390-500000)/(880*0.87),1e-9);
+eq('回测口径·止损处风险度',y.riskAtStop,(2983200*0.13*0.96)/(500000-2983200*.04),1e-9);
+let sh=P.planSize({equity:500000,margin:.10,price:3400,side:-1,mode:'real'}); eq('空头入场限价=3410(反弹0.3%)',sh.entryPx,3410); eq('空头手数=87',sh.lots,87); eq('空头止损价=3410×1.04=3546.4',sh.stopPx,3546.4,1e-9);
+eq('空头风险100%价',sh.liqPx,(500000+870*3410)/(870*1.10),1e-9);
 eq('资金不足一手→0手(5000*0.6/(10*3400*0.13)=0.68)',P.planSize({equity:5000,margin:.13,price:3400,side:1,mode:'real'}).lots,0);
 eq('刚好够一手(权益8000:4800/4420=1.09→1手)',P.planSize({equity:8000,margin:.13,price:3400,side:1,mode:'real'}).lots,1);
 eq('权益600万→占用40%',P.planSize({equity:6000000,margin:.10,price:3400,side:1,mode:'real'}).u,.4);

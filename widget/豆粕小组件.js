@@ -372,7 +372,7 @@ function addSignalBar(parent, g, small, extra) {
   bar.backgroundColor = dyn(sigColorHex(s.state, false), sigColorHex(s.state, true));
   addTxt(bar, p && g.pnl ? (p.action === "持有" ? "持仓" : "该平") : s.label, small ? 13 : 15, new Color("#FFFFFF"), true);
   if (extra) { bar.addSpacer(5); addTxt(bar, extra, 11, new Color("#FFFFFF"), false); }
-  if (!small) { bar.addSpacer(6); addTxt(bar, p ? sigLine(g) : (s.ref != null ? `参考价 ${f0(s.ref)}` : ""), 12, new Color("#FFFFFF"), false); }
+  if (!small) { bar.addSpacer(6); addTxt(bar, p ? sigLine(g) : (s.en ? `限价 ${s.state === "long" ? "≤" : "≥"} ${f0(s.en.lim)}` : s.ref != null ? `参考价 ${f0(s.ref)}` : ""), 12, new Color("#FFFFFF"), false); }
   return bar;
 }
 function addFooter(w, g, family) {
@@ -407,7 +407,17 @@ function buildHome(g, family) {
   const small = family === "small", chk = hasChk(g) && !p;
   const sd = chk ? closestSide(g) : null, other = chk ? sideInfo(g, sd === "S" ? "L" : "S") : null;
   const hint = o => o ? `${o.title} ${o.have}/${o.n}` : "";
-  const buyAdvice = sz => (s.state === "long" || s.state === "short") ? addTxt(w, `建议限价 ${s.state === "long" ? "≤" : "≥"} ${f0(s.ref)}，止损 ${f0(s.stop)}`, sz, C.text, true) : null;
+  const isSig = (s.state === "long" || s.state === "short") && !p, lg = s.state === "long", E = s.en || null;
+  /* v102.14 入场建议：限价＝信号日收盘价回调(做多)/反弹(做空)0.3%，不是收盘价；止损、移动止盈启动价都从限价算 */
+  const entryLines = (parent, sz, mode) => {
+    const lim = E ? E.lim : s.ref, st = E ? E.stop : s.stop, k = E ? E.pct : 0.3, tr = E ? E.tr : 4;
+    addTxt(parent, `${lg ? "做多" : "做空"}限价 ${lg ? "≤" : "≥"} ${f0(lim)}`, sz + 1, C.text, true);
+    if (mode === "tight") { addTxt(parent, `止损 ${f0(st)}`, sz, C.text, false); if (E) addTxt(parent, `启动 ${f0(E.act)} · 回落${tr}%`, sz, C.sub, false); return; }
+    addTxt(parent, `（收盘价${lg ? "回调" : "反弹"}${k}%，没成交就作废）`, sz - 2, C.sub, false);
+    addTxt(parent, `止损 ${f0(st)}（4%）` + (E ? ` · 启动 ${f0(E.act)}` : ""), sz, C.text, false);
+    if (E) addTxt(parent, `启动后从${lg ? "最高" : "最低"}价回落${tr}%平仓，止损随新${lg ? "高" : "低"}每0.5%上移`, sz - 2, C.sub, false);
+  };
+  const buyAdvice = sz => isSig ? entryLines(w, sz, "full") : null;
 
   addHeader(w, g, small);
   w.addSpacer(small ? 2 : 4);
@@ -417,7 +427,9 @@ function buildHome(g, family) {
     priceText(pr, g, 28); pr.addSpacer(6);
     addTxt(pr, g.chgPct == null ? "" : sgn(g.chgPct, 2) + "%", 11, priceColor(g.chg), true);
     w.addSpacer(4);
-    if (chk) {   // 左：观望按钮（压到下面）+ 进度；右：最接近出信号那边的条件，一行一个
+    if (isSig) {   // 有信号：信号条 + 限价/止损/启动价
+      addSignalBar(w, g, true); w.addSpacer(3); entryLines(w, 11, "tight");
+    } else if (chk) {   // 左：观望按钮（压到下面）+ 进度；右：最接近出信号那边的条件，一行一个
       const si = sideInfo(g, sd, "s");
       const row = w.addStack(); row.topAlignContent();
       const left = row.addStack(); left.layoutVertically(); left.size = new Size(56, 0);
@@ -436,7 +448,8 @@ function buildHome(g, family) {
     if (chk) { left.addSpacer(3); addTxt(left, `${sideInfo(g, sd).title} ${sideInfo(g, sd).have}/${sideInfo(g, sd).n} · ${hint(other)}`, 9, C.sub, false); }
     row.addSpacer(10);
     const right = row.addStack(); right.layoutVertically();
-    if (chk) { addTagRows(right, sideInfo(g, sd, "m").tags, 10, "tight"); addCompMid(right, g, 164); }
+    if (isSig) { entryLines(right, 11, "tight"); right.addSpacer(3); addCompMid(right, g, 164); }
+    else if (chk) { addTagRows(right, sideInfo(g, sd, "m").tags, 10, "tight"); addCompMid(right, g, 164); }
     else if (p) { addTxt(right, sigLine(g), 13, C.text, true); right.addSpacer(2); addPosLines(right, g, 11); addCompMid(right, g, 164); }
     else { addTxt(right, s.why || shortWhy(g), 11, C.sub, false, { lines: 4 }); right.addSpacer(3); addCompMid(right, g, 164); }
   } else {   // large：用弹性间距把各块均匀撑开
@@ -446,8 +459,9 @@ function buildHome(g, family) {
     addSignalBar(w, g, false);
     w.addSpacer();
     if (p) { addPosLines(w, g, 13); w.addSpacer(); addFxLine(w, g, 12, true); }
+    else if (isSig) { buyAdvice(13); w.addSpacer(); addFxLine(w, g, 12, true); }
     else if (chk) {
-      buyAdvice(13); if (s.state === "long" || s.state === "short") w.addSpacer(3);
+      buyAdvice(13);
       addTagBlock(w, sideInfo(g, sd, "l"), hint(other), 11, "big");
       w.addSpacer(); addFxLine(w, g, 12, true);
     } else { addTxt(w, s.why || shortWhy(g), 13, s.state === "nodata" ? C.warn : C.sub, false, { lines: 5 }); buyAdvice(13); }
@@ -483,7 +497,7 @@ function buildLock(g, family) {
     addTxt(w, `${chgText(g)}${tg.warn || !g.open ? "  " + tg.t.split(" ")[0] : ""}`, 12, Color.white(), false);
     let l3;
     if (p) l3 = `${dot} ${sigLine(g)}`;
-    else if (s.state === "long" || s.state === "short") l3 = `${dot} ${s.label} ${f0(s.ref)}`;
+    else if (s.state === "long" || s.state === "short") l3 = s.en ? `${dot} ${s.label} 限${f0(s.en.lim)} 损${f0(s.en.stop)}` : `${dot} ${s.label} ${f0(s.ref)}`;
     else if (s.state === "nodata") l3 = `${dot} 数据不足`;
     else if (hasChk(g)) { const si = sideInfo(g, closestSide(g)), ms = missingTag(g); l3 = `${dot} ${s.label} ${si.short}${si.have}/${si.n}${ms ? " 差" + ms : ""}`; }
     else l3 = `${dot} ${s.label}${s.pct != null && g.kind === "soy" ? " · 分位" + s.pct + "%" : ""}`;
