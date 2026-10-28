@@ -421,6 +421,62 @@
     return v.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
   };
 
+
+  /* ---------- 本金追加计算器（金额单位：万元）----------
+   * 预算档位：cur=本地策略 v102.20（<500万 45%、<1500万 40%、<5000万 25%、其后15%）；flat=全程45%；old=旧阶梯（<500万 60%）。
+   * 月收益 = 年化 × 档位折算，再按月复利。45%档按填的年化；60%档用回测实测比例 55/48；其余档按 档位/45% 线性缩小（简化，不是回测结果）。
+   * 追加：第2年起每年年初到账；回撤：第 ddy 年末一次性亏 ddp%。 */
+  L.CALC_LADDERS = {
+    cur: [[500, .45], [1500, .40], [5000, .25], [Infinity, .15]],
+    flat: [[Infinity, .45]],
+    old: [[500, .60], [1500, .40], [5000, .25], [Infinity, .15]]
+  };
+  L.calcTier = function (E, mode) {
+    const t = L.CALC_LADDERS[mode] || L.CALC_LADDERS.cur;
+    for (let i = 0; i < t.length; i++) if (E < t[i][0]) return t[i][1];
+    return t[t.length - 1][1];
+  };
+  L.calcFactor = function (tier) { return tier === .60 ? 55 / 48 : tier / .45; };
+  // P: {start, add, ladder, ddy, ddp}；r: 年化(0.36)；years: 整数。返回 {eq:每月末权益(含第0月), yearly:[...], final, invested}
+  L.calcSim = function (P, r, years) {
+    let E = P.start, inv = P.start, startY = E, addY = 0, tierY = L.calcTier(E, P.ladder);
+    const eq = [E], yearly = [];
+    for (let m = 1; m <= years * 12; m++) {
+      if ((m - 1) % 12 === 0) { addY = 0; if (m > 1) { E += P.add; inv += P.add; addY = P.add; } startY = E; tierY = L.calcTier(E, P.ladder); }
+      E *= Math.pow(1 + r * L.calcFactor(L.calcTier(E, P.ladder)), 1 / 12);
+      if (m % 12 === 0) {
+        const yr = m / 12, endBefore = E, dd = !!(P.ddy > 0 && yr === P.ddy);
+        if (dd) E *= (1 - P.ddp / 100);
+        yearly.push({ year: yr, add: addY, start: startY, endBefore, end: E, invested: inv, tier: tierY, dd });
+      }
+      eq.push(E);
+    }
+    return { eq, yearly, final: E, invested: inv };
+  };
+  // 第一次达到 goal 的月数（含第0月）；maxYears 内没到返回 null
+  L.calcMonthsTo = function (P, r, goal, maxYears) {
+    const s = L.calcSim(P, r, maxYears);
+    for (let m = 0; m < s.eq.length; m++) if (s.eq[m] >= goal) return m;
+    return null;
+  };
+  // 要在 years 年内到 goal，每年需追加多少（二分；本金够了返回0）
+  L.calcNeedAdd = function (P, r, goal, years) {
+    if (L.calcSim(Object.assign({}, P, { add: 0 }), r, years).final >= goal) return 0;
+    let lo = 0, hi = 1e6;
+    for (let i = 0; i < 70; i++) { const mid = (lo + hi) / 2; if (L.calcSim(Object.assign({}, P, { add: mid }), r, years).final < goal) lo = mid; else hi = mid; }
+    return hi;
+  };
+  // 金额(万元)→文本
+  L.calcFmt = function (w) {
+    if (w == null || !isFinite(w)) return '—';
+    const a = Math.abs(w);
+    if (a >= 10000) return (w / 10000).toFixed(a >= 100000 ? 1 : 2) + ' 亿';
+    if (a >= 1000) return Math.round(w).toLocaleString('en-US') + ' 万';
+    if (a >= 100) return w.toFixed(0) + ' 万';
+    return w.toFixed(1) + ' 万';
+  };
+  L.calcYm = function (m) { if (m == null) return '—'; const y = Math.floor(m / 12), r = m % 12; return (y ? y + ' 年' : '') + (r || !y ? (y ? ' ' : '') + r + ' 个月' : ''); };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.CockpitLogic = L;
 })(typeof window !== 'undefined' ? window : globalThis);
 

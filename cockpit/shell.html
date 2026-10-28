@@ -300,7 +300,7 @@ body.ex .why{display:block}
   .bar{padding:4px 10px;gap:4px 8px;position:sticky;top:0;height:auto;min-height:48px;flex-wrap:wrap}
   .brand,.sync .tx{display:none}
   .tb.opt{font-size:12px}
-  .right{margin-left:auto;gap:0}
+  .right{margin-left:auto;gap:0;flex-wrap:wrap;justify-content:flex-end}
   .sess{font-size:12px;padding:2px 8px}
   .sess span{display:none}
   .tb{padding:6px 8px;font-size:12.5px}
@@ -371,6 +371,60 @@ body.ex .why{display:block}
 #fsv .fsh{display:flex;align-items:center;gap:12px;margin-bottom:10px}#fsv .fsh .t{font-size:18px;font-weight:600}#fsv .fsh .tb{margin-left:auto;border:1px solid var(--line)}
 #fsv .fsb2{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column}
 body.fs-on{overflow:hidden}
+/* ===== 本金追加计算器（全屏浮层，v102.21）===== */
+#calcv{--c1:var(--ink3);--c2:var(--focus);--c3:var(--ink);position:fixed;inset:0;z-index:80;background:var(--bg);display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#calcv.on{display:flex}
+body.cc-on{overflow:hidden}
+#calcv .cc-h{display:flex;align-items:center;gap:14px;height:52px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+#calcv .cc-h .t{font-weight:700;font-size:15px;letter-spacing:.06em}
+#calcv .cc-h .s{font-size:12.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#calcv .cc-h .tb{margin-left:auto;border:1px solid var(--line);flex:none}
+#calcv .cc-b{flex:1 1 auto;min-height:0;overflow:auto;padding:16px 20px 28px}
+#calcv .cc-g{display:grid;grid-template-columns:292px minmax(0,1fr);gap:16px;align-items:start;max-width:1180px;margin:0 auto}
+#calcv .cc-in{position:sticky;top:0}
+#calcv .cc-p{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+#calcv .cc-p>h3{font-size:12.5px;font-weight:500;color:var(--ink3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+#calcv .cc-res{display:flex;flex-direction:column;gap:12px;min-width:0}
+#calcv .cc-f{display:flex;flex-direction:column;gap:4px;margin-bottom:11px;min-width:0}
+#calcv .cc-f label{font-size:12.5px;color:var(--ink2)}
+#calcv .cc-row{display:flex;align-items:center;gap:6px;min-width:0}
+#calcv .cc-u{font-size:12.5px;color:var(--ink3);white-space:nowrap}
+#calcv input,#calcv select{width:100%;min-width:0;font:inherit;font-family:var(--num);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:7px 9px}
+#calcv select{font-family:var(--font)}
+#calcv .cc-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#calcv .cc-3 .cc-f{margin-bottom:4px}
+#calcv .cc-hint{font-size:12.5px;color:var(--ink3);line-height:1.6;margin-top:4px}
+#calcv .cc-sep{border-top:1px solid var(--line2);margin:8px 0 12px}
+#calcv .cc-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#calcv .cc-card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 16px;min-width:0}
+#calcv .cc-card .k{font-size:12.5px;color:var(--ink3);display:flex;align-items:center;gap:7px}
+#calcv .cc-card .v{font-family:var(--num);font-size:28px;font-weight:700;line-height:1.25;margin:3px 0 2px;overflow-wrap:anywhere}
+#calcv .cc-card .d{font-size:12.5px;color:var(--ink2)}
+#calcv .cc-sw{display:inline-block;width:14px;height:0;border-top:3px solid;flex:none}
+#calcv .cc-warn{background:var(--focusS);color:var(--ink);border-left:3px solid var(--focus);border-radius:4px;padding:8px 12px;font-size:13px}
+#calcv .cc-lg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--ink2);margin-bottom:6px}
+#calcv .cc-lg span{display:inline-flex;align-items:center;gap:6px}
+#calcv svg.cc-ch{width:100%;height:auto;display:block}
+#calcv svg.cc-ch text{fill:var(--ink3);font-family:var(--font);font-size:11px}
+#calcv .cc-sc{overflow-x:auto}
+#calcv table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+#calcv th,#calcv td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap;font-size:13px}
+#calcv th:first-child,#calcv td:first-child{text-align:left}
+#calcv th{font-weight:500;color:var(--ink3);font-size:12px}
+#calcv td.n{font-family:var(--num);font-weight:500}
+#calcv tbody tr:last-child td{border-bottom:0}
+#calcv .cc-seg{margin-bottom:8px;display:inline-flex}
+#calcv .cc-note{font-size:12.5px;color:var(--ink2);line-height:1.75;margin-left:1.15em}
+#calcv .ok{color:var(--bear)} #calcv .no{color:var(--bull)}
+@media (max-width:860px){
+  #calcv .cc-g{grid-template-columns:minmax(0,1fr)}
+  #calcv .cc-in{position:static}
+  #calcv .cc-cards{grid-template-columns:minmax(0,1fr)}
+  #calcv .cc-b{padding:12px 12px 24px}
+  #calcv .cc-h{padding:0 12px}
+  #calcv .cc-h .s{display:none}
+}
+
 .sgw{position:relative;display:flex;min-width:0}.sgw>.sg{flex:1}.sgw>.q{position:absolute;top:9px;right:12px;background:var(--surface)}
 .dsl{white-space:normal}
 .plgrid{display:flex;flex-direction:column}.ps1{order:1}.ps2{order:2}.ps3{order:3}.ps4{order:4}.ps5{order:5}
@@ -596,6 +650,7 @@ body.ru-plan .rutcols .rupos{display:none}body.ru-plan .rutcols .rupl2{display:f
       <div class="sync" id="sync"></div>
       <button class="tb" id="flBtn" aria-pressed="false" title="出入金记录、备份与导出">出入金</button>
       <button class="tb" id="setBtn" aria-pressed="false" title="账户设置、出入金、对账校准、云同步">账户</button>
+      <button class="tb" id="calcBtn" aria-pressed="false" title="本金追加计算器：本金加每年追加，多久到目标、每年要追加多少">计算器</button>
       <button class="tb" id="planBtn" aria-pressed="false" title="显示/收起交易计划面板（空仓时默认收起，有持仓时默认展开）">计划</button>
       <button class="tb" id="exBtn" aria-pressed="false" title="显示每一块的白话说明（快捷键 E）">解释</button>
       <button class="tb opt" id="thBtn" title="日夜主题：自动按时间切换">主题</button>

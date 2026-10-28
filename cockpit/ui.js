@@ -1832,6 +1832,96 @@ function refreshed() {   // 后台重取数据后调用：不打断正在输入�
   if (typing) { renderHeader(); renderBand(); renderSig(); renderChecks(); renderWall(false); }
   else renderAll(false);
 }
-window.__cockpit = { shareInfo, shareHtml, acctGet, acctSave, planEquity, planTier, planUpdate, renderSig, drawChart, cloudShort, curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, openSheet, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+
+/* ---------- 本金追加计算器（v102.21）：全屏浮层，纯计算在 logic.js 的 calc* ---------- */
+const CC = { on: false, seg: 1, last: null };
+const CC_IDS = ['start', 'add', 'years', 'goal', 'r1', 'r2', 'r3', 'ladder', 'ddy', 'ddp'];
+const CC_NAMES = ['保守', '中等', '回测值'], CC_COL = ['var(--c1)', 'var(--c2)', 'var(--c3)'];
+const ccNum = (id, d) => { const e = $('#cc-' + id), v = e ? parseFloat(e.value) : NaN; return isFinite(v) ? v : d; };
+function ccShell() {
+  const o = $('#calcv'); if (o) return o;
+  const el = document.createElement('div'); el.id = 'calcv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '本金追加计算器');
+  el.innerHTML = `<div class="cc-h"><span class="t">本金追加计算器</span><span class="s">本金加每年追加，多久到目标，或每年要追加多少</span><button class="tb" id="calcX" aria-label="关闭计算器">关闭 ✕</button></div>
+<div class="cc-b"><div class="cc-g">
+<div class="cc-p cc-in"><h3>你的计划</h3>
+<div class="cc-f"><label for="cc-start">起始本金</label><div class="cc-row"><input id="cc-start" type="number" inputmode="decimal" min="0" step="any" value="10"><span class="cc-u">万元</span></div></div>
+<div class="cc-f"><label for="cc-add">每年追加（第 2 年起，年初到账）</label><div class="cc-row"><input id="cc-add" type="number" inputmode="decimal" min="0" step="any" value="1"><span class="cc-u">万元</span></div></div>
+<div class="cc-f"><label for="cc-years">看多少年</label><div class="cc-row"><input id="cc-years" type="number" inputmode="numeric" min="1" max="40" step="1" value="10"><span class="cc-u">年</span></div></div>
+<div class="cc-f"><label for="cc-goal">目标金额</label><div class="cc-row"><input id="cc-goal" type="number" inputmode="decimal" min="1" step="any" value="500"><span class="cc-u">万元</span></div></div>
+<div class="cc-sep"></div>
+<h3>年化收益（500 万内、45% 档）</h3>
+<div class="cc-3"><div class="cc-f"><label for="cc-r1">保守</label><input id="cc-r1" type="number" inputmode="decimal" step="any" value="24"></div><div class="cc-f"><label for="cc-r2">中等</label><input id="cc-r2" type="number" inputmode="decimal" step="any" value="36"></div><div class="cc-f"><label for="cc-r3">回测值</label><input id="cc-r3" type="number" inputmode="decimal" step="any" value="48"></div></div>
+<p class="cc-hint">单位 %。48% 是历史事件回测的结果，保守按打 5 折，中等按打 75 折。资金变大、档位下降后，收益按档位等比例缩小。</p>
+<div class="cc-sep"></div>
+<div class="cc-f"><label for="cc-ladder">预算档位</label><select id="cc-ladder"><option value="cur">现行 45 / 40 / 25 / 15（本地策略）</option><option value="flat">全程 45%，不降档</option><option value="old">旧阶梯 60 / 40 / 25 / 15（风险高）</option></select></div>
+<div class="cc-f"><label for="cc-ddy">遇到一次回撤（可不填）</label><div class="cc-row"><span class="cc-u">第</span><input id="cc-ddy" type="number" inputmode="numeric" min="0" step="1" value="0" style="max-width:64px"><span class="cc-u">年末亏</span><input id="cc-ddp" type="number" inputmode="decimal" min="0" max="95" step="any" value="20" style="max-width:64px"><span class="cc-u">%</span></div><p class="cc-hint">第 0 年表示不考虑。回测最大回撤约 20%。</p></div>
+</div>
+<div class="cc-res"><div id="cc-warn"></div><div class="cc-cards" id="cc-cards"></div>
+<div class="cc-p"><h3 id="cc-ct">资产曲线</h3><div class="cc-lg" id="cc-lg"></div><svg class="cc-ch" id="cc-ch" viewBox="0 0 680 320" role="img" aria-label="三种年化下的资产曲线，纵轴为对数刻度"></svg></div>
+<div class="cc-p"><h3>到各金额要多久（最长查 50 年）</h3><div class="cc-sc"><table id="cc-ms"></table></div></div>
+<div class="cc-p"><h3 id="cc-nt">每年需追加多少</h3><div class="cc-sc"><table id="cc-nd"></table></div><p class="cc-hint" id="cc-nh"></p></div>
+<div class="cc-p"><h3>逐年明细</h3><div class="seg cc-seg" id="cc-seg" role="group" aria-label="选择情景"></div><div class="cc-sc"><table id="cc-dt"></table></div></div>
+<div class="cc-p"><h3>怎么算的，哪些没算</h3><ul class="cc-note"><li>每月复利。档位 45% 时月收益按你填的年化；档位降到 40% / 25% / 15% 时，收益按 档位 ÷ 45% 缩小（线性缩放是简化，不是回测结果）；旧阶梯 60% 档按回测实测比例 55/48 放大。</li><li>追加从第 2 年起每年年初到账，盈利全部再投，不含手续费以外的税费。</li><li>资金小于约 15 万时，风控公式常算出不到 2 手，规则是不到 2 手不开仓，会漏交易，实际比这里慢。</li><li>没算：豆粕流动性与持仓限额、涨跌停锁死、保证金上调；回撤和极端行情会让时间延后。</li><li>这是把回测年化当作未来年化的情景推演，不是预测。</li></ul></div>
+</div></div></div>`;
+  document.body.appendChild(el);
+  try { const o2 = JSON.parse(localStorage.getItem('cockpit-calc') || 'null'); if (o2) { CC_IDS.forEach(id => { if (o2[id] != null && $('#cc-' + id)) $('#cc-' + id).value = o2[id]; }); if (o2.seg >= 0 && o2.seg < 3) CC.seg = o2.seg; } } catch (_) {}
+  return el;
+}
+function ccChart(sims, P, Y) {
+  const W = 680, H = 320, Lm = 56, Rm = 20, T = 14, B = 30, iw = W - Lm - Rm, ih = H - T - B;
+  const inv = []; let iv = P.start; for (let m = 0; m <= Y * 12; m++) { if (m > 1 && (m - 1) % 12 === 0) iv += P.add; inv.push(iv); }
+  let all = inv.slice(); sims.forEach(s => { all = all.concat(s.eq); });
+  const pos = all.filter(v => v > 0), lo = Math.max(1, Math.min(...pos)), hi = Math.max(...all);
+  const llo = Math.floor(Math.log10(lo)); let lhi = Math.ceil(Math.log10(hi * 1.05)); if (lhi <= llo) lhi = llo + 1;
+  const X = m => Lm + iw * m / (Y * 12), Yv = v => T + ih * (1 - (Math.log10(Math.max(v, Math.pow(10, llo))) - llo) / (lhi - llo));
+  let g = '';
+  for (let e = llo; e <= lhi; e++) [1, 2, 5].forEach(k => { const v = k * Math.pow(10, e), lg = Math.log10(v); if (lg < llo || lg > lhi) return; const y = Yv(v); g += `<line x1="${Lm}" x2="${W - Rm}" y1="${y}" y2="${y}" stroke="var(--line2)"/><text x="${Lm - 6}" y="${y + 4}" text-anchor="end">${v >= 10000 ? v / 10000 + '亿' : v + '万'}</text>`; });
+  const step = Y <= 10 ? 1 : Y <= 20 ? 2 : 5;
+  for (let yy = 0; yy <= Y; yy += step) { const x = X(yy * 12); g += `<line x1="${x}" x2="${x}" y1="${T + ih}" y2="${T + ih + 4}" stroke="var(--ink3)"/><text x="${x}" y="${H - 12}" text-anchor="middle">${yy}</text>`; }
+  g += `<text x="${Lm}" y="${H - 1}">横轴：第几年</text>`;
+  const path = a => a.map((v, m) => (m ? 'L' : 'M') + X(m).toFixed(1) + ' ' + Yv(v).toFixed(1)).join('');
+  g += `<path d="${path(inv)}" fill="none" stroke="var(--ink3)" stroke-width="1.4" stroke-dasharray="5 4" opacity=".7"/>`;
+  sims.forEach((s, i) => { g += `<path d="${path(s.eq)}" fill="none" stroke="${CC_COL[i]}" stroke-width="${i === 2 ? 2.4 : 2}" stroke-linejoin="round"/><circle cx="${X(Y * 12)}" cy="${Yv(s.eq[s.eq.length - 1])}" r="3.5" fill="${CC_COL[i]}"/>`; });
+  if (P.goal >= Math.pow(10, llo) && P.goal <= Math.pow(10, lhi)) { const gy = Yv(P.goal); g += `<line x1="${Lm}" x2="${W - Rm}" y1="${gy}" y2="${gy}" stroke="var(--focus)" stroke-dasharray="2 4"/><text x="${Lm + 4}" y="${gy - 5}" style="fill:var(--focus)">目标 ${esc(L.calcFmt(P.goal))}</text>`; }
+  $('#cc-ch').innerHTML = g;
+}
+function ccRender() {
+  if (!$('#calcv')) return;
+  const P = { start: Math.max(0, ccNum('start', 10)), add: Math.max(0, ccNum('add', 0)), ladder: $('#cc-ladder').value, ddy: Math.max(0, Math.round(ccNum('ddy', 0))), ddp: Math.min(95, Math.max(0, ccNum('ddp', 0))), goal: Math.max(1, ccNum('goal', 500)) };
+  const Y = Math.min(40, Math.max(1, Math.round(ccNum('years', 10)))), R = [ccNum('r1', 24) / 100, ccNum('r2', 36) / 100, ccNum('r3', 48) / 100];
+  const sims = R.map(r => L.calcSim(P, r, Y)), F = L.calcFmt, pct = r => (r * 100).toFixed(0) + '%';
+  const w = []; if (P.start < 15) w.push('起始本金低于约 15 万，手数常不够 2 手，会漏掉部分交易，实际比下面慢。'); if (P.ddy > Y) w.push('回撤年份超过了你看的年数，没有生效。'); if (P.ladder === 'old') w.push('旧阶梯 60% 档在“2 板且保证金升到 15%”的极端情形下有强平风险，本地策略已改为 45%。');
+  $('#cc-warn').innerHTML = w.length ? `<div class="cc-warn">${w.map(esc).join('<br>')}</div>` : '';
+  $('#cc-cards').innerHTML = sims.map((s, i) => `<div class="cc-card"><div class="k"><i class="cc-sw" style="border-color:${CC_COL[i]}"></i>${CC_NAMES[i]} · 年化 ${pct(R[i])}</div><div class="v">${esc(F(s.final))}</div><div class="d">${Y} 年后 · 累计投入 ${esc(F(s.invested))} · 收益 ${esc(F(s.final - s.invested))}</div></div>`).join('');
+  $('#cc-ct').textContent = `资产曲线（${Y} 年，纵轴为对数刻度）`;
+  $('#cc-lg').innerHTML = CC_NAMES.map((n, i) => `<span><i class="cc-sw" style="border-color:${CC_COL[i]}"></i>${n} ${pct(R[i])}</span>`).join('') + '<span><i class="cc-sw" style="border-color:var(--ink3);border-top-style:dashed"></i>累计投入</span>';
+  ccChart(sims, P, Y);
+  const goals = [50, 100, 500, 1000, 5000, 10000]; if (goals.indexOf(P.goal) < 0) { goals.push(P.goal); goals.sort((a, b) => a - b); }
+  $('#cc-ms').innerHTML = `<thead><tr><th>目标</th>${CC_NAMES.map((n, i) => `<th>${n} ${pct(R[i])}</th>`).join('')}</tr></thead><tbody>` + goals.map(g => `<tr><td>${esc(F(g))}${g === P.goal ? ' <span class="cc-u">（你的目标）</span>' : ''}</td>${R.map(r => { const m = L.calcMonthsTo(P, r, g, 50); return `<td class="n">${m == null ? '50 年内到不了' : L.calcYm(m)}</td>`; }).join('')}</tr>`).join('') + '</tbody>';
+  $('#cc-nt').textContent = `${Y} 年内到 ${F(P.goal)}，每年需追加多少`;
+  $('#cc-nd').innerHTML = '<thead><tr><th>情景</th><th>每年追加</th><th>累计投入</th><th>你填的追加</th></tr></thead><tbody>' + R.map((r, i) => { const a = L.calcNeedAdd(P, r, P.goal, Y), ok = P.add >= a - 1e-9; return `<tr><td><i class="cc-sw" style="border-color:${CC_COL[i]};margin-right:6px"></i>${CC_NAMES[i]} ${pct(r)}</td><td class="n">${a <= 0 ? '不用追加' : esc(F(a))}</td><td class="n">${esc(F(P.start + a * (Y - 1)))}</td><td class="${ok ? 'ok' : 'no'}">${ok ? '够' : '不够'}</td></tr>`; }).join('') + '</tbody>';
+  $('#cc-nh').textContent = `起始本金按你填的 ${F(P.start)}。追加从第 2 年起每年年初到账，回撤设置也计入。`;
+  $('#cc-seg').innerHTML = CC_NAMES.map((n, i) => `<button type="button" data-cc-seg="${i}" aria-pressed="${i === CC.seg}">${n} ${pct(R[i])}</button>`).join('');
+  $('#cc-dt').innerHTML = '<thead><tr><th>年</th><th>档位</th><th>年初追加</th><th>年末权益</th><th>累计投入</th><th>累计收益</th><th>本年涨幅</th></tr></thead><tbody>' + sims[CC.seg].yearly.map(y => `<tr><td>第 ${y.year} 年${y.dd ? ` <span class="cc-u">（年末回撤 -${P.ddp}%）</span>` : ''}</td><td class="n">${Math.round(y.tier * 100)}%</td><td class="n">${y.add ? esc(F(y.add)) : '—'}</td><td class="n">${esc(F(y.end))}</td><td class="n">${esc(F(y.invested))}</td><td class="n">${esc(F(y.end - y.invested))}</td><td class="n">${((y.endBefore / y.start - 1) * 100).toFixed(0)}%</td></tr>`).join('') + '</tbody>';
+  CC.last = { P, Y, R, sims };
+  try { const o = { seg: CC.seg }; CC_IDS.forEach(id => { o[id] = $('#cc-' + id).value; }); localStorage.setItem('cockpit-calc', JSON.stringify(o)); } catch (_) {}
+}
+function openCalc() {
+  ccShell(); $('#calcv').classList.add('on'); document.body.classList.add('cc-on'); CC.on = true; const b = $('#calcBtn'); if (b) b.setAttribute('aria-pressed', 'true'); ccRender();
+  setTimeout(() => { const x = $('#calcX'); if (x) x.focus(); }, 30);
+}
+function closeCalc() { const o = $('#calcv'); if (o) o.classList.remove('on'); document.body.classList.remove('cc-on'); CC.on = false; const b = $('#calcBtn'); if (b) { b.setAttribute('aria-pressed', 'false'); b.focus(); } }
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('button'); if (!t) return;
+  if (t.id === 'calcBtn') { if (CC.on) closeCalc(); else openCalc(); } else if (t.id === 'calcX') closeCalc(); else if (t.dataset.ccSeg != null) { CC.seg = +t.dataset.ccSeg; ccRender(); }
+});
+document.addEventListener('input', e => { if (e.target.id && e.target.id.startsWith('cc-')) ccRender(); });
+document.addEventListener('change', e => { if (e.target.id && e.target.id.startsWith('cc-')) ccRender(); });
+document.addEventListener('keydown', e => {
+  if (!CC.on) return;
+  e.stopImmediatePropagation();
+  if (e.key === 'Escape') closeCalc();
+}, true);
+window.__cockpit = { openCalc, closeCalc, shareInfo, shareHtml, acctGet, acctSave, planEquity, planTier, planUpdate, renderSig, drawChart, cloudShort, curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, openSheet, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 
