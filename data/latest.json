@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-28T17:16:58.578579+00:00",
+  "generatedAt": "2026-10-28T18:29:23.357549+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 336.1,
-    "change": 1.5,
-    "changePct": 0.45,
+    "price": 335.2,
+    "change": 0.6,
+    "changePct": 0.18,
     "asOf": "2026-10-28T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -872,7 +872,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7ff465aac5d0>, 'Connection to x",
+    "carriedFrom": "2026-10-28T17:16:58.578579+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1083,212 +1086,8 @@
     }
   },
   "costAnchor": {
-    "available": true,
-    "fx": 6.6664,
-    "contracts": {
-      "sep": {
-        "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1266.75,
-        "zsDate": "2026-10-28",
-        "zsExact": true,
-        "zsNote": "",
-        "mealSymbol": "M2709",
-        "mealPrice": 2940.0,
-        "oilPrice": 8563.0,
-        "priceDate": "2026-10-28",
-        "primary": null,
-        "brazil": {
-          "beanPrice": 3736.0,
-          "breakeven": 2932.3,
-          "impliedPremium": 55.4,
-          "available": true,
-          "zsCents": 1266.75,
-          "fx": 6.6664,
-          "mealPrice": 2940.0,
-          "oilPrice": 8563.0,
-          "beanCost": 4037.4,
-          "mealCost": 3316.2,
-          "mealCostLow": 3141.0,
-          "mealCostHigh": 3491.3,
-          "gap": -376.2,
-          "gapPct": -11.3,
-          "position": "below",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "巴西豆",
-            "tariff": 0.03,
-            "premium_cents": 165,
-            "premium_confirmed": false,
-            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
-            "ship": "2027年6~7月船期(用2026年同月快照类推)",
-            "note": "巴西2026年6月155、7月175(对N合约)，平均165，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        },
-        "us": {
-          "beanPrice": 3736.0,
-          "breakeven": 2932.3,
-          "impliedPremium": -61.6,
-          "available": true,
-          "zsCents": 1266.75,
-          "fx": 6.6664,
-          "mealPrice": 2940.0,
-          "oilPrice": 8563.0,
-          "beanCost": 4730.4,
-          "mealCost": 4199.0,
-          "mealCostLow": 4006.8,
-          "mealCostHigh": 4391.2,
-          "gap": -1259.0,
-          "gapPct": -30.0,
-          "position": "below",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "美豆",
-            "tariff": 0.13,
-            "premium_cents": 268,
-            "premium_confirmed": false,
-            "source_note": "关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换",
-            "ship": "2027年7月船期(用2026年同月快照类推)",
-            "note": "美湾2026年7月265~272(对N合约)，取中值268，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        }
-      },
-      "may": {
-        "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1251.5,
-        "zsDate": "2026-10-28",
-        "zsExact": true,
-        "zsNote": "",
-        "mealSymbol": "M2705",
-        "mealPrice": 2850.0,
-        "oilPrice": 8753.0,
-        "priceDate": "2026-10-28",
-        "primary": "brazil",
-        "brazil": {
-          "beanPrice": 3685.0,
-          "breakeven": 2822.5,
-          "impliedPremium": 52.1,
-          "available": true,
-          "zsCents": 1251.5,
-          "fx": 6.6664,
-          "mealPrice": 2850.0,
-          "oilPrice": 8753.0,
-          "beanCost": 3868.9,
-          "mealCost": 3056.8,
-          "mealCostLow": 2881.7,
-          "mealCostHigh": 3232.0,
-          "gap": -206.8,
-          "gapPct": -6.8,
-          "position": "below",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "巴西豆",
-            "tariff": 0.03,
-            "premium_cents": 119,
-            "premium_confirmed": false,
-            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
-            "ship": "2027年2~3月船期",
-            "note": "巴西2月130~135(中值132.5)、3月100~112(中值106)，平均约119，对CBOT 3月(H)。阿根廷豆没有单独报价。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        },
-        "us": {
-          "available": false,
-          "reason": "该合约对应的船期没有这个豆源的报价(或不是主要来源)，不编数"
-        }
-      },
-      "jan": {
-        "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1229.75,
-        "zsDate": "2026-10-28",
-        "zsExact": true,
-        "zsNote": "",
-        "mealSymbol": "M2701",
-        "mealPrice": 3208.0,
-        "oilPrice": 9006.0,
-        "priceDate": "2026-10-28",
-        "primary": "us",
-        "brazil": {
-          "beanPrice": 4000.0,
-          "breakeven": 3164.2,
-          "impliedPremium": 188.4,
-          "available": true,
-          "zsCents": 1229.75,
-          "fx": 6.6664,
-          "mealPrice": 3208.0,
-          "oilPrice": 9006.0,
-          "beanCost": 4141.9,
-          "mealCost": 3344.9,
-          "mealCostLow": 3169.7,
-          "mealCostHigh": 3520.1,
-          "gap": -136.9,
-          "gapPct": -4.1,
-          "position": "within",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "巴西豆",
-            "tariff": 0.03,
-            "premium_cents": 240,
-            "premium_confirmed": false,
-            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
-            "ship": "2026年10~11月船期(无报价，借用9月船期)",
-            "note": "巴西10~11月船期没有报价，借用9月船期X合约240美分，仅作参考。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        },
-        "us": {
-          "beanPrice": 4000.0,
-          "breakeven": 3164.2,
-          "impliedPremium": 62.9,
-          "available": true,
-          "zsCents": 1229.75,
-          "fx": 6.6664,
-          "mealPrice": 3208.0,
-          "oilPrice": 9006.0,
-          "beanCost": 4655.0,
-          "mealCost": 3998.5,
-          "mealCostLow": 3806.4,
-          "mealCostHigh": 4190.7,
-          "gap": -790.5,
-          "gapPct": -19.8,
-          "position": "below",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "美豆",
-            "tariff": 0.13,
-            "premium_cents": 280,
-            "premium_confirmed": false,
-            "source_note": "关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换",
-            "ship": "2026年10~11月船期",
-            "note": "美湾CNF：10月277~281、11月282~283，取中值约280。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        }
-      }
-    },
-    "fxDate": "2026-10-28",
-    "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
+    "available": false,
+    "reason": "美元兑人民币汇率缺失，成本锚不计算"
   },
   "brazilPlantingProgress": {
     "available": true,
@@ -1694,24 +1493,6 @@
         "available": true,
         "pointResults": [
           {
-            "outlook": "Removal",
-            "outlookLabel": "干旱解除",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
             "outlook": "No_Drought",
             "outlookLabel": "预计无旱",
             "targetPeriod": "Oct 2026",
@@ -1742,7 +1523,7 @@
             "forecastDate": "09/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 5,
         "worseningCount": 0,
         "worseningPct": 0.0,
         "dominantOutlook": "No_Drought",
@@ -1787,21 +1568,9 @@
             "outlookLabel": "预计无旱",
             "targetPeriod": "Oct 2026",
             "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 6,
         "worseningCount": 0,
         "worseningPct": 0.0,
         "dominantOutlook": "No_Drought",
@@ -1809,63 +1578,7 @@
         "targetPeriod": "Oct 2026"
       },
       "MN": {
-        "available": true,
-        "pointResults": [
-          {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "Improvement",
-            "outlookLabel": "干旱改善",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "Removal",
-            "outlookLabel": "干旱解除",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          }
-        ],
-        "totalPoints": 8,
-        "worseningCount": 4,
-        "worseningPct": 50.0,
-        "dominantOutlook": "Persistence",
-        "dominantOutlookLabel": "干旱持续",
-        "targetPeriod": "Oct 2026"
+        "available": false
       },
       "IN": {
         "available": true,
@@ -1911,15 +1624,9 @@
             "outlookLabel": "预计无旱",
             "targetPeriod": "Oct 2026",
             "forecastDate": "09/30/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 7,
         "worseningCount": 0,
         "worseningPct": 0.0,
         "dominantOutlook": "No_Drought",
@@ -1966,21 +1673,15 @@
             "forecastDate": "09/30/2026"
           },
           {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
             "outlook": "Removal",
             "outlookLabel": "干旱解除",
             "targetPeriod": "Oct 2026",
             "forecastDate": "09/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 7,
         "worseningCount": 1,
-        "worseningPct": 12.5,
+        "worseningPct": 14.3,
         "dominantOutlook": "No_Drought",
         "dominantOutlookLabel": "预计无旱",
         "targetPeriod": "Oct 2026"
@@ -2399,9 +2100,9 @@
         "targetPeriod": "Oct 2026"
       }
     },
-    "avgWorseningPct": 9.2,
-    "simpleWorseningPct": 9.4,
-    "overallSignal": 0,
+    "avgWorseningPct": 4.6,
+    "simpleWorseningPct": 5.8,
+    "overallSignal": -1,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
     "debug": {
@@ -2410,20 +2111,19 @@
           "lat": 42.4966,
           "lon": -96.4058,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.4058%2C+%22y%22%3A+42.4966%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Removal\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "error": "The read operation timed out"
         },
         "point1": {
           "lat": 43.1548,
           "lon": -93.201,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.201%2C+%22y%22%3A+43.1548%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "error": "The read operation timed out"
         },
         "point2": {
           "lat": 42.5006,
           "lon": -90.6646,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-90.6646%2C+%22y%22%3A+42.5006%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
@@ -2439,7 +2139,7 @@
           "lon": -93.625,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.625%2C+%22y%22%3A+41.5868%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point5": {
           "lat": 41.9779,
@@ -2476,6 +2176,7 @@
           "lon": -87.6298,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-87.6298%2C+%22y%22%3A+41.8781%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
         "point2": {
@@ -2497,14 +2198,14 @@
           "lon": -89.6501,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.6501%2C+%22y%22%3A+39.7817%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point5": {
           "lat": 39.9356,
           "lon": -91.4098,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.4098%2C+%22y%22%3A+39.9356%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point6": {
           "lat": 38.5201,
@@ -2527,56 +2228,56 @@
           "lon": -93.4111,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.4111%2C+%22y%22%3A+48.6011%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point1": {
           "lat": 46.8739,
           "lon": -96.7678,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.7678%2C+%22y%22%3A+46.8739%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Improvement\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point2": {
           "lat": 46.7867,
           "lon": -92.1005,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-92.1005%2C+%22y%22%3A+46.7867%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point3": {
           "lat": 46.358,
           "lon": -94.2008,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-94.2008%2C+%22y%22%3A+46.358%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point4": {
           "lat": 44.9778,
           "lon": -93.265,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.265%2C+%22y%22%3A+44.9778%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point5": {
           "lat": 44.4472,
           "lon": -95.7889,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-95.7889%2C+%22y%22%3A+44.4472%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Removal\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point6": {
           "lat": 44.0121,
           "lon": -92.4802,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-92.4802%2C+%22y%22%3A+44.0121%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point7": {
           "lat": 43.6478,
           "lon": -93.3683,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.3683%2C+%22y%22%3A+43.6478%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         }
       },
       "IN": {
@@ -2613,7 +2314,7 @@
           "lon": -86.1581,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-86.1581%2C+%22y%22%3A+39.7684%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point5": {
           "lat": 37.9716,
@@ -2677,6 +2378,7 @@
           "lat": 40.8136,
           "lon": -96.7026,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.7026%2C+%22y%22%3A+40.8136%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
@@ -2684,8 +2386,9 @@
           "lat": 41.2565,
           "lon": -95.9345,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-95.9345%2C+%22y%22%3A+41.2565%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "httpStatus": 504,
+          "error": "HTTP 504: Gateway Time-out",
+          "rawSnippet": "<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n"
         },
         "point7": {
           "lat": 40.2013,
@@ -2721,6 +2424,7 @@
           "lat": 39.9612,
           "lon": -82.9988,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-82.9988%2C+%22y%22%3A+39.9612%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "HTTP 504: Gateway Time-out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
@@ -2743,6 +2447,7 @@
           "lon": -84.512,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.512%2C+%22y%22%3A+39.1031%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
         "point7": {
@@ -22038,5 +21743,7 @@
       ]
     }
   },
-  "carriedKeys": []
+  "carriedKeys": [
+    "hogRatio"
+  ]
 }
