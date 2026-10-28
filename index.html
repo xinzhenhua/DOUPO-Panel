@@ -2260,7 +2260,11 @@ function pxLabel(ps) {   // 价格卡上价格旁边的小字：说明这个价�
   return md + (l.prov ? ' 日盘收' + (l.hm ? ' ' + l.hm : '') : ' 收盘');
 }
 function lastBarD() { const d = lastDayD(); return d ? '（' + d.slice(5) + '）' : ''; }
-function livePnl(t, ho) {   // 盘中参考浮盈（按最新15分钟/小时价），结论仍按收盘
+function livePnl(t, ho) {   // 盘中参考浮盈：优先用实时价（3秒一次），其次最新15分钟/小时价；止损/止盈/离场结论仍按收盘判定
+  try {
+    const tk = curTick(120000);
+    if (tk && ho && ho.lastD && tradeDayOf(tk.dt.slice(0, 16)) > ho.lastD) { const px = tk.c * (ho.k || 1); return { px, fl: planPnl(t, px), r: (t.side >= 0 ? 1 : -1) * (px / t.entryPx - 1) * 100, dt: tk.dt.slice(5, 16), src: '实时', tick: true }; }
+  } catch (_) {}
   try { const lv = D.live && D.live[S.key], kd = lastDayD(); if (!lv || !kd || lv.dt.slice(0, 10) <= kd) return null; const px = lv.c * (ho.k || 1); return { px, fl: planPnl(t, px), r: (t.side >= 0 ? 1 : -1) * (px / t.entryPx - 1) * 100, dt: lv.dt.slice(5), src: lv.src }; } catch (_) { return null; }
 }
 function liveTxt() {   // 盘中价（小时线），只在比日线新时显示
@@ -2317,6 +2321,22 @@ function candChips(sg) {
   else if (sg.fxCand) h += '<span class="sc sep" title="没有充分验证，默认不启用。要用：点信号格里的「数据和口径说明」，拉到最下面看回测再决定">候选：外资加杠杆 ' + f(sg.fxMax) + ' 手做多（未启用）</span>';
   return h;
 }
+let POSLIVE = null;   // 最近一次渲染的持仓快照（收盘口径），实时价到来时据此重算浮盈亏，不重画整块
+function posLiveParts() {
+  const P = POSLIVE; if (!P) return null;
+  const { t, ho, fl, r, eq } = P, lp = livePnl(t, ho), f = lp ? lp.fl : fl, rr = lp ? lp.r : r, E2 = eq + (lp ? lp.fl - fl : 0);
+  return { up: f >= 0, lp,
+    big: `${yuan(f)} <small>元</small>${lp ? ` <small class="lvtag">${lp.tick ? '实时' : '盘中'} ${esc(lp.dt.slice(6))}</small>` : ''}`,
+    sb: `${rr >= 0 ? '+' : ''}${rr.toFixed(1)}% · 账户权益 <b>${fmtD(E2)}</b> 元${lp ? `<br>${lp.tick ? '实时' : '盘中'}价 ${fmtD(lp.px)} · 收盘口径 ${yuan(fl)} 元${lp.r <= -TPLAN.STOP ? ' ⚠️已到止损线（按收盘判定）' : ''}` : ''}`,
+    px: lp ? fmtD(lp.px) : fmtD(ho.last), pxs: lp ? (lp.tick ? '实时 ' : '盘中 ') + esc(lp.dt.slice(6)) : '截至 ' + (ho.lastD ? esc(ho.lastD.slice(5)) : '开仓日') };
+}
+function posLivePaint() {   // 实时价到来：只改持仓卡的三个文本和「现价」卡，不重画
+  try {
+    const big = document.getElementById('pos-big'), sb = document.getElementById('pos-sb'), pl = posLiveParts(); if (!pl) return;
+    if (big && sb) { big.innerHTML = pl.big; big.style.color = pl.up ? 'var(--bull)' : 'var(--bear)'; sb.innerHTML = pl.sb; }
+    const c = document.querySelector('.hvk[data-lv="px"]'); if (c) { const b = c.querySelector('b'), e = c.querySelector('em'); if (b) b.textContent = pl.px; if (e) e.innerHTML = pl.pxs; }
+  } catch (_) {}
+}
 function renderSig() {
   const el = $('#sigbar'); if (!el) return;
   const s = planSnap(), sg = s.sig, F = s.F, f2 = n => (n >= 0 ? '+' : '−') + Math.abs(Math.round(n)).toLocaleString('en-US'), chip = (ok, t) => `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${t}</span>`;
@@ -2337,9 +2357,10 @@ function renderSig() {
     const fch = sd ? chip(!m.delevOut, m.delevOut ? '外资去杠杆' : '外资未去杠杆') : chip(!(F.used.length && F.sum >= 0), '外资合计 ' + (F.used.length ? f2(F.sum) : '无数据') + (F.sum >= 0 && F.used.length ? '（回正）' : '，未回正')) + (sg.ma20 != null ? chip(!(ho.last > sg.ma20 * ho.k), '未站上MA20') : '');
     left = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="toggle" aria-label="持仓信号：${out ? '该平仓：' + m.action : '继续持有'}。点击展开或收起交易计划"><div class="cl">收盘${lastBarD()} ${fmtD(ho.last)}${liveTxt()}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>${out ? `<div class="sb">${esc(why)}</div>` : ''}
     <div class="scs">${chip(!m.stop, '止损 ' + fmtD(stopPx) + '（距 ' + stopGap.toFixed(1) + '%）')}${chip(!m.trail, m.peakR >= TPLAN.ACT ? '移动止盈已启动' : '移动止盈未启动')}${fch}</div>${blocked ? dsl : ''}</button>`;
-    const up = fl >= 0, lp = livePnl(t, ho);
-    right = `<div class="sgw rt"><div class="sg pos ${out ? 'exit' : 'hold'}" aria-label="持仓：${sdName(t.side)}${t.lots}手，浮盈亏 ${yuan(fl)} 元"><div class="cl">${sdName(t.side)} ${fmtD(t.lots)} 手 @${fmtD(t.entryPx)} · ${esc(t.entryD.slice(5))}</div><div class="hd big" style="color:${up ? 'var(--bull)' : 'var(--bear)'}">${yuan(fl)} <small>元</small></div>
-      <div class="sb">${m.r >= 0 ? '+' : ''}${m.r.toFixed(1)}% · 账户权益 <b>${fmtD(s.E.equity)}</b> 元${lp ? `<br>盘中 ${fmtD(lp.px)}：${yuan(lp.fl)} 元${lp.r <= -TPLAN.STOP ? ' ⚠️已到止损线' : ''}` : ''}</div></div>${qb('placct')}</div>`;
+    POSLIVE = { t, ho, fl, r: m.r, eq: s.E.equity };
+    const pl = posLiveParts();
+    right = `<div class="sgw rt"><div class="sg pos ${out ? 'exit' : 'hold'}" aria-label="持仓：${sdName(t.side)}${t.lots}手，浮盈亏 ${yuan(fl)} 元"><div class="cl">${sdName(t.side)} ${fmtD(t.lots)} 手 @${fmtD(t.entryPx)} · ${esc(t.entryD.slice(5))}</div><div class="hd big" id="pos-big" style="color:${pl.up ? 'var(--bull)' : 'var(--bear)'}">${pl.big}</div>
+      <div class="sb" id="pos-sb">${pl.sb}</div></div>${qb('placct')}</div>`;
   }
   el.innerHTML = `<div class="sgw">${left}${qb(s.pos ? 'plpos' : 'plsig')}</div>` + right;
   applyPlanVis();
@@ -2490,9 +2511,10 @@ function planBodyHtml(s) {
     const why2 = !out ? '没有触发止损、移动止盈或外资离场。' : m.action === '止损' ? `浮亏 ${(-m.r).toFixed(1)}%，已到 ${TPLAN.STOP}% 止损。` : m.action === '移动止盈' ? `持仓期间最高浮盈 ${m.peakR.toFixed(1)}%（≥${TPLAN.ACT}%），且从${sd ? '最高' : '最低'}价回落已到 ${TPLAN.TRAIL}%。` : m.action === '外资去杠杆·平多' ? `${esc(s.F.minK)} 5日变化 ${f2(s.F.min)} 手，≤ ${f2(TPLAN.DELEV)}。` : `外资三家合计5日变化 ${f2(s.F.sum)} 手（≥0），或价格已站上MA20。`;
     const trigPx = sd ? ho.peak * (1 - TPLAN.TRAIL / 100) : ho.peak * (1 + TPLAN.TRAIL / 100), stopPx = t.entryPx * (1 - (sd ? 1 : -1) * TPLAN.STOP / 100), actPx = t.entryPx * (1 + (sd ? 1 : -1) * TPLAN.ACT / 100);
     const trailTxt = m.peakR >= TPLAN.ACT ? `已启动：${sd ? '跌破' : '涨过'} ${fmtD(trigPx)} 平仓（距现价 ${Math.abs((trigPx / ho.last - 1) * 100).toFixed(1)}%）` : `未启动（最高浮盈 ${m.peakR.toFixed(1)}% < ${TPLAN.ACT}%）；价格到 ${fmtD(actPx)} 后启动`;
-    const dist = x => Math.abs((x / ho.last - 1) * 100).toFixed(1) + '%', card = (l, v, sub, tone) => `<div class="hvk${tone ? ' t' + tone : ''}"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
+    const dist = x => Math.abs((x / ho.last - 1) * 100).toFixed(1) + '%', card = (l, v, sub, tone, at) => `<div class="hvk${tone ? ' t' + tone : ''}"${at || ''}><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
     const rtr = Math.max(0, sd ? (1 - ho.last / ho.peak) * 100 : (ho.last / ho.peak - 1) * 100), stGap = Math.abs((stopPx / ho.last - 1) * 100), fTone = sd ? (s.F.min > 0 ? 'g' : s.F.min > TPLAN.DELEV ? 'a' : 'r') : (s.F.sum < 0 ? 'g' : 'r'), uTone = usage < 0.5 ? 'g' : usage < 0.8 ? 'a' : 'r';
-    h += `<div class="hv">${card('现价', fmtD(ho.last), '截至 ' + (ho.lastD ? esc(ho.lastD.slice(5)) : '开仓日'), fl >= 0 ? 'r' : 'g')}${card('止损价', fmtD(stopPx), '距现价 ' + dist(stopPx), stGap < 1 ? 'r' : 'a')}${card('移动止损', m.peakR >= TPLAN.ACT ? fmtD(trigPx) : '未启动', m.peakR >= TPLAN.ACT ? '止损已改到此价 · 距 ' + dist(trigPx) : '到 ' + fmtD(actPx) + ' 改成移动止损', m.peakR >= TPLAN.ACT ? 'g' : '')}${card('回撤', rtr.toFixed(1) + '%', (sd ? '最高 ' : '最低 ') + fmtD(ho.peak) + ' · 最高浮盈 ' + m.peakR.toFixed(1) + '%', m.peakR >= TPLAN.ACT ? (rtr >= TPLAN.TRAIL * 0.75 ? 'r' : 'a') : (rtr > 0 ? 'a' : 'g'))}${card('持有', ho.days + ' 天', '风险度 ' + pc1(usage), uTone)}${card(sd ? '外资最弱席位' : '外资三家合计', (sd ? f2(s.F.min) : f2(s.F.sum)) + ' 手', sd ? esc(s.F.parts.length ? s.F.minK.replace('期货', '') : '5日变化') : '5日变化', fTone)}</div>
+    POSLIVE = { t, ho, fl, r: m.r, eq: s.E.equity }; const pl0 = posLiveParts();
+    h += `<div class="hv">${card('现价', pl0.px, pl0.pxs, fl >= 0 ? 'r' : 'g', ' data-lv="px"')}${card('止损价', fmtD(stopPx), '距现价 ' + dist(stopPx), stGap < 1 ? 'r' : 'a')}${card('移动止损', m.peakR >= TPLAN.ACT ? fmtD(trigPx) : '未启动', m.peakR >= TPLAN.ACT ? '止损已改到此价 · 距 ' + dist(trigPx) : '到 ' + fmtD(actPx) + ' 改成移动止损', m.peakR >= TPLAN.ACT ? 'g' : '')}${card('回撤', rtr.toFixed(1) + '%', (sd ? '最高 ' : '最低 ') + fmtD(ho.peak) + ' · 最高浮盈 ' + m.peakR.toFixed(1) + '%', m.peakR >= TPLAN.ACT ? (rtr >= TPLAN.TRAIL * 0.75 ? 'r' : 'a') : (rtr > 0 ? 'a' : 'g'))}${card('持有', ho.days + ' 天', '风险度 ' + pc1(usage), uTone)}${card(sd ? '外资最弱席位' : '外资三家合计', (sd ? f2(s.F.min) : f2(s.F.sum)) + ' 手', sd ? esc(s.F.parts.length ? s.F.minK.replace('期货', '') : '5日变化') : '5日变化', fTone)}</div>
     ${ho.covered ? '' : `<div class="plh">开仓日晚于已有价格数据，最高/最低价暂按开仓价，数据更新后自动补上。</div>`}
     <div class="plt hvc">${out ? '已平仓？记一笔' : '平仓'}</div><div class="plf">
       <label>平仓日期${inp('pf-cd', todayBJ(), 'YYYY-MM-DD')}</label>
@@ -2568,7 +2590,7 @@ function expectHtml(s) {
   const sd = t.side > 0, src = planSrc(t), own = src === 'own', bt = sd ? TBT.long : TBT.short, not = t.lots * TPLAN.TON * t.entryPx, A = s.A, fee = (+A.fee || 0) * t.lots, yv = v => yuan(Math.round(v)), w = planWilson(Math.round(bt.win * bt.n), bt.n);
   const win = own && x ? x.win : bt.win, exp = (own && x ? x.mean : bt.avg) * not / 100 - fee, loss = -TPLAN.STOP * not / 100 - fee, rrBt = Math.abs(bt.avgWin / bt.avgLoss);
   const gainY = own && x ? x.gainNow : bt.avgWin, lossY = own && x ? x.lossNow : Math.abs(bt.avgLoss);
-  const card = (l, v, sub, tone) => `<div class="hvk${tone ? ' t' + tone : ''}"><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
+  const card = (l, v, sub, tone, at) => `<div class="hvk${tone ? ' t' + tone : ''}"${at || ''}><i>${l}</i><b>${v}</b>${sub ? `<em>${sub}</em>` : ''}</div>`;
   const F = s.F, tail = F.used && F.used.length ? (sd ? F.min > TPLAN.DELEV : F.sum < 0) : null, ma = s.sig && s.sig.ma20 != null ? ho.last < s.sig.ma20 * ho.k : null, against = tail === false;
   const chip = (ok, txt) => ok == null ? '' : `<span class="sc ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'} ${txt}</span>`;
   const rr = x ? x.rrNow : null, adv = planAdvice({ src, side: t.side, r: s.mg ? s.mg.r : 0, rr, ev: x ? x.evNow : 0, gain: x ? x.gainNow : 0, loss: x ? x.lossNow : 0, act: s.mg ? s.mg.action : '持有', against, entry: t.entryPx, entryTxt: fmtD(t.entryPx) });
@@ -2910,6 +2932,7 @@ function tickInfo() {
 }
 function tickPaint() {
   try { pxPaint(); tickChart(); } catch (_) {}
+  posLivePaint();
   const el = document.getElementById('tick'); if (!el) return;
   let x = null; try { x = tickInfo(); } catch (_) {}
   if (!x) { el.innerHTML = ''; el.style.display = 'none'; return; }

@@ -151,6 +151,19 @@ def main():
     tr0 = pg.evaluate("(() => { const t = window.__cockpit.planSnap().A.trades[0]; return { n: t.note, ref: t.refPx, slip: t.slipO, pred: t.pred }; })()")
     ok('开仓时存了备注、信号日收盘价、开仓滑点、系统预计（胜率/期望/盈亏比）', tr0['n'] == '测试备注' and tr0['ref'] > 0 and tr0['slip'] is not None and tr0['pred'] is not None and 0 < tr0['pred']['win'] < 1, tr0)
     ok('持仓中的交易表格行已经显示实时最大浮盈/浮亏', '最大浮盈' in pg.evaluate("document.getElementById('planBody').innerText"))
+    # v102.23：持仓卡的浮盈亏/权益/现价跟实时价走；收盘口径仍保留
+    lv = pg.evaluate("""(() => {
+      const C = window.__cockpit, D = window.__DATA__, k = C.S.key, big = () => document.getElementById('pos-big').innerText, sb = () => document.getElementById('pos-sb').innerText, px = () => document.querySelector('.hvk[data-lv=\"px\"] b').innerText;
+      const saved = D.ticks, b0 = big(), p0 = px(), c0 = C.planSnap().hold.last;
+      D.ticks = { [k]: { key: k, sym: 'x', c: c0 + 50, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: false } }; C.tickPaint();
+      const up = { big: big(), sb: sb(), px: px() };
+      D.ticks = { [k]: { key: k, sym: 'x', c: c0 - 50, dt: '2099-01-03 21:30:08', at: Date.now(), dir: -1, flash: false } }; C.tickPaint();
+      const dn = { big: big(), px: px() };
+      D.ticks = {}; C.tickPaint(); const back = { big: big(), px: px() };
+      D.ticks = saved; return { b0, p0, up, dn, back };
+    })()""")
+    ok('持仓卡：实时价到来后浮盈亏标「实时」、现价跟着变、多头涨则浮盈增加', '实时' in lv['up']['big'] and lv['up']['px'] != lv['p0'] and lv['dn']['px'] != lv['up']['px'] and '收盘口径' in lv['up']['sb'] and '账户权益' in lv['up']['sb'], lv)
+    ok('持仓卡：实时价消失后回到收盘口径（不再标实时）', '实时' not in lv['back']['big'] and lv['back']['px'] == lv['p0'], lv)
     pg.fill('#pf-cd', hd['d'][-1]); pg.fill('#pf-cp', str(p0 + 100)); pg.evaluate("document.getElementById('pf-more-c').open = true"); pg.select_option('#pf-cr', 'protect'); pg.fill('#pf-cn', '怕回吐'); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()")
     rs0 = pg.evaluate("window.__cockpit.planSnap().A.trades[0].res")
     ok('平仓时存了原因/备注/持有天数/最大浮盈浮亏/价格路径', rs0 and rs0['reason'] == 'protect' and rs0['note'] == '怕回吐' and rs0['days'] >= 1 and rs0['mfe'] is not None and rs0['mae'] is not None and len(rs0['path']) >= 2, rs0)
