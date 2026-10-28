@@ -147,7 +147,7 @@ function viewCost() {
 /* ---- 交易计划：规则 + 信号 + 仓位计算器 + 回测摘要（v101.25） ---- */
 /* PLAN_BEGIN —— 交易计划纯函数（v101.25）：和回测同一口径，不碰 DOM，便于单测 */
 const TPLAN = {
-  TIERS: [[5000000, .6], [15000000, .4], [50000000, .25], [Infinity, .15]],   // [权益上限(元), 占用]：<500万 60%；<1500万 40%；<5000万 25%；其余 15%
+  TIERS: [[5000000, .55], [15000000, .4], [50000000, .25], [Infinity, .15]],   // [权益上限(元), 占用]：<500万 55%（v102.22 起，原 60%）；<1500万 40%；<5000万 25%；其余 15%
   STOP: 4, TRAIL: 4, ACT: 8,          // 止损4%；移动止盈：持仓期间最高浮盈≥8% 之后，从持仓最高(低)价回落≥4% 平仓（回测验证过的等价写法）
   LO: 50, DELEV: -20000,              // 低位：近260日分位≤50；任一外资席位5日变化≤-2万手=去杠杆（看单个席位，不看合计：席位之间可能互相对冲）
   BT_MARGIN: .10, TON: 10,            // 回测保证金10%；每手10吨
@@ -1516,7 +1516,7 @@ ABOUT.plan = ['交易计划怎么用', `<p>页面分「交易」和「研究」�
 <li><b>平空</b>（任一触发）：亏4%止损；持仓期间最高浮盈到过 ≥8% 后，从最低价反弹4%；外资<b>三家合计</b>5日变化 ≥0（外资回正）；价格站上MA20。</li>
 <li><b>入场价（挂条件单用）</b>：信号出现后，下一个交易日挂<b>限价单</b>：做多 ≤ 信号日收盘价、做空 ≥ 信号日收盘价，当日有效，没成交就作废、不追（第二天信号还在会重新给价）。跳空低开（做空是高开）时按开盘价成交，等于不追高。回测（收盘价限价）：5年终值中位 830万 / 夏普 1.11，95% 的信号能成交，不比开盘市价（735万）差。页面建议价是<b>收盘价回调 0.3%</b>（做空是反弹 0.3%）：成交率约 83%，没成交就作废，回测 5年终值中位 1022万，高于挂收盘价的 830万——但这是少数单的路径、样本小；想求稳就挂收盘价。回调 0.5% 成交率 58%（919万），回调 1% 成交率只剩 22%、终值掉到 337万——<b>回调不要挂得更深</b>。止损价按<b>实际成交价</b>×(1∓4%)重新算，页面给的止损价是按收盘价算的参考。</li>
 <li><b>已有持仓时</b>不加仓；同一时间只持一个方向。</li>
-<li><b>占用阶梯</b>：权益<500万 60%；500~1500万 40%；1500~5000万 25%；其后 15%（页面底部可展开）。手数 = 权益×占用 ÷（每吨×10吨×保证金）。没有账户回撤熔断。</li>
+<li><b>占用阶梯</b>：权益<500万 55%（v102.22 起；此前 60%）；500~1500万 40%；1500~5000万 25%；其后 15%（页面底部可展开）。手数 = 权益×占用 ÷（每吨×10吨×保证金）。没有账户回撤熔断。</li>
 <li><b>平空为什么看合计、去杠杆却看单个席位</b>：回测里两种平空口径几乎一样（14笔空单里13笔完全相同，只差一笔 +1.2%），不是证明出来的优劣，按回测验证过的口径写。</li></ul>
 <p><b>权益怎么算</b>：初始资金 + 出入金 + 已平仓盈亏 + 持仓浮动盈亏 − 手续费。要追加资金（比如每年加20万）就记一笔入金；和期货公司账户对不上时用「按实际权益校准」，系统会记一笔差额。</p>
 <p><b>最高/最低价怎么来</b>：用主力连续日线收盘价，从你的开仓日取到最新一天，和回测同口径（盘中最高价不计）。你的开仓价和主连差超过2%时按开仓日折算。信号和离场判断都只在收盘后看一次。</p>
@@ -1849,11 +1849,11 @@ function ccShell() {
 <div class="cc-f"><label for="cc-years">看多少年</label><div class="cc-row"><input id="cc-years" type="number" inputmode="numeric" min="1" max="40" step="1" value="10"><span class="cc-u">年</span></div></div>
 <div class="cc-f"><label for="cc-goal">目标金额</label><div class="cc-row"><input id="cc-goal" type="number" inputmode="decimal" min="1" step="any" value="500"><span class="cc-u">万元</span></div></div>
 <div class="cc-sep"></div>
-<h3>年化收益（500 万内、45% 档）</h3>
-<div class="cc-3"><div class="cc-f"><label for="cc-r1">保守</label><input id="cc-r1" type="number" inputmode="decimal" step="any" value="24"></div><div class="cc-f"><label for="cc-r2">中等</label><input id="cc-r2" type="number" inputmode="decimal" step="any" value="36"></div><div class="cc-f"><label for="cc-r3">回测值</label><input id="cc-r3" type="number" inputmode="decimal" step="any" value="48"></div></div>
-<p class="cc-hint">单位 %。48% 是历史事件回测的结果，保守按打 5 折，中等按打 75 折。资金变大、档位下降后，收益按档位等比例缩小。</p>
+<h3>年化收益（500 万内、55% 档）</h3>
+<div class="cc-3"><div class="cc-f"><label for="cc-r1">保守</label><input id="cc-r1" type="number" inputmode="decimal" step="any" value="26"></div><div class="cc-f"><label for="cc-r2">中等</label><input id="cc-r2" type="number" inputmode="decimal" step="any" value="39"></div><div class="cc-f"><label for="cc-r3">回测值</label><input id="cc-r3" type="number" inputmode="decimal" step="any" value="52"></div></div>
+<p class="cc-hint">单位 %。52% 是历史事件回测（2018-01 至 2026-10，55% 档、含橡胶）的结果，保守按打 5 折，中等按打 75 折。资金变大、档位下降后，收益按档位等比例缩小。</p>
 <div class="cc-sep"></div>
-<div class="cc-f"><label for="cc-ladder">预算档位</label><select id="cc-ladder"><option value="cur">现行 45 / 40 / 25 / 15（本地策略）</option><option value="flat">全程 45%，不降档</option><option value="old">旧阶梯 60 / 40 / 25 / 15（风险高）</option></select></div>
+<div class="cc-f"><label for="cc-ladder">预算档位</label><select id="cc-ladder"><option value="cur">现行 55 / 40 / 25 / 15（本地策略 v102.22）</option><option value="v45">稳妥 45 / 40 / 25 / 15（v102.20）</option><option value="flat">全程 55%，不降档</option><option value="old">旧阶梯 60 / 40 / 25 / 15（风险高）</option></select></div>
 <div class="cc-f"><label for="cc-ddy">遇到一次回撤（可不填）</label><div class="cc-row"><span class="cc-u">第</span><input id="cc-ddy" type="number" inputmode="numeric" min="0" step="1" value="0" style="max-width:64px"><span class="cc-u">年末亏</span><input id="cc-ddp" type="number" inputmode="decimal" min="0" max="95" step="any" value="20" style="max-width:64px"><span class="cc-u">%</span></div><p class="cc-hint">第 0 年表示不考虑。回测最大回撤约 20%。</p></div>
 </div>
 <div class="cc-res"><div id="cc-warn"></div><div class="cc-cards" id="cc-cards"></div>
@@ -1861,10 +1861,10 @@ function ccShell() {
 <div class="cc-p"><h3>到各金额要多久（最长查 50 年）</h3><div class="cc-sc"><table id="cc-ms"></table></div></div>
 <div class="cc-p"><h3 id="cc-nt">每年需追加多少</h3><div class="cc-sc"><table id="cc-nd"></table></div><p class="cc-hint" id="cc-nh"></p></div>
 <div class="cc-p"><h3>逐年明细</h3><div class="seg cc-seg" id="cc-seg" role="group" aria-label="选择情景"></div><div class="cc-sc"><table id="cc-dt"></table></div></div>
-<div class="cc-p"><h3>怎么算的，哪些没算</h3><ul class="cc-note"><li>每月复利。档位 45% 时月收益按你填的年化；档位降到 40% / 25% / 15% 时，收益按 档位 ÷ 45% 缩小（线性缩放是简化，不是回测结果）；旧阶梯 60% 档按回测实测比例 55/48 放大。</li><li>追加从第 2 年起每年年初到账，盈利全部再投，不含手续费以外的税费。</li><li>资金小于约 15 万时，风控公式常算出不到 2 手，规则是不到 2 手不开仓，会漏交易，实际比这里慢。</li><li>没算：豆粕流动性与持仓限额、涨跌停锁死、保证金上调；回撤和极端行情会让时间延后。</li><li>这是把回测年化当作未来年化的情景推演，不是预测。</li></ul></div>
+<div class="cc-p"><h3>怎么算的，哪些没算</h3><ul class="cc-note"><li>每月复利。档位 55% 时月收益按你填的年化；档位降到 40% / 25% / 15% 时，收益按 档位 ÷ 55% 缩小（线性缩放是简化，不是回测结果）；45% 档按回测实测比例 48/52，60% 档按 55/52。</li><li>追加从第 2 年起每年年初到账，盈利全部再投，不含手续费以外的税费。</li><li>资金小于约 15 万时，风控公式常算出不到 2 手，规则是不到 2 手不开仓，会漏交易，实际比这里慢。</li><li>没算：豆粕流动性与持仓限额、涨跌停锁死、长假保证金上调（回测里按 12%→15% 处理，对收益影响很小）；回撤和极端行情会让时间延后。</li><li>这是把回测年化当作未来年化的情景推演，不是预测。</li></ul></div>
 </div></div></div>`;
   document.body.appendChild(el);
-  try { const o2 = JSON.parse(localStorage.getItem('cockpit-calc') || 'null'); if (o2) { CC_IDS.forEach(id => { if (o2[id] != null && $('#cc-' + id)) $('#cc-' + id).value = o2[id]; }); if (o2.seg >= 0 && o2.seg < 3) CC.seg = o2.seg; } } catch (_) {}
+  try { const o2 = JSON.parse(localStorage.getItem('cockpit-calc2') || 'null'); if (o2) { CC_IDS.forEach(id => { if (o2[id] != null && $('#cc-' + id)) $('#cc-' + id).value = o2[id]; }); if (o2.seg >= 0 && o2.seg < 3) CC.seg = o2.seg; } } catch (_) {}
   return el;
 }
 function ccChart(sims, P, Y) {
@@ -1888,9 +1888,9 @@ function ccChart(sims, P, Y) {
 function ccRender() {
   if (!$('#calcv')) return;
   const P = { start: Math.max(0, ccNum('start', 10)), add: Math.max(0, ccNum('add', 0)), ladder: $('#cc-ladder').value, ddy: Math.max(0, Math.round(ccNum('ddy', 0))), ddp: Math.min(95, Math.max(0, ccNum('ddp', 0))), goal: Math.max(1, ccNum('goal', 500)) };
-  const Y = Math.min(40, Math.max(1, Math.round(ccNum('years', 10)))), R = [ccNum('r1', 24) / 100, ccNum('r2', 36) / 100, ccNum('r3', 48) / 100];
+  const Y = Math.min(40, Math.max(1, Math.round(ccNum('years', 10)))), R = [ccNum('r1', 26) / 100, ccNum('r2', 39) / 100, ccNum('r3', 52) / 100];
   const sims = R.map(r => L.calcSim(P, r, Y)), F = L.calcFmt, pct = r => (r * 100).toFixed(0) + '%';
-  const w = []; if (P.start < 15) w.push('起始本金低于约 15 万，手数常不够 2 手，会漏掉部分交易，实际比下面慢。'); if (P.ddy > Y) w.push('回撤年份超过了你看的年数，没有生效。'); if (P.ladder === 'old') w.push('旧阶梯 60% 档在“2 板且保证金升到 15%”的极端情形下有强平风险，本地策略已改为 45%。');
+  const w = []; if (P.start < 15) w.push('起始本金低于约 15 万，手数常不够 2 手，会漏掉部分交易，实际比下面慢。'); if (P.ddy > Y) w.push('回撤年份超过了你看的年数，没有生效。'); if (P.ladder === 'old') w.push('旧阶梯 60% 档在“历史最差冲击再放大 10%、保证金升到 15%”下有强平日，本地策略已改为 55%。');
   $('#cc-warn').innerHTML = w.length ? `<div class="cc-warn">${w.map(esc).join('<br>')}</div>` : '';
   $('#cc-cards').innerHTML = sims.map((s, i) => `<div class="cc-card"><div class="k"><i class="cc-sw" style="border-color:${CC_COL[i]}"></i>${CC_NAMES[i]} · 年化 ${pct(R[i])}</div><div class="v">${esc(F(s.final))}</div><div class="d">${Y} 年后 · 累计投入 ${esc(F(s.invested))} · 收益 ${esc(F(s.final - s.invested))}</div></div>`).join('');
   $('#cc-ct').textContent = `资产曲线（${Y} 年，纵轴为对数刻度）`;
@@ -1904,7 +1904,7 @@ function ccRender() {
   $('#cc-seg').innerHTML = CC_NAMES.map((n, i) => `<button type="button" data-cc-seg="${i}" aria-pressed="${i === CC.seg}">${n} ${pct(R[i])}</button>`).join('');
   $('#cc-dt').innerHTML = '<thead><tr><th>年</th><th>档位</th><th>年初追加</th><th>年末权益</th><th>累计投入</th><th>累计收益</th><th>本年涨幅</th></tr></thead><tbody>' + sims[CC.seg].yearly.map(y => `<tr><td>第 ${y.year} 年${y.dd ? ` <span class="cc-u">（年末回撤 -${P.ddp}%）</span>` : ''}</td><td class="n">${Math.round(y.tier * 100)}%</td><td class="n">${y.add ? esc(F(y.add)) : '—'}</td><td class="n">${esc(F(y.end))}</td><td class="n">${esc(F(y.invested))}</td><td class="n">${esc(F(y.end - y.invested))}</td><td class="n">${((y.endBefore / y.start - 1) * 100).toFixed(0)}%</td></tr>`).join('') + '</tbody>';
   CC.last = { P, Y, R, sims };
-  try { const o = { seg: CC.seg }; CC_IDS.forEach(id => { o[id] = $('#cc-' + id).value; }); localStorage.setItem('cockpit-calc', JSON.stringify(o)); } catch (_) {}
+  try { const o = { seg: CC.seg }; CC_IDS.forEach(id => { o[id] = $('#cc-' + id).value; }); localStorage.setItem('cockpit-calc2', JSON.stringify(o)); } catch (_) {}
 }
 function openCalc() {
   ccShell(); $('#calcv').classList.add('on'); document.body.classList.add('cc-on'); CC.on = true; const b = $('#calcBtn'); if (b) b.setAttribute('aria-pressed', 'true'); ccRender();

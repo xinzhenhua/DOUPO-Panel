@@ -4,7 +4,7 @@ const code=src.slice(a,b)+'\nreturn {TPLAN,planEntry,planTier,planPct,planMA,pla
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
-eq('阶梯 10万→60%',P.planTier(100000),.6); eq('阶梯 499.99万→60%',P.planTier(4999999),.6); eq('阶梯 500万整→40%',P.planTier(5000000),.4);
+eq('阶梯 10万→55%',P.planTier(100000),.55); eq('阶梯 499.99万→55%',P.planTier(4999999),.55); eq('阶梯 500万整→40%',P.planTier(5000000),.4);
 eq('阶梯 1500万整→25%',P.planTier(15000000),.25); eq('阶梯 5000万整→15%',P.planTier(50000000),.15); eq('阶梯 1亿→15%',P.planTier(1e8),.15);
 // 分位：[1..260] 最后=260 → 100；[260..1] 最后=1 → 1/260
 const up=[...Array(260)].map((_,i)=>i+1), dn=up.slice().reverse();
@@ -31,17 +31,17 @@ eq('空头 一路下跌(分位低，不在高位)+去杠杆→不做空',P.planS
 let z=P.planSize({equity:500000,margin:.13,price:3400,side:1,mode:'real'});
 eq('入场限价(多)=3390',z.entryPx,3390); eq('planEntry多：限价/止损/启动价/初始移动止损',JSON.stringify(P.planEntry(3400,1)),JSON.stringify({side:1,close:3400,lim:3390,stop:3254,act:3661,trailAtAct:3515}));
 eq('planEntry空：限价3410 止损3546 启动3137',JSON.stringify([P.planEntry(3400,-1).lim,P.planEntry(3400,-1).stop,P.planEntry(3400,-1).act]),JSON.stringify([3410,3546,3137]));
-eq('手数(实际保证金13%)=68',z.lots,68); eq('名义金额',z.notional,2305200); eq('占用保证金',z.margin,2305200*.13,1e-6); eq('实际占用',z.usage,2305200*.13/500000,1e-9);
-eq('止损价=入场价×0.96=3254.4',z.stopPx,3254.4,1e-9); eq('止损亏损',z.lossStop,2305200*.04,1e-6); eq('止损亏损占权益',z.lossPct,2305200*.04/500000,1e-12);
-eq('风险度100%价(多)',z.liqPx,(680*3390-500000)/(680*0.87),1e-9); eq('启动价(最高浮盈8%)=入场价×1.08=3661.2',z.actPx,3661.2,1e-9);
+eq('手数(实际保证金13%)=62',z.lots,62); eq('名义金额',z.notional,2101800); eq('占用保证金',z.margin,2101800*.13,1e-6); eq('实际占用',z.usage,2101800*.13/500000,1e-9);
+eq('止损价=入场价×0.96=3254.4',z.stopPx,3254.4,1e-9); eq('止损亏损',z.lossStop,2101800*.04,1e-6); eq('止损亏损占权益',z.lossPct,2101800*.04/500000,1e-12);
+eq('风险度100%价(多)',z.liqPx,(620*3390-500000)/(620*0.87),1e-9); eq('启动价(最高浮盈8%)=入场价×1.08=3661.2',z.actPx,3661.2,1e-9);
 // 回测口径：按10%保证金 → 88 手
 let y=P.planSize({equity:500000,margin:.13,price:3400,side:1,mode:'bt'});
-eq('手数(回测口径)=88',y.lots,88); eq('回测口径·风险100%价(多)',y.liqPx,(880*3390-500000)/(880*0.87),1e-9);
-eq('回测口径·止损处风险度',y.riskAtStop,(2983200*0.13*0.96)/(500000-2983200*.04),1e-9);
-let sh=P.planSize({equity:500000,margin:.10,price:3400,side:-1,mode:'real'}); eq('空头入场限价=3410(反弹0.3%)',sh.entryPx,3410); eq('空头手数=87',sh.lots,87); eq('空头止损价=3410×1.04=3546.4',sh.stopPx,3546.4,1e-9);
-eq('空头风险100%价',sh.liqPx,(500000+870*3410)/(870*1.10),1e-9);
+eq('手数(回测口径)=81',y.lots,81); eq('回测口径·风险100%价(多)',y.liqPx,(810*3390-500000)/(810*0.87),1e-9);
+eq('回测口径·止损处风险度',y.riskAtStop,(2745900*0.13*0.96)/(500000-2745900*.04),1e-9);
+let sh=P.planSize({equity:500000,margin:.10,price:3400,side:-1,mode:'real'}); eq('空头入场限价=3410(反弹0.3%)',sh.entryPx,3410); eq('空头手数=80',sh.lots,80); eq('空头止损价=3410×1.04=3546.4',sh.stopPx,3546.4,1e-9);
+eq('空头风险100%价',sh.liqPx,(500000+800*3410)/(800*1.10),1e-9);
 eq('资金不足一手→0手(5000*0.6/(10*3400*0.13)=0.68)',P.planSize({equity:5000,margin:.13,price:3400,side:1,mode:'real'}).lots,0);
-eq('刚好够一手(权益8000:4800/4420=1.09→1手)',P.planSize({equity:8000,margin:.13,price:3400,side:1,mode:'real'}).lots,1);
+eq('刚好够一手(权益8100:4455/4420=1.01→1手)',P.planSize({equity:8100,margin:.13,price:3400,side:1,mode:'real'}).lots,1);
 eq('权益600万→占用40%',P.planSize({equity:6000000,margin:.10,price:3400,side:1,mode:'real'}).u,.4);
 // 持仓管理
 let m1=P.planManage({side:1,entry:3400,peak:3400,last:3263,ma20:3300,fsum:0}); eq('多单 -4.03% → 止损',m1.action,'止损');

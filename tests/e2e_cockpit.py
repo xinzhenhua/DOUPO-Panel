@@ -87,9 +87,10 @@ def main():
     # ---- 2b. 本金追加计算器（v102.21）----
     pg.evaluate("document.getElementById('calcBtn').click()"); pg.wait_for_timeout(150)
     ok('计算器：点「计算器」打开全屏浮层，有三张结果卡', pg.evaluate("getComputedStyle(document.getElementById('calcv')).display !== 'none' && document.querySelectorAll('#cc-cards .cc-card').length === 3"))
-    ok('计算器：默认 10 万+每年追加 1 万，中等 36% 到 50 万 = 4 年 8 个月', '4 年 8 个月' in pg.evaluate("document.getElementById('cc-ms').innerText"))
+    exp0 = pg.evaluate("(() => { const L = window.CockpitLogic; return L.calcYm(L.calcMonthsTo({start:10, add:1, ladder:'cur', ddy:0, ddp:0}, .39, 50, 50)); })()")
+    ok(f'计算器：默认 10 万+每年追加 1 万，中等 39% 到 50 万 = {exp0}', exp0 in pg.evaluate("document.getElementById('cc-ms').innerText"))
     pg.fill('#cc-start', '100'); pg.fill('#cc-add', '50'); pg.wait_for_timeout(150)
-    exp = pg.evaluate("(() => { const L = window.CockpitLogic; return L.calcFmt(L.calcSim({start:100, add:50, ladder:'cur', ddy:0, ddp:0}, .36, 10).final); })()")
+    exp = pg.evaluate("(() => { const L = window.CockpitLogic; return L.calcFmt(L.calcSim({start:100, add:50, ladder:'cur', ddy:0, ddp:0}, .39, 10).final); })()")
     ok('计算器：改本金和追加后，中等情景 10 年末权益与纯函数一致（%s）' % exp, exp in pg.evaluate("document.querySelectorAll('#cc-cards .cc-card')[1].innerText"))
     ok('计算器：逐年明细 10 行，反推表 3 行', pg.evaluate("document.querySelectorAll('#cc-dt tbody tr').length") == 10 and pg.evaluate("document.querySelectorAll('#cc-nd tbody tr').length") == 3)
     pg.fill('#cc-ddy', '3'); pg.wait_for_timeout(100)

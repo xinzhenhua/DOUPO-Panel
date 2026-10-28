@@ -423,12 +423,13 @@
 
 
   /* ---------- 本金追加计算器（金额单位：万元）----------
-   * 预算档位：cur=本地策略 v102.20（<500万 45%、<1500万 40%、<5000万 25%、其后15%）；flat=全程45%；old=旧阶梯（<500万 60%）。
-   * 月收益 = 年化 × 档位折算，再按月复利。45%档按填的年化；60%档用回测实测比例 55/48；其余档按 档位/45% 线性缩小（简化，不是回测结果）。
+   * 预算档位：cur=本地策略 v102.22（<500万 55%、<1500万 40%、<5000万 25%、其后15%）；v45=v102.20（<500万 45%）；flat=全程55%；old=旧阶梯（<500万 60%）。
+   * 月收益 = 年化 × 档位折算，再按月复利。55%档按填的年化；45%档用回测实测比例 48/52，60%档 55/52；其余档按 档位/55% 线性缩小（简化，不是回测结果）。
    * 追加：第2年起每年年初到账；回撤：第 ddy 年末一次性亏 ddp%。 */
   L.CALC_LADDERS = {
-    cur: [[500, .45], [1500, .40], [5000, .25], [Infinity, .15]],
-    flat: [[Infinity, .45]],
+    cur: [[500, .55], [1500, .40], [5000, .25], [Infinity, .15]],
+    v45: [[500, .45], [1500, .40], [5000, .25], [Infinity, .15]],
+    flat: [[Infinity, .55]],
     old: [[500, .60], [1500, .40], [5000, .25], [Infinity, .15]]
   };
   L.calcTier = function (E, mode) {
@@ -436,7 +437,7 @@
     for (let i = 0; i < t.length; i++) if (E < t[i][0]) return t[i][1];
     return t[t.length - 1][1];
   };
-  L.calcFactor = function (tier) { return tier === .60 ? 55 / 48 : tier / .45; };
+  L.calcFactor = function (tier) { return tier === .60 ? 55 / 52 : tier === .45 ? 48 / 52 : tier / .55; };
   // P: {start, add, ladder, ddy, ddp}；r: 年化(0.36)；years: 整数。返回 {eq:每月末权益(含第0月), yearly:[...], final, invested}
   L.calcSim = function (P, r, years) {
     let E = P.start, inv = P.start, startY = E, addY = 0, tierY = L.calcTier(E, P.ladder);
