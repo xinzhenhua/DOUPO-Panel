@@ -36,6 +36,20 @@ function prevCloseOf(pc, bar) {
   return last ? +last.close : null;
 }
 
+/* v102.25 「需要操作」：持仓该平仓（exit）或移动止盈已启动、止损线要上移（trail）。key 唯一标识这一次提醒——开仓日|开仓价|动作(或止损线价)，
+ * 仪表盘点「已操作」会把 key 写进 data/ack.json；key 对上了就算确认过，小组件恢复原来的显示。止损线一变（创新高上移）key 就变，会再提醒一次。
+ * 必须和 cockpit/ui.js 的 planNeed()、cockpit/rubber.js 里的 key 拼法一致（test_build_widget 有断言）。 */
+function needOf(sg, entryD, entryPx, action, peakR, TP) {
+  const id = entryD + '|' + entryPx;
+  if (action && action !== '持有') return { k: 'exit', key: 'exit|' + id + '|' + action, head: '平仓', sub: action };
+  if (peakR != null && peakR >= TP.ACT) {
+    const px = Math.round(entryPx * (1 + sg * peakR / 100) * (1 - sg * TP.TRAIL / 100));
+    return { k: 'trail', key: 'trail|' + id + '|' + px, head: '上移止损', px, sub: '移动止损线 ' + px };
+  }
+  return null;
+}
+const ackHit = (ack, kind, need) => !!(need && ack && ack[kind] && ack[kind].key === need.key);
+
 function build(dataDir, opts) {
   opts = opts || {};
   const nowMs = opts.nowMs || Date.now();
@@ -69,7 +83,9 @@ function build(dataDir, opts) {
             r, peakR, action: A.manage ? A.manage.action : null,
             stop: Math.round(p.entryPx * (1 - sg * TP.STOP / 100)),
             trail: on ? Math.round(peak * (1 - sg * TP.TRAIL / 100)) : null,
-            act: Math.round(p.entryPx * (1 + sg * TP.ACT / 100)), on, peak: Math.round(peak), tr: TP.TRAIL };   // v102.15 持仓：启动价/是否已启动/持仓最高(低)价
+            act: Math.round(p.entryPx * (1 + sg * TP.ACT / 100)), on, peak: Math.round(peak), tr: TP.TRAIL };
+    pos.need = needOf(sg, p.entryD, p.entryPx, A.manage ? A.manage.action : null, peakR, TP);
+    if (pos.need) pos.need.acked = ackHit(readJson(path.join(dataDir, 'ack.json')), 'soy', pos.need);   // v102.15 持仓：启动价/是否已启动/持仓最高(低)价
   }
 
   const why = A.gate.ok ? PA.loadPlan().planWhy(A.sig) : (A.gate.reasons || []).join('；');
@@ -136,7 +152,8 @@ function buildRu(dataDir, nowMs) {
     symbol: dom, price: real == null ? null : { c: real, prev, d: S.d[n - 1] },
     state: pl.st, act, head: pl.head, sub: pl.sub,
     order: pl.order ? { lim: pl.order.lim, stop: pl.order.stop } : null,
-    position: pos ? { side: -1, lots: pos.lots, entryPx: pos.px, entryD: pos.d, contract: pos.contract || null, r: pl.pos && pl.pos.r != null ? +pl.pos.r.toFixed(2) : null, stop: Math.round(pos.px * (1 + RA_STOP / 100)), action: act === 'exit' ? '该平' : '持有' } : null
+    position: pos ? { side: -1, lots: pos.lots, entryPx: pos.px, entryD: pos.d, contract: pos.contract || null, r: pl.pos && pl.pos.r != null ? +pl.pos.r.toFixed(2) : null, stop: Math.round(pos.px * (1 + RA_STOP / 100)), action: act === 'exit' ? '该平' : '持有',
+      need: act === 'exit' ? (n0 => Object.assign(n0, { acked: ackHit(readJson(path.join(dataDir, 'ack.json')), 'ru', n0) }))({ k: 'exit', key: 'exit|' + pos.d + '|' + pos.px + '|' + pl.head, head: '平仓', sub: pl.head }) : null } : null
   };
 }
 const RA_STOP = 5;   // = cockpit/rubber.js RUP.STOP；test_build_widget 里有一条断言核对两处一致
@@ -149,4 +166,4 @@ function main(argv) {
   console.error(`[小组件] ${o.contract.symbol} ${o.price ? o.price.c : '—'} · ${o.signal.label} · ${out}`);
 }
 if (require.main === module) main(process.argv.slice(2));
-module.exports = { build, autoKey, prevCloseOf, buildRu, buildChecks, readFund, RA_STOP };
+module.exports = { build, needOf, autoKey, prevCloseOf, buildRu, buildChecks, readFund, RA_STOP };

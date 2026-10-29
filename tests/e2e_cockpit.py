@@ -164,6 +164,25 @@ def main():
     })()""")
     ok('持仓卡：实时价到来后浮盈亏标「实时」、现价跟着变、多头涨则浮盈增加', '实时' in lv['up']['big'] and lv['up']['px'] != lv['p0'] and lv['dn']['px'] != lv['up']['px'] and '收盘口径' in lv['up']['sb'] and '账户权益' in lv['up']['sb'], lv)
     ok('持仓卡：实时价消失后回到收盘口径（不再标实时）', '实时' not in lv['back']['big'] and lv['back']['px'] == lv['p0'], lv)
+    # v102.25：待操作（该平仓 / 上移止损）：持仓卡大字改成建议操作 + 「已操作」按钮；点了才恢复
+    pg.evaluate("window.__cockpit.TPLAN.__act = window.__cockpit.TPLAN.ACT; window.__cockpit.TPLAN.ACT = -1000; window.__cockpit.renderSig()")   # 把移动止盈启动线压到最低 → 一定有待操作（上移止损，或已回落的平仓）
+    nd = pg.evaluate("(() => { const s = window.__cockpit.planSnap(); return s.pos && s.mg ? window.__cockpit.planNeed(s.pos, s.mg) : null; })()")
+    ok('待操作：持仓里能算出待操作（k=exit 或 trail）', bool(nd) and nd['k'] in ('exit', 'trail'), nd)
+    if nd:
+        card = pg.evaluate("(() => { const c = document.querySelector('#sigbar .sg.need'); return c ? c.innerText : ''; })()")
+        ok('待操作：持仓卡大字改成建议操作（' + nd['head'] + '），带「已操作」按钮', '需要操作' in card and '已操作' in card and nd['head'] in card, card)
+        ok('待操作：浮盈亏和现价缩成一行小字仍在，大字浮盈卡(pos-big)换掉了', '浮盈' in card and '现价' in card and pg.evaluate("document.getElementById('pos-big') === null"), card)
+        lv2 = pg.evaluate("""(() => { const C = window.__cockpit, D = window.__DATA__, k = C.S.key, c0 = C.planSnap().hold.last, saved = D.ticks;
+          D.ticks = { [k]: { key: k, sym: 'x', c: c0 + 50, dt: '2099-01-03 21:30:05', at: Date.now(), dir: 1, flash: false } }; C.tickPaint();
+          const t = document.getElementById('pos-need-pl') ? document.getElementById('pos-need-pl').innerText : ''; D.ticks = saved; C.tickPaint(); return t; })()""")
+        ok('待操作：实时价到来时，卡里的浮盈亏小字跟着变', '元' in lv2 and '现价' in lv2, lv2)
+        pg.evaluate("document.querySelector('#sigbar [data-ack]').click()"); pg.wait_for_timeout(400)
+        ok('点「已操作」后：恢复原来的持仓卡（大字浮盈亏回来，待操作卡消失）', pg.evaluate("document.querySelector('#sigbar .sg.need') === null && document.getElementById('pos-big') !== null"))
+        ack = pg.evaluate("JSON.parse(localStorage.getItem('cockpit-ack') || '{}').soy")
+        ok('确认记在本机，key 就是这次提醒的 key', ack and ack['key'] == nd['key'], (ack, nd))
+        pg.evaluate("window.__cockpit.TPLAN.ACT = window.__cockpit.TPLAN.__act; window.__cockpit.renderSig()")
+        pg.evaluate("localStorage.removeItem('cockpit-ack'); window.__cockpit.ACKS.d = {}; window.__cockpit.renderSig()")
+    ok('待操作测完、启动线还原后：持仓卡按真实规则显示（真实数据里 8% 没到就不弹）', pg.evaluate("window.__cockpit.TPLAN.ACT === 8"))
     pg.fill('#pf-cd', hd['d'][-1]); pg.fill('#pf-cp', str(p0 + 100)); pg.evaluate("document.getElementById('pf-more-c').open = true"); pg.select_option('#pf-cr', 'protect'); pg.fill('#pf-cn', '怕回吐'); pg.evaluate("document.querySelector('[data-act=\"close\"]').click()")
     rs0 = pg.evaluate("window.__cockpit.planSnap().A.trades[0].res")
     ok('平仓时存了原因/备注/持有天数/最大浮盈浮亏/价格路径', rs0 and rs0['reason'] == 'protect' and rs0['note'] == '怕回吐' and rs0['days'] >= 1 and rs0['mfe'] is not None and rs0['mae'] is not None and len(rs0['path']) >= 2, rs0)

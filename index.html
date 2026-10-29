@@ -487,6 +487,10 @@ body.multi .mgc .hl{margin:2px 0 6px}
 @media(min-width:900px) and (max-height:920px){.exn2{display:none}.exadv{padding:6px 12px;margin-bottom:4px}.exadv div:nth-of-type(n+2){display:none}.exsv{max-height:150px}.exc .hvk{padding:6px 10px}.exc .hvk b{font-size:17px}}
 .plt{display:flex;align-items:center;gap:8px}.plt::before{content:"";width:3px;height:14px;border-radius:2px;background:var(--focus)}
 .hvk i{font-style:normal;font-size:12px;color:var(--ink3)}.hvk b{font-family:var(--num);font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}.hvk em{font-style:normal;font-size:12px;color:var(--ink3)}
+.sg.need{background:color-mix(in srgb,var(--amber) 22%,transparent);box-shadow:inset 6px 0 0 var(--amber)}
+.sg.need .cl{color:var(--amber);font-weight:700}.sg.need .hd.needhd{color:var(--amber);font-size:30px}
+.ackbtn{margin:8px 0 2px;padding:9px 18px;border:2px solid var(--amber);border-radius:6px;background:var(--amber);color:#fff;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.ackbtn:hover{filter:brightness(1.08)}.ackmsg{margin-top:4px;font-size:12px;color:var(--ink3)}
 .sg .hd.big{font-family:var(--num);font-size:34px;line-height:1.1;letter-spacing:-.02em}.sg .hd.big small{font-size:14px;font-weight:400;color:var(--ink3)}
 .sgw.rt>.sg{border-right:0}
 .hvc{margin-top:4px}
@@ -2104,6 +2108,13 @@ function monthAmpCalc(d, c, curMonth) {   // d: 日期数组(升序), c: 收盘�
     curInfo = { m: cur.m, mo: cur.mo, n: cur.n, amp: cur.amp, pctAll: amps.filter(x => x <= cur.amp).length / amps.length * 100, sameN: same.length, sameMed: same.length ? q(same, .5) : null, pctSameN: pctN, fullMed: byMonth[cur.mo - 1] ? byMonth[cur.mo - 1].med : null }; }
   return { rows: rows.map(r => ({ m: r.m, y: r.y, mo: r.mo, n: r.n, amp: r.amp, part: r.part })), cur: curInfo, med: q(amps, .5), q25: q(amps, .25), q75: q(amps, .75), max: Math.max(...amps), min: Math.min(...amps), nDone: done.length, byMonth };
 }
+/* 豆粕持仓的待操作：t=持仓 {side,entryPx,entryD}，m=planManage 结果。离场动作优先；否则移动止盈已启动 → 止损线要跟着上移 */
+function planNeed(t, m) {
+  const sg = t.side >= 0 ? 1 : -1, id = t.entryD + '|' + t.entryPx;
+  if (m.action !== '持有') return { k: 'exit', key: 'exit|' + id + '|' + m.action, head: '平仓', sub: m.action };
+  if (m.peakR >= TPLAN.ACT) { const px = Math.round(t.entryPx * (1 + sg * m.peakR / 100) * (1 - sg * TPLAN.TRAIL / 100)); return { k: 'trail', key: 'trail|' + id + '|' + px, head: '上移止损', px, sub: '移动止损线 ' + px }; }
+  return null;
+}
 /* PLAN_END */
 
 function planState() { let s = {}; try { s = JSON.parse(localStorage.getItem('cockpit-plan') || '{}') || {}; } catch (_) {} return s; }   // v101.25 旧版手填，只用来迁移
@@ -2321,6 +2332,46 @@ function candChips(sg) {
   else if (sg.fxCand) h += '<span class="sc sep" title="没有充分验证，默认不启用。要用：点信号格里的「数据和口径说明」，拉到最下面看回测再决定">候选：外资加杠杆 ' + f(sg.fxMax) + ' 手做多（未启用）</span>';
   return h;
 }
+/* ---- v102.25 待操作与「已操作」确认 ----
+   持仓该平仓（exit）、或移动止盈已启动要把止损上移（trail）时，持仓卡的大字改成建议操作，点「已操作」才恢复。
+   确认记在 data/ack.json（有令牌时上传，手机小组件读它来恢复）；没令牌只记在本机，小组件不会恢复。key 拼法和 scripts/build_widget.js 的 needOf() 一致。 */
+const ACKS = { d: {}, msg: '' };
+try { ACKS.d = JSON.parse(localStorage.getItem('cockpit-ack') || '{}') || {}; } catch (_) { ACKS.d = {}; }
+const ackSave = () => { try { localStorage.setItem('cockpit-ack', JSON.stringify(ACKS.d)); } catch (_) {} };
+const ackIs = (kind, key) => !!(ACKS.d[kind] && ACKS.d[kind].key === key);
+function ackMerge(remote) {   // 云端和本机各取「确认时间更晚」的那条
+  if (!remote || typeof remote !== 'object') return;
+  ['soy', 'ru'].forEach(k => { const r = remote[k], l = ACKS.d[k]; if (r && r.key && (!l || String(r.at || '') > String(l.at || ''))) ACKS.d[k] = { key: String(r.key), at: String(r.at || '') }; });
+  ackSave();
+}
+function ackRefresh() { try { renderSig(); } catch (_) {} try { window.__ru && window.__ru.paint(); } catch (_) {} }
+async function ackFetch() {
+  try { const r = await fetch('data/ack.json?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) { const before = JSON.stringify(ACKS.d); ackMerge(await r.json()); if (JSON.stringify(ACKS.d) !== before) ackRefresh(); } } catch (_) {}
+}
+async function ackPush() {
+  if (!patGet() || !ghCfg().owner) { ACKS.msg = '已在本机确认（没填令牌：手机小组件不会恢复）'; ackRefresh(); return; }
+  for (let i = 0; i < 2; i++) {
+    try {
+      let sha, cur = null; const r = await ghApi('GET', 'data/ack.json');
+      if (r.ok) { const j = await r.json(); sha = j.sha; try { cur = JSON.parse(b64d(j.content)); } catch (_) {} } else if (r.status !== 404) throw new Error(ghErr(r.status));
+      ackMerge(cur);   // 先吸收云端另一台设备的确认，再把合并后的整份写回
+      const out = Object.assign({}, ACKS.d, { updated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC' });
+      const w = await ghApi('PUT', 'data/ack.json', { message: '确认操作 ' + todayBJ(), content: b64e(JSON.stringify(out, null, 1)), sha });
+      if (w.ok) { ACKS.msg = '已确认并同步（小组件下一次刷新恢复）'; ackRefresh(); return; }
+      if (w.status !== 409 && w.status !== 422) throw new Error(ghErr(w.status));
+    } catch (e) { ACKS.msg = '已在本机确认，但同步失败：' + (e && e.message || e); ackRefresh(); return; }
+  }
+  ACKS.msg = '已在本机确认，但云端同步冲突，稍后会再试'; ackRefresh();
+}
+function ackSet(kind, key) { ACKS.d[kind] = { key, at: new Date().toISOString() }; ackSave(); ACKS.msg = '确认中…'; ackRefresh(); ackPush(); }
+/* 待操作卡（豆粕、橡胶共用）：大字建议操作 + 原因 + 浮盈 + 「已操作」按钮。bigTxt 已经是转义好的 HTML */
+function needCard(kind, need, cl, bigTxt, why, plHtml) {
+  const msg = ACKS.msg ? `<div class="ackmsg">${esc(ACKS.msg)}</div>` : '';
+  return `<div class="sgw rt"><div class="sg pos exit need" role="alert" aria-label="需要操作：${esc(bigTxt.replace(/<[^>]+>/g, ''))}"><div class="cl">⚠ 需要操作 · ${cl}</div><div class="hd big needhd">${bigTxt}</div><div class="sb">${why}${plHtml ? `<br>浮盈 <span id="pos-need-pl">${plHtml}</span>` : ''}</div><button class="ackbtn" data-ack="${kind}" data-key="${esc(need.key)}">✅ 已操作，确认</button>${msg}</div>${qb('placct')}</div>`;
+}
+setInterval(() => { if (!document.hidden) ackFetch(); }, 60000);
+ackFetch();
+
 let POSLIVE = null;   // 最近一次渲染的持仓快照（收盘口径），实时价到来时据此重算浮盈亏，不重画整块
 function posLiveParts() {
   const P = POSLIVE; if (!P) return null;
@@ -2334,6 +2385,7 @@ function posLivePaint() {   // 实时价到来：只改持仓卡的三个文本�
   try {
     const big = document.getElementById('pos-big'), sb = document.getElementById('pos-sb'), pl = posLiveParts(); if (!pl) return;
     if (big && sb) { big.innerHTML = pl.big; big.style.color = pl.up ? 'var(--bull)' : 'var(--bear)'; sb.innerHTML = pl.sb; }
+    const nl = document.getElementById('pos-need-pl'); if (nl) nl.innerHTML = `<b style="color:${pl.up ? 'var(--bull)' : 'var(--bear)'}">${pl.big.replace(/<small[^>]*>.*?<\/small>/g, '')}元</b> · 现价 ${pl.px}`;
     const c = document.querySelector('.hvk[data-lv="px"]'); if (c) { const b = c.querySelector('b'), e = c.querySelector('em'); if (b) b.textContent = pl.px; if (e) e.innerHTML = pl.pxs; }
   } catch (_) {}
 }
@@ -2358,8 +2410,10 @@ function renderSig() {
     left = `<button class="sg pos ${out ? 'exit' : 'hold'}" data-goplan="toggle" aria-label="持仓信号：${out ? '该平仓：' + m.action : '继续持有'}。点击展开或收起交易计划"><div class="cl">收盘${lastBarD()} ${fmtD(ho.last)}${liveTxt()}</div><div class="hd">${out ? '该平仓 · ' + esc(m.action) : '继续持有'}</div>${out ? `<div class="sb">${esc(why)}</div>` : ''}
     <div class="scs">${chip(!m.stop, '止损 ' + fmtD(stopPx) + '（距 ' + stopGap.toFixed(1) + '%）')}${chip(!m.trail, m.peakR >= TPLAN.ACT ? '移动止盈已启动' : '移动止盈未启动')}${fch}</div>${blocked ? dsl : ''}</button>`;
     POSLIVE = { t, ho, fl, r: m.r, eq: s.E.equity };
-    const pl = posLiveParts();
-    right = `<div class="sgw rt"><div class="sg pos ${out ? 'exit' : 'hold'}" aria-label="持仓：${sdName(t.side)}${t.lots}手，浮盈亏 ${yuan(fl)} 元"><div class="cl">${sdName(t.side)} ${fmtD(t.lots)} 手 @${fmtD(t.entryPx)} · ${esc(t.entryD.slice(5))}</div><div class="hd big" id="pos-big" style="color:${pl.up ? 'var(--bull)' : 'var(--bear)'}">${pl.big}</div>
+    const pl = posLiveParts(), nd = planNeed(t, m), needOn = nd && !ackIs('soy', nd.key);
+    right = needOn ? needCard('soy', nd, `${sdName(t.side)} ${fmtD(t.lots)} 手 @${fmtD(t.entryPx)}`, nd.k === 'exit' ? `平仓 · ${esc(nd.sub)}` : `上移止损 → ${fmtD(nd.px)}`,
+      nd.k === 'exit' ? `${esc(why)}。${t.side > 0 ? '卖出平多' : '买入平空'} ${fmtD(t.lots)} 手` : `把止损改到 <b>${fmtD(nd.px)}</b>（现价 ${fmtD(ho.last)}，距 ${(Math.abs(ho.last - nd.px) / ho.last * 100).toFixed(1)}%）；移动止盈已启动，之后每创新${sd ? '高' : '低'}还会再提醒`,
+      `<b style="color:${pl.up ? 'var(--bull)' : 'var(--bear)'}">${yuan(pl.lp ? pl.lp.fl : fl)}元</b> · 现价 ${pl.px}`) : `<div class="sgw rt"><div class="sg pos ${out ? 'exit' : 'hold'}" aria-label="持仓：${sdName(t.side)}${t.lots}手，浮盈亏 ${yuan(fl)} 元"><div class="cl">${sdName(t.side)} ${fmtD(t.lots)} 手 @${fmtD(t.entryPx)} · ${esc(t.entryD.slice(5))}</div><div class="hd big" id="pos-big" style="color:${pl.up ? 'var(--bull)' : 'var(--bear)'}">${pl.big}</div>
       <div class="sb" id="pos-sb">${pl.sb}</div></div>${qb('placct')}</div>`;
   }
   el.innerHTML = `<div class="sgw">${left}${qb(s.pos ? 'plpos' : 'plsig')}</div>` + right;
@@ -3492,6 +3546,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button,[data-tile]'), pop = $('#cPop'), cb = $('#cBtn');
   if (!e.target.closest('#cPop') && !e.target.closest('#cBtn')) { pop.classList.remove('on'); cb.setAttribute('aria-expanded', 'false'); }
   if (!t) return;
+  if (t.dataset.ack) { ackSet(t.dataset.ack, t.dataset.key); return; }
   if (t.id === 'cBtn') { const on = pop.classList.toggle('on'); cb.setAttribute('aria-expanded', on); return; }
   if (t.dataset.ck) { if (t.dataset.ck === 'auto') { S.auto = true; S.key = autoKey(); } else { S.key = t.dataset.ck; S.auto = S.key === autoKey(); } pop.classList.remove('on'); cb.setAttribute('aria-expanded', 'false'); renderAll(true); return; }
   if (t.id === 'exBtn') { S.ex = !S.ex; document.body.classList.toggle('ex', S.ex); t.setAttribute('aria-pressed', S.ex); layoutWall(false); return; }
@@ -3639,7 +3694,7 @@ document.addEventListener('keydown', e => {
   e.stopImmediatePropagation();
   if (e.key === 'Escape') closeCalc();
 }, true);
-window.__cockpit = { openCalc, closeCalc, shareInfo, shareHtml, acctGet, acctSave, planEquity, planTier, planUpdate, renderSig, drawChart, cloudShort, curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, openSheet, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
+window.__cockpit = { TPLAN, ackIs, ackSet, needCard, planNeed, ACKS, openCalc, closeCalc, shareInfo, shareHtml, acctGet, acctSave, planEquity, planTier, planUpdate, renderSig, drawChart, cloudShort, curTick, sessOf, pxLabel, tickPaint, tickInfo, liveBar, tradeDayOf, macdOf, S, L, reconcile, serLast, ageTxt, missWhy, openLamp, openMore, openTile, klineNow, priceStats, renderBand, planSnap, renderAll, refreshed, openTab, openTile, openAbout, openSheet, closeSheet, layoutWall, checks, capital, fundamentals, tiles, applyTheme, get GRID() { return GRID; } };
 })();
 </script>
 <script>
@@ -4030,6 +4085,8 @@ function ruIndSummary(ind, today) {
     const OPTpos = ruPos();
     if (P.pos && OPTpos) {
       const up = P.pos.r >= 0;
+      const ndR = P.st === 'exit' || P.st === 'holdwx' ? { k: 'exit', key: 'exit|' + OPTpos.d + '|' + OPTpos.px + '|' + P.head, head: '平仓', sub: P.head } : null;   // key 拼法和 scripts/build_widget.js buildRu 一致
+      if (ndR && K().ackIs && !K().ackIs('ru', ndR.key)) return '<section class="sigbar rusig">' + left + K().needCard('ru', ndR, '空 ' + esc(OPTpos.contract || '') + ' ' + esc(OPTpos.lots || '') + ' 手 @' + f0(OPTpos.px), '平仓 · ' + esc(P.head), esc(P.sub || '') + '（空头：买入平仓）', '<b style="color:var(--' + (up ? 'bear' : 'bull') + ')">' + p1(P.pos.r) + '</b>') + '</section>';
       right = '<div class="sg pos ' + (P.st === 'exit' || P.st === 'holdwx' ? 'exit' : 'hold') + '"><div class="cl">空 ' + esc(OPTpos.contract || '') + ' ' + esc(OPTpos.lots || '') + ' 手 @' + f0(OPTpos.px) + ' · ' + esc((OPTpos.d || '').slice(5)) + '</div><div class="hd big" style="color:' + (up ? 'var(--bear)' : 'var(--bull)') + '">' + p1(P.pos.r) + '</div><div class="sb">止损价 ' + f0(P.pos.stop) + '（距现价 ' + (P.pos.stopGap == null ? '—' : P.pos.stopGap.toFixed(1) + '%') + '）<br>到 ' + esc(P.exitD.slice(5)) + ' 收盘平仓</div></div>';
     } else if (P.order) {
       right = '<div class="sg"><div class="cl">建议价格（' + esc(P.dom || '当前主力') + '）</div><div class="hd big">≥ ' + f0(P.order.lim) + '<small> 限价空</small></div><div class="sb">止损 ' + f0(P.order.stop) + '（+' + RUP.STOP + '%）· 参考目标 ' + f0(P.order.ref) + '（历史平均跌 ' + RUP.AVG_DROP + '%，不设止盈）<br>离场 ' + esc(P.exitD) + ' 收盘 · 次日没成交就作废，不追</div></div>';

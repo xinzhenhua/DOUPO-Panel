@@ -26,7 +26,7 @@ class Path { addRoundedRect() {} }
 async function render(family, data, o) {
   o = o || {}; const out = [];
   const env = { Color: class { static dynamic(a) { return a; } static white() { return {}; } }, Font: { boldSystemFont() {}, systemFont() {}, boldMonospacedSystemFont() {} }, Size: class {}, ListWidget, Rect, DrawContext, Path, Device: { isUsingDarkAppearance: () => false },
-    Request: class { constructor(u) { this.u = u; } async loadJSON() { if (this.u.includes('widget.json')) { if (o.offline) throw new Error('net'); return data; } if (this.u.includes('eastmoney')) return { data: { f43: o.px || 3280, f86: Date.UTC(2026, 9, 23, 15, 0, 0) / 1000 } }; throw new Error('x'); } async load() { throw new Error('x'); } },
+    Request: class { constructor(u) { this.u = u; } async loadJSON() { if (this.u.includes('ack.json')) { if (o.ack) return o.ack; throw new Error('x'); } if (this.u.includes('widget.json')) { if (o.offline) throw new Error('net'); return data; } if (this.u.includes('eastmoney')) return { data: { f43: o.px || 3280, f86: Date.UTC(2026, 9, 23, 15, 0, 0) / 1000 } }; throw new Error('x'); } async load() { throw new Error('x'); } },
     FileManager: { local: () => ({ joinPath: (a, b) => path.join(cacheDir, b), documentsDirectory: () => cacheDir, fileExists: p => fs.existsSync(p), readString: p => fs.readFileSync(p, 'utf8'), writeString: (p, s) => fs.writeFileSync(p, s) }) },
     config: { widgetFamily: family, runsInWidget: true }, Script: { setWidget: w => out.push(w), complete() {} } };
   const names = Object.keys(env), fn = new (Object.getPrototypeOf(async function () {}).constructor)(...names, SRC);
@@ -117,6 +117,44 @@ Date.now = () => Date.UTC(2026, 9, 24, 8, 0, 0);   // 固定为周六（休市�
   ok('取不到 widget.json、用缓存：标「离线·缓存」', off.includes('离线·缓存'));
   const ruGo = clone(d => { d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });
   ok('橡胶出做空信号时显示橡胶状态', (await render('medium', ruGo)).text.includes('橡胶'));
+  /* v102.25 持仓：大字浮盈 + 现价小字；待操作：大字建议操作，最高优先级，确认后恢复 */
+  const NEED_X = { k: 'exit', key: 'exit|2026-10-09|3386|移动止盈', head: '平仓', sub: '移动止盈', acked: false };
+  const posOf = (extra, need) => clone(d => { d.position = Object.assign({ side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null, act: 3115, on: false, peak: 3300, tr: 4, need: need || null }, extra || {}); d.signal.state = need ? 'exit' : 'hold'; d.signal.label = need ? '该平：移动止盈' : '持有'; return d; });
+  for (const fam of ['small', 'medium', 'large']) {
+    const R = await render(fam, posOf());
+    const tx = texts(R.root);
+    ok(`持仓·${fam}：浮盈 +5,300元 是大字（第一个出现的数字文本），现价在后面`, tx.some(t => t.includes('+5,300元')) && !tx.includes('3,280') ? true : tx.indexOf(tx.find(t => t.includes('+5,300元'))) < tx.indexOf(tx.find(t => /3,280/.test(t))), tx.join('|'));
+    ok(`持仓·${fam}：不再有单独的大字现价，现价是小字（含"3,280"）`, tx.some(t => /3,280/.test(t)));
+  }
+  const lossPos = await render('large', posOf({ side: 1, entryPx: 3500, r: -6, stop: 3360 }));
+  ok('持仓亏损：大字是负数（−元）', lossPos.text.includes('−'), lossPos.text);
+  for (const fam of ['small', 'medium', 'large']) {
+    const R = await render(fam, posOf({}, NEED_X)), t = R.text;
+    ok(`待操作·${fam}：大字建议操作 + ⚠ 需要操作 + 提示去仪表盘确认`, t.includes('⚠ 需要操作') && t.includes('平仓·移动止盈') && t.includes('已操作'), t);
+    ok(`待操作·${fam}：不再画信号条件小标签/入场建议`, countPills(R.root) === 0);
+  }
+  const TRAIL_N = { k: 'trail', key: 'trail|2026-10-09|3386|3280', head: '上移止损', px: 3280, sub: '移动止损线 3280', acked: false };
+  const tr = await render('medium', posOf({ trail: 3280, on: true, peakR: 9 }, TRAIL_N));
+  ok('待操作(上移止损)：大字"上移止损→3,280" + "把止损改到 3,280"', tr.text.includes('上移止损→3,280') && tr.text.includes('把止损改到 3,280'), tr.text);
+  ok('待操作·确认(json里 acked=true)：恢复原来的显示', !(await render('medium', posOf({}, Object.assign({}, NEED_X, { acked: true })))).text.includes('需要操作'));
+  ok('待操作·确认(ack.json 的 key 对上)：恢复原来的显示', !(await render('medium', posOf({}, NEED_X), { ack: { soy: { key: NEED_X.key, at: 'x' } } })).text.includes('需要操作'));
+  ok('待操作·ack.json 是旧 key → 仍提醒', (await render('medium', posOf({}, NEED_X), { ack: { soy: { key: 'exit|旧', at: 'x' } } })).text.includes('需要操作'));
+  ok('待操作·ack.json 取不到 → 仍提醒（宁可多提醒）', (await render('small', posOf({}, NEED_X))).text.includes('需要操作'));
+  const lkN = await render('accessoryRectangular', posOf({}, NEED_X));
+  ok('锁屏矩形·待操作：第一行 ⚠ 平仓', lkN.text.includes('⚠') && lkN.text.includes('平仓·移动止盈'), lkN.text);
+  ok('锁屏圆形·待操作：⚠ 平仓', (await render('accessoryCircular', posOf({}, NEED_X))).text.includes('平仓'));
+  ok('锁屏内联·待操作', (await render('accessoryInline', posOf({}, NEED_X))).text.includes('⚠'));
+  ok('锁屏矩形·持仓：第一行是浮盈', (await render('accessoryRectangular', posOf())).text.split('\n')[0].includes('+5,300元'));
+  // 优先级：待操作 > 橡胶入场信号
+  const both = clone(d => { d.position = { side: -1, lots: 5, entryPx: 3386, entryD: '2026-10-09', contract: 'M2701', r: 3, peakR: 3, action: '持有', stop: 3521, trail: null, act: 3115, on: false, peak: 3300, tr: 4, need: NEED_X }; d.signal.state = 'exit'; d.signal.label = '该平：移动止盈'; d.ru.state = 'go'; d.ru.act = 'go'; d.ru.head = '做空信号'; d.ru.order = { lim: 19800, stop: 20800 }; return d; });
+  const bt = (await render('medium', both)).text;
+  ok('优先级：豆粕待操作 压过 橡胶做空信号', bt.includes('需要操作') && bt.includes('平仓·移动止盈'), bt);
+  // 橡胶也有待操作
+  const ruNeed = clone(d => { d.ru.state = 'exit'; d.ru.act = 'exit'; d.ru.head = '止损：平空单'; d.ru.sub = '现价到止损'; d.ru.symbol = 'ru2609'; d.ru.position = { side: -1, lots: 2, entryPx: 15000, entryD: '2026-03-02', contract: 'RU2609', r: -6, stop: 15750, action: '该平', need: { k: 'exit', key: 'exit|2026-03-02|15000|止损：平空单', head: '平仓', sub: '止损：平空单', acked: false } }; return d; });
+  const rn = (await render('medium', ruNeed)).text;
+  ok('橡胶待操作：弹出大字平仓', rn.includes('需要操作') && rn.includes('平仓·止损：平空单') && rn.includes('橡胶'), rn);
+  ok('橡胶待操作·用 ru 的 ack 确认后恢复', !(await render('medium', ruNeed, { ack: { ru: { key: 'exit|2026-03-02|15000|止损：平空单', at: 'x' } } })).text.includes('需要操作'));
+  ok('橡胶待操作·豆粕的 ack 不能确认橡胶', (await render('medium', ruNeed, { ack: { soy: { key: 'exit|2026-03-02|15000|止损：平空单', at: 'x' } } })).text.includes('需要操作'));
   fs.rmSync(cacheDir, { recursive: true, force: true });
   console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('异常', e); process.exit(1); });

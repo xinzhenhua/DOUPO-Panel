@@ -382,6 +382,8 @@ function ruIndSummary(ind, today) {
     const OPTpos = ruPos();
     if (P.pos && OPTpos) {
       const up = P.pos.r >= 0;
+      const ndR = P.st === 'exit' || P.st === 'holdwx' ? { k: 'exit', key: 'exit|' + OPTpos.d + '|' + OPTpos.px + '|' + P.head, head: '平仓', sub: P.head } : null;   // key 拼法和 scripts/build_widget.js buildRu 一致
+      if (ndR && K().ackIs && !K().ackIs('ru', ndR.key)) return '<section class="sigbar rusig">' + left + K().needCard('ru', ndR, '空 ' + esc(OPTpos.contract || '') + ' ' + esc(OPTpos.lots || '') + ' 手 @' + f0(OPTpos.px), '平仓 · ' + esc(P.head), esc(P.sub || '') + '（空头：买入平仓）', '<b style="color:var(--' + (up ? 'bear' : 'bull') + ')">' + p1(P.pos.r) + '</b>') + '</section>';
       right = '<div class="sg pos ' + (P.st === 'exit' || P.st === 'holdwx' ? 'exit' : 'hold') + '"><div class="cl">空 ' + esc(OPTpos.contract || '') + ' ' + esc(OPTpos.lots || '') + ' 手 @' + f0(OPTpos.px) + ' · ' + esc((OPTpos.d || '').slice(5)) + '</div><div class="hd big" style="color:' + (up ? 'var(--bear)' : 'var(--bull)') + '">' + p1(P.pos.r) + '</div><div class="sb">止损价 ' + f0(P.pos.stop) + '（距现价 ' + (P.pos.stopGap == null ? '—' : P.pos.stopGap.toFixed(1) + '%') + '）<br>到 ' + esc(P.exitD.slice(5)) + ' 收盘平仓</div></div>';
     } else if (P.order) {
       right = '<div class="sg"><div class="cl">建议价格（' + esc(P.dom || '当前主力') + '）</div><div class="hd big">≥ ' + f0(P.order.lim) + '<small> 限价空</small></div><div class="sb">止损 ' + f0(P.order.stop) + '（+' + RUP.STOP + '%）· 参考目标 ' + f0(P.order.ref) + '（历史平均跌 ' + RUP.AVG_DROP + '%，不设止盈）<br>离场 ' + esc(P.exitD) + ' 收盘 · 次日没成交就作废，不追</div></div>';

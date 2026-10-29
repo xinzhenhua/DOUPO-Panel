@@ -1,6 +1,6 @@
 const fs=require('fs'), path=require('path'); const src=fs.readFileSync(path.join(__dirname,'..','cockpit','ui.js'),'utf8');
 const a=src.indexOf('/* PLAN_BEGIN'), b=src.indexOf('/* PLAN_END */'); if(a<0||b<0){console.log('❌ 找不到 TPLAN 标记');process.exit(1)}
-const code=src.slice(a,b)+'\nreturn {TPLAN,planEntry,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planBasis,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
+const code=src.slice(a,b)+'\nreturn {planNeed,TPLAN,planEntry,planTier,planPct,planMA,planConfirm,planForeign,planSignals,planBasis,planSize,planManage,planWhy,planFee,planPnl,planOpen,planOpenFor,planHold,planEquity,planStats,planGate,planDataLine,planPartsText,planExpect,planWilson,planRng,TBT,planSrc,planAdvice,planPath,planReview,planSlip,planReasonOf,PLAN_REASONS,monthAmpCalc};';
 const P=new Function(code)(); let pass=0,fail=0;
 const eq=(n,x,y,tol)=>{ const ok=tol?Math.abs(x-y)<=tol:JSON.stringify(x)===JSON.stringify(y); ok?pass++:(fail++,console.log('❌',n,'期望',y,'实际',x)); if(ok) console.log('✅',n) };
 // 阶梯(边界：<500万 才是60%)
@@ -301,4 +301,10 @@ let m7=P.planManage({side:-1,entry:3400,peak:3300,last:3540,ma20:3600,fsum:-3000
   eq('planSrc 新快照 分位不够 → own',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:true,below20:true,highOK:false,gateOk:true}}),'own');
   eq('planSrc 老快照(只有trendDn) 仍按旧规则 → sys',P.planSrc({side:-1,snap:{pct:50,confirm:false,delev:true,trendDn:true,gateOk:true}}),'sys');
 }
+// v102.25 待操作：离场动作优先；移动止盈已启动 → 止损线上移；key 和 scripts/build_widget.js needOf() 一致
+eq('planNeed 离场优先',P.planNeed({side:1,entryPx:3400,entryD:'2026-10-12'},{action:'止损',peakR:9}),{k:'exit',key:'exit|2026-10-12|3400|止损',head:'平仓',sub:'止损'});
+eq('planNeed 多单峰值+9%→止损线 3558',P.planNeed({side:1,entryPx:3400,entryD:'2026-10-12'},{action:'持有',peakR:9}).px,3558);
+eq('planNeed 空单峰值+9%→止损线 '+Math.round(3400*.91*1.04),P.planNeed({side:-1,entryPx:3400,entryD:'2026-10-12'},{action:'持有',peakR:9}).px,Math.round(3400*.91*1.04));
+eq('planNeed 没到启动价→null',P.planNeed({side:1,entryPx:3400,entryD:'2026-10-12'},{action:'持有',peakR:7.9}),null);
+eq('planNeed key（trail）含止损线价，线一变 key 就变',P.planNeed({side:1,entryPx:3400,entryD:'2026-10-12'},{action:'持有',peakR:10}).key!==P.planNeed({side:1,entryPx:3400,entryD:'2026-10-12'},{action:'持有',peakR:9}).key,true);
 console.log(`\n结果：${pass}项通过，${fail}项失败`); process.exit(fail?1:0);

@@ -1,4 +1,5 @@
-// 豆粕 + 橡胶驾驶舱 · iOS 桌面小组件（Scriptable 脚本，v102.13）
+// 豆粕 + 橡胶驾驶舱 · iOS 桌面小组件（Scriptable 脚本，v102.25）
+// v102.25：持仓时大字显示实时浮盈/浮亏（现价变小放旁边）；该平仓/上移止损时，大字显示建议操作（最高优先级），到仪表盘点「已操作」确认后恢复原样（确认记在 data/ack.json）。
 // 使用：App Store 装免费的 Scriptable → 新建脚本 → 把本文件全部内容粘进去 → 桌面长按添加 Scriptable 小组件 → 编辑小组件选这个脚本。
 // 小/中/大尺寸 + 锁屏三种尺寸都支持。点小组件会打开驾驶舱网页。
 // v102.13：大号逐条打勾（做多4条/做空3条）、外资离去杠杆线还有多远、统一状态词（休市/离线）、橡胶休眠时不占位、锁屏状态点（需要 data/widget.json v3，Actions 跑一次后生效；旧文件也能显示，只是没有打勾表）。
@@ -15,6 +16,10 @@ const SITE = `https://${GH_USER.toLowerCase()}.github.io/${GH_REPO}/`;   // 驾�
 const JSON_URLS = [
   `${SITE}data/widget.json`,
   `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}/data/widget.json`,
+];
+const ACK_URLS = [
+  `${SITE}data/ack.json`,
+  `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}/data/ack.json`,
 ];
 const CACHE_NAME = "doupo-widget-cache.json";
 // 逐条条件的顺序必须和 scripts/build_widget.js 的 buildChecks() 一致：做多 [低位, 反弹, 外资未去杠杆, 基差]，做空 [去杠杆, 收盘<MA20, 高位]
@@ -66,6 +71,21 @@ async function fetchWidgetJson() {
     } catch (_) {}
   }
   return null;
+}
+
+// 「已操作」确认记录（仪表盘写 data/ack.json）：读不到就当没确认——宁可多提醒，不能漏提醒
+async function fetchAck() {
+  for (const u of ACK_URLS) {
+    try { const r = new Request(u + "?_=" + Date.now()); r.timeoutInterval = 5; const j = await r.loadJSON(); if (j && typeof j === "object") return j; } catch (_) {}
+  }
+  return null;
+}
+// 这个品种有没有「待操作」：持仓里带 need（该平仓 / 上移止损），且 key 没被确认过
+function applyNeed(g, ack, kind) {
+  if (!g) return;
+  const p = g.data.position, n = p && p.need;
+  g.needAcked = !!(n && (n.acked || (ack && ack[kind] && ack[kind].key === n.key)));
+  g.need = n && !g.needAcked && g.pnl ? n : null;
 }
 
 // ---------- 实时价 ----------
@@ -149,7 +169,7 @@ async function gatherRu(D) {
   if (p) pnl = { r: px != null ? p.side * (px / p.entryPx - 1) * 100 : p.r, amt: px != null ? p.side * (px - p.entryPx) * p.lots * 10 : null };
   const st = ru.act === "go" ? "short" : ru.act === "exit" || ru.act === "hold" ? (ru.act === "exit" ? "exit" : "hold") : "wait";
   const label = ru.act === "go" ? "做空入场" : ru.state === "blocked" ? "暂缓做空" : ru.act === "exit" ? "该平：" + (ru.head || "") : ru.act === "hold" ? "持有" : (ru.head || "观望").split("：")[0];
-  const data = { signal: { state: st, label, why: ru.sub || "", ref: ru.order ? ru.order.lim : null, stop: ru.order ? ru.order.stop : null, pct: null, fsum: null, delev: false, priceDate: ru.price ? ru.price.d : null }, position: p ? { side: p.side, lots: p.lots, entryPx: p.entryPx, entryD: p.entryD, stop: p.stop, trail: null, action: p.action } : null, contract: { name: "3月季节做空" }, updatedAt: D.data.updatedAt };
+  const data = { signal: { state: st, label, why: ru.sub || "", ref: ru.order ? ru.order.lim : null, stop: ru.order ? ru.order.stop : null, pct: null, fsum: null, delev: false, priceDate: ru.price ? ru.price.d : null }, position: p ? { side: p.side, lots: p.lots, entryPx: p.entryPx, entryD: p.entryD, stop: p.stop, trail: null, action: p.action, need: p.need || null } : null, contract: { name: "3月季节做空" }, updatedAt: D.data.updatedAt };
   return { name: "橡胶", kind: "ru", sleep: ru.state === "sleep" && !p, data, sym: ru.symbol, px, pxMs, src, chg, chgPct, open, quoteOld, sigOld: false, stale: D.stale, pnl, now };
 }
 
@@ -158,8 +178,9 @@ async function gatherRu(D) {
 // 同一档里有两个（同时有信号 / 同时持仓）→ 按时间轮换（每 5 分钟换一个，widget 每次刷新就换一次）。
 function attention(g) {
   const s = g.data.signal, p = g.data.position;
+  if (g.need) return 3;                                      // v102.25 待操作（该平仓/上移止损）：最高优先级，确认前一直占着
   if (s.state === "long" || s.state === "short") return 2;   // 入场信号
-  if (p && s.state === "exit") return 2;                     // 该平
+  if (p && s.state === "exit" && !g.needAcked) return 2;     // 该平（旧版 widget.json 没有 need 时走这条）
   if (p) return 1;                                           // 持仓
   return 0;
 }
@@ -356,6 +377,52 @@ function priceText(parent, g, size) {
 }
 function chgText(g) { return g.chg == null ? "" : `${sgnInt(g.chg)}  ${sgn(g.chgPct, 2)}%`; }
 
+// v102.25 持仓：大字 = 实时浮盈/浮亏（元），现价变小放旁边
+function hasPos(g) { return !!(g.data.position && g.pnl && (g.pnl.amt != null || g.pnl.r != null)); }
+function pnlStr(g) { return g.pnl.amt != null ? `${sgnInt(g.pnl.amt)}元` : `${sgn(g.pnl.r)}%`; }
+function pnlColor(g) { const v = g.pnl.amt != null ? g.pnl.amt : g.pnl.r; return v > 0 ? C.up : v < 0 ? C.down : C.text; }
+function addPnlBig(parent, g, size) {
+  const t = parent.addText(pnlStr(g));
+  t.font = Font.boldMonospacedSystemFont ? Font.boldMonospacedSystemFont(size) : Font.boldSystemFont(size);
+  t.textColor = pnlColor(g); t.minimumScaleFactor = 0.5; t.lineLimit = 1;
+  return t;
+}
+function addPxSmall(parent, g, size) {   // 现价（小）+ 涨跌，红涨绿跌
+  addTxt(parent, "现价 " + (g.px == null ? "—" : f0(g.px)), size, priceColor(g.chg), true);
+  if (g.chg != null) { parent.addSpacer(4); addTxt(parent, sgn(g.chgPct, 2) + "%", size - 2, priceColor(g.chg), false); }
+}
+// 待操作的大字文案
+function needHead(g) { const n = g.need; return n.k === "exit" ? `平仓·${n.sub}` : `上移止损→${f0(n.px)}`; }
+function needLines(g) {   // 要做什么、依据、现价
+  const n = g.need, p = g.data.position, px = g.px, out = [];
+  if (n.k === "exit") {
+    out.push(`原因：${n.sub}`);
+    out.push(`${p.side > 0 ? "卖出平多" : "买入平空"} ${p.lots}手${p.contract ? " " + p.contract : ""}`);
+  } else {
+    const gap = px != null ? p.side * (px - n.px) / px * 100 : null;
+    out.push(`把止损改到 ${f0(n.px)}${gap != null ? `（现价 ${f0(px)}，距 ${gap.toFixed(1)}%）` : ""}`);
+    out.push(`移动止盈已启动，之后每创新${p.side > 0 ? "高" : "低"}还会再提醒`);
+  }
+  return out;
+}
+function addNeed(w, g, family) {   // 最高优先级：大字建议操作，其余收起来；确认前不恢复
+  const small = family === "small", n = g.need, p = g.data.position;
+  const bar = w.addStack(); bar.centerAlignContent(); bar.cornerRadius = 8; bar.setPadding(3, 9, 3, 9);
+  bar.backgroundColor = dyn(sigColorHex("exit", false), sigColorHex("exit", true));
+  addTxt(bar, "⚠ 需要操作", small ? 11 : 13, new Color("#FFFFFF"), true);
+  w.addSpacer(small ? 3 : 6);
+  addTxt(w, needHead(g), small ? 22 : family === "medium" ? 30 : 38, C.warn, true, { lines: 2 });
+  w.addSpacer(small ? 2 : 5);
+  needLines(g).slice(0, small ? 1 : 2).forEach(l => addTxt(w, l, small ? 11 : 13, C.text, !small && l === needLines(g)[0]));
+  w.addSpacer(small ? 2 : 4);
+  const h = w.addStack(); h.centerAlignContent();
+  addTxt(h, `${p.side > 0 ? "多" : "空"}${p.lots}手 `, small ? 10 : 12, C.sub, false);
+  if (hasPos(g)) addTxt(h, pnlStr(g), small ? 11 : 14, pnlColor(g), true);
+  h.addSpacer(6); addTxt(h, g.px == null ? "" : "现价 " + f0(g.px), small ? 10 : 12, priceColor(g.chg), false);
+  if (!small) { w.addSpacer(3); addTxt(w, "操作完到仪表盘点「已操作」确认，小组件才恢复原样", 10, C.sub, false); }
+  else addTxt(w, "仪表盘点「已操作」恢复", 9, C.sub, false);
+}
+
 function addFxLine(parent, g, size, withGap) {
   const f = fxInfo(g); if (!f) return;
   addTxt(parent, f.text + (withGap ? `（${f.long}）` : ""), size, f.hit || f.near ? C.warn : C.sub, false);
@@ -428,10 +495,21 @@ function buildHome(g, family) {
   addHeader(w, g, small);
   w.addSpacer(small ? 2 : 4);
 
+  if (g.need && p) {   // v102.25 待操作：整块让给建议操作
+    addNeed(w, g, family);
+    if (g.sigOld) { w.addSpacer(3); addTxt(w, "⚠ 信号文件超过45分钟没更新，检查 Actions", 10, C.warn, false); }
+    w.addSpacer();
+    addOther(w, g); w.addSpacer(2);
+    addFooter(w, g, family);
+    return w;
+  }
   if (family === "small") {
     const pr = w.addStack(); pr.bottomAlignContent();
-    priceText(pr, g, 28); pr.addSpacer(6);
-    addTxt(pr, g.chgPct == null ? "" : sgn(g.chgPct, 2) + "%", 11, priceColor(g.chg), true);
+    if (hasPos(g)) { addPnlBig(pr, g, 26); pr.addSpacer(5); addTxt(pr, g.px == null ? "" : f0(g.px), 11, priceColor(g.chg), true); }
+    else {
+      priceText(pr, g, 28); pr.addSpacer(6);
+      addTxt(pr, g.chgPct == null ? "" : sgn(g.chgPct, 2) + "%", 11, priceColor(g.chg), true);
+    }
     w.addSpacer(4);
     if (isSig) {   // 有信号：信号条 + 限价/止损/启动价
       addSignalBar(w, g, true); w.addSpacer(3); entryLines(w, 11, "tight");
@@ -450,7 +528,9 @@ function buildHome(g, family) {
     // 左：价格 + 信号条 + 两边进度；右：最接近那边的条件（一行一个）+ 综合倾向条
     const row = w.addStack(); row.topAlignContent();
     const left = row.addStack(); left.layoutVertically(); left.size = new Size(138, 0);
-    priceText(left, g, 30); addTxt(left, chgText(g), 13, priceColor(g.chg), true); left.addSpacer(4); addSignalBar(left, g, true);
+    if (hasPos(g)) { addPnlBig(left, g, 26); const pr2 = left.addStack(); pr2.centerAlignContent(); addPxSmall(pr2, g, 13); }
+    else { priceText(left, g, 30); addTxt(left, chgText(g), 13, priceColor(g.chg), true); }
+    left.addSpacer(4); addSignalBar(left, g, true);
     if (chk) { left.addSpacer(3); addTxt(left, `${sideInfo(g, sd).title} ${sideInfo(g, sd).have}/${sideInfo(g, sd).n} · ${hint(other)}`, 9, C.sub, false); }
     row.addSpacer(10);
     const right = row.addStack(); right.layoutVertically();
@@ -459,8 +539,8 @@ function buildHome(g, family) {
     else if (p) { addTxt(right, sigLine(g), 13, C.text, true); right.addSpacer(2); addPosLines(right, g, 10, "tight"); addCompMid(right, g, 164); }
     else { addTxt(right, s.why || shortWhy(g), 11, C.sub, false, { lines: 4 }); right.addSpacer(3); addCompMid(right, g, 164); }
   } else {   // large：用弹性间距把各块均匀撑开
-    priceText(w, g, 36);
-    addTxt(w, chgText(g), 14, priceColor(g.chg), true);
+    if (hasPos(g)) { addPnlBig(w, g, 38); const pr3 = w.addStack(); pr3.centerAlignContent(); addPxSmall(pr3, g, 15); if (g.chg != null) { pr3.addSpacer(6); addTxt(pr3, sgnInt(g.chg), 12, priceColor(g.chg), false); } }
+    else { priceText(w, g, 36); addTxt(w, chgText(g), 14, priceColor(g.chg), true); }
     w.addSpacer(6);
     addSignalBar(w, g, false);
     w.addSpacer();
@@ -491,12 +571,23 @@ function buildLock(g, family) {
   const w = new ListWidget(); w.url = SITE;
   const s = g.data.signal, p = g.data.position, dot = dotOf(g), tag = p ? (p.action === "持有" ? "持" : "平") : s.state === "long" ? "多" : s.state === "short" ? "空" : s.state === "nodata" ? "缺" : "观";
   if (family === "accessoryInline") {
-    addTxt(w, `${dot}${g.name} ${f0(g.px)} ${g.chgPct == null ? "" : sgn(g.chgPct, 1) + "%"} ${p ? sigLine(g) : s.label}`, 12, Color.white(), false);
+    if (g.need) addTxt(w, `⚠${g.name} ${needHead(g)}`, 12, Color.white(), true);
+    else if (hasPos(g)) addTxt(w, `${dot}${g.name} ${pnlStr(g)} 价${f0(g.px)}`, 12, Color.white(), false);
+    else addTxt(w, `${dot}${g.name} ${f0(g.px)} ${g.chgPct == null ? "" : sgn(g.chgPct, 1) + "%"} ${p ? sigLine(g) : s.label}`, 12, Color.white(), false);
   } else if (family === "accessoryCircular") {
     w.addAccessoryWidgetBackground = true;
     const st = w.addStack(); st.layoutVertically(); st.centerAlignContent();
-    addTxt(st, f0(g.px), 14, Color.white(), true);
-    addTxt(st, dot + tag, 12, Color.white(), true);
+    if (g.need) { addTxt(st, "⚠", 14, Color.white(), true); addTxt(st, g.need.k === "exit" ? "平仓" : "移损", 12, Color.white(), true); }
+    else { addTxt(st, f0(g.px), 14, Color.white(), true); addTxt(st, dot + tag, 12, Color.white(), true); }
+  } else if (g.need) {   // 矩形：待操作三行
+    addTxt(w, `⚠ ${g.name} ${needHead(g)}`, 14, Color.white(), true);
+    addTxt(w, needLines(g)[0], 12, Color.white(), false);
+    addTxt(w, `${hasPos(g) ? pnlStr(g) + " · " : ""}仪表盘点「已操作」恢复`, 11, Color.white(), false);
+  } else if (hasPos(g)) {   // 矩形：持仓第一行浮盈大字
+    const tg = pxTag(g);
+    addTxt(w, `${g.name} ${pnlStr(g)}`, 15, Color.white(), true);
+    addTxt(w, `现价 ${f0(g.px)}  ${g.chgPct == null ? "" : sgn(g.chgPct, 2) + "%"}${tg.warn || !g.open ? "  " + tg.t.split(" ")[0] : ""}`, 12, Color.white(), false);
+    addTxt(w, `${dot} ${sigLine(g)}`, 12, Color.white(), true);
   } else {   // accessoryRectangular：3 行 —— 价格 / 涨跌+状态 / 状态点+结论+一句原因
     const tg = pxTag(g);
     addTxt(w, `${g.name} ${g.sym || ""}  ${f0(g.px)}`, 14, Color.white(), true);
@@ -524,7 +615,9 @@ function buildError() {
 const D = await loadData();
 let g = null;
 if (D) {
-  const soy = await gather(D), ru = await gatherRu(D), items = [soy, ru].filter(Boolean), pk = pickItems(items, Date.now());
+  const soy = await gather(D), ru = await gatherRu(D), ack = await fetchAck();
+  applyNeed(soy, ack, "soy"); applyNeed(ru, ack, "ru");
+  const items = [soy, ru].filter(Boolean), pk = pickItems(items, Date.now());
   g = pk.show; g.other = pk.others; g.rotating = pk.rotating;
 }
 const family = config.widgetFamily || "medium";

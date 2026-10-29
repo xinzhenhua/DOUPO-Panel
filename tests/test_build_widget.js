@@ -89,6 +89,33 @@ eq('没到启动价 → 无移动止损', w.position.trail, null);
 w = run({ side: -1, lots: 5, entryD: '2026-10-09', entryPx: 3386, contract: sym });   // 空单(开仓价3386)，当前价更低 → 浮盈为正
 eq('空单浮盈 → r 为正', w.position.r > 0, true);
 
+// v102.25 待操作 need + 确认 ack
+{
+  const wl = run({ side: 1, lots: 10, entryD: lowRow[0], entryPx: +lowRow[4], contract: sym });
+  const nd = wl.position.need;
+  if (wl.position.action === '持有') {
+    eq('多单浮盈远超启动价且未触发平仓 → need.k=trail', nd && nd.k, 'trail');
+    eq('trail need：止损线价 = position.trail', nd && nd.px, wl.position.trail);
+    eq('trail need：key 拼法 trail|开仓日|开仓价|止损线', nd && nd.key, 'trail|' + wl.position.entryD + '|' + wl.position.entryPx + '|' + wl.position.trail);
+    eq('没有 ack.json → acked=false', nd && nd.acked, false);
+    fs.writeFileSync(path.join(tmp, 'ack.json'), JSON.stringify({ soy: { key: nd.key, at: '2026-10-29T08:00:00Z' } }));
+    eq('ack.json 的 key 对上 → acked=true', BW.build(tmp, { nowMs: mk(10) }).position.need.acked, true);
+    fs.writeFileSync(path.join(tmp, 'ack.json'), JSON.stringify({ soy: { key: 'trail|旧|旧|1', at: '2026-10-29T08:00:00Z' } }));
+    eq('ack 的是旧止损线 → 仍未确认（止损线上移要再提醒）', BW.build(tmp, { nowMs: mk(10) }).position.need.acked, false);
+    fs.unlinkSync(path.join(tmp, 'ack.json'));
+  } else {
+    eq('多单已到离场条件 → need.k=exit', nd && nd.k, 'exit');
+    eq('exit need：key 含动作', nd && nd.key, 'exit|' + wl.position.entryD + '|' + wl.position.entryPx + '|' + wl.position.action);
+  }
+}
+{
+  const TP = { ACT: 8, TRAIL: 4 };
+  eq('needOf：有离场动作 → exit，优先于移动止损', BW.needOf(1, '2026-10-12', 3400, '移动止盈', 9, TP), { k: 'exit', key: 'exit|2026-10-12|3400|移动止盈', head: '平仓', sub: '移动止盈' });
+  eq('needOf：多单峰值+9% → 止损线=peak×0.96', BW.needOf(1, '2026-10-12', 3400, '持有', 9, TP).px, Math.round(3400 * 1.09 * 0.96));
+  eq('needOf：空单峰值+9%（价格跌9%）→ 止损线=peak×1.04', BW.needOf(-1, '2026-10-12', 3400, '持有', 9, TP).px, Math.round(3400 * (1 - 0.09) * 1.04));
+  eq('needOf：没到启动价、没动作 → null', BW.needOf(1, '2026-10-12', 3400, '持有', 5, TP), null);
+}
+
 // v101.84 基差：compute() 带出基差，小组件的「why」用同一份 planWhy
 { const PA = require(path.join(ROOT, 'scripts', 'plan_alert.js')), L = JSON.parse(fs.readFileSync(path.join(tmp, 'latest.json'), 'utf8'));
   fs.writeFileSync(path.join(tmp, 'position.json'), JSON.stringify({ flat: true }));
