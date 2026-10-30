@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T19:13:19.132040+00:00",
+  "generatedAt": "2026-10-30T19:55:56.873457+00:00",
   "cbotPrice": {
     "available": true,
     "price": 324.7,
@@ -840,10 +840,7 @@
         "since": "2026-08-03",
         "why": ""
       }
-    },
-    "carried": true,
-    "carriedReason": "最近4个交易日都没取到豆粕现货基差(生意社)",
-    "carriedFrom": "2026-10-30T18:35:12.432076+00:00"
+    }
   },
   "hogRatio": {
     "available": true,
@@ -873,7 +870,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f9920094890>, 'Connection to x",
+    "carriedFrom": "2026-10-30T19:13:19.132040+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -907,16 +907,16 @@
   "cftcManagedMoney": {
     "available": true,
     "marketName": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
-    "reportDate": "2026-10-20",
-    "longPositions": 213717.0,
-    "shortPositions": 12839.0,
-    "netPosition": 200878.0,
-    "longChange": 645.0,
-    "shortChange": 4410.0,
-    "netChange": -3765.0,
-    "streakWeeks": 3,
+    "reportDate": "2026-10-27",
+    "longPositions": 184371.0,
+    "shortPositions": 15657.0,
+    "netPosition": 168714.0,
+    "longChange": -29346.0,
+    "shortChange": 2818.0,
+    "netChange": -32164.0,
+    "streakWeeks": 4,
     "streakDirection": "down",
-    "historyPercentile": 98.1,
+    "historyPercentile": 96.2,
     "historyWeeksUsed": 156,
     "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
     "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"
@@ -22063,13 +22063,13 @@
       ]
     },
     "cftc": {
-      "net": 200878.0,
-      "netChange": -3765.0,
-      "streakWeeks": 3,
+      "net": 168714.0,
+      "netChange": -32164.0,
+      "streakWeeks": 4,
       "streakDirection": "down",
-      "percentile": 98.1,
+      "percentile": 96.2,
       "weeksUsed": 156,
-      "reportDate": "2026-10-20"
+      "reportDate": "2026-10-27"
     },
     "state": {
       "note": "只能判断持仓拥挤度(高盛净多头水平+CFTC管理基金净多的历史分位)。文档里'资金市'还要求的价格突破、无视基本面利空、美豆不涨豆粕涨、高盛连续N日单边增仓，目前都未判断：价格/联动需要美豆数据，'连续N日'需要龙虎榜历史(v101起每天累积，但刚开始，要攒够才能判断，见TODO.md)。",
@@ -22149,7 +22149,7 @@
       "lines": [
         "近5个交易日高盛净多-17,731手。",
         "距文档的12万手警戒线：已低于警戒线34,913手。",
-        "CFTC管理基金净多处近156周的98%分位，连续3周减少(周度数据，截至2026-10-20，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
+        "CFTC管理基金净多处近156周的96%分位，连续4周减少(周度数据，截至2026-10-27，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
         "其他外资席位：摩根大通在减仓(加速)(连续6日累计-36,308手)，净空61,726手(摩根大通净持仓常在零附近来回，方向意义弱)。"
       ],
       "evidence": [
@@ -22160,6 +22160,6 @@
     }
   },
   "carriedKeys": [
-    "spotBasis"
+    "hogRatio"
   ]
 }
