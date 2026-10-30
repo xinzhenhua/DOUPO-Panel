@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T18:35:12.432076+00:00",
+  "generatedAt": "2026-10-30T19:13:19.132040+00:00",
   "cbotPrice": {
     "available": true,
     "price": 324.7,
@@ -840,7 +840,10 @@
         "since": "2026-08-03",
         "why": ""
       }
-    }
+    },
+    "carried": true,
+    "carriedReason": "最近4个交易日都没取到豆粕现货基差(生意社)",
+    "carriedFrom": "2026-10-30T18:35:12.432076+00:00"
   },
   "hogRatio": {
     "available": true,
@@ -22156,5 +22159,7 @@
       ]
     }
   },
-  "carriedKeys": []
+  "carriedKeys": [
+    "spotBasis"
+  ]
 }
