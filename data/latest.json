@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-30T16:49:30.885871+00:00",
+  "generatedAt": "2026-10-30T17:07:15.947302+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 326.1,
-    "change": -3.2,
-    "changePct": -0.97,
+    "price": 326.7,
+    "change": -2.6,
+    "changePct": -0.79,
     "asOf": "2026-10-30T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -870,10 +870,7 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f5845a98390>, 'Connection to x",
-    "carriedFrom": "2026-10-30T16:12:40.778148+00:00"
+    }
   },
   "sowInventory": {
     "available": true,
@@ -1089,7 +1086,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1265.75,
+        "zsCents": 1265.5,
         "zsDate": "2026-10-30",
         "zsExact": true,
         "zsNote": "",
@@ -1101,18 +1098,18 @@
         "brazil": {
           "beanPrice": 3731.0,
           "breakeven": 2929.7,
-          "impliedPremium": 57.3,
+          "impliedPremium": 57.5,
           "available": true,
-          "zsCents": 1265.75,
+          "zsCents": 1265.5,
           "fx": 6.6529,
           "mealPrice": 2927.0,
           "oilPrice": 8547.0,
-          "beanCost": 4026.6,
-          "mealCost": 3306.3,
-          "mealCostLow": 3131.5,
-          "mealCostHigh": 3481.1,
-          "gap": -379.3,
-          "gapPct": -11.5,
+          "beanCost": 4026.0,
+          "mealCost": 3305.4,
+          "mealCostLow": 3130.6,
+          "mealCostHigh": 3480.2,
+          "gap": -378.4,
+          "gapPct": -11.4,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1133,17 +1130,17 @@
         "us": {
           "beanPrice": 3731.0,
           "breakeven": 2929.7,
-          "impliedPremium": -59.8,
+          "impliedPremium": -59.6,
           "available": true,
-          "zsCents": 1265.75,
+          "zsCents": 1265.5,
           "fx": 6.6529,
           "mealPrice": 2927.0,
           "oilPrice": 8547.0,
-          "beanCost": 4718.0,
-          "mealCost": 4187.0,
-          "mealCostLow": 3995.2,
-          "mealCostHigh": 4378.8,
-          "gap": -1260.0,
+          "beanCost": 4717.2,
+          "mealCost": 4186.0,
+          "mealCostLow": 3994.3,
+          "mealCostHigh": 4377.8,
+          "gap": -1259.0,
           "gapPct": -30.1,
           "position": "below",
           "params": {
@@ -1213,7 +1210,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1225.75,
+        "zsCents": 1224.5,
         "zsDate": "2026-10-30",
         "zsExact": true,
         "zsNote": "",
@@ -1225,18 +1222,18 @@
         "brazil": {
           "beanPrice": 3995.0,
           "breakeven": 3156.4,
-          "impliedPremium": 193.5,
+          "impliedPremium": 194.7,
           "available": true,
-          "zsCents": 1225.75,
+          "zsCents": 1224.5,
           "fx": 6.6529,
           "mealPrice": 3183.0,
           "oilPrice": 9012.0,
-          "beanCost": 4122.7,
-          "mealCost": 3319.1,
-          "mealCostLow": 3144.3,
-          "mealCostHigh": 3493.9,
-          "gap": -136.1,
-          "gapPct": -4.1,
+          "beanCost": 4119.3,
+          "mealCost": 3314.7,
+          "mealCostLow": 3139.9,
+          "mealCostHigh": 3489.5,
+          "gap": -131.7,
+          "gapPct": -4.0,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1257,18 +1254,18 @@
         "us": {
           "beanPrice": 3995.0,
           "breakeven": 3156.4,
-          "impliedPremium": 67.9,
+          "impliedPremium": 69.1,
           "available": true,
-          "zsCents": 1225.75,
+          "zsCents": 1224.5,
           "fx": 6.6529,
           "mealPrice": 3183.0,
           "oilPrice": 9012.0,
-          "beanCost": 4633.7,
-          "mealCost": 3970.0,
-          "mealCostLow": 3778.2,
-          "mealCostHigh": 4161.8,
-          "gap": -787.0,
-          "gapPct": -19.8,
+          "beanCost": 4629.9,
+          "mealCost": 3965.2,
+          "mealCostLow": 3773.5,
+          "mealCostHigh": 4157.0,
+          "gap": -782.2,
+          "gapPct": -19.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -2374,12 +2371,6 @@
             "forecastDate": "09/30/2026"
           },
           {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Oct 2026",
-            "forecastDate": "09/30/2026"
-          },
-          {
             "outlook": "Persistence",
             "outlookLabel": "干旱持续",
             "targetPeriod": "Oct 2026",
@@ -2392,16 +2383,16 @@
             "forecastDate": "09/30/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 7,
         "worseningCount": 2,
-        "worseningPct": 25.0,
+        "worseningPct": 28.6,
         "dominantOutlook": "No_Drought",
         "dominantOutlookLabel": "预计无旱",
         "targetPeriod": "Oct 2026"
       }
     },
-    "avgWorseningPct": 9.2,
-    "simpleWorseningPct": 9.4,
+    "avgWorseningPct": 9.3,
+    "simpleWorseningPct": 9.7,
     "overallSignal": 0,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
@@ -2614,6 +2605,7 @@
           "lon": -86.1581,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-86.1581%2C+%22y%22%3A+39.7684%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Proxy Error",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
         "point5": {
@@ -3027,6 +3019,7 @@
           "lon": -85.3378,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-85.3378%2C+%22y%22%3A+43.4195%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
         "point6": {
@@ -3050,6 +3043,7 @@
           "lon": -88.0198,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-88.0198%2C+%22y%22%3A+42.8666%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
         },
         "point1": {
@@ -3064,7 +3058,7 @@
           "lon": -89.4012,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.4012%2C+%22y%22%3A+43.0731%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"09/30/2026\",\"target\":\"Oct 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point3": {
           "lat": 43.7844,
@@ -22159,7 +22153,5 @@
       ]
     }
   },
-  "carriedKeys": [
-    "hogRatio"
-  ]
+  "carriedKeys": []
 }
