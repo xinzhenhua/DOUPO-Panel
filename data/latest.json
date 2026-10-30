@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-30T07:06:27.850852+00:00",
+  "generatedAt": "2026-10-30T08:24:55.567512+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 328.9,
-    "change": -0.4,
-    "changePct": -0.12,
+    "price": 328.8,
+    "change": -0.5,
+    "changePct": -0.15,
     "asOf": "2026-10-30T04:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -872,7 +872,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f62cca94990>, 'Connection to x",
+    "carriedFrom": "2026-10-30T07:06:27.850852+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -925,14 +928,14 @@
       "available": true,
       "contractMonth": 9,
       "date": "2026-10-29",
-      "datesAligned": true,
+      "datesAligned": false,
       "mealSymbol": "M2709",
-      "mealPrice": 2919.0,
+      "mealPrice": 2927.0,
       "oilSymbol": "Y2709",
-      "oilPrice": 8478.0,
+      "oilPrice": 8547.0,
       "beanSymbol": "B2709",
       "beanPrice": 3694.0,
-      "grossMargin": 165.8,
+      "grossMargin": 184.9,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
@@ -941,7 +944,7 @@
         "minPoints": 12,
         "asOf": "2026-10-29",
         "since": "2019-04-01",
-        "percentile": 65.4,
+        "percentile": 80.2,
         "min": 22.0,
         "max": 229.4,
         "median": 138.45,
@@ -955,14 +958,14 @@
       "available": true,
       "contractMonth": 5,
       "date": "2026-10-29",
-      "datesAligned": true,
+      "datesAligned": false,
       "mealSymbol": "M2705",
       "mealPrice": 2824.0,
       "oilSymbol": "Y2705",
       "oilPrice": 8638.0,
       "beanSymbol": "B2705",
-      "beanPrice": 3635.0,
-      "grossMargin": 179.9,
+      "beanPrice": 3662.0,
+      "grossMargin": 152.9,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
@@ -971,7 +974,7 @@
         "minPoints": 12,
         "asOf": "2026-10-29",
         "since": "2018-12-03",
-        "percentile": 83.7,
+        "percentile": 60.3,
         "min": 39.0,
         "max": 238.2,
         "median": 140.85,
@@ -984,31 +987,31 @@
     "jan": {
       "available": true,
       "contractMonth": 1,
-      "date": "2026-10-29",
+      "date": "2026-10-30",
       "datesAligned": true,
       "mealSymbol": "M2701",
-      "mealPrice": 3161.0,
+      "mealPrice": 3183.0,
       "oilSymbol": "Y2701",
-      "oilPrice": 8901.0,
+      "oilPrice": 9012.0,
       "beanSymbol": "B2701",
-      "beanPrice": 3941.0,
-      "grossMargin": 187.1,
+      "beanPrice": 3995.0,
+      "grossMargin": 170.9,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
       "history": {
-        "n": 622,
+        "n": 623,
         "minPoints": 12,
-        "asOf": "2026-10-29",
+        "asOf": "2026-10-30",
         "since": "2019-08-01",
-        "percentile": 84.7,
+        "percentile": 69.7,
         "min": -2.9,
         "max": 264.6,
-        "median": 142.4,
+        "median": 142.6,
         "seasonal": {
           "month": 10,
           "n": 118,
-          "percentile": 81.4,
+          "percentile": 72.0,
           "median": 147.7
         },
         "cohort": null,
@@ -1052,28 +1055,28 @@
     "jan": {
       "available": true,
       "contractMonth": 1,
-      "date": "2026-10-29",
+      "date": "2026-10-30",
       "datesAligned": true,
       "nearSymbol": "M2701",
-      "nearPrice": 3161.0,
+      "nearPrice": 3183.0,
       "farSymbol": "M2705",
-      "farPrice": 2824.0,
-      "spread": 337.0,
-      "spreadPct": 10.66,
+      "farPrice": 2834.0,
+      "spread": 349.0,
+      "spreadPct": 10.96,
       "source": "DCE豆粕近远月合约盘面价格(新浪财经，经akshare获取)",
       "history": {
-        "n": 622,
+        "n": 623,
         "minPoints": 12,
-        "asOf": "2026-10-29",
+        "asOf": "2026-10-30",
         "since": "2019-08-01",
-        "percentile": 77.0,
+        "percentile": 77.8,
         "min": -2.27,
         "max": 15.36,
         "median": 6.74,
         "seasonal": {
           "month": 10,
           "n": 118,
-          "percentile": 77.1,
+          "percentile": 80.5,
           "median": 6.31
         },
         "cohort": null,
@@ -1088,30 +1091,30 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1261.25,
+        "zsCents": 1260.75,
         "zsDate": "2026-10-30",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2709",
-        "mealPrice": 2919.0,
-        "oilPrice": 8478.0,
+        "mealPrice": 2927.0,
+        "oilPrice": 8547.0,
         "priceDate": "2026-10-29",
         "primary": null,
         "brazil": {
           "beanPrice": 3694.0,
-          "breakeven": 2898.8,
-          "impliedPremium": 46.6,
+          "breakeven": 2882.6,
+          "impliedPremium": 47.1,
           "available": true,
-          "zsCents": 1261.25,
+          "zsCents": 1260.75,
           "fx": 6.6616,
-          "mealPrice": 2919.0,
-          "oilPrice": 8478.0,
-          "beanCost": 4019.4,
-          "mealCost": 3313.4,
-          "mealCostLow": 3138.3,
-          "mealCostHigh": 3488.4,
-          "gap": -394.4,
-          "gapPct": -11.9,
+          "mealPrice": 2927.0,
+          "oilPrice": 8547.0,
+          "beanCost": 4018.0,
+          "mealCost": 3295.3,
+          "mealCostLow": 3120.3,
+          "mealCostHigh": 3470.4,
+          "gap": -368.3,
+          "gapPct": -11.2,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1131,19 +1134,19 @@
         },
         "us": {
           "beanPrice": 3694.0,
-          "breakeven": 2898.8,
-          "impliedPremium": -69.2,
+          "breakeven": 2882.6,
+          "impliedPremium": -68.7,
           "available": true,
-          "zsCents": 1261.25,
+          "zsCents": 1260.75,
           "fx": 6.6616,
-          "mealPrice": 2919.0,
-          "oilPrice": 8478.0,
-          "beanCost": 4710.5,
-          "mealCost": 4193.7,
-          "mealCostLow": 4001.6,
-          "mealCostHigh": 4385.7,
-          "gap": -1274.7,
-          "gapPct": -30.4,
+          "mealPrice": 2927.0,
+          "oilPrice": 8547.0,
+          "beanCost": 4709.0,
+          "mealCost": 4175.5,
+          "mealCostLow": 3983.5,
+          "mealCostHigh": 4367.5,
+          "gap": -1248.5,
+          "gapPct": -29.9,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1164,7 +1167,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1244.75,
+        "zsCents": 1244.0,
         "zsDate": "2026-10-30",
         "zsExact": true,
         "zsNote": "",
@@ -1174,20 +1177,20 @@
         "priceDate": "2026-10-29",
         "primary": "brazil",
         "brazil": {
-          "beanPrice": 3635.0,
-          "breakeven": 2785.9,
-          "impliedPremium": 41.6,
+          "beanPrice": 3662.0,
+          "breakeven": 2820.3,
+          "impliedPremium": 52.2,
           "available": true,
-          "zsCents": 1244.75,
+          "zsCents": 1244.0,
           "fx": 6.6616,
           "mealPrice": 2824.0,
           "oilPrice": 8638.0,
-          "beanCost": 3847.7,
-          "mealCost": 3056.9,
-          "mealCostLow": 2881.8,
-          "mealCostHigh": 3231.9,
-          "gap": -232.9,
-          "gapPct": -7.6,
+          "beanCost": 3845.6,
+          "mealCost": 3054.2,
+          "mealCostLow": 2879.2,
+          "mealCostHigh": 3229.3,
+          "gap": -230.2,
+          "gapPct": -7.5,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1217,26 +1220,26 @@
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2701",
-        "mealPrice": 3161.0,
-        "oilPrice": 8901.0,
-        "priceDate": "2026-10-29",
+        "mealPrice": 3183.0,
+        "oilPrice": 9012.0,
+        "priceDate": "2026-10-30",
         "primary": "us",
         "brazil": {
-          "beanPrice": 3941.0,
-          "breakeven": 3113.8,
-          "impliedPremium": 175.2,
+          "beanPrice": 3995.0,
+          "breakeven": 3156.4,
+          "impliedPremium": 194.9,
           "available": true,
           "zsCents": 1222.5,
           "fx": 6.6616,
-          "mealPrice": 3161.0,
-          "oilPrice": 8901.0,
+          "mealPrice": 3183.0,
+          "oilPrice": 9012.0,
           "beanCost": 4119.0,
-          "mealCost": 3340.6,
-          "mealCostLow": 3165.5,
-          "mealCostHigh": 3515.6,
-          "gap": -179.6,
-          "gapPct": -5.4,
-          "position": "below",
+          "mealCost": 3314.4,
+          "mealCostLow": 3139.4,
+          "mealCostHigh": 3489.4,
+          "gap": -131.4,
+          "gapPct": -4.0,
+          "position": "within",
           "params": {
             "asof": "2026-10-10",
             "premium_step": 50,
@@ -1254,20 +1257,20 @@
           "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
         },
         "us": {
-          "beanPrice": 3941.0,
-          "breakeven": 3113.8,
-          "impliedPremium": 51.5,
+          "beanPrice": 3995.0,
+          "breakeven": 3156.4,
+          "impliedPremium": 69.4,
           "available": true,
           "zsCents": 1222.5,
           "fx": 6.6616,
-          "mealPrice": 3161.0,
-          "oilPrice": 8901.0,
+          "mealPrice": 3183.0,
+          "oilPrice": 9012.0,
           "beanCost": 4629.8,
-          "mealCost": 3991.3,
-          "mealCostLow": 3799.2,
-          "mealCostHigh": 4183.3,
-          "gap": -830.3,
-          "gapPct": -20.8,
+          "mealCost": 3965.1,
+          "mealCostLow": 3773.1,
+          "mealCostHigh": 4157.1,
+          "gap": -782.1,
+          "gapPct": -19.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -3142,7 +3145,7 @@
   "dceM09Daily": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 27,
+    "totalBarsReturned": 28,
     "bars": [
       {
         "date": "2026-09-15",
@@ -3413,6 +3416,16 @@
         "volume": 62719.0,
         "hold": 195705.0,
         "settle": 2927.0
+      },
+      {
+        "date": "2026-10-30",
+        "open": 2916.0,
+        "high": 2935.0,
+        "low": 2912.0,
+        "close": 2927.0,
+        "volume": 44465.0,
+        "hold": 207049.0,
+        "settle": 2923.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -4894,9 +4907,9 @@
         "open": 2926.0,
         "high": 2928.0,
         "low": 2925.0,
-        "close": 2926.0,
+        "close": 2927.0,
         "volume": 2.0,
-        "hold": 207111.0
+        "hold": 207049.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -7602,9 +7615,9 @@
         "open": 2927.0,
         "high": 2928.0,
         "low": 2925.0,
-        "close": 2926.0,
+        "close": 2927.0,
         "volume": 2.0,
-        "hold": 207111.0
+        "hold": 207049.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -7612,7 +7625,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 110,
+    "totalBarsReturned": 111,
     "bars": [
       {
         "date": "2026-05-20",
@@ -8713,6 +8726,16 @@
         "volume": 251433.0,
         "hold": 984200.0,
         "settle": 2830.0
+      },
+      {
+        "date": "2026-10-30",
+        "open": 2820.0,
+        "high": 2842.0,
+        "low": 2814.0,
+        "close": 2834.0,
+        "volume": 251268.0,
+        "hold": 1000280.0,
+        "settle": 2828.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -13056,7 +13079,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 187,
+    "totalBarsReturned": 188,
     "bars": [
       {
         "date": "2026-01-19",
@@ -14927,6 +14950,16 @@
         "volume": 894950.0,
         "hold": 2099452.0,
         "settle": 3181.0
+      },
+      {
+        "date": "2026-10-30",
+        "open": 3158.0,
+        "high": 3199.0,
+        "low": 3150.0,
+        "close": 3183.0,
+        "volume": 874542.0,
+        "hold": 2050477.0,
+        "settle": 3174.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -16560,2829 +16593,122 @@
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
   },
   "dceM01Min15": {
-    "available": true,
-    "symbol": "M2701",
-    "totalBarsReturned": 300,
-    "bars": [
-      {
-        "datetime": "2026-10-13 15:00:00",
-        "open": 3368.0,
-        "high": 3368.0,
-        "low": 3361.0,
-        "close": 3361.0,
-        "volume": 7483.0,
-        "hold": 2413214.0
-      },
-      {
-        "datetime": "2026-10-13 21:15:00",
-        "open": 3374.0,
-        "high": 3383.0,
-        "low": 3370.0,
-        "close": 3372.0,
-        "volume": 43.0,
-        "hold": 2411279.0
-      },
-      {
-        "datetime": "2026-10-13 21:30:00",
-        "open": 3371.0,
-        "high": 3375.0,
-        "low": 3367.0,
-        "close": 3370.0,
-        "volume": 39.0,
-        "hold": 2416523.0
-      },
-      {
-        "datetime": "2026-10-13 21:45:00",
-        "open": 3370.0,
-        "high": 3377.0,
-        "low": 3367.0,
-        "close": 3371.0,
-        "volume": 53.0,
-        "hold": 2417029.0
-      },
-      {
-        "datetime": "2026-10-13 22:00:00",
-        "open": 3371.0,
-        "high": 3374.0,
-        "low": 3366.0,
-        "close": 3370.0,
-        "volume": 78.0,
-        "hold": 2414275.0
-      },
-      {
-        "datetime": "2026-10-13 22:15:00",
-        "open": 3370.0,
-        "high": 3373.0,
-        "low": 3366.0,
-        "close": 3371.0,
-        "volume": 152.0,
-        "hold": 2418239.0
-      },
-      {
-        "datetime": "2026-10-13 22:30:00",
-        "open": 3371.0,
-        "high": 3382.0,
-        "low": 3370.0,
-        "close": 3381.0,
-        "volume": 546.0,
-        "hold": 2412082.0
-      },
-      {
-        "datetime": "2026-10-13 22:45:00",
-        "open": 3381.0,
-        "high": 3390.0,
-        "low": 3377.0,
-        "close": 3387.0,
-        "volume": 1792.0,
-        "hold": 2411997.0
-      },
-      {
-        "datetime": "2026-10-13 23:00:00",
-        "open": 3388.0,
-        "high": 3390.0,
-        "low": 3383.0,
-        "close": 3384.0,
-        "volume": 1256.0,
-        "hold": 2406810.0
-      },
-      {
-        "datetime": "2026-10-14 09:15:00",
-        "open": 3371.0,
-        "high": 3377.0,
-        "low": 3369.0,
-        "close": 3370.0,
-        "volume": 338.0,
-        "hold": 2403741.0
-      },
-      {
-        "datetime": "2026-10-14 09:30:00",
-        "open": 3370.0,
-        "high": 3376.0,
-        "low": 3369.0,
-        "close": 3370.0,
-        "volume": 9633.0,
-        "hold": 2406551.0
-      },
-      {
-        "datetime": "2026-10-14 09:45:00",
-        "open": 3369.0,
-        "high": 3369.0,
-        "low": 3357.0,
-        "close": 3358.0,
-        "volume": 1516.0,
-        "hold": 2416224.0
-      },
-      {
-        "datetime": "2026-10-14 10:00:00",
-        "open": 3358.0,
-        "high": 3367.0,
-        "low": 3355.0,
-        "close": 3367.0,
-        "volume": 8718.0,
-        "hold": 2421499.0
-      },
-      {
-        "datetime": "2026-10-14 10:15:00",
-        "open": 3367.0,
-        "high": 3378.0,
-        "low": 3367.0,
-        "close": 3376.0,
-        "volume": 20.0,
-        "hold": 2421464.0
-      },
-      {
-        "datetime": "2026-10-14 10:45:00",
-        "open": 3377.0,
-        "high": 3381.0,
-        "low": 3375.0,
-        "close": 3376.0,
-        "volume": 6264.0,
-        "hold": 2418192.0
-      },
-      {
-        "datetime": "2026-10-14 11:00:00",
-        "open": 3382.0,
-        "high": 3383.0,
-        "low": 3376.0,
-        "close": 3376.0,
-        "volume": 2100.0,
-        "hold": 2419068.0
-      },
-      {
-        "datetime": "2026-10-14 11:15:00",
-        "open": 3376.0,
-        "high": 3379.0,
-        "low": 3375.0,
-        "close": 3376.0,
-        "volume": 8221.0,
-        "hold": 2416844.0
-      },
-      {
-        "datetime": "2026-10-14 11:30:00",
-        "open": 3377.0,
-        "high": 3379.0,
-        "low": 3374.0,
-        "close": 3375.0,
-        "volume": 5261.0,
-        "hold": 2415522.0
-      },
-      {
-        "datetime": "2026-10-14 13:45:00",
-        "open": 3380.0,
-        "high": 3382.0,
-        "low": 3376.0,
-        "close": 3382.0,
-        "volume": 302.0,
-        "hold": 2415226.0
-      },
-      {
-        "datetime": "2026-10-14 14:00:00",
-        "open": 3382.0,
-        "high": 3382.0,
-        "low": 3370.0,
-        "close": 3371.0,
-        "volume": 997.0,
-        "hold": 2414109.0
-      },
-      {
-        "datetime": "2026-10-14 14:15:00",
-        "open": 3371.0,
-        "high": 3381.0,
-        "low": 3370.0,
-        "close": 3381.0,
-        "volume": 33287.0,
-        "hold": 2416357.0
-      },
-      {
-        "datetime": "2026-10-14 14:30:00",
-        "open": 3378.0,
-        "high": 3379.0,
-        "low": 3366.0,
-        "close": 3367.0,
-        "volume": 15364.0,
-        "hold": 2415740.0
-      },
-      {
-        "datetime": "2026-10-14 14:45:00",
-        "open": 3370.0,
-        "high": 3375.0,
-        "low": 3369.0,
-        "close": 3375.0,
-        "volume": 13663.0,
-        "hold": 2413905.0
-      },
-      {
-        "datetime": "2026-10-14 15:00:00",
-        "open": 3375.0,
-        "high": 3376.0,
-        "low": 3372.0,
-        "close": 3373.0,
-        "volume": 1093.0,
-        "hold": 2409804.0
-      },
-      {
-        "datetime": "2026-10-14 21:15:00",
-        "open": 3372.0,
-        "high": 3374.0,
-        "low": 3364.0,
-        "close": 3371.0,
-        "volume": 40.0,
-        "hold": 2413578.0
-      },
-      {
-        "datetime": "2026-10-14 21:30:00",
-        "open": 3372.0,
-        "high": 3375.0,
-        "low": 3368.0,
-        "close": 3373.0,
-        "volume": 431.0,
-        "hold": 2414841.0
-      },
-      {
-        "datetime": "2026-10-14 21:45:00",
-        "open": 3372.0,
-        "high": 3373.0,
-        "low": 3355.0,
-        "close": 3358.0,
-        "volume": 1042.0,
-        "hold": 2422292.0
-      },
-      {
-        "datetime": "2026-10-14 22:00:00",
-        "open": 3356.0,
-        "high": 3357.0,
-        "low": 3351.0,
-        "close": 3352.0,
-        "volume": 174.0,
-        "hold": 2425957.0
-      },
-      {
-        "datetime": "2026-10-14 22:15:00",
-        "open": 3351.0,
-        "high": 3353.0,
-        "low": 3348.0,
-        "close": 3349.0,
-        "volume": 179.0,
-        "hold": 2427167.0
-      },
-      {
-        "datetime": "2026-10-14 22:30:00",
-        "open": 3351.0,
-        "high": 3353.0,
-        "low": 3344.0,
-        "close": 3346.0,
-        "volume": 195.0,
-        "hold": 2424976.0
-      },
-      {
-        "datetime": "2026-10-14 22:45:00",
-        "open": 3345.0,
-        "high": 3347.0,
-        "low": 3339.0,
-        "close": 3340.0,
-        "volume": 105.0,
-        "hold": 2420518.0
-      },
-      {
-        "datetime": "2026-10-14 23:00:00",
-        "open": 3340.0,
-        "high": 3343.0,
-        "low": 3338.0,
-        "close": 3341.0,
-        "volume": 82.0,
-        "hold": 2412073.0
-      },
-      {
-        "datetime": "2026-10-15 09:15:00",
-        "open": 3339.0,
-        "high": 3340.0,
-        "low": 3331.0,
-        "close": 3335.0,
-        "volume": 5032.0,
-        "hold": 2408196.0
-      },
-      {
-        "datetime": "2026-10-15 09:30:00",
-        "open": 3335.0,
-        "high": 3339.0,
-        "low": 3331.0,
-        "close": 3336.0,
-        "volume": 5141.0,
-        "hold": 2403850.0
-      },
-      {
-        "datetime": "2026-10-15 09:45:00",
-        "open": 3336.0,
-        "high": 3338.0,
-        "low": 3330.0,
-        "close": 3332.0,
-        "volume": 1756.0,
-        "hold": 2407415.0
-      },
-      {
-        "datetime": "2026-10-15 10:00:00",
-        "open": 3331.0,
-        "high": 3334.0,
-        "low": 3322.0,
-        "close": 3329.0,
-        "volume": 4217.0,
-        "hold": 2404270.0
-      },
-      {
-        "datetime": "2026-10-15 10:15:00",
-        "open": 3327.0,
-        "high": 3332.0,
-        "low": 3325.0,
-        "close": 3328.0,
-        "volume": 42.0,
-        "hold": 2405245.0
-      },
-      {
-        "datetime": "2026-10-15 10:45:00",
-        "open": 3328.0,
-        "high": 3331.0,
-        "low": 3324.0,
-        "close": 3329.0,
-        "volume": 7.0,
-        "hold": 2404576.0
-      },
-      {
-        "datetime": "2026-10-15 11:00:00",
-        "open": 3329.0,
-        "high": 3333.0,
-        "low": 3326.0,
-        "close": 3332.0,
-        "volume": 1698.0,
-        "hold": 2403455.0
-      },
-      {
-        "datetime": "2026-10-15 11:15:00",
-        "open": 3332.0,
-        "high": 3333.0,
-        "low": 3330.0,
-        "close": 3332.0,
-        "volume": 515.0,
-        "hold": 2403695.0
-      },
-      {
-        "datetime": "2026-10-15 11:30:00",
-        "open": 3332.0,
-        "high": 3332.0,
-        "low": 3328.0,
-        "close": 3330.0,
-        "volume": 404.0,
-        "hold": 2402446.0
-      },
-      {
-        "datetime": "2026-10-15 13:45:00",
-        "open": 3330.0,
-        "high": 3339.0,
-        "low": 3328.0,
-        "close": 3336.0,
-        "volume": 14255.0,
-        "hold": 2401280.0
-      },
-      {
-        "datetime": "2026-10-15 14:00:00",
-        "open": 3336.0,
-        "high": 3340.0,
-        "low": 3334.0,
-        "close": 3335.0,
-        "volume": 4718.0,
-        "hold": 2396616.0
-      },
-      {
-        "datetime": "2026-10-15 14:15:00",
-        "open": 3334.0,
-        "high": 3335.0,
-        "low": 3318.0,
-        "close": 3320.0,
-        "volume": 24637.0,
-        "hold": 2396061.0
-      },
-      {
-        "datetime": "2026-10-15 14:30:00",
-        "open": 3319.0,
-        "high": 3325.0,
-        "low": 3318.0,
-        "close": 3322.0,
-        "volume": 6061.0,
-        "hold": 2393044.0
-      },
-      {
-        "datetime": "2026-10-15 14:45:00",
-        "open": 3322.0,
-        "high": 3324.0,
-        "low": 3319.0,
-        "close": 3322.0,
-        "volume": 4924.0,
-        "hold": 2389665.0
-      },
-      {
-        "datetime": "2026-10-15 15:00:00",
-        "open": 3322.0,
-        "high": 3325.0,
-        "low": 3316.0,
-        "close": 3316.0,
-        "volume": 17293.0,
-        "hold": 2384135.0
-      },
-      {
-        "datetime": "2026-10-15 21:15:00",
-        "open": 3322.0,
-        "high": 3325.0,
-        "low": 3317.0,
-        "close": 3322.0,
-        "volume": 65.0,
-        "hold": 2370046.0
-      },
-      {
-        "datetime": "2026-10-15 21:30:00",
-        "open": 3323.0,
-        "high": 3325.0,
-        "low": 3319.0,
-        "close": 3322.0,
-        "volume": 28.0,
-        "hold": 2372578.0
-      },
-      {
-        "datetime": "2026-10-15 21:45:00",
-        "open": 3322.0,
-        "high": 3327.0,
-        "low": 3318.0,
-        "close": 3326.0,
-        "volume": 5.0,
-        "hold": 2373928.0
-      },
-      {
-        "datetime": "2026-10-15 22:00:00",
-        "open": 3325.0,
-        "high": 3326.0,
-        "low": 3316.0,
-        "close": 3322.0,
-        "volume": 71.0,
-        "hold": 2375717.0
-      },
-      {
-        "datetime": "2026-10-15 22:15:00",
-        "open": 3320.0,
-        "high": 3327.0,
-        "low": 3319.0,
-        "close": 3320.0,
-        "volume": 59.0,
-        "hold": 2373011.0
-      },
-      {
-        "datetime": "2026-10-15 22:30:00",
-        "open": 3320.0,
-        "high": 3330.0,
-        "low": 3320.0,
-        "close": 3328.0,
-        "volume": 345.0,
-        "hold": 2375580.0
-      },
-      {
-        "datetime": "2026-10-15 22:45:00",
-        "open": 3328.0,
-        "high": 3329.0,
-        "low": 3323.0,
-        "close": 3324.0,
-        "volume": 10.0,
-        "hold": 2375501.0
-      },
-      {
-        "datetime": "2026-10-15 23:00:00",
-        "open": 3324.0,
-        "high": 3325.0,
-        "low": 3316.0,
-        "close": 3318.0,
-        "volume": 1483.0,
-        "hold": 2371503.0
-      },
-      {
-        "datetime": "2026-10-16 09:15:00",
-        "open": 3309.0,
-        "high": 3320.0,
-        "low": 3306.0,
-        "close": 3315.0,
-        "volume": 2374.0,
-        "hold": 2368681.0
-      },
-      {
-        "datetime": "2026-10-16 09:30:00",
-        "open": 3316.0,
-        "high": 3316.0,
-        "low": 3306.0,
-        "close": 3310.0,
-        "volume": 1.0,
-        "hold": 2373221.0
-      },
-      {
-        "datetime": "2026-10-16 09:45:00",
-        "open": 3310.0,
-        "high": 3312.0,
-        "low": 3294.0,
-        "close": 3295.0,
-        "volume": 3245.0,
-        "hold": 2374924.0
-      },
-      {
-        "datetime": "2026-10-16 10:00:00",
-        "open": 3295.0,
-        "high": 3296.0,
-        "low": 3286.0,
-        "close": 3288.0,
-        "volume": 46277.0,
-        "hold": 2365541.0
-      },
-      {
-        "datetime": "2026-10-16 10:15:00",
-        "open": 3287.0,
-        "high": 3290.0,
-        "low": 3283.0,
-        "close": 3289.0,
-        "volume": 3503.0,
-        "hold": 2363304.0
-      },
-      {
-        "datetime": "2026-10-16 10:45:00",
-        "open": 3289.0,
-        "high": 3295.0,
-        "low": 3284.0,
-        "close": 3294.0,
-        "volume": 3958.0,
-        "hold": 2350245.0
-      },
-      {
-        "datetime": "2026-10-16 11:00:00",
-        "open": 3293.0,
-        "high": 3296.0,
-        "low": 3291.0,
-        "close": 3291.0,
-        "volume": 11143.0,
-        "hold": 2337896.0
-      },
-      {
-        "datetime": "2026-10-16 11:15:00",
-        "open": 3291.0,
-        "high": 3301.0,
-        "low": 3291.0,
-        "close": 3300.0,
-        "volume": 16593.0,
-        "hold": 2335719.0
-      },
-      {
-        "datetime": "2026-10-16 11:30:00",
-        "open": 3301.0,
-        "high": 3303.0,
-        "low": 3294.0,
-        "close": 3297.0,
-        "volume": 8122.0,
-        "hold": 2336103.0
-      },
-      {
-        "datetime": "2026-10-16 13:45:00",
-        "open": 3295.0,
-        "high": 3295.0,
-        "low": 3290.0,
-        "close": 3291.0,
-        "volume": 2512.0,
-        "hold": 2337353.0
-      },
-      {
-        "datetime": "2026-10-16 14:00:00",
-        "open": 3292.0,
-        "high": 3294.0,
-        "low": 3285.0,
-        "close": 3286.0,
-        "volume": 1576.0,
-        "hold": 2336048.0
-      },
-      {
-        "datetime": "2026-10-16 14:15:00",
-        "open": 3286.0,
-        "high": 3287.0,
-        "low": 3281.0,
-        "close": 3284.0,
-        "volume": 10426.0,
-        "hold": 2335880.0
-      },
-      {
-        "datetime": "2026-10-16 14:30:00",
-        "open": 3284.0,
-        "high": 3287.0,
-        "low": 3278.0,
-        "close": 3279.0,
-        "volume": 17761.0,
-        "hold": 2330311.0
-      },
-      {
-        "datetime": "2026-10-16 14:45:00",
-        "open": 3280.0,
-        "high": 3282.0,
-        "low": 3276.0,
-        "close": 3277.0,
-        "volume": 17668.0,
-        "hold": 2322915.0
-      },
-      {
-        "datetime": "2026-10-16 15:00:00",
-        "open": 3277.0,
-        "high": 3283.0,
-        "low": 3276.0,
-        "close": 3281.0,
-        "volume": 344.0,
-        "hold": 2321915.0
-      },
-      {
-        "datetime": "2026-10-16 21:15:00",
-        "open": 3273.0,
-        "high": 3276.0,
-        "low": 3267.0,
-        "close": 3268.0,
-        "volume": 117344.0,
-        "hold": 2318479.0
-      },
-      {
-        "datetime": "2026-10-16 21:30:00",
-        "open": 3269.0,
-        "high": 3274.0,
-        "low": 3266.0,
-        "close": 3269.0,
-        "volume": 69074.0,
-        "hold": 2316337.0
-      },
-      {
-        "datetime": "2026-10-16 21:45:00",
-        "open": 3268.0,
-        "high": 3276.0,
-        "low": 3265.0,
-        "close": 3267.0,
-        "volume": 68432.0,
-        "hold": 2309259.0
-      },
-      {
-        "datetime": "2026-10-16 22:00:00",
-        "open": 3267.0,
-        "high": 3270.0,
-        "low": 3260.0,
-        "close": 3263.0,
-        "volume": 45224.0,
-        "hold": 2309925.0
-      },
-      {
-        "datetime": "2026-10-16 22:15:00",
-        "open": 3263.0,
-        "high": 3266.0,
-        "low": 3260.0,
-        "close": 3264.0,
-        "volume": 29352.0,
-        "hold": 2310023.0
-      },
-      {
-        "datetime": "2026-10-16 22:30:00",
-        "open": 3264.0,
-        "high": 3268.0,
-        "low": 3262.0,
-        "close": 3265.0,
-        "volume": 8169.0,
-        "hold": 2308660.0
-      },
-      {
-        "datetime": "2026-10-16 22:45:00",
-        "open": 3265.0,
-        "high": 3268.0,
-        "low": 3262.0,
-        "close": 3264.0,
-        "volume": 26243.0,
-        "hold": 2308224.0
-      },
-      {
-        "datetime": "2026-10-16 23:00:00",
-        "open": 3264.0,
-        "high": 3269.0,
-        "low": 3263.0,
-        "close": 3268.0,
-        "volume": 25411.0,
-        "hold": 2301294.0
-      },
-      {
-        "datetime": "2026-10-19 09:15:00",
-        "open": 3273.0,
-        "high": 3284.0,
-        "low": 3268.0,
-        "close": 3284.0,
-        "volume": 116456.0,
-        "hold": 2292885.0
-      },
-      {
-        "datetime": "2026-10-19 09:30:00",
-        "open": 3285.0,
-        "high": 3289.0,
-        "low": 3283.0,
-        "close": 3287.0,
-        "volume": 72243.0,
-        "hold": 2299069.0
-      },
-      {
-        "datetime": "2026-10-19 09:45:00",
-        "open": 3284.0,
-        "high": 3287.0,
-        "low": 3279.0,
-        "close": 3280.0,
-        "volume": 33395.0,
-        "hold": 2299178.0
-      },
-      {
-        "datetime": "2026-10-19 10:00:00",
-        "open": 3280.0,
-        "high": 3283.0,
-        "low": 3278.0,
-        "close": 3280.0,
-        "volume": 17728.0,
-        "hold": 2300602.0
-      },
-      {
-        "datetime": "2026-10-19 10:15:00",
-        "open": 3278.0,
-        "high": 3280.0,
-        "low": 3273.0,
-        "close": 3275.0,
-        "volume": 5468.0,
-        "hold": 2300781.0
-      },
-      {
-        "datetime": "2026-10-19 10:45:00",
-        "open": 3275.0,
-        "high": 3280.0,
-        "low": 3274.0,
-        "close": 3278.0,
-        "volume": 38483.0,
-        "hold": 2300609.0
-      },
-      {
-        "datetime": "2026-10-19 11:00:00",
-        "open": 3278.0,
-        "high": 3281.0,
-        "low": 3273.0,
-        "close": 3280.0,
-        "volume": 31391.0,
-        "hold": 2297898.0
-      },
-      {
-        "datetime": "2026-10-19 11:15:00",
-        "open": 3281.0,
-        "high": 3288.0,
-        "low": 3279.0,
-        "close": 3280.0,
-        "volume": 48616.0,
-        "hold": 2300042.0
-      },
-      {
-        "datetime": "2026-10-19 11:30:00",
-        "open": 3280.0,
-        "high": 3282.0,
-        "low": 3276.0,
-        "close": 3280.0,
-        "volume": 18361.0,
-        "hold": 2298300.0
-      },
-      {
-        "datetime": "2026-10-19 13:45:00",
-        "open": 3279.0,
-        "high": 3286.0,
-        "low": 3276.0,
-        "close": 3284.0,
-        "volume": 34408.0,
-        "hold": 2297859.0
-      },
-      {
-        "datetime": "2026-10-19 14:00:00",
-        "open": 3284.0,
-        "high": 3292.0,
-        "low": 3283.0,
-        "close": 3288.0,
-        "volume": 51023.0,
-        "hold": 2296202.0
-      },
-      {
-        "datetime": "2026-10-19 14:15:00",
-        "open": 3289.0,
-        "high": 3291.0,
-        "low": 3284.0,
-        "close": 3289.0,
-        "volume": 31034.0,
-        "hold": 2294861.0
-      },
-      {
-        "datetime": "2026-10-19 14:30:00",
-        "open": 3289.0,
-        "high": 3292.0,
-        "low": 3288.0,
-        "close": 3292.0,
-        "volume": 25136.0,
-        "hold": 2294853.0
-      },
-      {
-        "datetime": "2026-10-19 14:45:00",
-        "open": 3292.0,
-        "high": 3293.0,
-        "low": 3288.0,
-        "close": 3289.0,
-        "volume": 40106.0,
-        "hold": 2289802.0
-      },
-      {
-        "datetime": "2026-10-19 15:00:00",
-        "open": 3287.0,
-        "high": 3290.0,
-        "low": 3284.0,
-        "close": 3287.0,
-        "volume": 476.0,
-        "hold": 2286382.0
-      },
-      {
-        "datetime": "2026-10-19 21:15:00",
-        "open": 3286.0,
-        "high": 3297.0,
-        "low": 3281.0,
-        "close": 3291.0,
-        "volume": 102.0,
-        "hold": 2287008.0
-      },
-      {
-        "datetime": "2026-10-19 21:30:00",
-        "open": 3290.0,
-        "high": 3297.0,
-        "low": 3289.0,
-        "close": 3294.0,
-        "volume": 40.0,
-        "hold": 2291908.0
-      },
-      {
-        "datetime": "2026-10-19 21:45:00",
-        "open": 3294.0,
-        "high": 3294.0,
-        "low": 3284.0,
-        "close": 3287.0,
-        "volume": 1230.0,
-        "hold": 2290009.0
-      },
-      {
-        "datetime": "2026-10-19 22:00:00",
-        "open": 3288.0,
-        "high": 3290.0,
-        "low": 3281.0,
-        "close": 3283.0,
-        "volume": 905.0,
-        "hold": 2291804.0
-      },
-      {
-        "datetime": "2026-10-19 22:15:00",
-        "open": 3282.0,
-        "high": 3288.0,
-        "low": 3280.0,
-        "close": 3285.0,
-        "volume": 41.0,
-        "hold": 2298023.0
-      },
-      {
-        "datetime": "2026-10-19 22:30:00",
-        "open": 3285.0,
-        "high": 3291.0,
-        "low": 3284.0,
-        "close": 3285.0,
-        "volume": 2960.0,
-        "hold": 2302211.0
-      },
-      {
-        "datetime": "2026-10-19 22:45:00",
-        "open": 3285.0,
-        "high": 3289.0,
-        "low": 3284.0,
-        "close": 3286.0,
-        "volume": 556.0,
-        "hold": 2302891.0
-      },
-      {
-        "datetime": "2026-10-19 23:00:00",
-        "open": 3286.0,
-        "high": 3287.0,
-        "low": 3279.0,
-        "close": 3282.0,
-        "volume": 162.0,
-        "hold": 2297840.0
-      },
-      {
-        "datetime": "2026-10-20 09:15:00",
-        "open": 3277.0,
-        "high": 3285.0,
-        "low": 3273.0,
-        "close": 3282.0,
-        "volume": 112.0,
-        "hold": 2296520.0
-      },
-      {
-        "datetime": "2026-10-20 09:30:00",
-        "open": 3282.0,
-        "high": 3286.0,
-        "low": 3276.0,
-        "close": 3282.0,
-        "volume": 7377.0,
-        "hold": 2293650.0
-      },
-      {
-        "datetime": "2026-10-20 09:45:00",
-        "open": 3282.0,
-        "high": 3286.0,
-        "low": 3281.0,
-        "close": 3284.0,
-        "volume": 631.0,
-        "hold": 2294145.0
-      },
-      {
-        "datetime": "2026-10-20 10:00:00",
-        "open": 3285.0,
-        "high": 3288.0,
-        "low": 3281.0,
-        "close": 3283.0,
-        "volume": 1210.0,
-        "hold": 2298920.0
-      },
-      {
-        "datetime": "2026-10-20 10:15:00",
-        "open": 3282.0,
-        "high": 3284.0,
-        "low": 3276.0,
-        "close": 3281.0,
-        "volume": 2642.0,
-        "hold": 2297110.0
-      },
-      {
-        "datetime": "2026-10-20 10:45:00",
-        "open": 3280.0,
-        "high": 3283.0,
-        "low": 3273.0,
-        "close": 3277.0,
-        "volume": 16756.0,
-        "hold": 2296412.0
-      },
-      {
-        "datetime": "2026-10-20 11:00:00",
-        "open": 3277.0,
-        "high": 3278.0,
-        "low": 3267.0,
-        "close": 3269.0,
-        "volume": 707.0,
-        "hold": 2297370.0
-      },
-      {
-        "datetime": "2026-10-20 11:15:00",
-        "open": 3268.0,
-        "high": 3272.0,
-        "low": 3264.0,
-        "close": 3264.0,
-        "volume": 18213.0,
-        "hold": 2290748.0
-      },
-      {
-        "datetime": "2026-10-20 11:30:00",
-        "open": 3264.0,
-        "high": 3271.0,
-        "low": 3263.0,
-        "close": 3271.0,
-        "volume": 30.0,
-        "hold": 2287312.0
-      },
-      {
-        "datetime": "2026-10-20 13:45:00",
-        "open": 3268.0,
-        "high": 3268.0,
-        "low": 3261.0,
-        "close": 3262.0,
-        "volume": 4001.0,
-        "hold": 2287617.0
-      },
-      {
-        "datetime": "2026-10-20 14:00:00",
-        "open": 3261.0,
-        "high": 3268.0,
-        "low": 3261.0,
-        "close": 3266.0,
-        "volume": 2519.0,
-        "hold": 2292118.0
-      },
-      {
-        "datetime": "2026-10-20 14:15:00",
-        "open": 3267.0,
-        "high": 3269.0,
-        "low": 3264.0,
-        "close": 3268.0,
-        "volume": 304.0,
-        "hold": 2292170.0
-      },
-      {
-        "datetime": "2026-10-20 14:30:00",
-        "open": 3267.0,
-        "high": 3271.0,
-        "low": 3264.0,
-        "close": 3264.0,
-        "volume": 1539.0,
-        "hold": 2289330.0
-      },
-      {
-        "datetime": "2026-10-20 14:45:00",
-        "open": 3264.0,
-        "high": 3268.0,
-        "low": 3261.0,
-        "close": 3261.0,
-        "volume": 11832.0,
-        "hold": 2288411.0
-      },
-      {
-        "datetime": "2026-10-20 15:00:00",
-        "open": 3261.0,
-        "high": 3267.0,
-        "low": 3260.0,
-        "close": 3267.0,
-        "volume": 13735.0,
-        "hold": 2282693.0
-      },
-      {
-        "datetime": "2026-10-20 21:15:00",
-        "open": 3271.0,
-        "high": 3274.0,
-        "low": 3266.0,
-        "close": 3270.0,
-        "volume": 138.0,
-        "hold": 2280731.0
-      },
-      {
-        "datetime": "2026-10-20 21:30:00",
-        "open": 3269.0,
-        "high": 3274.0,
-        "low": 3268.0,
-        "close": 3269.0,
-        "volume": 370.0,
-        "hold": 2281086.0
-      },
-      {
-        "datetime": "2026-10-20 21:45:00",
-        "open": 3269.0,
-        "high": 3271.0,
-        "low": 3259.0,
-        "close": 3260.0,
-        "volume": 10.0,
-        "hold": 2284510.0
-      },
-      {
-        "datetime": "2026-10-20 22:00:00",
-        "open": 3260.0,
-        "high": 3273.0,
-        "low": 3257.0,
-        "close": 3273.0,
-        "volume": 1996.0,
-        "hold": 2286371.0
-      },
-      {
-        "datetime": "2026-10-20 22:15:00",
-        "open": 3273.0,
-        "high": 3288.0,
-        "low": 3272.0,
-        "close": 3285.0,
-        "volume": 2160.0,
-        "hold": 2302500.0
-      },
-      {
-        "datetime": "2026-10-20 22:30:00",
-        "open": 3285.0,
-        "high": 3287.0,
-        "low": 3280.0,
-        "close": 3283.0,
-        "volume": 10.0,
-        "hold": 2306547.0
-      },
-      {
-        "datetime": "2026-10-20 22:45:00",
-        "open": 3283.0,
-        "high": 3285.0,
-        "low": 3275.0,
-        "close": 3277.0,
-        "volume": 2605.0,
-        "hold": 2304664.0
-      },
-      {
-        "datetime": "2026-10-20 23:00:00",
-        "open": 3276.0,
-        "high": 3279.0,
-        "low": 3274.0,
-        "close": 3277.0,
-        "volume": 14.0,
-        "hold": 2302329.0
-      },
-      {
-        "datetime": "2026-10-21 09:15:00",
-        "open": 3273.0,
-        "high": 3279.0,
-        "low": 3267.0,
-        "close": 3273.0,
-        "volume": 731.0,
-        "hold": 2306438.0
-      },
-      {
-        "datetime": "2026-10-21 09:30:00",
-        "open": 3272.0,
-        "high": 3274.0,
-        "low": 3266.0,
-        "close": 3273.0,
-        "volume": 2423.0,
-        "hold": 2306614.0
-      },
-      {
-        "datetime": "2026-10-21 09:45:00",
-        "open": 3273.0,
-        "high": 3276.0,
-        "low": 3272.0,
-        "close": 3276.0,
-        "volume": 11.0,
-        "hold": 2305274.0
-      },
-      {
-        "datetime": "2026-10-21 10:00:00",
-        "open": 3276.0,
-        "high": 3279.0,
-        "low": 3269.0,
-        "close": 3269.0,
-        "volume": 4.0,
-        "hold": 2307536.0
-      },
-      {
-        "datetime": "2026-10-21 10:15:00",
-        "open": 3269.0,
-        "high": 3272.0,
-        "low": 3265.0,
-        "close": 3272.0,
-        "volume": 11708.0,
-        "hold": 2310284.0
-      },
-      {
-        "datetime": "2026-10-21 10:45:00",
-        "open": 3272.0,
-        "high": 3273.0,
-        "low": 3267.0,
-        "close": 3272.0,
-        "volume": 2959.0,
-        "hold": 2310931.0
-      },
-      {
-        "datetime": "2026-10-21 11:00:00",
-        "open": 3271.0,
-        "high": 3272.0,
-        "low": 3265.0,
-        "close": 3269.0,
-        "volume": 12950.0,
-        "hold": 2313977.0
-      },
-      {
-        "datetime": "2026-10-21 11:15:00",
-        "open": 3269.0,
-        "high": 3270.0,
-        "low": 3265.0,
-        "close": 3267.0,
-        "volume": 104.0,
-        "hold": 2312054.0
-      },
-      {
-        "datetime": "2026-10-21 11:30:00",
-        "open": 3267.0,
-        "high": 3269.0,
-        "low": 3260.0,
-        "close": 3261.0,
-        "volume": 653.0,
-        "hold": 2308672.0
-      },
-      {
-        "datetime": "2026-10-21 13:45:00",
-        "open": 3261.0,
-        "high": 3264.0,
-        "low": 3255.0,
-        "close": 3255.0,
-        "volume": 160.0,
-        "hold": 2297425.0
-      },
-      {
-        "datetime": "2026-10-21 14:00:00",
-        "open": 3255.0,
-        "high": 3256.0,
-        "low": 3243.0,
-        "close": 3245.0,
-        "volume": 18489.0,
-        "hold": 2278576.0
-      },
-      {
-        "datetime": "2026-10-21 14:15:00",
-        "open": 3245.0,
-        "high": 3252.0,
-        "low": 3241.0,
-        "close": 3245.0,
-        "volume": 933.0,
-        "hold": 2270430.0
-      },
-      {
-        "datetime": "2026-10-21 14:30:00",
-        "open": 3244.0,
-        "high": 3245.0,
-        "low": 3236.0,
-        "close": 3238.0,
-        "volume": 40647.0,
-        "hold": 2277411.0
-      },
-      {
-        "datetime": "2026-10-21 14:45:00",
-        "open": 3238.0,
-        "high": 3241.0,
-        "low": 3232.0,
-        "close": 3234.0,
-        "volume": 6422.0,
-        "hold": 2275142.0
-      },
-      {
-        "datetime": "2026-10-21 15:00:00",
-        "open": 3233.0,
-        "high": 3243.0,
-        "low": 3233.0,
-        "close": 3243.0,
-        "volume": 229.0,
-        "hold": 2264231.0
-      },
-      {
-        "datetime": "2026-10-21 21:15:00",
-        "open": 3235.0,
-        "high": 3236.0,
-        "low": 3222.0,
-        "close": 3226.0,
-        "volume": 493.0,
-        "hold": 2276940.0
-      },
-      {
-        "datetime": "2026-10-21 21:30:00",
-        "open": 3226.0,
-        "high": 3232.0,
-        "low": 3221.0,
-        "close": 3227.0,
-        "volume": 81.0,
-        "hold": 2277840.0
-      },
-      {
-        "datetime": "2026-10-21 21:45:00",
-        "open": 3227.0,
-        "high": 3230.0,
-        "low": 3224.0,
-        "close": 3225.0,
-        "volume": 77.0,
-        "hold": 2276323.0
-      },
-      {
-        "datetime": "2026-10-21 22:00:00",
-        "open": 3226.0,
-        "high": 3226.0,
-        "low": 3220.0,
-        "close": 3222.0,
-        "volume": 2.0,
-        "hold": 2277271.0
-      },
-      {
-        "datetime": "2026-10-21 22:15:00",
-        "open": 3223.0,
-        "high": 3232.0,
-        "low": 3217.0,
-        "close": 3231.0,
-        "volume": 66.0,
-        "hold": 2280675.0
-      },
-      {
-        "datetime": "2026-10-21 22:30:00",
-        "open": 3231.0,
-        "high": 3242.0,
-        "low": 3230.0,
-        "close": 3235.0,
-        "volume": 1357.0,
-        "hold": 2283080.0
-      },
-      {
-        "datetime": "2026-10-21 22:45:00",
-        "open": 3235.0,
-        "high": 3245.0,
-        "low": 3234.0,
-        "close": 3244.0,
-        "volume": 737.0,
-        "hold": 2274536.0
-      },
-      {
-        "datetime": "2026-10-21 23:00:00",
-        "open": 3245.0,
-        "high": 3249.0,
-        "low": 3241.0,
-        "close": 3248.0,
-        "volume": 723.0,
-        "hold": 2258198.0
-      },
-      {
-        "datetime": "2026-10-22 09:15:00",
-        "open": 3247.0,
-        "high": 3253.0,
-        "low": 3245.0,
-        "close": 3248.0,
-        "volume": 25.0,
-        "hold": 2260023.0
-      },
-      {
-        "datetime": "2026-10-22 09:30:00",
-        "open": 3249.0,
-        "high": 3253.0,
-        "low": 3244.0,
-        "close": 3252.0,
-        "volume": 22114.0,
-        "hold": 2262909.0
-      },
-      {
-        "datetime": "2026-10-22 09:45:00",
-        "open": 3253.0,
-        "high": 3256.0,
-        "low": 3246.0,
-        "close": 3256.0,
-        "volume": 16908.0,
-        "hold": 2261053.0
-      },
-      {
-        "datetime": "2026-10-22 10:00:00",
-        "open": 3256.0,
-        "high": 3256.0,
-        "low": 3245.0,
-        "close": 3247.0,
-        "volume": 5386.0,
-        "hold": 2258037.0
-      },
-      {
-        "datetime": "2026-10-22 10:15:00",
-        "open": 3246.0,
-        "high": 3251.0,
-        "low": 3245.0,
-        "close": 3249.0,
-        "volume": 4611.0,
-        "hold": 2256367.0
-      },
-      {
-        "datetime": "2026-10-22 10:45:00",
-        "open": 3249.0,
-        "high": 3256.0,
-        "low": 3249.0,
-        "close": 3252.0,
-        "volume": 38.0,
-        "hold": 2255675.0
-      },
-      {
-        "datetime": "2026-10-22 11:00:00",
-        "open": 3252.0,
-        "high": 3256.0,
-        "low": 3251.0,
-        "close": 3253.0,
-        "volume": 385.0,
-        "hold": 2258402.0
-      },
-      {
-        "datetime": "2026-10-22 11:15:00",
-        "open": 3253.0,
-        "high": 3255.0,
-        "low": 3248.0,
-        "close": 3249.0,
-        "volume": 3092.0,
-        "hold": 2256226.0
-      },
-      {
-        "datetime": "2026-10-22 11:30:00",
-        "open": 3249.0,
-        "high": 3260.0,
-        "low": 3248.0,
-        "close": 3258.0,
-        "volume": 22969.0,
-        "hold": 2256455.0
-      },
-      {
-        "datetime": "2026-10-22 13:45:00",
-        "open": 3258.0,
-        "high": 3259.0,
-        "low": 3253.0,
-        "close": 3256.0,
-        "volume": 497.0,
-        "hold": 2255855.0
-      },
-      {
-        "datetime": "2026-10-22 14:00:00",
-        "open": 3255.0,
-        "high": 3256.0,
-        "low": 3249.0,
-        "close": 3250.0,
-        "volume": 2765.0,
-        "hold": 2253862.0
-      },
-      {
-        "datetime": "2026-10-22 14:15:00",
-        "open": 3251.0,
-        "high": 3253.0,
-        "low": 3249.0,
-        "close": 3251.0,
-        "volume": 8134.0,
-        "hold": 2252599.0
-      },
-      {
-        "datetime": "2026-10-22 14:30:00",
-        "open": 3251.0,
-        "high": 3251.0,
-        "low": 3245.0,
-        "close": 3245.0,
-        "volume": 4430.0,
-        "hold": 2252770.0
-      },
-      {
-        "datetime": "2026-10-22 14:45:00",
-        "open": 3245.0,
-        "high": 3247.0,
-        "low": 3243.0,
-        "close": 3246.0,
-        "volume": 11642.0,
-        "hold": 2253335.0
-      },
-      {
-        "datetime": "2026-10-22 15:00:00",
-        "open": 3247.0,
-        "high": 3249.0,
-        "low": 3243.0,
-        "close": 3249.0,
-        "volume": 2189.0,
-        "hold": 2249756.0
-      },
-      {
-        "datetime": "2026-10-22 21:15:00",
-        "open": 3259.0,
-        "high": 3269.0,
-        "low": 3255.0,
-        "close": 3266.0,
-        "volume": 21.0,
-        "hold": 2246596.0
-      },
-      {
-        "datetime": "2026-10-22 21:30:00",
-        "open": 3267.0,
-        "high": 3268.0,
-        "low": 3261.0,
-        "close": 3263.0,
-        "volume": 2138.0,
-        "hold": 2247836.0
-      },
-      {
-        "datetime": "2026-10-22 21:45:00",
-        "open": 3263.0,
-        "high": 3276.0,
-        "low": 3259.0,
-        "close": 3275.0,
-        "volume": 8088.0,
-        "hold": 2252743.0
-      },
-      {
-        "datetime": "2026-10-22 22:00:00",
-        "open": 3275.0,
-        "high": 3278.0,
-        "low": 3268.0,
-        "close": 3271.0,
-        "volume": 119.0,
-        "hold": 2253384.0
-      },
-      {
-        "datetime": "2026-10-22 22:15:00",
-        "open": 3270.0,
-        "high": 3271.0,
-        "low": 3265.0,
-        "close": 3268.0,
-        "volume": 7.0,
-        "hold": 2252439.0
-      },
-      {
-        "datetime": "2026-10-22 22:30:00",
-        "open": 3268.0,
-        "high": 3269.0,
-        "low": 3264.0,
-        "close": 3268.0,
-        "volume": 7.0,
-        "hold": 2251306.0
-      },
-      {
-        "datetime": "2026-10-22 22:45:00",
-        "open": 3268.0,
-        "high": 3270.0,
-        "low": 3264.0,
-        "close": 3269.0,
-        "volume": 180.0,
-        "hold": 2250587.0
-      },
-      {
-        "datetime": "2026-10-22 23:00:00",
-        "open": 3268.0,
-        "high": 3269.0,
-        "low": 3262.0,
-        "close": 3266.0,
-        "volume": 1295.0,
-        "hold": 2243233.0
-      },
-      {
-        "datetime": "2026-10-23 09:15:00",
-        "open": 3269.0,
-        "high": 3277.0,
-        "low": 3269.0,
-        "close": 3275.0,
-        "volume": 8245.0,
-        "hold": 2241333.0
-      },
-      {
-        "datetime": "2026-10-23 09:30:00",
-        "open": 3275.0,
-        "high": 3276.0,
-        "low": 3270.0,
-        "close": 3271.0,
-        "volume": 2467.0,
-        "hold": 2241291.0
-      },
-      {
-        "datetime": "2026-10-23 09:45:00",
-        "open": 3269.0,
-        "high": 3273.0,
-        "low": 3268.0,
-        "close": 3272.0,
-        "volume": 665.0,
-        "hold": 2242792.0
-      },
-      {
-        "datetime": "2026-10-23 10:00:00",
-        "open": 3272.0,
-        "high": 3278.0,
-        "low": 3268.0,
-        "close": 3270.0,
-        "volume": 2343.0,
-        "hold": 2242283.0
-      },
-      {
-        "datetime": "2026-10-23 10:15:00",
-        "open": 3270.0,
-        "high": 3274.0,
-        "low": 3269.0,
-        "close": 3270.0,
-        "volume": 98.0,
-        "hold": 2242195.0
-      },
-      {
-        "datetime": "2026-10-23 10:45:00",
-        "open": 3272.0,
-        "high": 3285.0,
-        "low": 3272.0,
-        "close": 3282.0,
-        "volume": 287.0,
-        "hold": 2240727.0
-      },
-      {
-        "datetime": "2026-10-23 11:00:00",
-        "open": 3282.0,
-        "high": 3283.0,
-        "low": 3277.0,
-        "close": 3281.0,
-        "volume": 2916.0,
-        "hold": 2239628.0
-      },
-      {
-        "datetime": "2026-10-23 11:15:00",
-        "open": 3276.0,
-        "high": 3280.0,
-        "low": 3274.0,
-        "close": 3277.0,
-        "volume": 430.0,
-        "hold": 2240067.0
-      },
-      {
-        "datetime": "2026-10-23 11:30:00",
-        "open": 3277.0,
-        "high": 3280.0,
-        "low": 3275.0,
-        "close": 3278.0,
-        "volume": 2774.0,
-        "hold": 2239418.0
-      },
-      {
-        "datetime": "2026-10-23 13:45:00",
-        "open": 3279.0,
-        "high": 3285.0,
-        "low": 3278.0,
-        "close": 3283.0,
-        "volume": 8672.0,
-        "hold": 2234317.0
-      },
-      {
-        "datetime": "2026-10-23 14:00:00",
-        "open": 3283.0,
-        "high": 3286.0,
-        "low": 3281.0,
-        "close": 3283.0,
-        "volume": 10394.0,
-        "hold": 2234098.0
-      },
-      {
-        "datetime": "2026-10-23 14:15:00",
-        "open": 3284.0,
-        "high": 3284.0,
-        "low": 3276.0,
-        "close": 3277.0,
-        "volume": 78.0,
-        "hold": 2233210.0
-      },
-      {
-        "datetime": "2026-10-23 14:30:00",
-        "open": 3278.0,
-        "high": 3283.0,
-        "low": 3277.0,
-        "close": 3278.0,
-        "volume": 80.0,
-        "hold": 2231847.0
-      },
-      {
-        "datetime": "2026-10-23 14:45:00",
-        "open": 3278.0,
-        "high": 3280.0,
-        "low": 3275.0,
-        "close": 3277.0,
-        "volume": 2277.0,
-        "hold": 2231716.0
-      },
-      {
-        "datetime": "2026-10-23 15:00:00",
-        "open": 3278.0,
-        "high": 3279.0,
-        "low": 3275.0,
-        "close": 3276.0,
-        "volume": 6863.0,
-        "hold": 2225768.0
-      },
-      {
-        "datetime": "2026-10-23 21:15:00",
-        "open": 3276.0,
-        "high": 3278.0,
-        "low": 3266.0,
-        "close": 3267.0,
-        "volume": 87367.0,
-        "hold": 2222983.0
-      },
-      {
-        "datetime": "2026-10-23 21:30:00",
-        "open": 3267.0,
-        "high": 3268.0,
-        "low": 3260.0,
-        "close": 3263.0,
-        "volume": 71059.0,
-        "hold": 2231357.0
-      },
-      {
-        "datetime": "2026-10-23 21:45:00",
-        "open": 3262.0,
-        "high": 3281.0,
-        "low": 3261.0,
-        "close": 3280.0,
-        "volume": 60863.0,
-        "hold": 2231051.0
-      },
-      {
-        "datetime": "2026-10-23 22:00:00",
-        "open": 3279.0,
-        "high": 3285.0,
-        "low": 3276.0,
-        "close": 3278.0,
-        "volume": 50497.0,
-        "hold": 2227598.0
-      },
-      {
-        "datetime": "2026-10-23 22:15:00",
-        "open": 3278.0,
-        "high": 3278.0,
-        "low": 3271.0,
-        "close": 3274.0,
-        "volume": 25353.0,
-        "hold": 2228737.0
-      },
-      {
-        "datetime": "2026-10-23 22:30:00",
-        "open": 3273.0,
-        "high": 3275.0,
-        "low": 3269.0,
-        "close": 3270.0,
-        "volume": 23217.0,
-        "hold": 2229236.0
-      },
-      {
-        "datetime": "2026-10-23 22:45:00",
-        "open": 3269.0,
-        "high": 3272.0,
-        "low": 3268.0,
-        "close": 3272.0,
-        "volume": 15891.0,
-        "hold": 2229481.0
-      },
-      {
-        "datetime": "2026-10-23 23:00:00",
-        "open": 3272.0,
-        "high": 3280.0,
-        "low": 3271.0,
-        "close": 3280.0,
-        "volume": 5795.0,
-        "hold": 2223538.0
-      },
-      {
-        "datetime": "2026-10-26 09:15:00",
-        "open": 3247.0,
-        "high": 3249.0,
-        "low": 3236.0,
-        "close": 3237.0,
-        "volume": 213824.0,
-        "hold": 2228791.0
-      },
-      {
-        "datetime": "2026-10-26 09:30:00",
-        "open": 3238.0,
-        "high": 3241.0,
-        "low": 3231.0,
-        "close": 3236.0,
-        "volume": 103911.0,
-        "hold": 2229538.0
-      },
-      {
-        "datetime": "2026-10-26 09:45:00",
-        "open": 3236.0,
-        "high": 3236.0,
-        "low": 3226.0,
-        "close": 3228.0,
-        "volume": 81003.0,
-        "hold": 2226272.0
-      },
-      {
-        "datetime": "2026-10-26 10:00:00",
-        "open": 3229.0,
-        "high": 3229.0,
-        "low": 3221.0,
-        "close": 3224.0,
-        "volume": 64716.0,
-        "hold": 2219928.0
-      },
-      {
-        "datetime": "2026-10-26 10:15:00",
-        "open": 3223.0,
-        "high": 3239.0,
-        "low": 3222.0,
-        "close": 3237.0,
-        "volume": 62363.0,
-        "hold": 2218548.0
-      },
-      {
-        "datetime": "2026-10-26 10:45:00",
-        "open": 3237.0,
-        "high": 3239.0,
-        "low": 3227.0,
-        "close": 3228.0,
-        "volume": 39733.0,
-        "hold": 2216266.0
-      },
-      {
-        "datetime": "2026-10-26 11:00:00",
-        "open": 3228.0,
-        "high": 3230.0,
-        "low": 3222.0,
-        "close": 3227.0,
-        "volume": 23735.0,
-        "hold": 2214722.0
-      },
-      {
-        "datetime": "2026-10-26 11:15:00",
-        "open": 3226.0,
-        "high": 3231.0,
-        "low": 3224.0,
-        "close": 3230.0,
-        "volume": 24740.0,
-        "hold": 2214519.0
-      },
-      {
-        "datetime": "2026-10-26 11:30:00",
-        "open": 3229.0,
-        "high": 3231.0,
-        "low": 3227.0,
-        "close": 3229.0,
-        "volume": 20963.0,
-        "hold": 2211782.0
-      },
-      {
-        "datetime": "2026-10-26 13:45:00",
-        "open": 3228.0,
-        "high": 3230.0,
-        "low": 3226.0,
-        "close": 3228.0,
-        "volume": 44.0,
-        "hold": 2210401.0
-      },
-      {
-        "datetime": "2026-10-26 14:00:00",
-        "open": 3228.0,
-        "high": 3229.0,
-        "low": 3226.0,
-        "close": 3226.0,
-        "volume": 1718.0,
-        "hold": 2207122.0
-      },
-      {
-        "datetime": "2026-10-26 14:15:00",
-        "open": 3226.0,
-        "high": 3229.0,
-        "low": 3224.0,
-        "close": 3226.0,
-        "volume": 63.0,
-        "hold": 2203062.0
-      },
-      {
-        "datetime": "2026-10-26 14:30:00",
-        "open": 3227.0,
-        "high": 3229.0,
-        "low": 3225.0,
-        "close": 3227.0,
-        "volume": 1564.0,
-        "hold": 2198411.0
-      },
-      {
-        "datetime": "2026-10-26 14:45:00",
-        "open": 3227.0,
-        "high": 3233.0,
-        "low": 3226.0,
-        "close": 3230.0,
-        "volume": 5080.0,
-        "hold": 2196813.0
-      },
-      {
-        "datetime": "2026-10-26 15:00:00",
-        "open": 3231.0,
-        "high": 3231.0,
-        "low": 3228.0,
-        "close": 3230.0,
-        "volume": 619.0,
-        "hold": 2193564.0
-      },
-      {
-        "datetime": "2026-10-26 21:15:00",
-        "open": 3216.0,
-        "high": 3216.0,
-        "low": 3205.0,
-        "close": 3211.0,
-        "volume": 139081.0,
-        "hold": 2193291.0
-      },
-      {
-        "datetime": "2026-10-26 21:30:00",
-        "open": 3211.0,
-        "high": 3213.0,
-        "low": 3205.0,
-        "close": 3206.0,
-        "volume": 60598.0,
-        "hold": 2191597.0
-      },
-      {
-        "datetime": "2026-10-26 21:45:00",
-        "open": 3207.0,
-        "high": 3208.0,
-        "low": 3200.0,
-        "close": 3202.0,
-        "volume": 83901.0,
-        "hold": 2196412.0
-      },
-      {
-        "datetime": "2026-10-26 22:00:00",
-        "open": 3198.0,
-        "high": 3202.0,
-        "low": 3188.0,
-        "close": 3189.0,
-        "volume": 81524.0,
-        "hold": 2192341.0
-      },
-      {
-        "datetime": "2026-10-26 22:15:00",
-        "open": 3189.0,
-        "high": 3191.0,
-        "low": 3183.0,
-        "close": 3185.0,
-        "volume": 50804.0,
-        "hold": 2188045.0
-      },
-      {
-        "datetime": "2026-10-26 22:30:00",
-        "open": 3185.0,
-        "high": 3189.0,
-        "low": 3176.0,
-        "close": 3180.0,
-        "volume": 38614.0,
-        "hold": 2183767.0
-      },
-      {
-        "datetime": "2026-10-26 22:45:00",
-        "open": 3180.0,
-        "high": 3189.0,
-        "low": 3175.0,
-        "close": 3188.0,
-        "volume": 56084.0,
-        "hold": 2173644.0
-      },
-      {
-        "datetime": "2026-10-26 23:00:00",
-        "open": 3188.0,
-        "high": 3190.0,
-        "low": 3181.0,
-        "close": 3185.0,
-        "volume": 53258.0,
-        "hold": 2162930.0
-      },
-      {
-        "datetime": "2026-10-27 09:15:00",
-        "open": 3202.0,
-        "high": 3204.0,
-        "low": 3185.0,
-        "close": 3199.0,
-        "volume": 83498.0,
-        "hold": 2155683.0
-      },
-      {
-        "datetime": "2026-10-27 09:30:00",
-        "open": 3199.0,
-        "high": 3212.0,
-        "low": 3197.0,
-        "close": 3212.0,
-        "volume": 61293.0,
-        "hold": 2150673.0
-      },
-      {
-        "datetime": "2026-10-27 09:45:00",
-        "open": 3212.0,
-        "high": 3213.0,
-        "low": 3205.0,
-        "close": 3209.0,
-        "volume": 41633.0,
-        "hold": 2146345.0
-      },
-      {
-        "datetime": "2026-10-27 10:00:00",
-        "open": 3208.0,
-        "high": 3210.0,
-        "low": 3201.0,
-        "close": 3201.0,
-        "volume": 21200.0,
-        "hold": 2144727.0
-      },
-      {
-        "datetime": "2026-10-27 10:15:00",
-        "open": 3202.0,
-        "high": 3205.0,
-        "low": 3200.0,
-        "close": 3202.0,
-        "volume": 20417.0,
-        "hold": 2143449.0
-      },
-      {
-        "datetime": "2026-10-27 10:45:00",
-        "open": 3202.0,
-        "high": 3205.0,
-        "low": 3199.0,
-        "close": 3200.0,
-        "volume": 28104.0,
-        "hold": 2140982.0
-      },
-      {
-        "datetime": "2026-10-27 11:00:00",
-        "open": 3199.0,
-        "high": 3209.0,
-        "low": 3197.0,
-        "close": 3205.0,
-        "volume": 46937.0,
-        "hold": 2131912.0
-      },
-      {
-        "datetime": "2026-10-27 11:15:00",
-        "open": 3204.0,
-        "high": 3206.0,
-        "low": 3199.0,
-        "close": 3200.0,
-        "volume": 17667.0,
-        "hold": 2133096.0
-      },
-      {
-        "datetime": "2026-10-27 11:30:00",
-        "open": 3200.0,
-        "high": 3205.0,
-        "low": 3199.0,
-        "close": 3205.0,
-        "volume": 8430.0,
-        "hold": 2131956.0
-      },
-      {
-        "datetime": "2026-10-27 13:45:00",
-        "open": 3203.0,
-        "high": 3204.0,
-        "low": 3199.0,
-        "close": 3199.0,
-        "volume": 188.0,
-        "hold": 2131939.0
-      },
-      {
-        "datetime": "2026-10-27 14:00:00",
-        "open": 3200.0,
-        "high": 3208.0,
-        "low": 3199.0,
-        "close": 3207.0,
-        "volume": 5341.0,
-        "hold": 2129114.0
-      },
-      {
-        "datetime": "2026-10-27 14:15:00",
-        "open": 3208.0,
-        "high": 3208.0,
-        "low": 3205.0,
-        "close": 3207.0,
-        "volume": 15623.0,
-        "hold": 2123860.0
-      },
-      {
-        "datetime": "2026-10-27 14:30:00",
-        "open": 3203.0,
-        "high": 3203.0,
-        "low": 3201.0,
-        "close": 3201.0,
-        "volume": 11420.0,
-        "hold": 2121526.0
-      },
-      {
-        "datetime": "2026-10-27 14:45:00",
-        "open": 3201.0,
-        "high": 3203.0,
-        "low": 3200.0,
-        "close": 3201.0,
-        "volume": 8591.0,
-        "hold": 2119976.0
-      },
-      {
-        "datetime": "2026-10-27 15:00:00",
-        "open": 3202.0,
-        "high": 3203.0,
-        "low": 3200.0,
-        "close": 3200.0,
-        "volume": 759.0,
-        "hold": 2113299.0
-      },
-      {
-        "datetime": "2026-10-27 21:15:00",
-        "open": 3211.0,
-        "high": 3216.0,
-        "low": 3207.0,
-        "close": 3215.0,
-        "volume": 82753.0,
-        "hold": 2112401.0
-      },
-      {
-        "datetime": "2026-10-27 21:30:00",
-        "open": 3215.0,
-        "high": 3219.0,
-        "low": 3212.0,
-        "close": 3219.0,
-        "volume": 41601.0,
-        "hold": 2106646.0
-      },
-      {
-        "datetime": "2026-10-27 21:45:00",
-        "open": 3219.0,
-        "high": 3219.0,
-        "low": 3209.0,
-        "close": 3213.0,
-        "volume": 31360.0,
-        "hold": 2109064.0
-      },
-      {
-        "datetime": "2026-10-27 22:00:00",
-        "open": 3213.0,
-        "high": 3218.0,
-        "low": 3212.0,
-        "close": 3214.0,
-        "volume": 21644.0,
-        "hold": 2110794.0
-      },
-      {
-        "datetime": "2026-10-27 22:15:00",
-        "open": 3215.0,
-        "high": 3219.0,
-        "low": 3213.0,
-        "close": 3217.0,
-        "volume": 24887.0,
-        "hold": 2107630.0
-      },
-      {
-        "datetime": "2026-10-27 22:30:00",
-        "open": 3216.0,
-        "high": 3217.0,
-        "low": 3210.0,
-        "close": 3213.0,
-        "volume": 2981.0,
-        "hold": 2107717.0
-      },
-      {
-        "datetime": "2026-10-27 22:45:00",
-        "open": 3213.0,
-        "high": 3217.0,
-        "low": 3210.0,
-        "close": 3214.0,
-        "volume": 18701.0,
-        "hold": 2107474.0
-      },
-      {
-        "datetime": "2026-10-27 23:00:00",
-        "open": 3214.0,
-        "high": 3215.0,
-        "low": 3210.0,
-        "close": 3213.0,
-        "volume": 19265.0,
-        "hold": 2105703.0
-      },
-      {
-        "datetime": "2026-10-28 09:15:00",
-        "open": 3197.0,
-        "high": 3213.0,
-        "low": 3192.0,
-        "close": 3201.0,
-        "volume": 79052.0,
-        "hold": 2108927.0
-      },
-      {
-        "datetime": "2026-10-28 09:30:00",
-        "open": 3203.0,
-        "high": 3205.0,
-        "low": 3199.0,
-        "close": 3202.0,
-        "volume": 22828.0,
-        "hold": 2109090.0
-      },
-      {
-        "datetime": "2026-10-28 09:45:00",
-        "open": 3203.0,
-        "high": 3211.0,
-        "low": 3202.0,
-        "close": 3210.0,
-        "volume": 28638.0,
-        "hold": 2108433.0
-      },
-      {
-        "datetime": "2026-10-28 10:00:00",
-        "open": 3211.0,
-        "high": 3216.0,
-        "low": 3210.0,
-        "close": 3213.0,
-        "volume": 16064.0,
-        "hold": 2107218.0
-      },
-      {
-        "datetime": "2026-10-28 10:15:00",
-        "open": 3214.0,
-        "high": 3214.0,
-        "low": 3209.0,
-        "close": 3209.0,
-        "volume": 17382.0,
-        "hold": 2105002.0
-      },
-      {
-        "datetime": "2026-10-28 10:45:00",
-        "open": 3210.0,
-        "high": 3210.0,
-        "low": 3201.0,
-        "close": 3204.0,
-        "volume": 26074.0,
-        "hold": 2104479.0
-      },
-      {
-        "datetime": "2026-10-28 11:00:00",
-        "open": 3203.0,
-        "high": 3205.0,
-        "low": 3200.0,
-        "close": 3203.0,
-        "volume": 20402.0,
-        "hold": 2105391.0
-      },
-      {
-        "datetime": "2026-10-28 11:15:00",
-        "open": 3203.0,
-        "high": 3213.0,
-        "low": 3201.0,
-        "close": 3211.0,
-        "volume": 51554.0,
-        "hold": 2108301.0
-      },
-      {
-        "datetime": "2026-10-28 11:30:00",
-        "open": 3212.0,
-        "high": 3218.0,
-        "low": 3209.0,
-        "close": 3215.0,
-        "volume": 34068.0,
-        "hold": 2108818.0
-      },
-      {
-        "datetime": "2026-10-28 13:45:00",
-        "open": 3215.0,
-        "high": 3218.0,
-        "low": 3213.0,
-        "close": 3216.0,
-        "volume": 19748.0,
-        "hold": 2104673.0
-      },
-      {
-        "datetime": "2026-10-28 14:00:00",
-        "open": 3215.0,
-        "high": 3217.0,
-        "low": 3212.0,
-        "close": 3214.0,
-        "volume": 23255.0,
-        "hold": 2105829.0
-      },
-      {
-        "datetime": "2026-10-28 14:15:00",
-        "open": 3214.0,
-        "high": 3216.0,
-        "low": 3211.0,
-        "close": 3213.0,
-        "volume": 14744.0,
-        "hold": 2105486.0
-      },
-      {
-        "datetime": "2026-10-28 14:30:00",
-        "open": 3213.0,
-        "high": 3213.0,
-        "low": 3209.0,
-        "close": 3210.0,
-        "volume": 22975.0,
-        "hold": 2103208.0
-      },
-      {
-        "datetime": "2026-10-28 14:45:00",
-        "open": 3211.0,
-        "high": 3212.0,
-        "low": 3209.0,
-        "close": 3209.0,
-        "volume": 13626.0,
-        "hold": 2101974.0
-      },
-      {
-        "datetime": "2026-10-28 15:00:00",
-        "open": 3209.0,
-        "high": 3210.0,
-        "low": 3207.0,
-        "close": 3208.0,
-        "volume": 16838.0,
-        "hold": 2099171.0
-      },
-      {
-        "datetime": "2026-10-28 21:15:00",
-        "open": 3208.0,
-        "high": 3213.0,
-        "low": 3200.0,
-        "close": 3201.0,
-        "volume": 67223.0,
-        "hold": 2100440.0
-      },
-      {
-        "datetime": "2026-10-28 21:30:00",
-        "open": 3201.0,
-        "high": 3203.0,
-        "low": 3199.0,
-        "close": 3200.0,
-        "volume": 35543.0,
-        "hold": 2104449.0
-      },
-      {
-        "datetime": "2026-10-28 21:45:00",
-        "open": 3200.0,
-        "high": 3203.0,
-        "low": 3197.0,
-        "close": 3200.0,
-        "volume": 29838.0,
-        "hold": 2102044.0
-      },
-      {
-        "datetime": "2026-10-28 22:00:00",
-        "open": 3200.0,
-        "high": 3206.0,
-        "low": 3199.0,
-        "close": 3201.0,
-        "volume": 47414.0,
-        "hold": 2100375.0
-      },
-      {
-        "datetime": "2026-10-28 22:15:00",
-        "open": 3201.0,
-        "high": 3210.0,
-        "low": 3199.0,
-        "close": 3201.0,
-        "volume": 48899.0,
-        "hold": 2096324.0
-      },
-      {
-        "datetime": "2026-10-28 22:30:00",
-        "open": 3201.0,
-        "high": 3201.0,
-        "low": 3189.0,
-        "close": 3191.0,
-        "volume": 19562.0,
-        "hold": 2098513.0
-      },
-      {
-        "datetime": "2026-10-28 22:45:00",
-        "open": 3190.0,
-        "high": 3192.0,
-        "low": 3186.0,
-        "close": 3191.0,
-        "volume": 27572.0,
-        "hold": 2097341.0
-      },
-      {
-        "datetime": "2026-10-28 23:00:00",
-        "open": 3192.0,
-        "high": 3197.0,
-        "low": 3191.0,
-        "close": 3194.0,
-        "volume": 22591.0,
-        "hold": 2093925.0
-      },
-      {
-        "datetime": "2026-10-29 09:15:00",
-        "open": 3183.0,
-        "high": 3194.0,
-        "low": 3179.0,
-        "close": 3184.0,
-        "volume": 79767.0,
-        "hold": 2097405.0
-      },
-      {
-        "datetime": "2026-10-29 09:30:00",
-        "open": 3180.0,
-        "high": 3185.0,
-        "low": 3175.0,
-        "close": 3178.0,
-        "volume": 49574.0,
-        "hold": 2101363.0
-      },
-      {
-        "datetime": "2026-10-29 09:45:00",
-        "open": 3177.0,
-        "high": 3180.0,
-        "low": 3169.0,
-        "close": 3173.0,
-        "volume": 68024.0,
-        "hold": 2097378.0
-      },
-      {
-        "datetime": "2026-10-29 10:00:00",
-        "open": 3173.0,
-        "high": 3174.0,
-        "low": 3168.0,
-        "close": 3169.0,
-        "volume": 17264.0,
-        "hold": 2098189.0
-      },
-      {
-        "datetime": "2026-10-29 10:15:00",
-        "open": 3169.0,
-        "high": 3170.0,
-        "low": 3161.0,
-        "close": 3162.0,
-        "volume": 52310.0,
-        "hold": 2102106.0
-      },
-      {
-        "datetime": "2026-10-29 10:45:00",
-        "open": 3163.0,
-        "high": 3167.0,
-        "low": 3159.0,
-        "close": 3163.0,
-        "volume": 57145.0,
-        "hold": 2101370.0
-      },
-      {
-        "datetime": "2026-10-29 11:00:00",
-        "open": 3164.0,
-        "high": 3174.0,
-        "low": 3162.0,
-        "close": 3174.0,
-        "volume": 31133.0,
-        "hold": 2102661.0
-      },
-      {
-        "datetime": "2026-10-29 11:15:00",
-        "open": 3174.0,
-        "high": 3176.0,
-        "low": 3167.0,
-        "close": 3170.0,
-        "volume": 23905.0,
-        "hold": 2103410.0
-      },
-      {
-        "datetime": "2026-10-29 11:30:00",
-        "open": 3169.0,
-        "high": 3174.0,
-        "low": 3167.0,
-        "close": 3173.0,
-        "volume": 15809.0,
-        "hold": 2101506.0
-      },
-      {
-        "datetime": "2026-10-29 13:45:00",
-        "open": 3172.0,
-        "high": 3174.0,
-        "low": 3167.0,
-        "close": 3168.0,
-        "volume": 27504.0,
-        "hold": 2103696.0
-      },
-      {
-        "datetime": "2026-10-29 14:00:00",
-        "open": 3165.0,
-        "high": 3168.0,
-        "low": 3163.0,
-        "close": 3164.0,
-        "volume": 21167.0,
-        "hold": 2103340.0
-      },
-      {
-        "datetime": "2026-10-29 14:15:00",
-        "open": 3166.0,
-        "high": 3167.0,
-        "low": 3162.0,
-        "close": 3166.0,
-        "volume": 20459.0,
-        "hold": 2105222.0
-      },
-      {
-        "datetime": "2026-10-29 14:30:00",
-        "open": 3166.0,
-        "high": 3166.0,
-        "low": 3161.0,
-        "close": 3163.0,
-        "volume": 19888.0,
-        "hold": 2104737.0
-      },
-      {
-        "datetime": "2026-10-29 14:45:00",
-        "open": 3162.0,
-        "high": 3164.0,
-        "low": 3161.0,
-        "close": 3162.0,
-        "volume": 18324.0,
-        "hold": 2103041.0
-      },
-      {
-        "datetime": "2026-10-29 15:00:00",
-        "open": 3162.0,
-        "high": 3165.0,
-        "low": 3160.0,
-        "close": 3161.0,
-        "volume": 25759.0,
-        "hold": 2099738.0
-      },
-      {
-        "datetime": "2026-10-29 21:15:00",
-        "open": 3157.0,
-        "high": 3158.0,
-        "low": 3150.0,
-        "close": 3153.0,
-        "volume": 80228.0,
-        "hold": 2110063.0
-      },
-      {
-        "datetime": "2026-10-29 21:30:00",
-        "open": 3153.0,
-        "high": 3158.0,
-        "low": 3153.0,
-        "close": 3156.0,
-        "volume": 28811.0,
-        "hold": 2112046.0
-      },
-      {
-        "datetime": "2026-10-29 21:45:00",
-        "open": 3157.0,
-        "high": 3161.0,
-        "low": 3150.0,
-        "close": 3158.0,
-        "volume": 44185.0,
-        "hold": 2110228.0
-      },
-      {
-        "datetime": "2026-10-29 22:00:00",
-        "open": 3158.0,
-        "high": 3162.0,
-        "low": 3155.0,
-        "close": 3159.0,
-        "volume": 22678.0,
-        "hold": 2111246.0
-      },
-      {
-        "datetime": "2026-10-29 22:15:00",
-        "open": 3159.0,
-        "high": 3162.0,
-        "low": 3156.0,
-        "close": 3157.0,
-        "volume": 22028.0,
-        "hold": 2110925.0
-      },
-      {
-        "datetime": "2026-10-29 22:30:00",
-        "open": 3157.0,
-        "high": 3161.0,
-        "low": 3155.0,
-        "close": 3161.0,
-        "volume": 6857.0,
-        "hold": 2111207.0
-      },
-      {
-        "datetime": "2026-10-29 22:45:00",
-        "open": 3161.0,
-        "high": 3164.0,
-        "low": 3157.0,
-        "close": 3157.0,
-        "volume": 32703.0,
-        "hold": 2108662.0
-      },
-      {
-        "datetime": "2026-10-29 23:00:00",
-        "open": 3157.0,
-        "high": 3160.0,
-        "low": 3151.0,
-        "close": 3152.0,
-        "volume": 33270.0,
-        "hold": 2104685.0
-      },
-      {
-        "datetime": "2026-10-30 09:15:00",
-        "open": 3163.0,
-        "high": 3172.0,
-        "low": 3152.0,
-        "close": 3171.0,
-        "volume": 66655.0,
-        "hold": 2101123.0
-      },
-      {
-        "datetime": "2026-10-30 09:30:00",
-        "open": 3171.0,
-        "high": 3174.0,
-        "low": 3167.0,
-        "close": 3173.0,
-        "volume": 34990.0,
-        "hold": 2098812.0
-      },
-      {
-        "datetime": "2026-10-30 09:45:00",
-        "open": 3175.0,
-        "high": 3183.0,
-        "low": 3172.0,
-        "close": 3178.0,
-        "volume": 53850.0,
-        "hold": 2094605.0
-      },
-      {
-        "datetime": "2026-10-30 10:00:00",
-        "open": 3178.0,
-        "high": 3179.0,
-        "low": 3175.0,
-        "close": 3176.0,
-        "volume": 8177.0,
-        "hold": 2092336.0
-      },
-      {
-        "datetime": "2026-10-30 10:15:00",
-        "open": 3176.0,
-        "high": 3184.0,
-        "low": 3176.0,
-        "close": 3181.0,
-        "volume": 29851.0,
-        "hold": 2092812.0
-      },
-      {
-        "datetime": "2026-10-30 10:45:00",
-        "open": 3181.0,
-        "high": 3193.0,
-        "low": 3179.0,
-        "close": 3192.0,
-        "volume": 69356.0,
-        "hold": 2092242.0
-      },
-      {
-        "datetime": "2026-10-30 11:00:00",
-        "open": 3193.0,
-        "high": 3199.0,
-        "low": 3188.0,
-        "close": 3191.0,
-        "volume": 82234.0,
-        "hold": 2086296.0
-      },
-      {
-        "datetime": "2026-10-30 11:15:00",
-        "open": 3190.0,
-        "high": 3193.0,
-        "low": 3187.0,
-        "close": 3191.0,
-        "volume": 26337.0,
-        "hold": 2087446.0
-      },
-      {
-        "datetime": "2026-10-30 11:30:00",
-        "open": 3191.0,
-        "high": 3192.0,
-        "low": 3185.0,
-        "close": 3187.0,
-        "volume": 27270.0,
-        "hold": 2086702.0
-      },
-      {
-        "datetime": "2026-10-30 13:45:00",
-        "open": 3187.0,
-        "high": 3190.0,
-        "low": 3185.0,
-        "close": 3187.0,
-        "volume": 18849.0,
-        "hold": 2084371.0
-      },
-      {
-        "datetime": "2026-10-30 14:00:00",
-        "open": 3186.0,
-        "high": 3187.0,
-        "low": 3182.0,
-        "close": 3185.0,
-        "volume": 16492.0,
-        "hold": 2083405.0
-      },
-      {
-        "datetime": "2026-10-30 14:15:00",
-        "open": 3187.0,
-        "high": 3192.0,
-        "low": 3183.0,
-        "close": 3183.0,
-        "volume": 41222.0,
-        "hold": 2072463.0
-      },
-      {
-        "datetime": "2026-10-30 14:30:00",
-        "open": 3186.0,
-        "high": 3193.0,
-        "low": 3184.0,
-        "close": 3188.0,
-        "volume": 39047.0,
-        "hold": 2062603.0
-      },
-      {
-        "datetime": "2026-10-30 14:45:00",
-        "open": 3188.0,
-        "high": 3189.0,
-        "low": 3186.0,
-        "close": 3187.0,
-        "volume": 17185.0,
-        "hold": 2058272.0
-      },
-      {
-        "datetime": "2026-10-30 15:00:00",
-        "open": 3186.0,
-        "high": 3187.0,
-        "low": 3182.0,
-        "close": 3183.0,
-        "volume": 32284.0,
-        "hold": 2050499.0
-      }
-    ],
-    "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
+    "available": false,
+    "reason": "akshare小时K线接口调用失败: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)",
+    "debug": {
+      "symbol": "M2701",
+      "errorType": "ReadTimeout"
+    }
   },
   "dceM09PositionRank": {
     "available": true,
     "symbol": "M2709",
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "tables": {
       "netLong": [
         {
           "rank": 1,
           "name": "大越期货",
-          "value": 16228,
-          "change": -160,
+          "value": 18221,
+          "change": 1993,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "国投期货",
-          "value": 12997,
-          "change": 6742,
+          "value": 14116,
+          "change": 1119,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "盛达期货",
-          "value": 10813,
-          "change": 732,
+          "value": 10705,
+          "change": -108,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "摩根大通",
-          "value": 8472,
-          "change": 5726,
+          "value": 8282,
+          "change": -190,
           "isForeign": true
         },
         {
           "rank": 5,
-          "name": "国泰君安",
-          "value": 5485,
-          "change": -9379,
+          "name": "方正中期",
+          "value": 7384,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "格林大华",
-          "value": 5446,
-          "change": 3403,
+          "value": 5370,
+          "change": -76,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "浙商期货",
-          "value": 4448,
-          "change": -269,
+          "value": 3754,
+          "change": -694,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "永安期货",
-          "value": 3593,
-          "change": -278,
+          "name": "国泰君安",
+          "value": 2919,
+          "change": -2566,
           "isForeign": false
         },
         {
           "rank": 9,
           "name": "中泰期货",
-          "value": 2011,
-          "change": -10,
+          "value": 2241,
+          "change": 230,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "大地期货",
-          "value": 1989,
-          "change": -314,
+          "name": "永安期货",
+          "value": 2210,
+          "change": -1383,
           "isForeign": false
         },
         {
           "rank": 11,
           "name": "中财期货",
-          "value": 1793,
-          "change": -148,
+          "value": 1688,
+          "change": -105,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "徽商期货",
-          "value": 1627,
-          "change": 124,
+          "name": "大地期货",
+          "value": 1559,
+          "change": -430,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "中州期货",
-          "value": 1400,
-          "change": -228,
+          "name": "徽商期货",
+          "value": 1453,
+          "change": -174,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "中信期货",
-          "value": 1394,
-          "change": 571,
+          "name": "华泰期货",
+          "value": 802,
+          "change": -81,
           "isForeign": false
         },
         {
           "rank": 15,
-          "name": "华泰期货",
-          "value": 883,
-          "change": -62,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "弘业期货",
-          "value": 794,
-          "change": -1,
+          "name": "中州期货",
+          "value": 474,
+          "change": -926,
           "isForeign": false
         }
       ],
@@ -19390,218 +16716,225 @@
         {
           "rank": 1,
           "name": "中粮期货",
-          "value": 44742,
-          "change": 3213,
+          "value": 48906,
+          "change": 4164,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "东证期货",
-          "value": 13819,
-          "change": -925,
+          "value": 12175,
+          "change": -1644,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "高盛期货",
-          "value": 10992,
-          "change": -282,
+          "value": 10878,
+          "change": -114,
           "isForeign": true
         },
         {
           "rank": 4,
           "name": "银河期货",
-          "value": 8743,
-          "change": 1458,
+          "value": 8785,
+          "change": 42,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "宏源期货",
-          "value": 5781,
-          "change": 304,
+          "value": 6102,
+          "change": 321,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "五矿期货",
-          "value": 4431,
-          "change": 2401,
+          "name": "广发期货",
+          "value": 3302,
+          "change": 301,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "广发期货",
-          "value": 3001,
-          "change": 2960,
+          "name": "五矿期货",
+          "value": 3301,
+          "change": -1130,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "华闻期货",
-          "value": 1934,
-          "change": -32,
+          "value": 1772,
+          "change": -162,
           "isForeign": false
         },
         {
           "rank": 9,
           "name": "正信期货",
-          "value": 1846,
-          "change": -267,
+          "value": 1747,
+          "change": -99,
           "isForeign": false
         },
         {
           "rank": 10,
           "name": "南华期货",
-          "value": 1638,
-          "change": -1058,
+          "value": 1636,
+          "change": -2,
           "isForeign": false
         },
         {
           "rank": 11,
           "name": "先融期货",
-          "value": 870,
-          "change": -282,
+          "value": 749,
+          "change": -121,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "中信期货",
+          "value": 112,
+          "change": 1506,
           "isForeign": false
         }
       ],
       "longUp": [
         {
           "rank": 1,
-          "name": "国投期货",
-          "value": 14589,
-          "change": 7374,
+          "name": "方正中期",
+          "value": 8611,
+          "change": 7050,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "摩根大通",
-          "value": 9593,
-          "change": 5887,
-          "isForeign": true
+          "name": "大越期货",
+          "value": 19448,
+          "change": 2099,
+          "isForeign": false
         },
         {
           "rank": 3,
           "name": "东证期货",
-          "value": 6596,
-          "change": 5187,
+          "value": 8087,
+          "change": 1491,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "格林大华",
-          "value": 6567,
-          "change": 3564,
+          "name": "国投期货",
+          "value": 15718,
+          "change": 1129,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "中粮期货",
-          "value": 6752,
-          "change": 2001,
+          "value": 7644,
+          "change": 892,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "南华期货",
-          "value": 14714,
-          "change": 1089,
+          "name": "中泰期货",
+          "value": 3468,
+          "change": 336,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "中信期货",
-          "value": 5706,
-          "change": 1047,
+          "value": 5922,
+          "change": 216,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "盛达期货",
-          "value": 11934,
-          "change": 893,
+          "name": "广发期货",
+          "value": 9956,
+          "change": 116,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "徽商期货",
-          "value": 2748,
-          "change": 285,
+          "name": "格林大华",
+          "value": 6597,
+          "change": 30,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "弘业期货",
-          "value": 1915,
-          "change": 160,
+          "name": "华泰期货",
+          "value": 2029,
+          "change": 25,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "中泰期货",
-          "value": 3132,
-          "change": 151,
+          "name": "南华期货",
+          "value": 14732,
+          "change": 18,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "华泰期货",
-          "value": 2004,
-          "change": 99,
-          "isForeign": false
-        },
-        {
-          "rank": 13,
-          "name": "广发期货",
-          "value": 9840,
-          "change": 98,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
           "name": "中财期货",
-          "value": 2914,
-          "change": 13,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "永安期货",
-          "value": 5998,
-          "change": 6,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "大越期货",
-          "value": 17349,
+          "value": 2915,
           "change": 1,
           "isForeign": false
         },
         {
+          "rank": 13,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "宝城期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "恒力期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "高盛期货",
+          "value": null,
+          "change": null,
+          "isForeign": true
+        },
+        {
           "rank": 17,
-          "name": "冠通期货",
+          "name": "正信期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 18,
-          "name": "银河期货",
+          "name": "国盛期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "五矿期货",
+          "name": "银河期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "恒力期货",
+          "name": "宏源期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -19610,140 +16943,140 @@
       "longDown": [
         {
           "rank": 1,
-          "name": "国泰君安",
-          "value": 19614,
-          "change": -8774,
+          "name": "永安期货",
+          "value": 5344,
+          "change": -654,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "大地期货",
-          "value": 3110,
-          "change": -153,
+          "name": "浙商期货",
+          "value": 4981,
+          "change": -588,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "中州期货",
-          "value": 2521,
-          "change": -130,
+          "name": "大地期货",
+          "value": 2786,
+          "change": -324,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "浙商期货",
-          "value": 5569,
-          "change": -108,
+          "name": "中州期货",
+          "value": 2197,
+          "change": -324,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "宝城期货",
-          "value": null,
-          "change": null,
+          "name": "国泰君安",
+          "value": 19317,
+          "change": -297,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "高盛期货",
-          "value": null,
-          "change": null,
+          "name": "摩根大通",
+          "value": 9509,
+          "change": -84,
           "isForeign": true
         },
         {
           "rank": 7,
-          "name": "国金期货",
-          "value": null,
-          "change": null,
+          "name": "徽商期货",
+          "value": 2680,
+          "change": -68,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "海通期货",
-          "value": null,
-          "change": null,
+          "name": "盛达期货",
+          "value": 11932,
+          "change": -2,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "恒力期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 10,
-          "name": "五矿期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 11,
-          "name": "银河期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 12,
           "name": "冠通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 13,
-          "name": "宏源期货",
+          "rank": 10,
+          "name": "海通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 14,
-          "name": "华闻期货",
+          "rank": 11,
+          "name": "先融期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 15,
-          "name": "国信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "国盛期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 17,
-          "name": "正信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 18,
+          "rank": 12,
           "name": "国联期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 13,
+          "name": "华闻期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "紫金天风",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "银河期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
           "rank": 19,
-          "name": "东海期货",
+          "name": "国盛期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "兴业期货",
+          "name": "正信期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -19755,98 +17088,98 @@
   "dceM05PositionRank": {
     "available": true,
     "symbol": "M2705",
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "tables": {
       "netLong": [
         {
           "rank": 1,
           "name": "高盛期货",
-          "value": 33245,
-          "change": -1012,
+          "value": 33254,
+          "change": 9,
           "isForeign": true
         },
         {
           "rank": 2,
           "name": "华泰期货",
-          "value": 28245,
-          "change": 446,
+          "value": 29159,
+          "change": 914,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "银河期货",
-          "value": 19947,
-          "change": 2241,
+          "value": 21486,
+          "change": 1539,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "摩根大通",
-          "value": 14095,
-          "change": 1266,
+          "value": 14622,
+          "change": 527,
           "isForeign": true
         },
         {
           "rank": 5,
           "name": "中泰期货",
-          "value": 13341,
-          "change": 176,
+          "value": 13710,
+          "change": 369,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "浙商期货",
-          "value": 12626,
-          "change": 209,
+          "value": 11835,
+          "change": -791,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "东吴期货",
-          "value": 12458,
-          "change": -531,
+          "value": 10067,
+          "change": -2391,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "南华期货",
-          "value": 8818,
-          "change": 857,
+          "name": "招商期货",
+          "value": 7900,
+          "change": 107,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "招商期货",
-          "value": 7793,
-          "change": -262,
+          "name": "南华期货",
+          "value": 7838,
+          "change": -980,
           "isForeign": false
         },
         {
           "rank": 10,
           "name": "国信期货",
-          "value": 7508,
-          "change": -1555,
+          "value": 7740,
+          "change": 232,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "方正中期",
-          "value": 7169,
-          "change": -309,
+          "name": "中金财富",
+          "value": 6587,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 12,
           "name": "宏源期货",
-          "value": 6807,
-          "change": null,
+          "value": 6426,
+          "change": -381,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "新湖期货",
-          "value": 5107,
-          "change": -608,
+          "name": "东海期货",
+          "value": 5491,
+          "change": null,
           "isForeign": false
         }
       ],
@@ -19854,190 +17187,190 @@
         {
           "rank": 1,
           "name": "中粮期货",
-          "value": 163037,
-          "change": -4517,
+          "value": 160635,
+          "change": -2402,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "国投期货",
-          "value": 74260,
-          "change": 3193,
+          "value": 69560,
+          "change": -4700,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "一德期货",
-          "value": 37257,
-          "change": -150,
+          "value": 37532,
+          "change": 275,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "中信期货",
-          "value": 28783,
-          "change": -2180,
+          "name": "国泰君安",
+          "value": 32046,
+          "change": 7640,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "国泰君安",
-          "value": 24406,
-          "change": 2954,
+          "name": "中信期货",
+          "value": 28772,
+          "change": -11,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "东证期货",
-          "value": 23559,
-          "change": 2921,
+          "value": 27845,
+          "change": 4286,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "永安期货",
-          "value": 14545,
-          "change": -6058,
+          "value": 10834,
+          "change": -3711,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "五矿期货",
-          "value": 7255,
-          "change": -1594,
+          "value": 7915,
+          "change": 660,
           "isForeign": false
         },
         {
           "rank": 9,
           "name": "海证期货",
-          "value": 6642,
-          "change": -32,
+          "value": 7701,
+          "change": 1059,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "广发期货",
-          "value": 4719,
-          "change": 2593,
+          "name": "北京首创",
+          "value": 4672,
+          "change": 1345,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "北京首创",
-          "value": 3327,
-          "change": -968,
+          "name": "广发期货",
+          "value": 2779,
+          "change": -1940,
           "isForeign": false
         }
       ],
       "longUp": [
         {
           "rank": 1,
-          "name": "永安期货",
-          "value": 36343,
-          "change": 5703,
+          "name": "东证期货",
+          "value": 45896,
+          "change": 6008,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "国泰君安",
-          "value": 84833,
-          "change": 3341,
+          "name": "中信期货",
+          "value": 50548,
+          "change": 4990,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "中粮期货",
-          "value": 32842,
-          "change": 2686,
+          "name": "国投期货",
+          "value": 32511,
+          "change": 2922,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "银河期货",
-          "value": 28175,
-          "change": 2337,
+          "value": 30329,
+          "change": 2154,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "摩根大通",
-          "value": 22323,
-          "change": 1968,
-          "isForeign": true
+          "name": "中金财富",
+          "value": 15283,
+          "change": 1266,
+          "isForeign": false
         },
         {
           "rank": 6,
-          "name": "华泰期货",
-          "value": 44269,
-          "change": 1520,
+          "name": "国泰君安",
+          "value": 85982,
+          "change": 1149,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "中信期货",
-          "value": 45558,
-          "change": 1449,
-          "isForeign": false
+          "name": "摩根大通",
+          "value": 23318,
+          "change": 995,
+          "isForeign": true
         },
         {
           "rank": 8,
-          "name": "宏源期货",
-          "value": 15035,
-          "change": 1303,
+          "name": "中泰期货",
+          "value": 22406,
+          "change": 837,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "南华期货",
-          "value": 28409,
-          "change": 1221,
-          "isForeign": false
+          "name": "高盛期货",
+          "value": 41950,
+          "change": 477,
+          "isForeign": true
         },
         {
           "rank": 10,
-          "name": "广发期货",
-          "value": 25972,
-          "change": 1215,
+          "name": "招商期货",
+          "value": 29336,
+          "change": 412,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "浙商期货",
-          "value": 20854,
-          "change": 911,
+          "name": "广发期货",
+          "value": 26217,
+          "change": 245,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "中泰期货",
-          "value": 21569,
-          "change": 878,
+          "name": "永安期货",
+          "value": 36515,
+          "change": 172,
           "isForeign": false
         },
         {
           "rank": 13,
-          "name": "方正中期",
-          "value": 15397,
-          "change": 393,
+          "name": "宏源期货",
+          "value": 15122,
+          "change": 87,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "国投期货",
-          "value": 29589,
-          "change": 166,
+          "name": "新湖期货",
+          "value": null,
+          "change": null,
           "isForeign": false
         },
         {
           "rank": 15,
-          "name": "冠通期货",
+          "name": "方正中期",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 16,
-          "name": "格林大华",
+          "name": "国联期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20051,21 +17384,21 @@
         },
         {
           "rank": 18,
-          "name": "海证期货",
+          "name": "海通期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "国联期货",
+          "name": "正信期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "国元期货",
+          "name": "建信期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20074,63 +17407,63 @@
       "longDown": [
         {
           "rank": 1,
-          "name": "东证期货",
-          "value": 39888,
-          "change": -1810,
+          "name": "东吴期货",
+          "value": 21023,
+          "change": -2136,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "新湖期货",
-          "value": 14547,
-          "change": -1273,
+          "name": "南华期货",
+          "value": 27761,
+          "change": -648,
           "isForeign": false
         },
         {
           "rank": 3,
-          "name": "高盛期货",
-          "value": 41473,
-          "change": -310,
-          "isForeign": true
+          "name": "浙商期货",
+          "value": 20531,
+          "change": -323,
+          "isForeign": false
         },
         {
           "rank": 4,
-          "name": "东吴期货",
-          "value": 23159,
-          "change": -291,
+          "name": "国信期货",
+          "value": 16436,
+          "change": -215,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "国信期货",
-          "value": 16651,
-          "change": -199,
+          "name": "东海期货",
+          "value": 14187,
+          "change": -101,
           "isForeign": false
         },
         {
           "rank": 6,
-          "name": "招商期货",
-          "value": 28924,
-          "change": -138,
+          "name": "中粮期货",
+          "value": 32779,
+          "change": -63,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "建信期货",
-          "value": null,
-          "change": null,
+          "name": "华泰期货",
+          "value": 44250,
+          "change": -19,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "正信期货",
+          "name": "五矿期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "五矿期货",
+          "name": "海证期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20144,14 +17477,14 @@
         },
         {
           "rank": 11,
-          "name": "瑞达期货",
+          "name": "建信期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "华源期货",
+          "name": "正信期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20165,7 +17498,7 @@
         },
         {
           "rank": 14,
-          "name": "国元期货",
+          "name": "一德期货",
           "value": null,
           "change": null,
           "isForeign": false
@@ -20186,30 +17519,30 @@
         },
         {
           "rank": 17,
-          "name": "格林大华",
+          "name": "方正中期",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 18,
-          "name": "一德期货",
+          "name": "新湖期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
           "rank": 19,
-          "name": "海证期货",
-          "value": null,
-          "change": null,
+          "name": "宏源期货",
+          "value": 15122,
+          "change": 87,
           "isForeign": false
         },
         {
           "rank": 20,
-          "name": "国投期货",
-          "value": 29589,
-          "change": 166,
+          "name": "永安期货",
+          "value": 36515,
+          "change": 172,
           "isForeign": false
         }
       ]
@@ -20219,461 +17552,461 @@
   "dceM01PositionRank": {
     "available": true,
     "symbol": "M2701",
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "tables": {
       "netLong": [
         {
           "rank": 1,
           "name": "中信期货",
-          "value": 96313,
-          "change": -12945,
+          "value": 85243,
+          "change": -11070,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "高盛期货",
-          "value": 90627,
-          "change": -4843,
+          "value": 85087,
+          "change": -5540,
           "isForeign": true
         },
         {
           "rank": 3,
           "name": "一德期货",
-          "value": 69912,
-          "change": 3100,
+          "value": 65683,
+          "change": -4229,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "银河期货",
-          "value": 62763,
-          "change": 500,
+          "value": 58429,
+          "change": -4334,
           "isForeign": false
         },
         {
           "rank": 5,
           "name": "永安期货",
-          "value": 53179,
-          "change": 1976,
+          "value": 51090,
+          "change": -2089,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "国泰君安",
-          "value": 46374,
-          "change": -5768,
+          "value": 45168,
+          "change": -1206,
           "isForeign": false
         },
         {
           "rank": 7,
           "name": "中信建投",
-          "value": 43963,
-          "change": 1364,
+          "value": 42500,
+          "change": -1463,
           "isForeign": false
         },
         {
           "rank": 8,
           "name": "中泰期货",
-          "value": 35820,
-          "change": 5078,
+          "value": 35424,
+          "change": -396,
           "isForeign": false
         },
         {
           "rank": 9,
           "name": "国富期货",
-          "value": 27949,
-          "change": -340,
+          "value": 26315,
+          "change": -1634,
           "isForeign": false
         },
         {
           "rank": 10,
-          "name": "南华期货",
-          "value": 15433,
-          "change": -20733,
+          "name": "东证期货",
+          "value": 21831,
+          "change": 36432,
           "isForeign": false
         },
         {
           "rank": 11,
-          "name": "海证期货",
-          "value": 12565,
-          "change": -290,
+          "name": "海通期货",
+          "value": 17375,
+          "change": 5082,
           "isForeign": false
         },
         {
           "rank": 12,
-          "name": "海通期货",
-          "value": 12293,
-          "change": 3620,
+          "name": "海证期货",
+          "value": 13133,
+          "change": 568,
           "isForeign": false
         },
         {
           "rank": 13,
           "name": "新湖期货",
-          "value": 10400,
-          "change": null,
+          "value": 10240,
+          "change": -160,
           "isForeign": false
         },
         {
           "rank": 14,
-          "name": "瑞银期货",
-          "value": 7981,
-          "change": -3180,
-          "isForeign": true
+          "name": "南华期货",
+          "value": 9787,
+          "change": -5646,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "北京首创",
+          "value": 9422,
+          "change": null,
+          "isForeign": false
         }
       ],
       "netShort": [
         {
           "rank": 1,
           "name": "中粮期货",
-          "value": 309612,
-          "change": -22034,
+          "value": 295770,
+          "change": -13842,
           "isForeign": false
         },
         {
           "rank": 2,
           "name": "国投期货",
-          "value": 118028,
-          "change": -19465,
+          "value": 117958,
+          "change": -70,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "广发期货",
-          "value": 72872,
-          "change": -7668,
+          "value": 75798,
+          "change": 2926,
           "isForeign": false
         },
         {
           "rank": 4,
           "name": "摩根大通",
-          "value": 60324,
-          "change": 7753,
+          "value": 61726,
+          "change": 1402,
           "isForeign": true
         },
         {
           "rank": 5,
           "name": "中金财富",
-          "value": 36994,
-          "change": 4418,
+          "value": 37883,
+          "change": 889,
           "isForeign": false
         },
         {
           "rank": 6,
           "name": "华泰期货",
-          "value": 16391,
-          "change": -862,
+          "value": 18081,
+          "change": 1690,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "东证期货",
-          "value": 14601,
-          "change": 3935,
+          "name": "国贸期货",
+          "value": 13308,
+          "change": -914,
           "isForeign": false
         },
         {
           "rank": 8,
-          "name": "国贸期货",
-          "value": 14222,
-          "change": 2585,
+          "name": "大地期货",
+          "value": 7612,
+          "change": -251,
           "isForeign": false
         },
         {
           "rank": 9,
-          "name": "大地期货",
-          "value": 7863,
-          "change": 684,
-          "isForeign": false
-        },
-        {
-          "rank": 10,
           "name": "五矿期货",
-          "value": 3398,
-          "change": null,
+          "value": 2024,
+          "change": -1374,
           "isForeign": false
         }
       ],
       "longUp": [
         {
           "rank": 1,
-          "name": "国投期货",
-          "value": 56434,
-          "change": 7359,
+          "name": "东证期货",
+          "value": 190263,
+          "change": 11115,
           "isForeign": false
         },
         {
           "rank": 2,
-          "name": "广发期货",
-          "value": 34976,
-          "change": 6171,
+          "name": "北京首创",
+          "value": 28517,
+          "change": 3025,
           "isForeign": false
         },
         {
           "rank": 3,
           "name": "海通期货",
-          "value": 50134,
-          "change": 3935,
+          "value": 52561,
+          "change": 2427,
           "isForeign": false
         },
         {
           "rank": 4,
-          "name": "东证期货",
-          "value": 179148,
-          "change": 3423,
+          "name": "中粮期货",
+          "value": 65402,
+          "change": 1413,
           "isForeign": false
         },
         {
           "rank": 5,
-          "name": "一德期货",
-          "value": 88858,
-          "change": 3204,
-          "isForeign": false
+          "name": "摩根大通",
+          "value": 27471,
+          "change": 1266,
+          "isForeign": true
         },
         {
           "rank": 6,
-          "name": "永安期货",
-          "value": 107268,
-          "change": 3175,
+          "name": "海证期货",
+          "value": 32228,
+          "change": 717,
           "isForeign": false
         },
         {
           "rank": 7,
-          "name": "中泰期货",
-          "value": 62884,
-          "change": 3088,
-          "isForeign": false
-        },
-        {
-          "rank": 8,
-          "name": "华泰期货",
-          "value": 37996,
-          "change": 2502,
-          "isForeign": false
-        },
-        {
-          "rank": 9,
-          "name": "中粮期货",
-          "value": 63989,
-          "change": 1874,
-          "isForeign": false
-        },
-        {
-          "rank": 10,
-          "name": "中信建投",
-          "value": 62909,
-          "change": 1468,
-          "isForeign": false
-        },
-        {
-          "rank": 11,
-          "name": "新湖期货",
-          "value": 29346,
-          "change": 1167,
-          "isForeign": false
-        },
-        {
-          "rank": 12,
-          "name": "银河期货",
-          "value": 91055,
-          "change": 945,
-          "isForeign": false
-        },
-        {
-          "rank": 13,
-          "name": "国泰君安",
-          "value": 193923,
-          "change": 810,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "浙商期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "国联期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
-          "name": "冠通期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 17,
-          "name": "徽商期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 18,
-          "name": "宏源期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 19,
           "name": "大地期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 20,
-          "name": "瑞达期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        }
-      ],
-      "longDown": [
-        {
-          "rank": 1,
-          "name": "南华期货",
-          "value": 34379,
-          "change": -23671,
-          "isForeign": false
-        },
-        {
-          "rank": 2,
-          "name": "中信期货",
-          "value": 221170,
-          "change": -6683,
-          "isForeign": false
-        },
-        {
-          "rank": 3,
-          "name": "摩根大通",
-          "value": 26205,
-          "change": -6305,
-          "isForeign": true
-        },
-        {
-          "rank": 4,
-          "name": "高盛期货",
-          "value": 109573,
-          "change": -4739,
-          "isForeign": true
-        },
-        {
-          "rank": 5,
-          "name": "瑞银期货",
-          "value": 26927,
-          "change": -3076,
-          "isForeign": true
-        },
-        {
-          "rank": 6,
-          "name": "国富期货",
-          "value": 46895,
-          "change": -236,
-          "isForeign": false
-        },
-        {
-          "rank": 7,
-          "name": "海证期货",
-          "value": 31511,
-          "change": -186,
-          "isForeign": false
-        },
-        {
           "rank": 8,
-          "name": "国信期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 9,
           "name": "国贸期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 10,
-          "name": "五矿期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 11,
-          "name": "中金财富",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 12,
+          "rank": 9,
           "name": "瑞达期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 13,
-          "name": "大地期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 14,
-          "name": "宏源期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 15,
-          "name": "华闻期货",
-          "value": null,
-          "change": null,
-          "isForeign": false
-        },
-        {
-          "rank": 16,
+          "rank": 10,
           "name": "徽商期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 17,
-          "name": "冠通期货",
+          "rank": 11,
+          "name": "华闻期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 18,
-          "name": "国联期货",
+          "rank": 12,
+          "name": "光大期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
-          "rank": 19,
+          "rank": 13,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
           "name": "浙商期货",
           "value": null,
           "change": null,
           "isForeign": false
         },
         {
+          "rank": 16,
+          "name": "招商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "中金财富",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "新湖期货",
+          "value": 29335,
+          "change": -11,
+          "isForeign": false
+        },
+        {
           "rank": 20,
+          "name": "南华期货",
+          "value": 34081,
+          "change": -298,
+          "isForeign": false
+        }
+      ],
+      "longDown": [
+        {
+          "rank": 1,
           "name": "国泰君安",
-          "value": 193923,
-          "change": 810,
+          "value": 183219,
+          "change": -10704,
+          "isForeign": false
+        },
+        {
+          "rank": 2,
+          "name": "中信期货",
+          "value": 212311,
+          "change": -8859,
+          "isForeign": false
+        },
+        {
+          "rank": 3,
+          "name": "高盛期货",
+          "value": 104182,
+          "change": -5391,
+          "isForeign": true
+        },
+        {
+          "rank": 4,
+          "name": "一德期货",
+          "value": 84778,
+          "change": -4080,
+          "isForeign": false
+        },
+        {
+          "rank": 5,
+          "name": "银河期货",
+          "value": 88186,
+          "change": -2869,
+          "isForeign": false
+        },
+        {
+          "rank": 6,
+          "name": "广发期货",
+          "value": 32797,
+          "change": -2179,
+          "isForeign": false
+        },
+        {
+          "rank": 7,
+          "name": "国投期货",
+          "value": 54345,
+          "change": -2089,
+          "isForeign": false
+        },
+        {
+          "rank": 8,
+          "name": "中泰期货",
+          "value": 61032,
+          "change": -1852,
+          "isForeign": false
+        },
+        {
+          "rank": 9,
+          "name": "永安期货",
+          "value": 105421,
+          "change": -1847,
+          "isForeign": false
+        },
+        {
+          "rank": 10,
+          "name": "国富期货",
+          "value": 45410,
+          "change": -1485,
+          "isForeign": false
+        },
+        {
+          "rank": 11,
+          "name": "华泰期货",
+          "value": 36645,
+          "change": -1351,
+          "isForeign": false
+        },
+        {
+          "rank": 12,
+          "name": "中信建投",
+          "value": 61595,
+          "change": -1314,
+          "isForeign": false
+        },
+        {
+          "rank": 13,
+          "name": "南华期货",
+          "value": 34081,
+          "change": -298,
+          "isForeign": false
+        },
+        {
+          "rank": 14,
+          "name": "新湖期货",
+          "value": 29335,
+          "change": -11,
+          "isForeign": false
+        },
+        {
+          "rank": 15,
+          "name": "大地期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 16,
+          "name": "招商期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 17,
+          "name": "中金财富",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 18,
+          "name": "五矿期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 19,
+          "name": "国信期货",
+          "value": null,
+          "change": null,
+          "isForeign": false
+        },
+        {
+          "rank": 20,
+          "name": "宏源期货",
+          "value": null,
+          "change": null,
           "isForeign": false
         }
       ]
@@ -21309,16 +18642,16 @@
         2953.0,
         2936.0,
         2940.0,
-        2919.0
+        2919.0,
+        2927.0
       ],
-      "ownCount": 27,
+      "ownCount": 28,
       "extendedCount": 203,
       "donor": "M2611",
       "symbol": "M2709"
     },
     "may": {
       "closes": [
-        2731.13,
         2720.16,
         2713.18,
         2729.13,
@@ -21577,16 +18910,16 @@
         2871.0,
         2854.0,
         2850.0,
-        2824.0
+        2824.0,
+        2834.0
       ],
-      "ownCount": 110,
-      "extendedCount": 150,
+      "ownCount": 111,
+      "extendedCount": 149,
       "donor": "M2607",
       "symbol": "M2705"
     },
     "jan": {
       "closes": [
-        2772.75,
         2767.03,
         2750.85,
         2767.99,
@@ -21845,10 +19178,11 @@
         3230.0,
         3200.0,
         3208.0,
-        3161.0
+        3161.0,
+        3183.0
       ],
-      "ownCount": 187,
-      "extendedCount": 73,
+      "ownCount": 188,
+      "extendedCount": 72,
       "donor": "M2603",
       "symbol": "M2701"
     }
@@ -21858,38 +19192,37 @@
     "mainContract": {
       "key": "jan",
       "symbol": "M2701",
-      "gross": 654305
+      "gross": 630160
     },
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "members": {
       "高盛期货": {
-        "net": 90627,
-        "change": -4843,
+        "net": 85087,
+        "change": -5540,
         "side": "long",
         "rank": 2,
         "foreign": true,
         "history": {
-          "n": 128,
+          "n": 129,
           "since": "2026-04-13",
           "run": {
             "direction": "down",
-            "days": 7,
-            "total": -29563,
+            "days": 8,
+            "total": -35103,
             "since": "2026-10-21",
             "contract": "M2701"
           },
           "change5": {
-            "change": -20622,
-            "from": "2026-10-22",
-            "to": "2026-10-29",
+            "change": -17731,
+            "from": "2026-10-23",
+            "to": "2026-10-30",
             "contract": "M2701",
-            "n": 5,
-            "basis": "long"
+            "n": 5
           },
           "change20": {
-            "change": -51056,
-            "from": "2026-09-23",
-            "to": "2026-10-29",
+            "change": -56362,
+            "from": "2026-09-24",
+            "to": "2026-10-30",
             "contract": "M2701",
             "n": 20,
             "approx": 1
@@ -21897,126 +19230,103 @@
         }
       },
       "摩根大通": {
-        "net": -60324,
-        "change": -7753,
+        "net": -61726,
+        "change": -1402,
         "side": "short",
         "rank": 4,
         "foreign": true,
         "history": {
-          "n": 1077,
+          "n": 1078,
           "since": "2022-01-04",
           "run": {
             "direction": "down",
-            "days": 5,
-            "total": -34906,
+            "days": 6,
+            "total": -36308,
             "since": "2026-10-23",
             "contract": "M2701"
           },
           "change5": {
-            "change": -34906,
-            "from": "2026-10-22",
-            "to": "2026-10-29",
+            "change": -35002,
+            "from": "2026-10-23",
+            "to": "2026-10-30",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": -54132,
-            "from": "2026-09-23",
-            "to": "2026-10-29",
+            "change": -55218,
+            "from": "2026-09-24",
+            "to": "2026-10-30",
             "contract": "M2701",
             "n": 20
           }
         }
       },
       "瑞银期货": {
-        "net": 7981,
-        "change": -3180,
-        "side": "long",
-        "rank": 14,
-        "foreign": true,
-        "history": {
-          "n": 252,
-          "since": "2023-05-19",
-          "run": {
-            "direction": "down",
-            "days": 2,
-            "total": -4111,
-            "since": "2026-10-28",
-            "contract": "M2701"
-          },
-          "change5": {
-            "change": -4990,
-            "from": "2026-10-22",
-            "to": "2026-10-29",
-            "contract": "M2701",
-            "n": 5,
-            "basis": "long"
-          },
-          "change20": null
-        }
+        "net": null,
+        "change": null,
+        "side": null,
+        "rank": null,
+        "foreign": true
       },
       "中粮期货": {
-        "net": -309612,
-        "change": 22034,
+        "net": -295770,
+        "change": 13842,
         "side": "short",
         "rank": 1,
         "foreign": false,
         "history": {
-          "n": 1136,
+          "n": 1137,
           "since": "2022-01-03",
           "run": {
             "direction": "up",
-            "days": 7,
-            "total": 96157,
+            "days": 8,
+            "total": 109999,
             "since": "2026-10-21",
             "contract": "M2701"
           },
           "change5": {
-            "change": 78354,
-            "from": "2026-10-22",
-            "to": "2026-10-29",
+            "change": 84381,
+            "from": "2026-10-23",
+            "to": "2026-10-30",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": 205197,
-            "from": "2026-09-23",
-            "to": "2026-10-29",
+            "change": 214385,
+            "from": "2026-09-24",
+            "to": "2026-10-30",
             "contract": "M2701",
             "n": 20
           }
         }
       },
       "国投期货": {
-        "net": -118028,
-        "change": 19465,
+        "net": -117958,
+        "change": 70,
         "side": "short",
         "rank": 2,
         "foreign": false,
         "history": {
-          "n": 1130,
+          "n": 1131,
           "since": "2022-01-03",
           "run": {
             "direction": "up",
-            "days": 3,
-            "total": 37588,
+            "days": 4,
+            "total": 37658,
             "since": "2026-10-27",
             "contract": "M2701"
           },
           "change5": {
-            "change": 40978,
-            "from": "2026-10-22",
-            "to": "2026-10-29",
+            "change": 36215,
+            "from": "2026-10-23",
+            "to": "2026-10-30",
             "contract": "M2701",
-            "n": 5,
-            "basis": "net"
+            "n": 5
           },
           "change20": {
-            "change": 150419,
-            "from": "2026-09-23",
-            "to": "2026-10-29",
+            "change": 141127,
+            "from": "2026-09-24",
+            "to": "2026-10-30",
             "contract": "M2701",
             "n": 20
           }
@@ -22024,9 +19334,9 @@
       }
     },
     "industry": {
-      "net": -427640,
-      "change": 41499,
-      "changePct": 9.7,
+      "net": -413728,
+      "change": 13912,
+      "changePct": 3.36,
       "members": [
         "中粮期货",
         "国投期货"
@@ -22051,92 +19361,62 @@
     "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约",
     "trend": {
       "高盛期货": {
-        "n": 58,
+        "n": 59,
         "contract": "M2701",
         "high": 120000,
         "code": "retreat_fast",
         "last": {
-          "d": "2026-10-29",
-          "v": 90627
+          "d": "2026-10-30",
+          "v": 85087
         },
         "run": {
           "direction": "down",
-          "days": 7,
-          "total": -29563,
+          "days": 8,
+          "total": -35103,
           "since": "2026-10-21"
         },
-        "dayChange": -4843,
+        "dayChange": -5540,
         "change5": {
-          "change": -15975,
-          "from": "2026-10-22",
-          "to": "2026-10-29"
+          "change": -17731,
+          "from": "2026-10-23",
+          "to": "2026-10-30"
         },
         "peak": {
           "v": 152092,
           "d": "2026-09-30"
         },
-        "drawdown": 61465,
-        "drawdownPct": 40.4,
+        "drawdown": 67005,
+        "drawdownPct": 44.1,
         "acrossHoliday": false,
         "approx": false
       },
       "摩根大通": {
-        "n": 59,
+        "n": 60,
         "contract": "M2701",
         "high": null,
         "code": "retreat_fast",
         "last": {
-          "d": "2026-10-29",
-          "v": -60324
+          "d": "2026-10-30",
+          "v": -61726
         },
         "run": {
           "direction": "down",
-          "days": 5,
-          "total": -34906,
+          "days": 6,
+          "total": -36308,
           "since": "2026-10-23"
         },
-        "dayChange": -7753,
+        "dayChange": -1402,
         "change5": {
-          "change": -34906,
-          "from": "2026-10-22",
-          "to": "2026-10-29"
+          "change": -35002,
+          "from": "2026-10-23",
+          "to": "2026-10-30"
         },
         "peak": {
           "v": 32450,
           "d": "2026-07-31"
         },
-        "drawdown": 92774,
-        "drawdownPct": 285.9,
-        "acrossHoliday": false,
-        "approx": false
-      },
-      "瑞银期货": {
-        "n": 11,
-        "contract": "M2701",
-        "high": null,
-        "code": "trimming",
-        "last": {
-          "d": "2026-10-29",
-          "v": 7981
-        },
-        "run": {
-          "direction": "down",
-          "days": 2,
-          "total": -4111,
-          "since": "2026-10-28"
-        },
-        "dayChange": -3180,
-        "change5": {
-          "change": -343,
-          "from": "2026-10-22",
-          "to": "2026-10-29"
-        },
-        "peak": {
-          "v": 14566,
-          "d": "2026-10-20"
-        },
-        "drawdown": 6585,
-        "drawdownPct": 45.2,
+        "drawdown": 94176,
+        "drawdownPct": 290.2,
         "acrossHoliday": false,
         "approx": false
       }
@@ -22145,12 +19425,12 @@
       "code": "retreat_from_high",
       "level": "yellow",
       "short": "外资高位撤退加速",
-      "label": "外资高位撤退加速：高盛净多从峰值152,092手(09-30)降到90,627手，较峰值回落61,465手(40.4%)，连续7个交易日减仓",
+      "label": "外资高位撤退加速：高盛净多从峰值152,092手(09-30)降到85,087手，较峰值回落67,005手(44.1%)，连续8个交易日减仓",
       "lines": [
-        "近5个交易日高盛净多-15,975手。",
-        "距文档的12万手警戒线：已低于警戒线29,373手。",
+        "近5个交易日高盛净多-17,731手。",
+        "距文档的12万手警戒线：已低于警戒线34,913手。",
         "CFTC管理基金净多处近156周的98%分位，连续3周减少(周度数据，截至2026-10-20，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
-        "其他外资席位：摩根大通在减仓(加速)(连续5日累计-34,906手)，净空60,324手；瑞银期货小幅减仓(连续2日累计-4,111手)，净多7,981手(摩根大通净持仓常在零附近来回，方向意义弱)。"
+        "其他外资席位：摩根大通在减仓(加速)(连续6日累计-36,308手)，净空61,726手(摩根大通净持仓常在零附近来回，方向意义弱)。"
       ],
       "evidence": [
         "历史检验(龙虎榜2022-01~2026-10，摩根大通+高盛+瑞银合计，v101.24 校准)：外资3日净加仓≥2万手后，未来10个交易日平均约+1.9%(约31个独立事件，胜率约68%，基准约+0.6%)，方向偏涨；但前半段(2022-24)约+3.5%、后半段(2025-26)约+0.9%，越近越弱，样本仍小；",
@@ -22159,5 +19439,7 @@
       ]
     }
   },
-  "carriedKeys": []
+  "carriedKeys": [
+    "hogRatio"
+  ]
 }
