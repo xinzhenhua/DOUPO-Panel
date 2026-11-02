@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-02T14:07:55.097951+00:00",
+  "generatedAt": "2026-11-02T15:06:34.581990+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 324.6,
-    "change": 0.0,
-    "changePct": 0.0,
+    "price": 323.2,
+    "change": -1.4,
+    "changePct": -0.43,
     "asOf": "2026-11-02T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -922,8 +922,34 @@
   },
   "crushMargins": {
     "sep": {
-      "available": false,
-      "reason": "以下合约价格缺失，无法计算压榨利润: 豆二B2709(akshare日K线接口调用失败: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10))"
+      "available": true,
+      "contractMonth": 9,
+      "date": "2026-11-02",
+      "datesAligned": true,
+      "mealSymbol": "M2709",
+      "mealPrice": 2930.0,
+      "oilSymbol": "Y2709",
+      "oilPrice": 8581.0,
+      "beanSymbol": "B2709",
+      "beanPrice": 3737.0,
+      "grossMargin": 150.5,
+      "yieldMeal": 0.785,
+      "yieldOil": 0.185,
+      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
+      "history": {
+        "n": 654,
+        "minPoints": 12,
+        "asOf": "2026-11-02",
+        "since": "2019-04-01",
+        "percentile": 56.9,
+        "min": 22.0,
+        "max": 229.4,
+        "median": 138.45,
+        "seasonal": null,
+        "cohort": null,
+        "sparse": null,
+        "window": null
+      }
     },
     "may": {
       "available": true,
@@ -1058,11 +1084,87 @@
   },
   "costAnchor": {
     "available": true,
-    "fx": 6.6529,
+    "fx": 6.6483,
     "contracts": {
+      "sep": {
+        "cbotSymbol": "ZSN27.CBT",
+        "zsCents": 1256.75,
+        "zsDate": "2026-11-02",
+        "zsExact": true,
+        "zsNote": "",
+        "mealSymbol": "M2709",
+        "mealPrice": 2930.0,
+        "oilPrice": 8581.0,
+        "priceDate": "2026-11-02",
+        "primary": null,
+        "brazil": {
+          "beanPrice": 3737.0,
+          "breakeven": 2929.3,
+          "impliedPremium": 69.4,
+          "available": true,
+          "zsCents": 1256.75,
+          "fx": 6.6483,
+          "mealPrice": 2930.0,
+          "oilPrice": 8581.0,
+          "beanCost": 3999.2,
+          "mealCost": 3263.4,
+          "mealCostLow": 3088.7,
+          "mealCostHigh": 3438.1,
+          "gap": -333.4,
+          "gapPct": -10.2,
+          "position": "below",
+          "params": {
+            "asof": "2026-10-10",
+            "premium_step": 50,
+            "vat": 0.09,
+            "port_fee": 100,
+            "crush_fee": 150,
+            "label": "巴西豆",
+            "tariff": 0.03,
+            "premium_cents": 165,
+            "premium_confirmed": false,
+            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
+            "ship": "2027年6~7月船期(用2026年同月快照类推)",
+            "note": "巴西2026年6月155、7月175(对N合约)，平均165，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
+          },
+          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
+        },
+        "us": {
+          "beanPrice": 3737.0,
+          "breakeven": 2929.3,
+          "impliedPremium": -48.0,
+          "available": true,
+          "zsCents": 1256.75,
+          "fx": 6.6483,
+          "mealPrice": 2930.0,
+          "oilPrice": 8581.0,
+          "beanCost": 4687.7,
+          "mealCost": 4140.4,
+          "mealCostLow": 3948.8,
+          "mealCostHigh": 4332.1,
+          "gap": -1210.4,
+          "gapPct": -29.2,
+          "position": "below",
+          "params": {
+            "asof": "2026-10-10",
+            "premium_step": 50,
+            "vat": 0.09,
+            "port_fee": 100,
+            "crush_fee": 150,
+            "label": "美豆",
+            "tariff": 0.13,
+            "premium_cents": 268,
+            "premium_confirmed": false,
+            "source_note": "关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换",
+            "ship": "2027年7月船期(用2026年同月快照类推)",
+            "note": "美湾2026年7月265~272(对N合约)，取中值268，拿去类推2027年同月，不确定性大。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
+          },
+          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
+        }
+      },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1240.0,
+        "zsCents": 1239.25,
         "zsDate": "2026-11-02",
         "zsExact": true,
         "zsNote": "",
@@ -1074,18 +1176,18 @@
         "brazil": {
           "beanPrice": 3671.0,
           "breakeven": 2801.6,
-          "impliedPremium": 61.2,
+          "impliedPremium": 62.8,
           "available": true,
-          "zsCents": 1240.0,
-          "fx": 6.6529,
+          "zsCents": 1239.25,
+          "fx": 6.6483,
           "mealPrice": 2834.0,
           "oilPrice": 8766.0,
-          "beanCost": 3829.7,
-          "mealCost": 3003.8,
-          "mealCostLow": 2829.0,
-          "mealCostHigh": 3178.7,
-          "gap": -169.8,
-          "gapPct": -5.7,
+          "beanCost": 3825.1,
+          "mealCost": 2997.9,
+          "mealCostLow": 2823.3,
+          "mealCostHigh": 3172.6,
+          "gap": -163.9,
+          "gapPct": -5.5,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1110,7 +1212,7 @@
       },
       "jan": {
         "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1223.0,
+        "zsCents": 1217.5,
         "zsDate": "2026-11-02",
         "zsExact": true,
         "zsNote": "",
@@ -1122,18 +1224,18 @@
         "brazil": {
           "beanPrice": 4008.0,
           "breakeven": 3172.0,
-          "impliedPremium": 201.0,
+          "impliedPremium": 207.4,
           "available": true,
-          "zsCents": 1223.0,
-          "fx": 6.6529,
+          "zsCents": 1217.5,
+          "fx": 6.6483,
           "mealPrice": 3198.0,
           "oilPrice": 9016.0,
-          "beanCost": 4115.2,
-          "mealCost": 3308.5,
-          "mealCostLow": 3133.7,
-          "mealCostHigh": 3483.3,
-          "gap": -110.5,
-          "gapPct": -3.3,
+          "beanCost": 4097.3,
+          "mealCost": 3285.8,
+          "mealCostLow": 3111.1,
+          "mealCostHigh": 3460.5,
+          "gap": -87.8,
+          "gapPct": -2.7,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1154,18 +1256,18 @@
         "us": {
           "beanPrice": 4008.0,
           "breakeven": 3172.0,
-          "impliedPremium": 74.9,
+          "impliedPremium": 81.3,
           "available": true,
-          "zsCents": 1223.0,
-          "fx": 6.6529,
+          "zsCents": 1217.5,
+          "fx": 6.6483,
           "mealPrice": 3198.0,
           "oilPrice": 9016.0,
-          "beanCost": 4625.4,
-          "mealCost": 3958.5,
-          "mealCostLow": 3766.8,
-          "mealCostHigh": 4150.3,
-          "gap": -760.5,
-          "gapPct": -19.2,
+          "beanCost": 4605.7,
+          "mealCost": 3933.5,
+          "mealCostLow": 3741.8,
+          "mealCostHigh": 4125.1,
+          "gap": -735.5,
+          "gapPct": -18.7,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1185,7 +1287,7 @@
         }
       }
     },
-    "fxDate": "2026-10-30",
+    "fxDate": "2026-11-02",
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
@@ -1852,6 +1954,12 @@
             "forecastDate": "10/31/2026"
           },
           {
+            "outlook": "Persistence",
+            "outlookLabel": "干旱持续",
+            "targetPeriod": "Nov 2026",
+            "forecastDate": "10/31/2026"
+          },
+          {
             "outlook": "No_Drought",
             "outlookLabel": "预计无旱",
             "targetPeriod": "Nov 2026",
@@ -1870,9 +1978,9 @@
             "forecastDate": "10/31/2026"
           }
         ],
-        "totalPoints": 7,
-        "worseningCount": 2,
-        "worseningPct": 28.6,
+        "totalPoints": 8,
+        "worseningCount": 3,
+        "worseningPct": 37.5,
         "dominantOutlook": "No_Drought",
         "dominantOutlookLabel": "预计无旱",
         "targetPeriod": "Nov 2026"
@@ -1915,9 +2023,21 @@
             "outlookLabel": "预计无旱",
             "targetPeriod": "Nov 2026",
             "forecastDate": "10/31/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Nov 2026",
+            "forecastDate": "10/31/2026"
+          },
+          {
+            "outlook": "No_Drought",
+            "outlookLabel": "预计无旱",
+            "targetPeriod": "Nov 2026",
+            "forecastDate": "10/31/2026"
           }
         ],
-        "totalPoints": 6,
+        "totalPoints": 8,
         "worseningCount": 0,
         "worseningPct": 0.0,
         "dominantOutlook": "No_Drought",
@@ -2279,8 +2399,8 @@
         "targetPeriod": "Nov 2026"
       }
     },
-    "avgWorseningPct": 10.1,
-    "simpleWorseningPct": 9.7,
+    "avgWorseningPct": 10.7,
+    "simpleWorseningPct": 10.4,
     "overallSignal": 0,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
@@ -2551,7 +2671,7 @@
           "lon": -100.7654,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-100.7654%2C+%22y%22%3A+41.1239%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"error\":{\"code\":400,\"message\":\"Failed to execute query.\",\"details\":[]}}"
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point5": {
           "lat": 40.8136,
@@ -2588,7 +2708,7 @@
           "lon": -81.6944,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-81.6944%2C+%22y%22%3A+41.4993%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point2": {
           "lat": 40.7426,
@@ -2609,7 +2729,7 @@
           "lon": -84.1916,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-84.1916%2C+%22y%22%3A+39.7589%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
+          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point5": {
           "lat": 39.3292,
@@ -2629,7 +2749,6 @@
           "lat": 39.94,
           "lon": -82.0132,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-82.0132%2C+%22y%22%3A+39.94%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "error": "HTTP 504: Gateway Time-out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         }
@@ -2654,7 +2773,6 @@
           "lon": -94.8467,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-94.8467%2C+%22y%22%3A+39.7674%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point3": {
@@ -2676,7 +2794,6 @@
           "lon": -90.1994,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-90.1994%2C+%22y%22%3A+38.627%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point6": {
@@ -2684,7 +2801,6 @@
           "lon": -93.2923,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-93.2923%2C+%22y%22%3A+37.209%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Improvement\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point7": {
@@ -2715,7 +2831,6 @@
           "lon": -98.4865,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-98.4865%2C+%22y%22%3A+45.4647%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point3": {
@@ -4861,19 +4976,19 @@
         "datetime": "2026-11-02 22:00:00",
         "open": 2929.0,
         "high": 2937.0,
-        "low": 2927.0,
+        "low": 2926.0,
         "close": 2928.0,
-        "volume": 6.0,
+        "volume": 6337.0,
         "hold": 215138.0
       },
       {
         "datetime": "2026-11-02 23:00:00",
         "open": 2928.0,
-        "high": 2930.0,
-        "low": 2926.0,
-        "close": 2927.0,
-        "volume": 6.0,
-        "hold": 215375.0
+        "high": 2931.0,
+        "low": 2908.0,
+        "close": 2911.0,
+        "volume": 22.0,
+        "hold": 223135.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -4883,33 +4998,6 @@
     "symbol": "M2709",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-14 22:15:00",
-        "open": 3062.0,
-        "high": 3062.0,
-        "low": 3056.0,
-        "close": 3058.0,
-        "volume": 408.0,
-        "hold": 50088.0
-      },
-      {
-        "datetime": "2026-10-14 22:30:00",
-        "open": 3058.0,
-        "high": 3060.0,
-        "low": 3055.0,
-        "close": 3057.0,
-        "volume": 502.0,
-        "hold": 50281.0
-      },
-      {
-        "datetime": "2026-10-14 22:45:00",
-        "open": 3057.0,
-        "high": 3058.0,
-        "low": 3051.0,
-        "close": 3051.0,
-        "volume": 375.0,
-        "hold": 50388.0
-      },
       {
         "datetime": "2026-10-14 23:00:00",
         "open": 3051.0,
@@ -7544,7 +7632,7 @@
         "high": 2937.0,
         "low": 2928.0,
         "close": 2934.0,
-        "volume": 1.0,
+        "volume": 3309.0,
         "hold": 213576.0
       },
       {
@@ -7553,7 +7641,7 @@
         "high": 2935.0,
         "low": 2929.0,
         "close": 2930.0,
-        "volume": 1.0,
+        "volume": 765.0,
         "hold": 213860.0
       },
       {
@@ -7562,7 +7650,7 @@
         "high": 2931.0,
         "low": 2927.0,
         "close": 2927.0,
-        "volume": 3.0,
+        "volume": 2063.0,
         "hold": 215202.0
       },
       {
@@ -7571,17 +7659,44 @@
         "high": 2929.0,
         "low": 2926.0,
         "close": 2928.0,
-        "volume": 1.0,
+        "volume": 199.0,
         "hold": 215138.0
       },
       {
         "datetime": "2026-11-02 22:15:00",
         "open": 2928.0,
         "high": 2930.0,
-        "low": 2926.0,
-        "close": 2927.0,
-        "volume": 6.0,
-        "hold": 215375.0
+        "low": 2925.0,
+        "close": 2928.0,
+        "volume": 1355.0,
+        "hold": 215374.0
+      },
+      {
+        "datetime": "2026-11-02 22:30:00",
+        "open": 2928.0,
+        "high": 2931.0,
+        "low": 2928.0,
+        "close": 2930.0,
+        "volume": 309.0,
+        "hold": 215273.0
+      },
+      {
+        "datetime": "2026-11-02 22:45:00",
+        "open": 2930.0,
+        "high": 2930.0,
+        "low": 2920.0,
+        "close": 2923.0,
+        "volume": 4416.0,
+        "hold": 218010.0
+      },
+      {
+        "datetime": "2026-11-02 23:00:00",
+        "open": 2923.0,
+        "high": 2923.0,
+        "low": 2908.0,
+        "close": 2911.0,
+        "volume": 22.0,
+        "hold": 223135.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10333,11 +10448,11 @@
       {
         "datetime": "2026-11-02 23:00:00",
         "open": 2829.0,
-        "high": 2830.0,
-        "low": 2827.0,
-        "close": 2830.0,
-        "volume": 3093.0,
-        "hold": 1014396.0
+        "high": 2833.0,
+        "low": 2816.0,
+        "close": 2817.0,
+        "volume": 867.0,
+        "hold": 1018988.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10347,33 +10462,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-14 22:15:00",
-        "open": 2964.0,
-        "high": 2964.0,
-        "low": 2958.0,
-        "close": 2959.0,
-        "volume": 920.0,
-        "hold": 826470.0
-      },
-      {
-        "datetime": "2026-10-14 22:30:00",
-        "open": 2962.0,
-        "high": 2962.0,
-        "low": 2957.0,
-        "close": 2958.0,
-        "volume": 69.0,
-        "hold": 827248.0
-      },
-      {
-        "datetime": "2026-10-14 22:45:00",
-        "open": 2957.0,
-        "high": 2959.0,
-        "low": 2951.0,
-        "close": 2951.0,
-        "volume": 105.0,
-        "hold": 826723.0
-      },
       {
         "datetime": "2026-10-14 23:00:00",
         "open": 2951.0,
@@ -13035,17 +13123,44 @@
         "high": 2831.0,
         "low": 2828.0,
         "close": 2829.0,
-        "volume": 105.0,
+        "volume": 1961.0,
         "hold": 1015121.0
       },
       {
         "datetime": "2026-11-02 22:15:00",
         "open": 2829.0,
-        "high": 2829.0,
+        "high": 2831.0,
         "low": 2827.0,
-        "close": 2828.0,
-        "volume": 463.0,
-        "hold": 1014856.0
+        "close": 2831.0,
+        "volume": 3470.0,
+        "hold": 1014223.0
+      },
+      {
+        "datetime": "2026-11-02 22:30:00",
+        "open": 2830.0,
+        "high": 2833.0,
+        "low": 2830.0,
+        "close": 2832.0,
+        "volume": 1734.0,
+        "hold": 1013867.0
+      },
+      {
+        "datetime": "2026-11-02 22:45:00",
+        "open": 2830.0,
+        "high": 2830.0,
+        "low": 2821.0,
+        "close": 2823.0,
+        "volume": 19061.0,
+        "hold": 1017047.0
+      },
+      {
+        "datetime": "2026-11-02 23:00:00",
+        "open": 2823.0,
+        "high": 2823.0,
+        "low": 2816.0,
+        "close": 2817.0,
+        "volume": 867.0,
+        "hold": 1018988.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -16561,17 +16676,17 @@
         "high": 3204.0,
         "low": 3185.0,
         "close": 3189.0,
-        "volume": 55.0,
+        "volume": 206054.0,
         "hold": 2038628.0
       },
       {
         "datetime": "2026-11-02 23:00:00",
         "open": 3189.0,
-        "high": 3189.0,
-        "low": 3186.0,
-        "close": 3187.0,
-        "volume": 929.0,
-        "hold": 2038196.0
+        "high": 3192.0,
+        "low": 3176.0,
+        "close": 3179.0,
+        "volume": 94686.0,
+        "hold": 2034352.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -16581,33 +16696,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-14 22:15:00",
-        "open": 3351.0,
-        "high": 3353.0,
-        "low": 3348.0,
-        "close": 3349.0,
-        "volume": 179.0,
-        "hold": 2427167.0
-      },
-      {
-        "datetime": "2026-10-14 22:30:00",
-        "open": 3351.0,
-        "high": 3353.0,
-        "low": 3344.0,
-        "close": 3346.0,
-        "volume": 195.0,
-        "hold": 2424976.0
-      },
-      {
-        "datetime": "2026-10-14 22:45:00",
-        "open": 3345.0,
-        "high": 3347.0,
-        "low": 3339.0,
-        "close": 3340.0,
-        "volume": 105.0,
-        "hold": 2420518.0
-      },
       {
         "datetime": "2026-10-14 23:00:00",
         "open": 3340.0,
@@ -19266,20 +19354,47 @@
       {
         "datetime": "2026-11-02 22:00:00",
         "open": 3189.0,
-        "high": 3190.0,
+        "high": 3192.0,
         "low": 3187.0,
         "close": 3189.0,
-        "volume": 55.0,
+        "volume": 17113.0,
         "hold": 2038628.0
       },
       {
         "datetime": "2026-11-02 22:15:00",
         "open": 3188.0,
         "high": 3189.0,
-        "low": 3186.0,
-        "close": 3187.0,
-        "volume": 929.0,
-        "hold": 2038196.0
+        "low": 3185.0,
+        "close": 3189.0,
+        "volume": 11906.0,
+        "hold": 2037702.0
+      },
+      {
+        "datetime": "2026-11-02 22:30:00",
+        "open": 3189.0,
+        "high": 3192.0,
+        "low": 3188.0,
+        "close": 3191.0,
+        "volume": 1192.0,
+        "hold": 2037040.0
+      },
+      {
+        "datetime": "2026-11-02 22:45:00",
+        "open": 3191.0,
+        "high": 3191.0,
+        "low": 3177.0,
+        "close": 3181.0,
+        "volume": 68948.0,
+        "hold": 2037506.0
+      },
+      {
+        "datetime": "2026-11-02 23:00:00",
+        "open": 3180.0,
+        "high": 3181.0,
+        "low": 3176.0,
+        "close": 3179.0,
+        "volume": 24529.0,
+        "hold": 2034352.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
