@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-02T15:06:34.581990+00:00",
+  "generatedAt": "2026-11-02T16:28:47.326202+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 323.2,
-    "change": -1.4,
-    "changePct": -0.43,
+    "price": 320.9,
+    "change": -3.7,
+    "changePct": -1.14,
     "asOf": "2026-11-02T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -120,7 +120,7 @@
     "dateFallback": false,
     "usedFallback": false,
     "fallbackWeeks": 0,
-    "ageDays": 40,
+    "ageDays": 41,
     "stale": true,
     "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
     "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
@@ -356,7 +356,7 @@
     "trend": null,
     "weeklyCheck": null,
     "date": "2026-07-31",
-    "articleAgeDays": 94,
+    "articleAgeDays": 95,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年7月）",
     "bodiesFetched": 1,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -760,7 +760,7 @@
     "available": true,
     "value": 51.19,
     "auctionDate": "2026-10-27",
-    "ageDays": 6,
+    "ageDays": 7,
     "plannedWan": 51.19,
     "soldWan": 17.22,
     "soldRate": 33.65,
@@ -809,7 +809,7 @@
     "consistent": true,
     "usedFallback": false,
     "fallbackDays": 0,
-    "ageDays": 0,
+    "ageDays": 1,
     "source": "生意社(100ppi.com)豆粕现货价 − 主力合约结算价，自行计算(AKShare futures_spot_price)",
     "sourceUrl": "https://www.100ppi.com/sf/day-2026-11-02.html",
     "spotDefinition": "生意社现货价(口径文档未明确，疑为多地综合的基准价)；主力合约是生意社认定的，可能与页面选的合约月份不同，主力换月处基差会有断层",
@@ -982,39 +982,8 @@
       }
     },
     "jan": {
-      "available": true,
-      "contractMonth": 1,
-      "date": "2026-11-02",
-      "datesAligned": true,
-      "mealSymbol": "M2701",
-      "mealPrice": 3198.0,
-      "oilSymbol": "Y2701",
-      "oilPrice": 9016.0,
-      "beanSymbol": "B2701",
-      "beanPrice": 4008.0,
-      "grossMargin": 170.4,
-      "yieldMeal": 0.785,
-      "yieldOil": 0.185,
-      "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
-      "history": {
-        "n": 624,
-        "minPoints": 12,
-        "asOf": "2026-11-02",
-        "since": "2019-08-01",
-        "percentile": 69.4,
-        "min": -2.9,
-        "max": 264.6,
-        "median": 142.65,
-        "seasonal": {
-          "month": 11,
-          "n": 149,
-          "percentile": 71.8,
-          "median": 147.1
-        },
-        "cohort": null,
-        "sparse": null,
-        "window": null
-      }
+      "available": false,
+      "reason": "以下合约价格缺失，无法计算压榨利润: 豆油Y2701(akshare日K线接口调用失败: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10))"
     }
   },
   "termSpreads": {
@@ -1088,7 +1057,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1256.75,
+        "zsCents": 1247.25,
         "zsDate": "2026-11-02",
         "zsExact": true,
         "zsNote": "",
@@ -1100,18 +1069,18 @@
         "brazil": {
           "beanPrice": 3737.0,
           "breakeven": 2929.3,
-          "impliedPremium": 69.4,
+          "impliedPremium": 78.9,
           "available": true,
-          "zsCents": 1256.75,
+          "zsCents": 1247.25,
           "fx": 6.6483,
           "mealPrice": 2930.0,
           "oilPrice": 8581.0,
-          "beanCost": 3999.2,
-          "mealCost": 3263.4,
-          "mealCostLow": 3088.7,
-          "mealCostHigh": 3438.1,
-          "gap": -333.4,
-          "gapPct": -10.2,
+          "beanCost": 3973.2,
+          "mealCost": 3230.2,
+          "mealCostLow": 3055.5,
+          "mealCostHigh": 3404.9,
+          "gap": -300.2,
+          "gapPct": -9.3,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1132,18 +1101,18 @@
         "us": {
           "beanPrice": 3737.0,
           "breakeven": 2929.3,
-          "impliedPremium": -48.0,
+          "impliedPremium": -38.5,
           "available": true,
-          "zsCents": 1256.75,
+          "zsCents": 1247.25,
           "fx": 6.6483,
           "mealPrice": 2930.0,
           "oilPrice": 8581.0,
-          "beanCost": 4687.7,
-          "mealCost": 4140.4,
-          "mealCostLow": 3948.8,
-          "mealCostHigh": 4332.1,
-          "gap": -1210.4,
-          "gapPct": -29.2,
+          "beanCost": 4659.1,
+          "mealCost": 4104.0,
+          "mealCostLow": 3912.4,
+          "mealCostHigh": 4295.7,
+          "gap": -1174.0,
+          "gapPct": -28.6,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1164,7 +1133,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1239.25,
+        "zsCents": 1228.0,
         "zsDate": "2026-11-02",
         "zsExact": true,
         "zsNote": "",
@@ -1176,18 +1145,18 @@
         "brazil": {
           "beanPrice": 3671.0,
           "breakeven": 2801.6,
-          "impliedPremium": 62.8,
+          "impliedPremium": 74.1,
           "available": true,
-          "zsCents": 1239.25,
+          "zsCents": 1228.0,
           "fx": 6.6483,
           "mealPrice": 2834.0,
           "oilPrice": 8766.0,
-          "beanCost": 3825.1,
-          "mealCost": 2997.9,
-          "mealCostLow": 2823.3,
-          "mealCostHigh": 3172.6,
-          "gap": -163.9,
-          "gapPct": -5.5,
+          "beanCost": 3794.2,
+          "mealCost": 2958.6,
+          "mealCostLow": 2783.9,
+          "mealCostHigh": 3133.3,
+          "gap": -124.6,
+          "gapPct": -4.2,
           "position": "within",
           "params": {
             "asof": "2026-10-10",
@@ -1208,82 +1177,6 @@
         "us": {
           "available": false,
           "reason": "该合约对应的船期没有这个豆源的报价(或不是主要来源)，不编数"
-        }
-      },
-      "jan": {
-        "cbotSymbol": "ZSX26.CBT",
-        "zsCents": 1217.5,
-        "zsDate": "2026-11-02",
-        "zsExact": true,
-        "zsNote": "",
-        "mealSymbol": "M2701",
-        "mealPrice": 3198.0,
-        "oilPrice": 9016.0,
-        "priceDate": "2026-11-02",
-        "primary": "us",
-        "brazil": {
-          "beanPrice": 4008.0,
-          "breakeven": 3172.0,
-          "impliedPremium": 207.4,
-          "available": true,
-          "zsCents": 1217.5,
-          "fx": 6.6483,
-          "mealPrice": 3198.0,
-          "oilPrice": 9016.0,
-          "beanCost": 4097.3,
-          "mealCost": 3285.8,
-          "mealCostLow": 3111.1,
-          "mealCostHigh": 3460.5,
-          "gap": -87.8,
-          "gapPct": -2.7,
-          "position": "within",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "巴西豆",
-            "tariff": 0.03,
-            "premium_cents": 240,
-            "premium_confirmed": false,
-            "source_note": "关税3%(最惠国)、压榨费150(Mysteel)；升贴水250美分取公开报价区间(约220~310)中间偏低，增值税9%、港杂100为经验口径",
-            "ship": "2026年10~11月船期(无报价，借用9月船期)",
-            "note": "巴西10~11月船期没有报价，借用9月船期X合约240美分，仅作参考。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
-        },
-        "us": {
-          "beanPrice": 4008.0,
-          "breakeven": 3172.0,
-          "impliedPremium": 81.3,
-          "available": true,
-          "zsCents": 1217.5,
-          "fx": 6.6483,
-          "mealPrice": 3198.0,
-          "oilPrice": 9016.0,
-          "beanCost": 4605.7,
-          "mealCost": 3933.5,
-          "mealCostLow": 3741.8,
-          "mealCostHigh": 4125.1,
-          "gap": -735.5,
-          "gapPct": -18.7,
-          "position": "below",
-          "params": {
-            "asof": "2026-10-10",
-            "premium_step": 50,
-            "vat": 0.09,
-            "port_fee": 100,
-            "crush_fee": 150,
-            "label": "美豆",
-            "tariff": 0.13,
-            "premium_cents": 280,
-            "premium_confirmed": false,
-            "source_note": "关税13%(3%+10%附加，标普2026-09)；美豆CNF升贴水230美分是占位估计(美湾FOB+海运)，没有核实的报价，请用你的实际报价替换",
-            "ship": "2026年10~11月船期",
-            "note": "美湾CNF：10月277~281、11月282~283，取中值约280。Mysteel 2026-04-22快照(使用者提供，未逐条核实)；升贴水波动频繁，两周可变20美分以上"
-          },
-          "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
         }
       }
     },
@@ -22020,11 +21913,12 @@
             "contract": "M2701"
           },
           "change5": {
-            "change": -17084,
+            "change": -18865,
             "from": "2026-10-26",
             "to": "2026-11-02",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "long"
           },
           "change20": {
             "change": -56725,
@@ -22057,7 +21951,8 @@
             "from": "2026-10-26",
             "to": "2026-11-02",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": -58239,
@@ -22096,7 +21991,8 @@
             "from": "2026-10-26",
             "to": "2026-11-02",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 199534,
@@ -22128,7 +22024,8 @@
             "from": "2026-10-26",
             "to": "2026-11-02",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 124585,
