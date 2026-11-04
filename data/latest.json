@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-04T07:07:42.056909+00:00",
+  "generatedAt": "2026-11-04T07:27:25.656564+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 316.3,
-    "change": -1.7,
-    "changePct": -0.53,
+    "price": 316.0,
+    "change": -2.0,
+    "changePct": -0.63,
     "asOf": "2026-11-04T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -872,7 +872,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7ff1d94b0950>, 'Connection to x",
+    "carriedFrom": "2026-11-04T07:07:42.056909+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1164,7 +1167,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1213.5,
+        "zsCents": 1213.0,
         "zsDate": "2026-11-04",
         "zsExact": true,
         "zsNote": "",
@@ -1176,17 +1179,17 @@
         "brazil": {
           "beanPrice": 3631.0,
           "breakeven": 2775.4,
-          "impliedPremium": 69.3,
+          "impliedPremium": 69.8,
           "available": true,
-          "zsCents": 1213.5,
+          "zsCents": 1213.0,
           "fx": 6.6723,
           "mealPrice": 2807.0,
           "oilPrice": 8661.0,
-          "beanCost": 3767.7,
-          "mealCost": 2949.5,
-          "mealCostLow": 2774.2,
-          "mealCostHigh": 3124.8,
-          "gap": -142.5,
+          "beanCost": 3766.3,
+          "mealCost": 2947.8,
+          "mealCostLow": 2772.5,
+          "mealCostHigh": 3123.1,
+          "gap": -140.8,
           "gapPct": -4.8,
           "position": "within",
           "params": {
@@ -22375,6 +22378,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
