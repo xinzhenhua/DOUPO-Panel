@@ -1,5 +1,5 @@
 {
- "runAt": "2026-11-05 07:51 UTC",
+ "runAt": "2026-11-05 08:35 UTC",
  "jiangsu": {
   "ok": true,
   "windows": [
@@ -419,19 +419,17 @@
  },
  "rank_auto": {
   "ok": true,
-  "written": 0,
+  "written": 1,
   "skippedExisting": 7,
-  "noData": 1,
+  "noData": 0,
   "failed": 0,
   "remaining": 0,
   "stoppedByBudget": false,
   "stoppedByFailures": false,
   "firstError": null,
-  "firstDay": null,
-  "lastDay": null,
-  "noDataSamples": [
-   "M2701 2026-11-04: ReadTimeout: HTTPSConnectionPool(host='vip.stock.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
-  ],
+  "firstDay": "2026-11-04",
+  "lastDay": "2026-11-04",
+  "noDataSamples": [],
   "source": "sina",
   "planned": 8
  },
