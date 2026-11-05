@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-05T08:36:39.623710+00:00",
+  "generatedAt": "2026-11-05T09:16:39.401914+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 319.7,
-    "change": 1.1,
-    "changePct": 0.35,
+    "price": 320.0,
+    "change": 1.4,
+    "changePct": 0.44,
     "asOf": "2026-11-05T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -872,10 +872,7 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fdff3c9a450>, 'Connection to x",
-    "carriedFrom": "2026-11-05T07:52:26.555273+00:00"
+    }
   },
   "sowInventory": {
     "available": true,
@@ -957,24 +954,24 @@
     "may": {
       "available": true,
       "contractMonth": 5,
-      "date": "2026-11-04",
-      "datesAligned": false,
+      "date": "2026-11-05",
+      "datesAligned": true,
       "mealSymbol": "M2705",
       "mealPrice": 2804.0,
       "oilSymbol": "Y2705",
       "oilPrice": 8483.0,
       "beanSymbol": "B2705",
-      "beanPrice": 3604.0,
-      "grossMargin": 166.5,
+      "beanPrice": 3597.0,
+      "grossMargin": 173.5,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
       "history": {
         "n": 638,
         "minPoints": 12,
-        "asOf": "2026-11-04",
+        "asOf": "2026-11-05",
         "since": "2018-12-03",
-        "percentile": 77.3,
+        "percentile": 81.2,
         "min": 39.0,
         "max": 238.2,
         "median": 140.85,
@@ -1091,7 +1088,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1227.0,
+        "zsCents": 1228.0,
         "zsDate": "2026-11-05",
         "zsExact": true,
         "zsNote": "",
@@ -1103,18 +1100,18 @@
         "brazil": {
           "beanPrice": 3658.0,
           "breakeven": 2896.6,
-          "impliedPremium": 65.7,
+          "impliedPremium": 64.7,
           "available": true,
-          "zsCents": 1227.0,
+          "zsCents": 1228.0,
           "fx": 6.6723,
           "mealPrice": 2911.0,
           "oilPrice": 8293.0,
-          "beanCost": 3931.4,
-          "mealCost": 3244.9,
-          "mealCostLow": 3069.6,
-          "mealCostHigh": 3420.2,
-          "gap": -333.9,
-          "gapPct": -10.3,
+          "beanCost": 3934.2,
+          "mealCost": 3248.4,
+          "mealCostLow": 3073.1,
+          "mealCostHigh": 3423.7,
+          "gap": -337.4,
+          "gapPct": -10.4,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1135,17 +1132,17 @@
         "us": {
           "beanPrice": 3658.0,
           "breakeven": 2896.6,
-          "impliedPremium": -48.7,
+          "impliedPremium": -49.7,
           "available": true,
-          "zsCents": 1227.0,
+          "zsCents": 1228.0,
           "fx": 6.6723,
           "mealPrice": 2911.0,
           "oilPrice": 8293.0,
-          "beanCost": 4614.4,
-          "mealCost": 4115.0,
-          "mealCostLow": 3922.6,
-          "mealCostHigh": 4307.3,
-          "gap": -1204.0,
+          "beanCost": 4617.5,
+          "mealCost": 4118.8,
+          "mealCostLow": 3926.5,
+          "mealCostHigh": 4311.1,
+          "gap": -1207.8,
           "gapPct": -29.3,
           "position": "below",
           "params": {
@@ -1167,30 +1164,30 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1210.5,
+        "zsCents": 1211.75,
         "zsDate": "2026-11-05",
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2705",
         "mealPrice": 2804.0,
         "oilPrice": 8483.0,
-        "priceDate": "2026-11-04",
+        "priceDate": "2026-11-05",
         "primary": "brazil",
         "brazil": {
-          "beanPrice": 3604.0,
-          "breakeven": 2783.0,
-          "impliedPremium": 62.5,
+          "beanPrice": 3597.0,
+          "breakeven": 2774.1,
+          "impliedPremium": 58.7,
           "available": true,
-          "zsCents": 1210.5,
+          "zsCents": 1211.75,
           "fx": 6.6723,
           "mealPrice": 2804.0,
           "oilPrice": 8483.0,
-          "beanCost": 3759.4,
-          "mealCost": 2981.0,
-          "mealCostLow": 2805.6,
-          "mealCostHigh": 3156.3,
-          "gap": -177.0,
-          "gapPct": -5.9,
+          "beanCost": 3762.8,
+          "mealCost": 2985.3,
+          "mealCostLow": 2810.0,
+          "mealCostHigh": 3160.7,
+          "gap": -181.3,
+          "gapPct": -6.1,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -3145,7 +3142,7 @@
   "dceM09Daily": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 31,
+    "totalBarsReturned": 32,
     "bars": [
       {
         "date": "2026-09-15",
@@ -3456,6 +3453,16 @@
         "volume": 60490.0,
         "hold": 255296.0,
         "settle": 2901.0
+      },
+      {
+        "date": "2026-11-05",
+        "open": 2903.0,
+        "high": 2915.0,
+        "low": 2893.0,
+        "close": 2911.0,
+        "volume": 35686.0,
+        "hold": 259630.0,
+        "settle": 2903.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -7799,7 +7806,7 @@
   "dceM05Daily": {
     "available": true,
     "symbol": "M2705",
-    "totalBarsReturned": 114,
+    "totalBarsReturned": 115,
     "bars": [
       {
         "date": "2026-05-20",
@@ -8940,6 +8947,16 @@
         "volume": 403866.0,
         "hold": 1061500.0,
         "settle": 2794.0
+      },
+      {
+        "date": "2026-11-05",
+        "open": 2798.0,
+        "high": 2814.0,
+        "low": 2787.0,
+        "close": 2804.0,
+        "volume": 445599.0,
+        "hold": 1085881.0,
+        "settle": 2799.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -21639,16 +21656,16 @@
         2927.0,
         2930.0,
         2908.0,
-        2907.0
+        2907.0,
+        2911.0
       ],
-      "ownCount": 31,
+      "ownCount": 32,
       "extendedCount": 203,
       "donor": "M2611",
       "symbol": "M2709"
     },
     "may": {
       "closes": [
-        2731.13,
         2725.14,
         2702.21,
         2716.17,
@@ -21907,10 +21924,11 @@
         2834.0,
         2834.0,
         2807.0,
-        2799.0
+        2799.0,
+        2804.0
       ],
-      "ownCount": 114,
-      "extendedCount": 146,
+      "ownCount": 115,
+      "extendedCount": 145,
       "donor": "M2607",
       "symbol": "M2705"
     },
@@ -22435,7 +22453,6 @@
     }
   },
   "carriedKeys": [
-    "hogRatio",
     "mysteelSoyImport"
   ]
 }
