@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-05T20:38:54.059343+00:00",
+  "generatedAt": "2026-11-05T21:02:17.646668+00:00",
   "cbotPrice": {
     "available": true,
     "price": 317.4,
@@ -872,7 +872,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f024821dd90>, 'Connection to x",
+    "carriedFrom": "2026-11-05T20:38:54.059343+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -22457,6 +22460,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
