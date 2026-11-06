@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-06T20:25:24.078601+00:00",
+  "generatedAt": "2026-11-06T20:51:09.052333+00:00",
   "cbotPrice": {
     "available": true,
     "price": 318.8,
@@ -912,16 +912,16 @@
   "cftcManagedMoney": {
     "available": true,
     "marketName": "SOYBEAN MEAL - CHICAGO BOARD OF TRADE",
-    "reportDate": "2026-10-27",
-    "longPositions": 184371.0,
-    "shortPositions": 15657.0,
-    "netPosition": 168714.0,
-    "longChange": -29346.0,
-    "shortChange": 2818.0,
-    "netChange": -32164.0,
-    "streakWeeks": 4,
+    "reportDate": "2026-11-03",
+    "longPositions": 132789.0,
+    "shortPositions": 24422.0,
+    "netPosition": 108367.0,
+    "longChange": -51582.0,
+    "shortChange": 8765.0,
+    "netChange": -60347.0,
+    "streakWeeks": 5,
     "streakDirection": "down",
-    "historyPercentile": 96.2,
+    "historyPercentile": 85.9,
     "historyWeeksUsed": 156,
     "source": "CFTC Disaggregated COT报告(Managed Money/投机资金类别)，每周五发布，覆盖到当周二数据",
     "sourceUrl": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"
@@ -22383,20 +22383,20 @@
       ]
     },
     "cftc": {
-      "net": 168714.0,
-      "netChange": -32164.0,
-      "streakWeeks": 4,
+      "net": 108367.0,
+      "netChange": -60347.0,
+      "streakWeeks": 5,
       "streakDirection": "down",
-      "percentile": 96.2,
+      "percentile": 85.9,
       "weeksUsed": 156,
-      "reportDate": "2026-10-27"
+      "reportDate": "2026-11-03"
     },
     "state": {
       "note": "只能判断持仓拥挤度(高盛净多头水平+CFTC管理基金净多的历史分位)。文档里'资金市'还要求的价格突破、无视基本面利空、美豆不涨豆粕涨、高盛连续N日单边增仓，目前都未判断：价格/联动需要美豆数据，'连续N日'需要龙虎榜历史(v101起每天累积，但刚开始，要攒够才能判断，见TODO.md)。",
       "thresholdSource": "文档经验值，暂定，未回测",
-      "code": "elevated",
-      "level": "yellow",
-      "label": "外资多头高位(依据：CFTC管理基金净多到顶；高盛未进榜或不在高位)"
+      "code": "neutral",
+      "level": "green",
+      "label": "外资中性(高盛净多头不在高位，CFTC不拥挤)"
     },
     "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约",
     "trend": {
@@ -22469,7 +22469,7 @@
       "lines": [
         "近5个交易日高盛净多-43,332手。",
         "距文档的12万手警戒线：已低于警戒线78,245手。",
-        "CFTC管理基金净多处近156周的96%分位，连续4周减少(周度数据，截至2026-10-27，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
+        "CFTC管理基金净多处近156周的86%分位，连续5周减少(周度数据，截至2026-11-03，未反映之后的交易日；CBOT美国市场，与国内高盛是否同向没有验证过)。",
         "其他外资席位：摩根大通在减仓(连续2日累计-9,636手)，净空81,544手(摩根大通净持仓常在零附近来回，方向意义弱)。"
       ],
       "evidence": [
