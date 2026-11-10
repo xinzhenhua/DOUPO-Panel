@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-10T06:36:39.725419+00:00",
+  "generatedAt": "2026-11-10T07:06:42.687531+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 323.7,
-    "change": 3.0,
-    "changePct": 0.94,
+    "price": 323.8,
+    "change": 3.1,
+    "changePct": 0.97,
     "asOf": "2026-11-10T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -879,7 +879,7 @@
       "window": null
     },
     "carried": true,
-    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fd239af90d0>, 'Connection to x",
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7fcd9590a410>, 'Connection to x",
     "carriedFrom": "2026-11-10T05:36:29.573742+00:00"
   },
   "sowInventory": {
@@ -1096,7 +1096,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1219.25,
+        "zsCents": 1218.75,
         "zsDate": "2026-11-10",
         "zsExact": true,
         "zsNote": "",
@@ -1108,17 +1108,17 @@
         "brazil": {
           "beanPrice": 3630.0,
           "breakeven": 2896.9,
-          "impliedPremium": 63.1,
+          "impliedPremium": 63.6,
           "available": true,
-          "zsCents": 1219.25,
+          "zsCents": 1218.75,
           "fx": 6.6728,
           "mealPrice": 2905.0,
           "oilPrice": 8140.0,
-          "beanCost": 3910.4,
-          "mealCost": 3254.1,
-          "mealCostLow": 3078.8,
-          "mealCostHigh": 3429.5,
-          "gap": -349.1,
+          "beanCost": 3909.0,
+          "mealCost": 3252.4,
+          "mealCostLow": 3077.0,
+          "mealCostHigh": 3427.7,
+          "gap": -347.4,
           "gapPct": -10.7,
           "position": "below",
           "params": {
@@ -1140,17 +1140,17 @@
         "us": {
           "beanPrice": 3630.0,
           "breakeven": 2896.9,
-          "impliedPremium": -50.3,
+          "impliedPremium": -49.8,
           "available": true,
-          "zsCents": 1219.25,
+          "zsCents": 1218.75,
           "fx": 6.6728,
           "mealPrice": 2905.0,
           "oilPrice": 8140.0,
-          "beanCost": 4591.4,
-          "mealCost": 4121.6,
-          "mealCostLow": 3929.3,
-          "mealCostHigh": 4314.0,
-          "gap": -1216.6,
+          "beanCost": 4589.9,
+          "mealCost": 4119.7,
+          "mealCostLow": 3927.4,
+          "mealCostHigh": 4312.1,
+          "gap": -1214.7,
           "gapPct": -29.5,
           "position": "below",
           "params": {
@@ -1172,7 +1172,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1202.0,
+        "zsCents": 1201.75,
         "zsDate": "2026-11-10",
         "zsExact": true,
         "zsNote": "",
@@ -1184,17 +1184,17 @@
         "brazil": {
           "beanPrice": 3561.0,
           "breakeven": 2763.8,
-          "impliedPremium": 55.3,
+          "impliedPremium": 55.6,
           "available": true,
-          "zsCents": 1202.0,
+          "zsCents": 1201.75,
           "fx": 6.6728,
           "mealPrice": 2796.0,
           "oilPrice": 8332.0,
-          "beanCost": 3736.3,
-          "mealCost": 2987.1,
-          "mealCostLow": 2811.8,
-          "mealCostHigh": 3162.4,
-          "gap": -191.1,
+          "beanCost": 3735.6,
+          "mealCost": 2986.2,
+          "mealCostLow": 2810.9,
+          "mealCostHigh": 3161.5,
+          "gap": -190.2,
           "gapPct": -6.4,
           "position": "below",
           "params": {
@@ -5116,9 +5116,9 @@
         "open": 2907.0,
         "high": 2910.0,
         "low": 2907.0,
-        "close": 2907.0,
-        "volume": 2662.0,
-        "hold": 279382.0
+        "close": 2909.0,
+        "volume": 4101.0,
+        "hold": 279262.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5128,15 +5128,6 @@
     "symbol": "M2709",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-22 14:45:00",
-        "open": 2976.0,
-        "high": 2976.0,
-        "low": 2971.0,
-        "close": 2974.0,
-        "volume": 1040.0,
-        "hold": 87828.0
-      },
       {
         "datetime": "2026-10-22 15:00:00",
         "open": 2973.0,
@@ -7822,11 +7813,20 @@
       {
         "datetime": "2026-11-10 14:45:00",
         "open": 2908.0,
-        "high": 2908.0,
+        "high": 2910.0,
         "low": 2907.0,
-        "close": 2907.0,
-        "volume": 119.0,
-        "hold": 279382.0
+        "close": 2910.0,
+        "volume": 829.0,
+        "hold": 279541.0
+      },
+      {
+        "datetime": "2026-11-10 15:00:00",
+        "open": 2910.0,
+        "high": 2910.0,
+        "low": 2908.0,
+        "close": 2909.0,
+        "volume": 729.0,
+        "hold": 279262.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10630,9 +10630,9 @@
         "open": 2803.0,
         "high": 2806.0,
         "low": 2801.0,
-        "close": 2803.0,
-        "volume": 3057.0,
-        "hold": 1163467.0
+        "close": 2801.0,
+        "volume": 2268.0,
+        "hold": 1160649.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10642,15 +10642,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-22 14:45:00",
-        "open": 2876.0,
-        "high": 2878.0,
-        "low": 2874.0,
-        "close": 2876.0,
-        "volume": 1.0,
-        "hold": 899857.0
-      },
       {
         "datetime": "2026-10-22 15:00:00",
         "open": 2876.0,
@@ -13336,11 +13327,20 @@
       {
         "datetime": "2026-11-10 14:45:00",
         "open": 2803.0,
-        "high": 2803.0,
+        "high": 2805.0,
         "low": 2801.0,
-        "close": 2803.0,
-        "volume": 2729.0,
-        "hold": 1163467.0
+        "close": 2804.0,
+        "volume": 77.0,
+        "hold": 1163475.0
+      },
+      {
+        "datetime": "2026-11-10 15:00:00",
+        "open": 2804.0,
+        "high": 2806.0,
+        "low": 2801.0,
+        "close": 2801.0,
+        "volume": 2268.0,
+        "hold": 1160649.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -16914,9 +16914,9 @@
         "open": 3088.0,
         "high": 3096.0,
         "low": 3083.0,
-        "close": 3085.0,
-        "volume": 11639.0,
-        "hold": 1895349.0
+        "close": 3086.0,
+        "volume": 3821.0,
+        "hold": 1888318.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -16926,15 +16926,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-10-22 14:45:00",
-        "open": 3245.0,
-        "high": 3247.0,
-        "low": 3243.0,
-        "close": 3246.0,
-        "volume": 11642.0,
-        "hold": 2253335.0
-      },
       {
         "datetime": "2026-10-22 15:00:00",
         "open": 3247.0,
@@ -19620,11 +19611,20 @@
       {
         "datetime": "2026-11-10 14:45:00",
         "open": 3085.0,
-        "high": 3086.0,
+        "high": 3087.0,
         "low": 3083.0,
-        "close": 3085.0,
-        "volume": 10824.0,
-        "hold": 1895349.0
+        "close": 3086.0,
+        "volume": 21.0,
+        "hold": 1895215.0
+      },
+      {
+        "datetime": "2026-11-10 15:00:00",
+        "open": 3086.0,
+        "high": 3090.0,
+        "low": 3086.0,
+        "close": 3086.0,
+        "volume": 3821.0,
+        "hold": 1888318.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
