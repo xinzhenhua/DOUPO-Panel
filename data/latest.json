@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-13T10:36:24.803370+00:00",
+  "generatedAt": "2026-11-13T10:50:04.430162+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 329.2,
-    "change": 3.8,
-    "changePct": 1.17,
+    "price": 329.5,
+    "change": 4.1,
+    "changePct": 1.26,
     "asOf": "2026-11-13T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -877,7 +877,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f7dd0519a50>, 'Connection to x",
+    "carriedFrom": "2026-11-13T10:36:24.803370+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1093,7 +1096,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1251.75,
+        "zsCents": 1252.0,
         "zsDate": "2026-11-13",
         "zsExact": true,
         "zsNote": "",
@@ -1105,17 +1108,17 @@
         "brazil": {
           "beanPrice": 3676.0,
           "breakeven": 2914.1,
-          "impliedPremium": 48.2,
+          "impliedPremium": 48.0,
           "available": true,
-          "zsCents": 1251.75,
+          "zsCents": 1252.0,
           "fx": 6.6683,
           "mealPrice": 2936.0,
           "oilPrice": 8316.0,
-          "beanCost": 3997.2,
-          "mealCost": 3323.3,
-          "mealCostLow": 3148.1,
-          "mealCostHigh": 3498.5,
-          "gap": -387.3,
+          "beanCost": 3997.9,
+          "mealCost": 3324.1,
+          "mealCostLow": 3148.9,
+          "mealCostHigh": 3499.3,
+          "gap": -388.1,
           "gapPct": -11.7,
           "position": "below",
           "params": {
@@ -1137,17 +1140,17 @@
         "us": {
           "beanPrice": 3676.0,
           "breakeven": 2914.1,
-          "impliedPremium": -66.8,
+          "impliedPremium": -67.1,
           "available": true,
-          "zsCents": 1251.75,
+          "zsCents": 1252.0,
           "fx": 6.6683,
           "mealPrice": 2936.0,
           "oilPrice": 8316.0,
-          "beanCost": 4686.4,
-          "mealCost": 4201.2,
-          "mealCostLow": 4009.0,
-          "mealCostHigh": 4393.5,
-          "gap": -1265.2,
+          "beanCost": 4687.2,
+          "mealCost": 4202.2,
+          "mealCostLow": 4010.0,
+          "mealCostHigh": 4394.4,
+          "gap": -1266.2,
           "gapPct": -30.1,
           "position": "below",
           "params": {
@@ -1169,7 +1172,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1240.0,
+        "zsCents": 1240.5,
         "zsDate": "2026-11-13",
         "zsExact": true,
         "zsNote": "",
@@ -1181,17 +1184,17 @@
         "brazil": {
           "beanPrice": 3622.0,
           "breakeven": 2794.8,
-          "impliedPremium": 40.3,
+          "impliedPremium": 39.8,
           "available": true,
-          "zsCents": 1240.0,
+          "zsCents": 1240.5,
           "fx": 6.6683,
           "mealPrice": 2838.0,
           "oilPrice": 8530.0,
-          "beanCost": 3838.4,
-          "mealCost": 3070.5,
-          "mealCostLow": 2895.2,
-          "mealCostHigh": 3245.7,
-          "gap": -232.5,
+          "beanCost": 3839.7,
+          "mealCost": 3072.2,
+          "mealCostLow": 2897.0,
+          "mealCostHigh": 3247.4,
+          "gap": -234.2,
           "gapPct": -7.6,
           "position": "below",
           "params": {
@@ -2929,6 +2932,7 @@
           "lon": -99.2379,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-99.2379%2C+%22y%22%3A+47.5515%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         }
       },
@@ -22595,6 +22599,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
