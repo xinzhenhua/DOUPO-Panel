@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-13T15:07:34.612083+00:00",
+  "generatedAt": "2026-11-13T15:17:29.364028+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 330.7,
-    "change": 5.3,
-    "changePct": 1.63,
+    "price": 331.4,
+    "change": 6.0,
+    "changePct": 1.84,
     "asOf": "2026-11-13T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -877,7 +877,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7f65f0496350>, 'Connection to x",
+    "carriedFrom": "2026-11-13T15:07:34.612083+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1093,7 +1096,7 @@
     "contracts": {
       "sep": {
         "cbotSymbol": "ZSN27.CBT",
-        "zsCents": 1255.0,
+        "zsCents": 1256.0,
         "zsDate": "2026-11-13",
         "zsExact": true,
         "zsNote": "",
@@ -1105,18 +1108,18 @@
         "brazil": {
           "beanPrice": 3676.0,
           "breakeven": 2914.1,
-          "impliedPremium": 44.3,
+          "impliedPremium": 43.3,
           "available": true,
-          "zsCents": 1255.0,
+          "zsCents": 1256.0,
           "fx": 6.6719,
           "mealPrice": 2936.0,
           "oilPrice": 8316.0,
-          "beanCost": 4008.3,
-          "mealCost": 3337.3,
-          "mealCostLow": 3162.0,
-          "mealCostHigh": 3512.6,
-          "gap": -401.3,
-          "gapPct": -12.0,
+          "beanCost": 4011.0,
+          "mealCost": 3340.8,
+          "mealCostLow": 3165.5,
+          "mealCostHigh": 3516.1,
+          "gap": -404.8,
+          "gapPct": -12.1,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1137,17 +1140,17 @@
         "us": {
           "beanPrice": 3676.0,
           "breakeven": 2914.1,
-          "impliedPremium": -70.7,
+          "impliedPremium": -71.7,
           "available": true,
-          "zsCents": 1255.0,
+          "zsCents": 1256.0,
           "fx": 6.6719,
           "mealPrice": 2936.0,
           "oilPrice": 8316.0,
-          "beanCost": 4698.7,
-          "mealCost": 4216.9,
-          "mealCostLow": 4024.6,
-          "mealCostHigh": 4409.2,
-          "gap": -1280.9,
+          "beanCost": 4701.7,
+          "mealCost": 4220.7,
+          "mealCostLow": 4028.4,
+          "mealCostHigh": 4413.1,
+          "gap": -1284.7,
           "gapPct": -30.4,
           "position": "below",
           "params": {
@@ -1169,7 +1172,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1243.75,
+        "zsCents": 1244.75,
         "zsDate": "2026-11-13",
         "zsExact": true,
         "zsNote": "",
@@ -1181,18 +1184,18 @@
         "brazil": {
           "beanPrice": 3622.0,
           "breakeven": 2794.8,
-          "impliedPremium": 35.9,
+          "impliedPremium": 34.9,
           "available": true,
-          "zsCents": 1243.75,
+          "zsCents": 1244.75,
           "fx": 6.6719,
           "mealPrice": 2838.0,
           "oilPrice": 8530.0,
-          "beanCost": 3850.7,
-          "mealCost": 3086.2,
-          "mealCostLow": 2910.9,
-          "mealCostHigh": 3261.5,
-          "gap": -248.2,
-          "gapPct": -8.0,
+          "beanCost": 3853.5,
+          "mealCost": 3089.7,
+          "mealCostLow": 2914.4,
+          "mealCostHigh": 3265.0,
+          "gap": -251.7,
+          "gapPct": -8.1,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -22373,7 +22376,8 @@
             "from": "2026-11-06",
             "to": "2026-11-13",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": -86661,
@@ -22401,11 +22405,12 @@
             "contract": "M2701"
           },
           "change5": {
-            "change": -14827,
+            "change": -15395,
             "from": "2026-11-06",
             "to": "2026-11-13",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "short"
           },
           "change20": {
             "change": -60588,
@@ -22444,7 +22449,8 @@
             "from": "2026-11-06",
             "to": "2026-11-13",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 256471,
@@ -22476,7 +22482,8 @@
             "from": "2026-11-06",
             "to": "2026-11-13",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 119970,
@@ -22595,6 +22602,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
