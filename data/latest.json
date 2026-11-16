@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-16T21:11:56.528649+00:00",
+  "generatedAt": "2026-11-16T22:29:19.873466+00:00",
   "cbotPrice": {
     "available": true,
     "price": 331.6,
@@ -876,10 +876,7 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    },
-    "carried": true,
-    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x723256d111d0>, 'Connection to x",
-    "carriedFrom": "2026-11-16T20:40:24.485302+00:00"
+    }
   },
   "sowInventory": {
     "available": true,
@@ -1298,29 +1295,8 @@
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
-    "available": true,
-    "safra": "2026/27",
-    "weekLabel": "2026-11-06",
-    "pctCurrent": 66.77,
-    "pctYearAgo": 58.95,
-    "pctPrevWeek": 54.32,
-    "pctFiveYearAvg": 62.72,
-    "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
-    "sourceUrl": "https://www.gov.br/conab",
-    "history": {
-      "n": 4,
-      "minPoints": 12,
-      "asOf": "2026-11-06",
-      "since": "2026-10-09",
-      "percentile": null,
-      "min": 15.6,
-      "max": 54.32,
-      "median": 36.43,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
-    }
+    "available": false,
+    "reason": "CONAB接口调用失败: SourceUnavailableError: conab_progresso unavailable: Link plantio/colheita nao encontrado na pagina semanal"
   },
   "droughtMonitor": {
     "available": true,
@@ -3117,8 +3093,8 @@
     "wowChangePts": 0.0,
     "yoyValue": null,
     "yoyChangePts": null,
-    "fiveYearAvg": 55.7,
-    "fiveYearAvgChangePts": 1.3,
+    "fiveYearAvg": 57.5,
+    "fiveYearAvgChangePts": -0.5,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -3141,8 +3117,8 @@
     "wowChangePts": 4.0,
     "yoyValue": null,
     "yoyChangePts": null,
-    "fiveYearAvg": 93.5,
-    "fiveYearAvgChangePts": 2.5,
+    "fiveYearAvg": 94.3,
+    "fiveYearAvgChangePts": 1.7,
     "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -22618,7 +22594,6 @@
     }
   },
   "carriedKeys": [
-    "hogRatio",
     "mysteelSoyImport"
   ]
 }
