@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-16T20:40:24.485302+00:00",
+  "generatedAt": "2026-11-16T21:11:56.528649+00:00",
   "cbotPrice": {
     "available": true,
     "price": 331.6,
@@ -876,7 +876,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x723256d111d0>, 'Connection to x",
+    "carriedFrom": "2026-11-16T20:40:24.485302+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -3112,10 +3115,10 @@
     "weekEnding": "2026-10-11",
     "goodExcellentPct": 57.0,
     "wowChangePts": 0.0,
-    "yoyValue": 62.0,
-    "yoyChangePts": -5.0,
-    "fiveYearAvg": 58.4,
-    "fiveYearAvgChangePts": -1.4,
+    "yoyValue": null,
+    "yoyChangePts": null,
+    "fiveYearAvg": 55.7,
+    "fiveYearAvgChangePts": 1.3,
     "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -3126,20 +3129,20 @@
     "wowChangePts": 3.0,
     "yoyValue": 93.0,
     "yoyChangePts": 2.0,
-    "fiveYearAvg": 92.8,
-    "fiveYearAvgChangePts": 2.2,
+    "fiveYearAvg": 93.3,
+    "fiveYearAvgChangePts": 1.7,
     "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usHarvestProgress": {
     "available": true,
-    "weekEnding": "2026-11-08",
-    "pctHarvested": 92.0,
+    "weekEnding": "2026-11-15",
+    "pctHarvested": 96.0,
     "wowChangePts": 4.0,
-    "yoyValue": 95.0,
-    "yoyChangePts": -3.0,
-    "fiveYearAvg": 92.6,
-    "fiveYearAvgChangePts": -0.6,
+    "yoyValue": null,
+    "yoyChangePts": null,
+    "fiveYearAvg": 93.5,
+    "fiveYearAvgChangePts": 2.5,
     "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -22615,6 +22618,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
