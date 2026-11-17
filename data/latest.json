@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-17T15:07:09.498294+00:00",
+  "generatedAt": "2026-11-17T16:23:39.141104+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 338.7,
-    "change": 4.1,
-    "changePct": 1.23,
+    "price": 337.1,
+    "change": 2.5,
+    "changePct": 0.75,
     "asOf": "2026-11-17T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -120,7 +120,7 @@
     "dateFallback": false,
     "usedFallback": false,
     "fallbackWeeks": 0,
-    "ageDays": 55,
+    "ageDays": 56,
     "stale": true,
     "source": "国家发改委价格监测中心×卓创资讯《猪料、鸡料、蛋料比价》(未来肉鸡养殖预期盈利)",
     "sourceUrl": "https://www.jgjcndrc.org.cn/detail?clmId=1840280592963387394&tId=2104842012139241474",
@@ -366,7 +366,7 @@
     "trend": null,
     "weeklyCheck": null,
     "date": "2026-07-31",
-    "articleAgeDays": 109,
+    "articleAgeDays": 110,
     "articleTitle": "Mysteel：全国豆粕供需平衡表（2026年7月）",
     "bodiesFetched": 1,
     "source": "Mysteel文章(全国豆粕供需平衡表)",
@@ -764,7 +764,7 @@
     "available": true,
     "value": 20.26,
     "auctionDate": "2026-11-10",
-    "ageDays": 7,
+    "ageDays": 8,
     "plannedWan": 20.26,
     "soldWan": 6.99,
     "soldRate": 34.52,
@@ -813,7 +813,7 @@
     "consistent": true,
     "usedFallback": false,
     "fallbackDays": 0,
-    "ageDays": 0,
+    "ageDays": 1,
     "source": "生意社(100ppi.com)豆粕现货价 − 主力合约结算价，自行计算(AKShare futures_spot_price)",
     "sourceUrl": "https://www.100ppi.com/sf/day-2026-11-17.html",
     "spotDefinition": "生意社现货价(口径文档未明确，疑为多地综合的基准价)；主力合约是生意社认定的，可能与页面选的合约月份不同，主力换月处基差会有断层",
@@ -1168,7 +1168,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1239.25,
+        "zsCents": 1238.25,
         "zsDate": "2026-11-17",
         "zsExact": true,
         "zsNote": "",
@@ -1180,18 +1180,18 @@
         "brazil": {
           "beanPrice": 3552.0,
           "breakeven": 2751.2,
-          "impliedPremium": 16.1,
+          "impliedPremium": 17.1,
           "available": true,
-          "zsCents": 1239.25,
+          "zsCents": 1238.25,
           "fx": 6.6661,
           "mealPrice": 2816.0,
           "oilPrice": 8337.0,
-          "beanCost": 3835.1,
-          "mealCost": 3111.7,
-          "mealCostLow": 2936.6,
-          "mealCostHigh": 3286.9,
-          "gap": -295.7,
-          "gapPct": -9.5,
+          "beanCost": 3832.3,
+          "mealCost": 3108.2,
+          "mealCostLow": 2933.1,
+          "mealCostHigh": 3283.4,
+          "gap": -292.2,
+          "gapPct": -9.4,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1216,7 +1216,7 @@
       },
       "jan": {
         "cbotSymbol": "ZS=F",
-        "zsCents": 1236.25,
+        "zsCents": 1233.75,
         "zsDate": "2026-11-17",
         "zsExact": false,
         "zsNote": "取不到对应月份的CBOT合约，退回近月连续合约，基准合约可能和升贴水不一致，成本可能有偏差",
@@ -1228,18 +1228,18 @@
         "brazil": {
           "beanPrice": 3797.0,
           "breakeven": 3003.4,
-          "impliedPremium": 108.2,
+          "impliedPremium": 110.7,
           "available": true,
-          "zsCents": 1236.25,
+          "zsCents": 1233.75,
           "fx": 6.6661,
           "mealPrice": 3081.0,
           "oilPrice": 8591.0,
-          "beanCost": 4159.6,
-          "mealCost": 3465.2,
-          "mealCostLow": 3290.1,
-          "mealCostHigh": 3640.4,
-          "gap": -384.2,
-          "gapPct": -11.1,
+          "beanCost": 4152.7,
+          "mealCost": 3456.5,
+          "mealCostLow": 3281.3,
+          "mealCostHigh": 3631.6,
+          "gap": -375.5,
+          "gapPct": -10.9,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1260,18 +1260,18 @@
         "us": {
           "beanPrice": 3797.0,
           "breakeven": 3003.4,
-          "impliedPremium": -10.8,
+          "impliedPremium": -8.3,
           "available": true,
-          "zsCents": 1236.25,
+          "zsCents": 1233.75,
           "fx": 6.6661,
           "mealPrice": 3081.0,
           "oilPrice": 8591.0,
-          "beanCost": 4674.4,
-          "mealCost": 4121.1,
-          "mealCostLow": 3928.9,
-          "mealCostHigh": 4313.2,
-          "gap": -1040.1,
-          "gapPct": -25.2,
+          "beanCost": 4666.8,
+          "mealCost": 4111.4,
+          "mealCostLow": 3919.3,
+          "mealCostHigh": 4303.6,
+          "gap": -1030.4,
+          "gapPct": -25.1,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -22455,7 +22455,8 @@
             "from": "2026-11-10",
             "to": "2026-11-17",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": -89006,
@@ -22483,11 +22484,12 @@
             "contract": "M2701"
           },
           "change5": {
-            "change": -24805,
+            "change": -25552,
             "from": "2026-11-10",
             "to": "2026-11-17",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "short"
           },
           "change20": {
             "change": -87445,
@@ -22526,7 +22528,8 @@
             "from": "2026-11-10",
             "to": "2026-11-17",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 268685,
@@ -22558,7 +22561,8 @@
             "from": "2026-11-10",
             "to": "2026-11-17",
             "contract": "M2701",
-            "n": 5
+            "n": 5,
+            "basis": "net"
           },
           "change20": {
             "change": 134989,
