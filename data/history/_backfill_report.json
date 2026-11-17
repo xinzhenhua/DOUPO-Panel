@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T08:35:36.028321+00:00",
+  "generatedAt": "2026-11-17T09:01:03.761406+00:00",
   "series": [
     {
       "key": "capital_rank",
@@ -38,12 +38,12 @@
       "perSeries": {
         "capital_gs_net": {
           "added": 0,
-          "total": 140,
+          "total": 141,
           "conflicts": 0
         },
         "capital_jpm_net": {
           "added": 0,
-          "total": 1089,
+          "total": 1090,
           "conflicts": 0
         },
         "capital_ubs_net": {
@@ -53,12 +53,12 @@
         },
         "capital_zl_net": {
           "added": 0,
-          "total": 1148,
+          "total": 1149,
           "conflicts": 0
         },
         "capital_gt_net": {
           "added": 0,
-          "total": 1142,
+          "total": 1143,
           "conflicts": 0
         }
       },
@@ -67,7 +67,7 @@
       "notes": [
         "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
       ],
-      "ranAt": "2026-11-17T08:35:36.028321+00:00",
+      "ranAt": "2026-11-17T09:01:03.761406+00:00",
       "fromPreviousRun": false
     }
   ],
@@ -317,9 +317,9 @@
         "p20": 74.98,
         "p25": 80.65,
         "p50": 144.8,
-        "p75": 176.95,
-        "p80": 183.82,
-        "p90": 195.6,
+        "p75": 176.65,
+        "p80": 183.7,
+        "p90": 195.52,
         "p95": 203.26
       },
       "pointsPerYear": {
@@ -336,7 +336,7 @@
         "08": 127.2,
         "09": 116.6,
         "10": 154.4,
-        "11": 149.0
+        "11": 148.9
       },
       "share<0": 0.2,
       "share>300": 0.0
@@ -462,15 +462,15 @@
       "share<0(远月升水)": 82.6
     },
     "term_spread_jan": {
-      "n": 635,
+      "n": 636,
       "quantiles": {
-        "p5": 3.21,
+        "p5": 3.22,
         "p10": 3.75,
         "p20": 4.98,
         "p25": 5.34,
         "p50": 6.81,
         "p75": 10.21,
-        "p80": 11.17,
+        "p80": 11.16,
         "p90": 12.74,
         "p95": 13.69
       },
@@ -482,13 +482,13 @@
         "2023": 82,
         "2024": 80,
         "2025": 80,
-        "2026": 70
+        "2026": 71
       },
       "medianByMonth(%)": {
         "08": 6.75,
         "09": 7.56,
         "10": 6.59,
-        "11": 5.52
+        "11": 5.63
       },
       "share<0(远月升水)": 1.7
     },
@@ -1273,9 +1273,9 @@
           {
             "year": 2027,
             "n": 70,
-            "median": 173.75,
-            "q1": 167.8,
-            "q3": 184.7
+            "median": 173.55,
+            "q1": 167.03,
+            "q3": 184.4
           }
         ],
         "monthSufficiency": {
@@ -1390,7 +1390,7 @@
             "2026": {
               "n": 70,
               "skipped": 0,
-              "high": 27.1,
+              "high": 25.7,
               "low": 0.0
             }
           }
@@ -1419,7 +1419,7 @@
               "n": 82,
               "skipped": 0,
               "high": 23.2,
-              "low": 9.8
+              "low": 7.3
             },
             "2023": {
               "n": 82,
@@ -1443,13 +1443,13 @@
               "n": 70,
               "skipped": 0,
               "high": 4.3,
-              "low": 4.3
+              "low": 5.7
             }
           }
         },
         "agreement": {
           "n": 635,
-          "agreeShare": 43.9,
+          "agreeShare": 43.6,
           "opposite": 8
         },
         "thresholdSensitivity": {
@@ -1465,14 +1465,14 @@
               "hi": 85,
               "lo": 15,
               "n": 635,
-              "highShare": 20.0,
+              "highShare": 20.2,
               "lowShare": 18.0
             },
             {
               "hi": 80,
               "lo": 20,
               "n": 635,
-              "highShare": 23.8,
+              "highShare": 23.6,
               "lowShare": 23.5
             },
             {
@@ -1489,34 +1489,34 @@
               "lo": 10,
               "n": 635,
               "highShare": 13.4,
-              "lowShare": 12.9
+              "lowShare": 12.0
             },
             {
               "hi": 85,
               "lo": 15,
               "n": 635,
               "highShare": 17.8,
-              "lowShare": 18.1
+              "lowShare": 18.3
             },
             {
               "hi": 80,
               "lo": 20,
               "n": 635,
               "highShare": 21.1,
-              "lowShare": 22.0
+              "lowShare": 21.9
             },
             {
               "hi": 75,
               "lo": 25,
               "n": 635,
-              "highShare": 27.2,
-              "lowShare": 28.3
+              "highShare": 26.9,
+              "lowShare": 28.0
             }
           ]
         },
         "autocorr": {
-          "rho": 0.793,
-          "effectiveN": 73.4,
+          "rho": 0.788,
+          "effectiveN": 75.4,
           "n": 635
         },
         "caveats": [
@@ -2164,9 +2164,9 @@
       },
       "term_spread_jan": {
         "key": "term_spread_jan",
-        "n": 635,
+        "n": 636,
         "from": "2019-08-01",
-        "to": "2026-11-16",
+        "to": "2026-11-17",
         "contractYears": 8,
         "levelDrift": [
           {
@@ -2220,10 +2220,10 @@
           },
           {
             "year": 2027,
-            "n": 70,
-            "median": 10.48,
-            "q1": 9.8,
-            "q3": 11.26
+            "n": 71,
+            "median": 10.47,
+            "q1": 9.79,
+            "q3": 11.25
           }
         ],
         "monthSufficiency": {
@@ -2281,7 +2281,7 @@
               "2023": 22,
               "2024": 21,
               "2025": 20,
-              "2026": 11
+              "2026": 12
             },
             "latestYear": "2026",
             "refNForLatestYear": 149,
@@ -2336,9 +2336,9 @@
               "low": 3.8
             },
             "2026": {
-              "n": 70,
+              "n": 71,
               "skipped": 0,
-              "high": 57.1,
+              "high": 56.3,
               "low": 0.0
             }
           }
@@ -2348,7 +2348,7 @@
             "2019": {
               "n": 81,
               "skipped": 0,
-              "high": 27.2,
+              "high": 29.6,
               "low": 16.0
             },
             "2020": {
@@ -2361,7 +2361,7 @@
               "n": 80,
               "skipped": 0,
               "high": 12.5,
-              "low": 16.2
+              "low": 3.8
             },
             "2022": {
               "n": 82,
@@ -2388,16 +2388,16 @@
               "low": 28.7
             },
             "2026": {
-              "n": 70,
+              "n": 71,
               "skipped": 0,
-              "high": 7.1,
-              "low": 20.0
+              "high": 7.0,
+              "low": 21.1
             }
           }
         },
         "agreement": {
-          "n": 635,
-          "agreeShare": 46.8,
+          "n": 636,
+          "agreeShare": 48.0,
           "opposite": 23
         },
         "thresholdSensitivity": {
@@ -2405,67 +2405,67 @@
             {
               "hi": 90,
               "lo": 10,
-              "n": 635,
+              "n": 636,
               "highShare": 13.7,
               "lowShare": 11.8
             },
             {
               "hi": 85,
               "lo": 15,
-              "n": 635,
-              "highShare": 18.3,
-              "lowShare": 18.3
+              "n": 636,
+              "highShare": 18.2,
+              "lowShare": 18.2
             },
             {
               "hi": 80,
               "lo": 20,
-              "n": 635,
+              "n": 636,
               "highShare": 24.7,
-              "lowShare": 22.7
+              "lowShare": 22.6
             },
             {
               "hi": 75,
               "lo": 25,
-              "n": 635,
-              "highShare": 28.7,
-              "lowShare": 29.3
+              "n": 636,
+              "highShare": 28.6,
+              "lowShare": 29.6
             }
           ],
           "levelAdjusted": [
             {
               "hi": 90,
               "lo": 10,
-              "n": 635,
+              "n": 636,
               "highShare": 13.5,
               "lowShare": 12.4
             },
             {
               "hi": 85,
               "lo": 15,
-              "n": 635,
+              "n": 636,
               "highShare": 16.5,
-              "lowShare": 16.9
+              "lowShare": 16.5
             },
             {
               "hi": 80,
               "lo": 20,
-              "n": 635,
-              "highShare": 20.3,
-              "lowShare": 22.8
+              "n": 636,
+              "highShare": 20.6,
+              "lowShare": 21.4
             },
             {
               "hi": 75,
               "lo": 25,
-              "n": 635,
-              "highShare": 25.7,
-              "lowShare": 27.7
+              "n": 636,
+              "highShare": 25.6,
+              "lowShare": 27.5
             }
           ]
         },
         "autocorr": {
-          "rho": 0.898,
-          "effectiveN": 34.3,
-          "n": 635
+          "rho": 0.897,
+          "effectiveN": 34.6,
+          "n": 636
         },
         "caveats": [
           "这些序列的点只存了榨利值/月差百分比，没有价格——信号之后N日涨跌的前向检验做不了(要靠每天记录的两个系统方向，见analyze_systems.py)",
