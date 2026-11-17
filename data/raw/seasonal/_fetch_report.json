@@ -1,5 +1,5 @@
 {
- "runAt": "2026-11-17 22:11 UTC",
+ "runAt": "2026-11-17 22:55 UTC",
  "jiangsu": {
   "ok": true,
   "windows": [
@@ -441,11 +441,10 @@
    "2026-11-13",
    "2026-11-12"
   ],
-  "fetched": [
-   "2026-11-17"
-  ],
+  "fetched": [],
   "failed": {},
   "alreadyHad": [
+   "2026-11-17",
    "2026-11-16",
    "2026-11-13",
    "2026-11-12"
@@ -482,7 +481,7 @@
   }
  },
  "multi": {
-  "ok": true,
+  "ok": false,
   "symbols": {
    "RM0": {
     "ok": true,
@@ -492,11 +491,8 @@
     "last": "2026-11-17"
    },
    "Y0": {
-    "ok": true,
-    "name": "豆油",
-    "rows": 5065,
-    "first": "2006-01-09",
-    "last": "2026-11-17"
+    "ok": false,
+    "reason": "ReadTimeout: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
    },
    "P0": {
     "ok": true,
@@ -506,11 +502,8 @@
     "last": "2026-11-17"
    },
    "C0": {
-    "ok": true,
-    "name": "玉米",
-    "rows": 5316,
-    "first": "2005-01-04",
-    "last": "2026-11-17"
+    "ok": false,
+    "reason": "ReadTimeout: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
    },
    "A0": {
     "ok": true,
