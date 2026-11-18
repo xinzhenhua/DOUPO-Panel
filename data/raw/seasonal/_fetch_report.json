@@ -1,5 +1,5 @@
 {
- "runAt": "2026-11-18 14:29 UTC",
+ "runAt": "2026-11-18 15:10 UTC",
  "jiangsu": {
   "ok": true,
   "windows": [
@@ -436,26 +436,27 @@
  "spot_daily": {
   "ok": true,
   "candidates": [
+   "2026-11-18",
    "2026-11-17",
    "2026-11-16",
-   "2026-11-13",
-   "2026-11-12"
+   "2026-11-13"
   ],
-  "fetched": [],
+  "fetched": [
+   "2026-11-18"
+  ],
   "failed": {},
   "alreadyHad": [
    "2026-11-17",
    "2026-11-16",
-   "2026-11-13",
-   "2026-11-12"
+   "2026-11-13"
   ]
  },
  "refresh": {
   "main": {
    "ok": true,
-   "rows": 5322,
+   "rows": 5323,
    "first": "2005-01-04",
-   "last": "2026-11-17"
+   "last": "2026-11-18"
   },
   "contracts": {
    "ok": true,
@@ -481,36 +482,42 @@
   }
  },
  "multi": {
-  "ok": false,
+  "ok": true,
   "symbols": {
    "RM0": {
     "ok": true,
     "name": "菜粕",
-    "rows": 3365,
+    "rows": 3366,
     "first": "2012-12-28",
-    "last": "2026-11-17"
+    "last": "2026-11-18"
    },
    "Y0": {
-    "ok": false,
-    "reason": "ReadTimeout: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
+    "ok": true,
+    "name": "豆油",
+    "rows": 5066,
+    "first": "2006-01-09",
+    "last": "2026-11-18"
    },
    "P0": {
     "ok": true,
     "name": "棕榈油",
-    "rows": 4633,
+    "rows": 4634,
     "first": "2007-10-29",
-    "last": "2026-11-17"
+    "last": "2026-11-18"
    },
    "C0": {
-    "ok": false,
-    "reason": "ReadTimeout: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
+    "ok": true,
+    "name": "玉米",
+    "rows": 5317,
+    "first": "2005-01-04",
+    "last": "2026-11-18"
    },
    "A0": {
     "ok": true,
     "name": "豆一",
-    "rows": 5319,
+    "rows": 5320,
     "first": "2005-01-04",
-    "last": "2026-11-17"
+    "last": "2026-11-18"
    }
   }
  }
