@@ -1,5 +1,5 @@
 {
- "runAt": "2026-11-19 22:06 UTC",
+ "runAt": "2026-11-19 22:43 UTC",
  "jiangsu": {
   "ok": true,
   "windows": [
@@ -441,11 +441,10 @@
    "2026-11-17",
    "2026-11-16"
   ],
-  "fetched": [
-   "2026-11-19"
-  ],
+  "fetched": [],
   "failed": {},
   "alreadyHad": [
+   "2026-11-19",
    "2026-11-18",
    "2026-11-17",
    "2026-11-16"
@@ -482,7 +481,7 @@
   }
  },
  "multi": {
-  "ok": false,
+  "ok": true,
   "symbols": {
    "RM0": {
     "ok": true,
@@ -492,8 +491,11 @@
     "last": "2026-11-19"
    },
    "Y0": {
-    "ok": false,
-    "reason": "ReadTimeout: HTTPSConnectionPool(host='stock2.finance.sina.com.cn', port=443): Read timed out. (read timeout=10)"
+    "ok": true,
+    "name": "豆油",
+    "rows": 5067,
+    "first": "2006-01-09",
+    "last": "2026-11-19"
    },
    "P0": {
     "ok": true,
