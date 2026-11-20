@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-20T20:41:19.037785+00:00",
+  "generatedAt": "2026-11-20T21:02:44.428374+00:00",
   "cbotPrice": {
     "available": true,
     "price": 340.1,
@@ -1866,12 +1866,6 @@
             "forecastDate": "10/31/2026"
           },
           {
-            "outlook": "Persistence",
-            "outlookLabel": "干旱持续",
-            "targetPeriod": "Nov 2026",
-            "forecastDate": "10/31/2026"
-          },
-          {
             "outlook": "No_Drought",
             "outlookLabel": "预计无旱",
             "targetPeriod": "Nov 2026",
@@ -1902,9 +1896,9 @@
             "forecastDate": "10/31/2026"
           }
         ],
-        "totalPoints": 8,
-        "worseningCount": 2,
-        "worseningPct": 25.0,
+        "totalPoints": 7,
+        "worseningCount": 1,
+        "worseningPct": 14.3,
         "dominantOutlook": "No_Drought",
         "dominantOutlookLabel": "预计无旱",
         "targetPeriod": "Nov 2026"
@@ -2382,8 +2376,8 @@
         "targetPeriod": "Nov 2026"
       }
     },
-    "avgWorseningPct": 10.7,
-    "simpleWorseningPct": 10.4,
+    "avgWorseningPct": 9.9,
+    "simpleWorseningPct": 9.5,
     "overallSignal": 0,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
@@ -2487,6 +2481,7 @@
           "lon": -91.4098,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.4098%2C+%22y%22%3A+39.9356%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point6": {
@@ -2494,6 +2489,7 @@
           "lon": -89.984,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.984%2C+%22y%22%3A+38.5201%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 504: Gateway Time-out",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point7": {
@@ -2530,6 +2526,7 @@
           "lat": 46.358,
           "lon": -94.2008,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-94.2008%2C+%22y%22%3A+46.358%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Improvement\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
@@ -2581,8 +2578,9 @@
           "lat": 39.4667,
           "lon": -87.4139,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-87.4139%2C+%22y%22%3A+39.4667%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
-          "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"Persistence\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
+          "httpStatus": 504,
+          "error": "HTTP 504: Gateway Time-out",
+          "rawSnippet": "<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n"
         },
         "point3": {
           "lat": 40.1934,
