@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T22:13:11.139454+00:00",
+  "generatedAt": "2026-11-23T22:51:52.933105+00:00",
   "cbotPrice": {
     "available": true,
     "price": 343.9,
@@ -1294,29 +1294,8 @@
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
-    "available": true,
-    "safra": "2026/27",
-    "weekLabel": "2026-11-20",
-    "pctCurrent": 82.93,
-    "pctYearAgo": 76.66,
-    "pctPrevWeek": 75.02,
-    "pctFiveYearAvg": 80.59,
-    "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
-    "sourceUrl": "https://www.gov.br/conab",
-    "history": {
-      "n": 6,
-      "minPoints": 12,
-      "asOf": "2026-11-20",
-      "since": "2026-10-09",
-      "percentile": null,
-      "min": 15.6,
-      "max": 75.02,
-      "median": 48.54,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
-    }
+    "available": false,
+    "reason": "CONAB接口调用失败: SourceUnavailableError: conab unavailable: ConnectTimeout:  after 3 retries"
   },
   "droughtMonitor": {
     "available": true,
@@ -3107,12 +3086,16 @@
     }
   },
   "soybeanCondition": {
-    "available": false,
-    "reason": "NASS接口无返回数据(注意：每年4-11月才有生长季数据)",
-    "debug": {
-      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=CONDITION&agg_level_desc=NATIONAL&format=JSON&year=2026",
-      "error": "The read operation timed out"
-    }
+    "available": true,
+    "weekEnding": "2026-10-11",
+    "goodExcellentPct": 57.0,
+    "wowChangePts": 0.0,
+    "yoyValue": 62.0,
+    "yoyChangePts": -5.0,
+    "fiveYearAvg": 58.4,
+    "fiveYearAvgChangePts": -1.4,
+    "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
+    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
   "usPlantingProgress": {
     "available": true,
@@ -3121,8 +3104,8 @@
     "wowChangePts": 3.0,
     "yoyValue": 93.0,
     "yoyChangePts": 2.0,
-    "fiveYearAvg": 92.5,
-    "fiveYearAvgChangePts": 2.5,
+    "fiveYearAvg": 92.8,
+    "fiveYearAvgChangePts": 2.2,
     "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
@@ -3131,10 +3114,10 @@
     "weekEnding": "2026-11-15",
     "pctHarvested": 96.0,
     "wowChangePts": 4.0,
-    "yoyValue": null,
-    "yoyChangePts": null,
-    "fiveYearAvg": 95.5,
-    "fiveYearAvgChangePts": 0.5,
+    "yoyValue": 95.0,
+    "yoyChangePts": 1.0,
+    "fiveYearAvg": 94.5,
+    "fiveYearAvgChangePts": 1.5,
     "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
     "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
   },
