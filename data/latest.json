@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-11-23T10:33:15.494196+00:00",
+  "generatedAt": "2026-11-23T11:36:37.929456+00:00",
   "cbotPrice": {
     "available": true,
-    "price": 342.1,
-    "change": 1.1,
-    "changePct": 0.32,
+    "price": 342.5,
+    "change": 1.5,
+    "changePct": 0.44,
     "asOf": "2026-11-23T05:00:00+00:00",
     "source": "Yahoo Finance (非官方接口，仅供参考)"
   },
@@ -875,7 +875,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "玉米价格获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Read timed out. (read timeout=30)",
+    "carriedFrom": "2026-11-23T10:33:15.494196+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1167,7 +1170,7 @@
       },
       "may": {
         "cbotSymbol": "ZSH27.CBT",
-        "zsCents": 1229.5,
+        "zsCents": 1229.0,
         "zsDate": "2026-11-23",
         "zsExact": true,
         "zsNote": "",
@@ -1179,17 +1182,17 @@
         "brazil": {
           "beanPrice": 3526.0,
           "breakeven": 2768.0,
-          "impliedPremium": 14.2,
+          "impliedPremium": 14.7,
           "available": true,
-          "zsCents": 1229.5,
+          "zsCents": 1229.0,
           "fx": 6.6777,
           "mealPrice": 2828.0,
           "oilPrice": 8125.0,
-          "beanCost": 3814.7,
-          "mealCost": 3135.8,
-          "mealCostLow": 2960.3,
-          "mealCostHigh": 3311.2,
-          "gap": -307.8,
+          "beanCost": 3813.3,
+          "mealCost": 3134.0,
+          "mealCostLow": 2958.6,
+          "mealCostHigh": 3309.5,
+          "gap": -306.0,
           "gapPct": -9.8,
           "position": "below",
           "params": {
@@ -22702,6 +22705,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
