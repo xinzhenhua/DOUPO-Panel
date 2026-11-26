@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T06:38:07.011058+00:00",
+  "generatedAt": "2026-11-26T07:06:52.777569+00:00",
   "cbotPrice": {
     "available": true,
     "price": 361.6,
@@ -170,30 +170,30 @@
   },
   "mysteelRmSpread": {
     "available": true,
-    "value": 703.3,
-    "date": "2026-11-25",
-    "matchedText": "2026年11月25日，广东豆粕3040元/吨，菜粕2370元/吨，价差670元/吨；广西豆粕3060元/吨，菜粕2360元/吨，价差700元/吨；南通豆粕3060元/吨，菜粕2320元/吨，价差740元/吨。数据来源于钢联数据。",
+    "value": 713.3,
+    "date": "2026-11-26",
+    "matchedText": "2026年11月26日，广东豆粕3050元/吨，菜粕2380元/吨，价差670元/吨；广西豆粕3080元/吨，菜粕2370元/吨，价差710元/吨；南通豆粕3090元/吨，菜粕2330元/吨，价差760元/吨。数据来源于钢联数据。",
     "source": "Mysteel文章(豆菜粕价差)",
     "sourceUrl": "https://search.mysteel.com/fastcomment.html",
     "citySamples": [
       670.0,
-      700.0,
-      740.0
+      710.0,
+      760.0
     ],
     "formatUsed": "多城市单值平均",
     "history": {
-      "n": 648,
+      "n": 649,
       "minPoints": 12,
-      "asOf": "2026-11-25",
+      "asOf": "2026-11-26",
       "since": "2024-01-08",
-      "percentile": 60.9,
+      "percentile": 63.4,
       "min": 280.0,
       "max": 1215.0,
       "median": 670.0,
       "seasonal": {
         "month": 11,
         "n": 40,
-        "percentile": 50.0,
+        "percentile": 52.5,
         "median": 612.5
       },
       "cohort": null,
@@ -1294,29 +1294,8 @@
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
-    "available": true,
-    "safra": "2026/27",
-    "weekLabel": "2026-11-20",
-    "pctCurrent": 82.93,
-    "pctYearAgo": 76.66,
-    "pctPrevWeek": 75.02,
-    "pctFiveYearAvg": 80.59,
-    "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
-    "sourceUrl": "https://www.gov.br/conab",
-    "history": {
-      "n": 6,
-      "minPoints": 12,
-      "asOf": "2026-11-20",
-      "since": "2026-10-09",
-      "percentile": null,
-      "min": 15.6,
-      "max": 75.02,
-      "median": 48.54,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
-    }
+    "available": false,
+    "reason": "CONAB接口调用失败: SourceUnavailableError: conab unavailable: ConnectTimeout:  after 3 retries"
   },
   "droughtMonitor": {
     "available": true,
@@ -5230,10 +5209,10 @@
         "datetime": "2026-11-26 15:00:00",
         "open": 2944.0,
         "high": 2946.0,
-        "low": 2942.0,
-        "close": 2944.0,
-        "volume": 969.0,
-        "hold": 314129.0
+        "low": 2940.0,
+        "close": 2943.0,
+        "volume": 3191.0,
+        "hold": 313826.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5243,24 +5222,6 @@
     "symbol": "M2709",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 14:30:00",
-        "open": 2905.0,
-        "high": 2907.0,
-        "low": 2905.0,
-        "close": 2907.0,
-        "volume": 414.0,
-        "hold": 273365.0
-      },
-      {
-        "datetime": "2026-11-09 14:45:00",
-        "open": 2907.0,
-        "high": 2908.0,
-        "low": 2906.0,
-        "close": 2906.0,
-        "volume": 673.0,
-        "hold": 273768.0
-      },
       {
         "datetime": "2026-11-09 15:00:00",
         "open": 2906.0,
@@ -7940,8 +7901,26 @@
         "high": 2946.0,
         "low": 2942.0,
         "close": 2944.0,
-        "volume": 4.0,
+        "volume": 988.0,
         "hold": 314129.0
+      },
+      {
+        "datetime": "2026-11-26 14:45:00",
+        "open": 2944.0,
+        "high": 2945.0,
+        "low": 2940.0,
+        "close": 2941.0,
+        "volume": 713.0,
+        "hold": 314043.0
+      },
+      {
+        "datetime": "2026-11-26 15:00:00",
+        "open": 2944.0,
+        "high": 2944.0,
+        "low": 2943.0,
+        "close": 2943.0,
+        "volume": 1.0,
+        "hold": 313826.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10863,11 +10842,11 @@
       {
         "datetime": "2026-11-26 15:00:00",
         "open": 2843.0,
-        "high": 2845.0,
+        "high": 2846.0,
         "low": 2842.0,
         "close": 2844.0,
-        "volume": 2970.0,
-        "hold": 1186185.0
+        "volume": 7437.0,
+        "hold": 1187484.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10877,15 +10856,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 14:45:00",
-        "open": 2799.0,
-        "high": 2800.0,
-        "low": 2797.0,
-        "close": 2798.0,
-        "volume": 1228.0,
-        "hold": 1103956.0
-      },
       {
         "datetime": "2026-11-09 15:00:00",
         "open": 2798.0,
@@ -13572,10 +13542,19 @@
         "datetime": "2026-11-26 14:45:00",
         "open": 2843.0,
         "high": 2845.0,
+        "low": 2842.0,
+        "close": 2843.0,
+        "volume": 9056.0,
+        "hold": 1187263.0
+      },
+      {
+        "datetime": "2026-11-26 15:00:00",
+        "open": 2844.0,
+        "high": 2846.0,
         "low": 2843.0,
         "close": 2844.0,
-        "volume": 2970.0,
-        "hold": 1186185.0
+        "volume": 7437.0,
+        "hold": 1187484.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -17268,10 +17247,10 @@
         "datetime": "2026-11-26 15:00:00",
         "open": 3126.0,
         "high": 3131.0,
-        "low": 3123.0,
-        "close": 3128.0,
-        "volume": 243.0,
-        "hold": 1708129.0
+        "low": 3121.0,
+        "close": 3126.0,
+        "volume": 444.0,
+        "hold": 1699225.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -17281,15 +17260,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 14:45:00",
-        "open": 3082.0,
-        "high": 3083.0,
-        "low": 3078.0,
-        "close": 3079.0,
-        "volume": 4938.0,
-        "hold": 1916735.0
-      },
       {
         "datetime": "2026-11-09 15:00:00",
         "open": 3079.0,
@@ -19975,11 +19945,20 @@
       {
         "datetime": "2026-11-26 14:45:00",
         "open": 3127.0,
-        "high": 3128.0,
-        "low": 3127.0,
-        "close": 3128.0,
-        "volume": 243.0,
-        "hold": 1708129.0
+        "high": 3129.0,
+        "low": 3121.0,
+        "close": 3122.0,
+        "volume": 24305.0,
+        "hold": 1703090.0
+      },
+      {
+        "datetime": "2026-11-26 15:00:00",
+        "open": 3122.0,
+        "high": 3126.0,
+        "low": 3122.0,
+        "close": 3126.0,
+        "volume": 444.0,
+        "hold": 1699225.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
