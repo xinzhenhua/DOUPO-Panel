@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T14:06:32.165661+00:00",
+  "generatedAt": "2026-11-26T15:04:01.057682+00:00",
   "series": [
     {
       "key": "capital_rank",
@@ -39,12 +39,12 @@
         "capital_gs_net": {
           "added": 0,
           "total": 148,
-          "conflicts": 1
+          "conflicts": 0
         },
         "capital_jpm_net": {
           "added": 0,
           "total": 1097,
-          "conflicts": 1
+          "conflicts": 0
         },
         "capital_ubs_net": {
           "added": 0,
@@ -64,18 +64,6 @@
       },
       "conflicts": [
         {
-          "series": "capital_gs_net",
-          "d": "2026-11-19",
-          "existing": 34010,
-          "fromFile": 28119
-        },
-        {
-          "series": "capital_jpm_net",
-          "d": "2026-11-19",
-          "existing": -7170,
-          "fromFile": -103776
-        },
-        {
           "series": "capital_zl_net",
           "d": "2026-11-19",
           "existing": -144898,
@@ -92,7 +80,7 @@
       "notes": [
         "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
       ],
-      "ranAt": "2026-11-26T14:06:32.165661+00:00",
+      "ranAt": "2026-11-26T15:04:01.057682+00:00",
       "fromPreviousRun": false
     }
   ],
