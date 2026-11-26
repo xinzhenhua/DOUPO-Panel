@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T03:11:53.745697+00:00",
+  "generatedAt": "2026-11-26T05:35:59.095600+00:00",
   "series": [
     {
       "key": "capital_rank",
@@ -39,12 +39,12 @@
         "capital_gs_net": {
           "added": 0,
           "total": 147,
-          "conflicts": 2
+          "conflicts": 1
         },
         "capital_jpm_net": {
           "added": 0,
           "total": 1096,
-          "conflicts": 2
+          "conflicts": 1
         },
         "capital_ubs_net": {
           "added": 0,
@@ -54,12 +54,12 @@
         "capital_zl_net": {
           "added": 0,
           "total": 1155,
-          "conflicts": 2
+          "conflicts": 1
         },
         "capital_gt_net": {
           "added": 0,
           "total": 1149,
-          "conflicts": 2
+          "conflicts": 1
         }
       },
       "conflicts": [
@@ -70,22 +70,10 @@
           "fromFile": 28119
         },
         {
-          "series": "capital_gs_net",
-          "d": "2026-11-25",
-          "existing": 35210,
-          "fromFile": 44078
-        },
-        {
           "series": "capital_jpm_net",
           "d": "2026-11-19",
           "existing": -7170,
           "fromFile": -103776
-        },
-        {
-          "series": "capital_jpm_net",
-          "d": "2026-11-25",
-          "existing": -6004,
-          "fromFile": -85118
         },
         {
           "series": "capital_zl_net",
@@ -94,29 +82,17 @@
           "fromFile": -107176
         },
         {
-          "series": "capital_zl_net",
-          "d": "2026-11-25",
-          "existing": -159706,
-          "fromFile": -78103
-        },
-        {
           "series": "capital_gt_net",
           "d": "2026-11-19",
           "existing": -68945,
           "fromFile": -27554
-        },
-        {
-          "series": "capital_gt_net",
-          "d": "2026-11-25",
-          "existing": -63827,
-          "fromFile": -39585
         }
       ],
       "skippedFiles": [],
       "notes": [
         "estimated=只进了买或卖一边的前20，另一边用第20名顶替(与线上口径一致)，净持仓是下限估计；absent=两边都没进前20，不记0"
       ],
-      "ranAt": "2026-11-26T03:11:53.745697+00:00",
+      "ranAt": "2026-11-26T05:35:59.095600+00:00",
       "fromPreviousRun": false
     }
   ],
