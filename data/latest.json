@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T02:07:06.058773+00:00",
+  "generatedAt": "2026-11-26T03:12:47.117551+00:00",
   "cbotPrice": {
     "available": true,
     "price": 358.1,
@@ -875,7 +875,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x762238d3d910>, 'Connection to x",
+    "carriedFrom": "2026-11-26T02:07:06.058773+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -1765,27 +1768,15 @@
             "forecastDate": "10/31/2026"
           },
           {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Nov 2026",
-            "forecastDate": "10/31/2026"
-          },
-          {
-            "outlook": "No_Drought",
-            "outlookLabel": "预计无旱",
-            "targetPeriod": "Nov 2026",
-            "forecastDate": "10/31/2026"
-          },
-          {
             "outlook": "Persistence",
             "outlookLabel": "干旱持续",
             "targetPeriod": "Nov 2026",
             "forecastDate": "10/31/2026"
           }
         ],
-        "totalPoints": 8,
+        "totalPoints": 6,
         "worseningCount": 1,
-        "worseningPct": 12.5,
+        "worseningPct": 16.7,
         "dominantOutlook": "No_Drought",
         "dominantOutlookLabel": "预计无旱",
         "targetPeriod": "Nov 2026"
@@ -2381,8 +2372,8 @@
         "targetPeriod": "Nov 2026"
       }
     },
-    "avgWorseningPct": 10.7,
-    "simpleWorseningPct": 10.4,
+    "avgWorseningPct": 11.4,
+    "simpleWorseningPct": 10.8,
     "overallSignal": 0,
     "source": "NOAA/CPC 月度干旱展望（专家研判，综合ENSO/季节性降雨规律等因素，每州8点采样，按种植面积加权）",
     "sourceUrl": "https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php",
@@ -2479,14 +2470,14 @@
           "lon": -89.6501,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-89.6501%2C+%22y%22%3A+39.7817%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point5": {
           "lat": 39.9356,
           "lon": -91.4098,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-91.4098%2C+%22y%22%3A+39.9356%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
-          "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
+          "rawSnippet": "{\"status\":\"error\",\"messages\":[\"Could not access any server machines. Please contact your system administrator.  \"]}"
         },
         "point6": {
           "lat": 38.5201,
@@ -2588,6 +2579,7 @@
           "lon": -85.3863,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-85.3863%2C+%22y%22%3A+40.1934%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point4": {
@@ -2646,6 +2638,7 @@
           "lon": -97.4173,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-97.4173%2C+%22y%22%3A+41.9911%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
           "httpStatus": 200,
+          "error": "HTTP 502: Bad Gateway",
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
         "point4": {
@@ -2659,6 +2652,7 @@
           "lat": 40.8136,
           "lon": -96.7026,
           "url": "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/cpc_drought_outlk/MapServer/1/query?geometry=%7B%22x%22%3A+-96.7026%2C+%22y%22%3A+40.8136%2C+%22spatialReference%22%3A+%7B%22wkid%22%3A+4326%7D%7D&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=outlook%2Cfcst_date%2Ctarget&returnGeometry=false&f=json",
+          "error": "The read operation timed out",
           "httpStatus": 200,
           "rawSnippet": "{\"displayFieldName\":\"outlook\",\"fieldAliases\":{\"outlook\":\"Outlook\",\"fcst_date\":\"Forecast Date\",\"target\":\"Target\"},\"fields\":[{\"name\":\"outlook\",\"type\":\"esriFieldTypeString\",\"alias\":\"Outlook\",\"length\":254},{\"name\":\"fcst_date\",\"type\":\"esriFieldTypeString\",\"alias\":\"Forecast Date\",\"length\":254},{\"name\":\"target\",\"type\":\"esriFieldTypeString\",\"alias\":\"Target\",\"length\":254}],\"features\":[{\"attributes\":{\"outlook\":\"No_Drought\",\"fcst_date\":\"10/31/2026\",\"target\":\"Nov 2026\"}}]}"
         },
@@ -5208,11 +5202,11 @@
       {
         "datetime": "2026-11-26 11:15:00",
         "open": 2947.0,
-        "high": 2950.0,
+        "high": 2951.0,
         "low": 2946.0,
-        "close": 2950.0,
-        "volume": 6.0,
-        "hold": 313071.0
+        "close": 2946.0,
+        "volume": 3963.0,
+        "hold": 313921.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -5222,33 +5216,6 @@
     "symbol": "M2709",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 10:15:00",
-        "open": 2912.0,
-        "high": 2912.0,
-        "low": 2910.0,
-        "close": 2911.0,
-        "volume": 291.0,
-        "hold": 272592.0
-      },
-      {
-        "datetime": "2026-11-09 10:45:00",
-        "open": 2911.0,
-        "high": 2914.0,
-        "low": 2910.0,
-        "close": 2913.0,
-        "volume": 597.0,
-        "hold": 272247.0
-      },
-      {
-        "datetime": "2026-11-09 11:00:00",
-        "open": 2913.0,
-        "high": 2915.0,
-        "low": 2911.0,
-        "close": 2912.0,
-        "volume": 997.0,
-        "hold": 272603.0
-      },
       {
         "datetime": "2026-11-09 11:15:00",
         "open": 2912.0,
@@ -7916,11 +7883,38 @@
       {
         "datetime": "2026-11-26 10:15:00",
         "open": 2947.0,
+        "high": 2951.0,
+        "low": 2946.0,
+        "close": 2948.0,
+        "volume": 1262.0,
+        "hold": 313293.0
+      },
+      {
+        "datetime": "2026-11-26 10:45:00",
+        "open": 2948.0,
+        "high": 2950.0,
+        "low": 2948.0,
+        "close": 2949.0,
+        "volume": 370.0,
+        "hold": 313301.0
+      },
+      {
+        "datetime": "2026-11-26 11:00:00",
+        "open": 2949.0,
+        "high": 2949.0,
+        "low": 2946.0,
+        "close": 2948.0,
+        "volume": 2764.0,
+        "hold": 314147.0
+      },
+      {
+        "datetime": "2026-11-26 11:15:00",
+        "open": 2949.0,
         "high": 2950.0,
         "low": 2946.0,
-        "close": 2950.0,
-        "volume": 6.0,
-        "hold": 313071.0
+        "close": 2946.0,
+        "volume": 829.0,
+        "hold": 313921.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10842,11 +10836,11 @@
       {
         "datetime": "2026-11-26 11:15:00",
         "open": 2846.0,
-        "high": 2850.0,
+        "high": 2851.0,
         "low": 2846.0,
-        "close": 2850.0,
-        "volume": 79.0,
-        "hold": 1169334.0
+        "close": 2847.0,
+        "volume": 2807.0,
+        "hold": 1175042.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -10856,33 +10850,6 @@
     "symbol": "M2705",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 10:15:00",
-        "open": 2808.0,
-        "high": 2808.0,
-        "low": 2804.0,
-        "close": 2806.0,
-        "volume": 12.0,
-        "hold": 1100593.0
-      },
-      {
-        "datetime": "2026-11-09 10:45:00",
-        "open": 2807.0,
-        "high": 2809.0,
-        "low": 2805.0,
-        "close": 2807.0,
-        "volume": 160.0,
-        "hold": 1101195.0
-      },
-      {
-        "datetime": "2026-11-09 11:00:00",
-        "open": 2807.0,
-        "high": 2810.0,
-        "low": 2805.0,
-        "close": 2805.0,
-        "volume": 1940.0,
-        "hold": 1100938.0
-      },
       {
         "datetime": "2026-11-09 11:15:00",
         "open": 2805.0,
@@ -13550,11 +13517,38 @@
       {
         "datetime": "2026-11-26 10:15:00",
         "open": 2848.0,
-        "high": 2850.0,
+        "high": 2851.0,
         "low": 2847.0,
+        "close": 2848.0,
+        "volume": 1781.0,
+        "hold": 1170104.0
+      },
+      {
+        "datetime": "2026-11-26 10:45:00",
+        "open": 2849.0,
+        "high": 2850.0,
+        "low": 2848.0,
         "close": 2850.0,
-        "volume": 79.0,
-        "hold": 1169334.0
+        "volume": 1357.0,
+        "hold": 1170973.0
+      },
+      {
+        "datetime": "2026-11-26 11:00:00",
+        "open": 2847.0,
+        "high": 2849.0,
+        "low": 2846.0,
+        "close": 2848.0,
+        "volume": 2217.0,
+        "hold": 1173223.0
+      },
+      {
+        "datetime": "2026-11-26 11:15:00",
+        "open": 2850.0,
+        "high": 2850.0,
+        "low": 2846.0,
+        "close": 2847.0,
+        "volume": 2807.0,
+        "hold": 1175042.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -15633,15 +15627,6 @@
     "totalBarsReturned": 180,
     "bars": [
       {
-        "datetime": "2026-10-15 14:15:00",
-        "open": 3332.0,
-        "high": 3340.0,
-        "low": 3318.0,
-        "close": 3320.0,
-        "volume": 24637.0,
-        "hold": 2396061.0
-      },
-      {
         "datetime": "2026-10-15 15:00:00",
         "open": 3319.0,
         "high": 3325.0,
@@ -17246,11 +17231,20 @@
       {
         "datetime": "2026-11-26 11:15:00",
         "open": 3133.0,
-        "high": 3136.0,
-        "low": 3133.0,
-        "close": 3136.0,
-        "volume": 236.0,
-        "hold": 1725257.0
+        "high": 3137.0,
+        "low": 3126.0,
+        "close": 3128.0,
+        "volume": 16006.0,
+        "hold": 1719351.0
+      },
+      {
+        "datetime": "2026-11-26 14:15:00",
+        "open": 3127.0,
+        "high": 3127.0,
+        "low": 3126.0,
+        "close": 3126.0,
+        "volume": 247.0,
+        "hold": 1719041.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -17260,33 +17254,6 @@
     "symbol": "M2701",
     "totalBarsReturned": 300,
     "bars": [
-      {
-        "datetime": "2026-11-09 10:15:00",
-        "open": 3100.0,
-        "high": 3100.0,
-        "low": 3095.0,
-        "close": 3099.0,
-        "volume": 29.0,
-        "hold": 1896646.0
-      },
-      {
-        "datetime": "2026-11-09 10:45:00",
-        "open": 3099.0,
-        "high": 3103.0,
-        "low": 3097.0,
-        "close": 3101.0,
-        "volume": 14998.0,
-        "hold": 1894818.0
-      },
-      {
-        "datetime": "2026-11-09 11:00:00",
-        "open": 3101.0,
-        "high": 3104.0,
-        "low": 3097.0,
-        "close": 3098.0,
-        "volume": 8517.0,
-        "hold": 1894618.0
-      },
       {
         "datetime": "2026-11-09 11:15:00",
         "open": 3099.0,
@@ -19955,10 +19922,37 @@
         "datetime": "2026-11-26 10:15:00",
         "open": 3133.0,
         "high": 3137.0,
-        "low": 3133.0,
-        "close": 3135.0,
-        "volume": 4536.0,
-        "hold": 1725321.0
+        "low": 3131.0,
+        "close": 3133.0,
+        "volume": 9316.0,
+        "hold": 1724278.0
+      },
+      {
+        "datetime": "2026-11-26 10:45:00",
+        "open": 3133.0,
+        "high": 3136.0,
+        "low": 3131.0,
+        "close": 3136.0,
+        "volume": 1221.0,
+        "hold": 1721258.0
+      },
+      {
+        "datetime": "2026-11-26 11:00:00",
+        "open": 3135.0,
+        "high": 3136.0,
+        "low": 3130.0,
+        "close": 3133.0,
+        "volume": 4817.0,
+        "hold": 1721918.0
+      },
+      {
+        "datetime": "2026-11-26 11:15:00",
+        "open": 3135.0,
+        "high": 3135.0,
+        "low": 3131.0,
+        "close": 3131.0,
+        "volume": 2986.0,
+        "hold": 1720547.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有几秒到几分钟延迟"
@@ -22578,49 +22572,63 @@
   "marketCapital": {
     "available": true,
     "mainContract": {
-      "key": "may",
-      "symbol": "M2705",
-      "gross": 455036
+      "key": "jan",
+      "symbol": "M2701",
+      "gross": 440668,
+      "liquidity": 860619,
+      "oi": 1765598.0
     },
     "date": "2026-11-25",
     "members": {
       "高盛期货": {
-        "net": 35210,
-        "change": -1857,
+        "net": 44078,
+        "change": -822,
         "side": "long",
-        "rank": 2,
+        "rank": 5,
         "foreign": true,
         "history": {
           "n": 147,
           "since": "2026-04-13",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
-            "contract": "M2705"
+            "direction": "down",
+            "days": 1,
+            "total": -822,
+            "since": "2026-11-25",
+            "contract": "M2701"
           },
-          "change5": null,
+          "change5": {
+            "change": 11069,
+            "from": "2026-11-18",
+            "to": "2026-11-25",
+            "contract": "M2701",
+            "n": 5
+          },
           "change20": null
         }
       },
       "摩根大通": {
-        "net": -6004,
-        "change": 1479,
+        "net": -85118,
+        "change": -3870,
         "side": "short",
-        "rank": 11,
+        "rank": 1,
         "foreign": true,
         "history": {
           "n": 1096,
           "since": "2022-01-04",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
-            "contract": "M2705"
+            "direction": "down",
+            "days": 1,
+            "total": -3870,
+            "since": "2026-11-25",
+            "contract": "M2701"
           },
-          "change5": null,
+          "change5": {
+            "change": 21177,
+            "from": "2026-11-18",
+            "to": "2026-11-25",
+            "contract": "M2701",
+            "n": 5
+          },
           "change20": null
         }
       },
@@ -22632,50 +22640,62 @@
         "foreign": true
       },
       "中粮期货": {
-        "net": -159706,
-        "change": -7471,
+        "net": -78103,
+        "change": 17079,
         "side": "short",
-        "rank": 1,
+        "rank": 2,
         "foreign": false,
         "history": {
           "n": 1155,
           "since": "2022-01-03",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
-            "contract": "M2705"
+            "direction": "up",
+            "days": 1,
+            "total": 17079,
+            "since": "2026-11-25",
+            "contract": "M2701"
           },
-          "change5": null,
+          "change5": {
+            "change": 53940,
+            "from": "2026-11-18",
+            "to": "2026-11-25",
+            "contract": "M2701",
+            "n": 5
+          },
           "change20": null
         }
       },
       "国投期货": {
-        "net": -63827,
-        "change": 1704,
+        "net": -39585,
+        "change": 189,
         "side": "short",
-        "rank": 3,
+        "rank": 5,
         "foreign": false,
         "history": {
           "n": 1149,
           "since": "2022-01-03",
           "run": {
-            "direction": null,
-            "days": 0,
-            "total": 0,
-            "since": null,
-            "contract": "M2705"
+            "direction": "up",
+            "days": 1,
+            "total": 189,
+            "since": "2026-11-25",
+            "contract": "M2701"
           },
-          "change5": null,
+          "change5": {
+            "change": -7726,
+            "from": "2026-11-18",
+            "to": "2026-11-25",
+            "contract": "M2701",
+            "n": 5
+          },
           "change20": null
         }
       }
     },
     "industry": {
-      "net": -223533,
-      "change": -5767,
-      "changePct": -2.58,
+      "net": -117688,
+      "change": 17268,
+      "changePct": 14.67,
       "members": [
         "中粮期货",
         "国投期货"
@@ -22697,34 +22717,34 @@
       "level": "green",
       "label": "外资中性(高盛净多头不在高位，CFTC不拥挤)"
     },
-    "source": "大商所龙虎榜(东方财富，T+1，收盘后发布)+CFTC Managed Money(每周五发布，覆盖到当周二)；主力合约=净空头榜持仓合计最大的合约",
+    "source": "大商所龙虎榜(东方财富，T+1)+日线持仓量(新浪)+CFTC；主力优先用日线持仓量最大的合约，辅以龙虎榜活跃度，并保留昨日主力粘性(≥最优的85%不换月)，避免外资5日序列被换月切断",
     "trend": {
       "高盛期货": {
-        "n": 1,
-        "contract": "M2705",
+        "n": 2,
+        "contract": "M2701",
         "high": 120000,
         "code": "insufficient",
         "last": {
           "d": "2026-11-25",
-          "v": 35210
+          "v": 44078
         }
       },
       "摩根大通": {
-        "n": 1,
-        "contract": "M2705",
+        "n": 2,
+        "contract": "M2701",
         "high": null,
         "code": "insufficient",
         "last": {
           "d": "2026-11-25",
-          "v": -6004
+          "v": -85118
         }
       }
     },
     "verdict": {
       "code": "insufficient",
       "level": "green",
-      "short": "外资中性(高盛净多头不在高位，CFTC不拥挤)(趋势暂不可判：同合约连续历史仅1个交易日，攒够3日才判断)",
-      "label": "外资中性(高盛净多头不在高位，CFTC不拥挤)(趋势暂不可判：同合约连续历史仅1个交易日，攒够3日才判断)",
+      "short": "外资中性(高盛净多头不在高位，CFTC不拥挤)(趋势暂不可判：同合约连续历史仅2个交易日，攒够3日才判断)",
+      "label": "外资中性(高盛净多头不在高位，CFTC不拥挤)(趋势暂不可判：同合约连续历史仅2个交易日，攒够3日才判断)",
       "lines": [],
       "evidence": [
         "历史检验(龙虎榜2022-01~2026-10，摩根大通+高盛+瑞银合计，v101.24 校准)：外资3日净加仓≥2万手后，未来10个交易日平均约+1.9%(约31个独立事件，胜率约68%，基准约+0.6%)，方向偏涨；但前半段(2022-24)约+3.5%、后半段(2025-26)约+0.9%，越近越弱，样本仍小；",
@@ -22734,6 +22754,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
