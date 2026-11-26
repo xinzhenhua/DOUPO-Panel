@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T11:36:43.898742+00:00",
+  "generatedAt": "2026-11-26T12:13:55.571258+00:00",
   "cbotPrice": {
     "available": true,
     "price": 361.6,
@@ -1294,8 +1294,29 @@
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
-    "available": false,
-    "reason": "CONAB接口调用失败: SourceUnavailableError: conab unavailable: ConnectTimeout:  after 3 retries"
+    "available": true,
+    "safra": "2026/27",
+    "weekLabel": "2026-11-20",
+    "pctCurrent": 82.93,
+    "pctYearAgo": 76.66,
+    "pctPrevWeek": 75.02,
+    "pctFiveYearAvg": 80.59,
+    "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
+    "sourceUrl": "https://www.gov.br/conab",
+    "history": {
+      "n": 6,
+      "minPoints": 12,
+      "asOf": "2026-11-20",
+      "since": "2026-10-09",
+      "percentile": null,
+      "min": 15.6,
+      "max": 75.02,
+      "median": 48.54,
+      "seasonal": null,
+      "cohort": null,
+      "sparse": null,
+      "window": null
+    }
   },
   "droughtMonitor": {
     "available": true,
