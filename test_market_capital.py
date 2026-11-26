@@ -40,8 +40,8 @@ def test_main_contract_is_the_one_with_the_real_positions_not_the_selected_one()
 
 
 def test_main_contract_sticky_keeps_near_month_when_next_only_slightly_larger():
-    """换月抖动：次主力净空略大但总活跃度未明显超车时，prefer 昨日主力则保持，避免
-    外资5日序列被切断。"""
+    """换月抖动：次主力净空略大但总活跃度未明显超车时，prefer 昨日主力则保持，避免外资5日序列被切断。"""
+    # 构造：M2705 净空略大于 M2701，但 M2701 总活跃度仍 ≥ 85% 最优
     m01 = {"available": True, "symbol": "M2701", "date": "2026-11-25", "tables": {
         "netLong": [row(1, "高盛期货", 100000, 0, True)],
         "netShort": [row(1, "中粮期货", 400000, 0)],
@@ -63,23 +63,6 @@ def test_main_contract_sticky_keeps_near_month_when_next_only_slightly_larger():
     mc3 = fd.build_market_capital({"jan": m01, "may": m05b, "sep": None}, None, prefer_symbol="M2701")
     assert mc3["mainContract"]["symbol"] == "M2705", mc3["mainContract"]
     ok("★主力粘性：昨日主力活跃度≥最优的85%则保持；次主力明显更大才换月；选主力看净多+净空而非只看净空")
-
-
-def test_main_prefers_daily_oi_over_rank_liquidity_when_available():
-    """有日线持仓量时优先用持仓量；活跃度只是辅助。M2705 活跃度更高但持仓量远小，应选持仓量大的 M2701。"""
-    m01 = {"available": True, "symbol": "M2701", "date": "2026-11-25", "tables": {
-        "netLong": [row(1, "高盛期货", 50000, 0)], "netShort": [row(1, "中粮期货", 100000, 0)], "longUp": [], "longDown": []}}
-    m05 = {"available": True, "symbol": "M2705", "date": "2026-11-25", "tables": {
-        "netLong": [row(1, "兴业期货", 200000, 0)], "netShort": [row(1, "中粮期货", 300000, 0)], "longUp": [], "longDown": []}}
-    # 活跃度 M2705 更高，但日线持仓量 M2701 大得多
-    mc = fd.build_market_capital({"jan": m01, "may": m05}, None, oi_by_key={"jan": 1_800_000, "may": 200_000})
-    assert mc["mainContract"]["symbol"] == "M2701", mc["mainContract"]
-    assert mc["mainContract"].get("oi") == 1_800_000
-    # 粘性：昨日是 M2705，且其持仓量仍 ≥ 85% 最优，则保持
-    mc2 = fd.build_market_capital({"jan": m01, "may": m05}, None, prefer_symbol="M2705",
-                                  oi_by_key={"jan": 1_800_000, "may": 1_600_000})
-    assert mc2["mainContract"]["symbol"] == "M2705", mc2["mainContract"]
-    ok("★主力优先用日线持仓量；持仓量接近时粘性保持昨日主力；活跃度只作辅助")
 
 
 def test_member_net_positions_use_the_right_table_and_sign():
@@ -194,6 +177,24 @@ def test_state_explains_what_it_can_and_cannot_judge():
     assert "已有足够" not in s["note"] and "历史充足" not in s["note"], "也不能夸大成已有足够历史"
     assert s["thresholdSource"] == "文档经验值，暂定，未回测"
     ok("状态说明：写明只能判断持仓拥挤度，文档要求的价格突破/美豆联动/连续N日目前判断不了(未判断)；阈值来源=文档经验值未回测")
+
+
+
+def test_main_prefers_daily_oi_over_rank_liquidity_when_available():
+    """有日线持仓量时优先用持仓量；活跃度只是辅助。M2705 活跃度更高但持仓量远小，应选持仓量大的 M2701。"""
+    m01 = {"available": True, "symbol": "M2701", "date": "2026-11-25", "tables": {
+        "netLong": [row(1, "高盛期货", 50000, 0)], "netShort": [row(1, "中粮期货", 100000, 0)], "longUp": [], "longDown": []}}
+    m05 = {"available": True, "symbol": "M2705", "date": "2026-11-25", "tables": {
+        "netLong": [row(1, "兴业期货", 200000, 0)], "netShort": [row(1, "中粮期货", 300000, 0)], "longUp": [], "longDown": []}}
+    # 活跃度 M2705 更高，但日线持仓量 M2701 大得多
+    mc = fd.build_market_capital({"jan": m01, "may": m05}, None, oi_by_key={"jan": 1_800_000, "may": 200_000})
+    assert mc["mainContract"]["symbol"] == "M2701", mc["mainContract"]
+    assert mc["mainContract"].get("oi") == 1_800_000
+    # 粘性：昨日是 M2705，且其持仓量仍 ≥ 85% 最优，则保持
+    mc2 = fd.build_market_capital({"jan": m01, "may": m05}, None, prefer_symbol="M2705",
+                                  oi_by_key={"jan": 1_800_000, "may": 1_600_000})
+    assert mc2["mainContract"]["symbol"] == "M2705", mc2["mainContract"]
+    ok("★主力优先用日线持仓量；持仓量接近时粘性保持昨日主力；活跃度只作辅助")
 
 
 TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
