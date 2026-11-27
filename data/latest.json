@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T19:38:28.182513+00:00",
+  "generatedAt": "2026-11-27T20:11:21.579626+00:00",
   "cbotPrice": {
     "available": true,
     "price": 362.3,
@@ -3086,40 +3086,28 @@
     }
   },
   "soybeanCondition": {
-    "available": true,
-    "weekEnding": "2026-10-11",
-    "goodExcellentPct": 57.0,
-    "wowChangePts": 0.0,
-    "yoyValue": 62.0,
-    "yoyChangePts": -5.0,
-    "fiveYearAvg": 58.4,
-    "fiveYearAvgChangePts": -1.4,
-    "source": "USDA/NASS 每周作物生长报告(Crop Progress)",
-    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
+    "available": false,
+    "reason": "NASS接口无返回数据(注意：每年4-11月才有生长季数据)",
+    "debug": {
+      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=CONDITION&agg_level_desc=NATIONAL&format=JSON&year=2026",
+      "error": "The read operation timed out"
+    }
   },
   "usPlantingProgress": {
-    "available": true,
-    "weekEnding": "2026-06-14",
-    "pctPlanted": 95.0,
-    "wowChangePts": 3.0,
-    "yoyValue": 93.0,
-    "yoyChangePts": 2.0,
-    "fiveYearAvg": 92.8,
-    "fiveYearAvgChangePts": 2.2,
-    "source": "USDA/NASS 每周作物播种进度报告(Crop Progress)",
-    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
+    "available": false,
+    "reason": "NASS接口无返回数据(注意：每年4-6月播种季才有进度数据)",
+    "debug": {
+      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=PROGRESS&unit_desc=PCT+PLANTED&agg_level_desc=NATIONAL&format=JSON&year=2026",
+      "error": "The read operation timed out"
+    }
   },
   "usHarvestProgress": {
-    "available": true,
-    "weekEnding": "2026-11-15",
-    "pctHarvested": 96.0,
-    "wowChangePts": 4.0,
-    "yoyValue": 95.0,
-    "yoyChangePts": 1.0,
-    "fiveYearAvg": 94.8,
-    "fiveYearAvgChangePts": 1.2,
-    "source": "USDA/NASS 每周作物收获进度报告(Crop Progress)",
-    "sourceUrl": "https://www.nass.usda.gov/Charts_and_Maps/Crop_Progress_&_Condition/"
+    "available": false,
+    "reason": "NASS接口无返回数据(注意：每年9-11月收获季才有进度数据)",
+    "debug": {
+      "url": "https://quickstats.nass.usda.gov/api/api_GET/?key=097997EE-9CC3-3C77-A6F4-51CAFBF2CCF2&commodity_desc=SOYBEANS&statisticcat_desc=PROGRESS&unit_desc=PCT+HARVESTED&agg_level_desc=NATIONAL&format=JSON&year=2026",
+      "error": "The read operation timed out"
+    }
   },
   "dceM09Daily": {
     "available": true,
