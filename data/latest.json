@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T08:37:02.830793+00:00",
+  "generatedAt": "2026-11-27T09:37:19.527029+00:00",
   "cbotPrice": {
     "available": true,
     "price": 361.6,
@@ -875,7 +875,10 @@
       "cohort": null,
       "sparse": null,
       "window": null
-    }
+    },
+    "carried": true,
+    "carriedReason": "生猪价格(外三元)获取失败: akshare猪粮比/生猪产能接口调用失败(已重试2次): HTTPSConnectionPool(host='xt.yangzhu.vip', port=443): Max retries exceeded with url: /data/getzhujiahitsdata?ptype=1&areano=-1&datetype=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='xt.yangzhu.vip', port=443) at 0x7d0b48f4ac50>, 'Connection to x",
+    "carriedFrom": "2026-11-27T08:37:02.830793+00:00"
   },
   "sowInventory": {
     "available": true,
@@ -927,24 +930,24 @@
     "sep": {
       "available": true,
       "contractMonth": 9,
-      "date": "2026-11-26",
-      "datesAligned": false,
+      "date": "2026-11-27",
+      "datesAligned": true,
       "mealSymbol": "M2709",
-      "mealPrice": 2943.0,
+      "mealPrice": 2978.0,
       "oilSymbol": "Y2709",
-      "oilPrice": 7996.0,
+      "oilPrice": 8115.0,
       "beanSymbol": "B2709",
       "beanPrice": 3671.0,
-      "grossMargin": 118.5,
+      "grossMargin": 168.0,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
       "history": {
         "n": 654,
         "minPoints": 12,
-        "asOf": "2026-11-26",
+        "asOf": "2026-11-27",
         "since": "2019-04-01",
-        "percentile": 32.8,
+        "percentile": 66.5,
         "min": 22.0,
         "max": 229.4,
         "median": 138.45,
@@ -987,31 +990,31 @@
     "jan": {
       "available": true,
       "contractMonth": 1,
-      "date": "2026-11-26",
-      "datesAligned": false,
+      "date": "2026-11-27",
+      "datesAligned": true,
       "mealSymbol": "M2701",
       "mealPrice": 3183.0,
       "oilSymbol": "Y2701",
-      "oilPrice": 8477.0,
+      "oilPrice": 8580.0,
       "beanSymbol": "B2701",
-      "beanPrice": 3824.0,
-      "grossMargin": 242.9,
+      "beanPrice": 3892.0,
+      "grossMargin": 194.0,
       "yieldMeal": 0.785,
       "yieldOil": 0.185,
       "source": "DCE豆粕/豆油/豆二盘面价格(新浪财经，经akshare获取)算出的盘面毛利，未扣加工费",
       "history": {
-        "n": 642,
+        "n": 643,
         "minPoints": 12,
-        "asOf": "2026-11-26",
+        "asOf": "2026-11-27",
         "since": "2019-08-01",
-        "percentile": 99.8,
+        "percentile": 88.3,
         "min": -2.9,
         "max": 264.6,
         "median": 146.1,
         "seasonal": {
           "month": 11,
           "n": 149,
-          "percentile": 100.0,
+          "percentile": 82.6,
           "median": 147.1
         },
         "cohort": null,
@@ -1096,25 +1099,25 @@
         "zsExact": true,
         "zsNote": "",
         "mealSymbol": "M2709",
-        "mealPrice": 2943.0,
-        "oilPrice": 7996.0,
-        "priceDate": "2026-11-26",
+        "mealPrice": 2978.0,
+        "oilPrice": 8115.0,
+        "priceDate": "2026-11-27",
         "primary": null,
         "brazil": {
           "beanPrice": 3671.0,
-          "breakeven": 2983.1,
+          "breakeven": 2955.1,
           "impliedPremium": 47.0,
           "available": true,
           "zsCents": 1252.75,
           "fx": 6.6602,
-          "mealPrice": 2943.0,
-          "oilPrice": 7996.0,
+          "mealPrice": 2978.0,
+          "oilPrice": 8115.0,
           "beanCost": 3995.2,
-          "mealCost": 3396.1,
-          "mealCostLow": 3221.1,
-          "mealCostHigh": 3571.1,
-          "gap": -453.1,
-          "gapPct": -13.3,
+          "mealCost": 3368.1,
+          "mealCostLow": 3193.1,
+          "mealCostHigh": 3543.1,
+          "gap": -390.1,
+          "gapPct": -11.6,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1134,19 +1137,19 @@
         },
         "us": {
           "beanPrice": 3671.0,
-          "breakeven": 2983.1,
+          "breakeven": 2955.1,
           "impliedPremium": -68.0,
           "available": true,
           "zsCents": 1252.75,
           "fx": 6.6602,
-          "mealPrice": 2943.0,
-          "oilPrice": 7996.0,
+          "mealPrice": 2978.0,
+          "oilPrice": 8115.0,
           "beanCost": 4683.9,
-          "mealCost": 4273.4,
-          "mealCostLow": 4081.4,
-          "mealCostHigh": 4465.4,
-          "gap": -1330.4,
-          "gapPct": -31.1,
+          "mealCost": 4245.4,
+          "mealCostLow": 4053.4,
+          "mealCostHigh": 4437.3,
+          "gap": -1267.4,
+          "gapPct": -29.9,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1221,24 +1224,24 @@
         "zsNote": "取不到对应月份的CBOT合约，退回近月连续合约，基准合约可能和升贴水不一致，成本可能有偏差",
         "mealSymbol": "M2701",
         "mealPrice": 3183.0,
-        "oilPrice": 8477.0,
-        "priceDate": "2026-11-26",
+        "oilPrice": 8580.0,
+        "priceDate": "2026-11-27",
         "primary": "us",
         "brazil": {
-          "beanPrice": 3824.0,
-          "breakeven": 3064.7,
-          "impliedPremium": 111.4,
+          "beanPrice": 3892.0,
+          "breakeven": 3127.0,
+          "impliedPremium": 136.2,
           "available": true,
           "zsCents": 1244.0,
           "fx": 6.6602,
           "mealPrice": 3183.0,
-          "oilPrice": 8477.0,
+          "oilPrice": 8580.0,
           "beanCost": 4177.3,
-          "mealCost": 3514.7,
-          "mealCostLow": 3339.7,
-          "mealCostHigh": 3689.7,
-          "gap": -331.7,
-          "gapPct": -9.4,
+          "mealCost": 3490.4,
+          "mealCostLow": 3315.4,
+          "mealCostHigh": 3665.4,
+          "gap": -307.4,
+          "gapPct": -8.8,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1257,20 +1260,20 @@
           "note": "成本参照，不是回测过的信号：升贴水无历史数据无法回测；盘面低于理论成本不等于会涨(压榨利润可为负、成本也会跟着美豆变)。"
         },
         "us": {
-          "beanPrice": 3824.0,
-          "breakeven": 3064.7,
-          "impliedPremium": -8.5,
+          "beanPrice": 3892.0,
+          "breakeven": 3127.0,
+          "impliedPremium": 14.0,
           "available": true,
           "zsCents": 1244.0,
           "fx": 6.6602,
           "mealPrice": 3183.0,
-          "oilPrice": 8477.0,
+          "oilPrice": 8580.0,
           "beanCost": 4693.7,
-          "mealCost": 4172.5,
-          "mealCostLow": 3980.5,
-          "mealCostHigh": 4364.5,
-          "gap": -989.5,
-          "gapPct": -23.7,
+          "mealCost": 4148.2,
+          "mealCostLow": 3956.3,
+          "mealCostHigh": 4340.2,
+          "gap": -965.2,
+          "gapPct": -23.3,
           "position": "below",
           "params": {
             "asof": "2026-10-10",
@@ -1294,29 +1297,8 @@
     "source": "CBOT美豆对应月份合约(Yahoo,非官方) + Frankfurter汇率 + 榨利卡盘面价"
   },
   "brazilPlantingProgress": {
-    "available": true,
-    "safra": "2026/27",
-    "weekLabel": "2026-11-20",
-    "pctCurrent": 82.93,
-    "pctYearAgo": 76.66,
-    "pctPrevWeek": 75.02,
-    "pctFiveYearAvg": 80.59,
-    "source": "CONAB(巴西农业部旗下国家商品供应公司)每周播种进度报告，经agrobr库解析(httpx+xlsx，非浏览器)",
-    "sourceUrl": "https://www.gov.br/conab",
-    "history": {
-      "n": 6,
-      "minPoints": 12,
-      "asOf": "2026-11-20",
-      "since": "2026-10-09",
-      "percentile": null,
-      "min": 15.6,
-      "max": 75.02,
-      "median": 48.54,
-      "seasonal": null,
-      "cohort": null,
-      "sparse": null,
-      "window": null
-    }
+    "available": false,
+    "reason": "CONAB接口调用失败: SourceUnavailableError: conab unavailable: ConnectTimeout:  after 3 retries"
   },
   "droughtMonitor": {
     "available": true,
@@ -3145,7 +3127,7 @@
   "dceM09Daily": {
     "available": true,
     "symbol": "M2709",
-    "totalBarsReturned": 47,
+    "totalBarsReturned": 48,
     "bars": [
       {
         "date": "2026-09-15",
@@ -3616,6 +3598,16 @@
         "volume": 25381.0,
         "hold": 313819.0,
         "settle": 2943.0
+      },
+      {
+        "date": "2026-11-27",
+        "open": 2942.0,
+        "high": 2980.0,
+        "low": 2942.0,
+        "close": 2978.0,
+        "volume": 41847.0,
+        "hold": 305803.0,
+        "settle": 2966.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -13613,7 +13605,7 @@
   "dceM01Daily": {
     "available": true,
     "symbol": "M2701",
-    "totalBarsReturned": 207,
+    "totalBarsReturned": 208,
     "bars": [
       {
         "date": "2026-01-19",
@@ -15684,6 +15676,16 @@
         "volume": 682096.0,
         "hold": 1699193.0,
         "settle": 3127.0
+      },
+      {
+        "date": "2026-11-27",
+        "open": 3130.0,
+        "high": 3184.0,
+        "low": 3127.0,
+        "close": 3183.0,
+        "volume": 789990.0,
+        "hold": 1677772.0,
+        "settle": 3159.0
       }
     ],
     "source": "新浪财经(经akshare库获取)，非官方实时数据，可能有延迟"
@@ -22100,9 +22102,10 @@
         2926.0,
         2935.0,
         2927.0,
-        2943.0
+        2943.0,
+        2978.0
       ],
-      "ownCount": 47,
+      "ownCount": 48,
       "extendedCount": 203,
       "donor": "M2611",
       "symbol": "M2709"
@@ -22377,7 +22380,6 @@
     },
     "jan": {
       "closes": [
-        2822.26,
         2812.74,
         2851.78,
         2841.3,
@@ -22636,10 +22638,11 @@
         3122.0,
         3130.0,
         3104.0,
-        3126.0
+        3126.0,
+        3183.0
       ],
-      "ownCount": 207,
-      "extendedCount": 53,
+      "ownCount": 208,
+      "extendedCount": 52,
       "donor": "M2603",
       "symbol": "M2701"
     }
@@ -22651,7 +22654,7 @@
       "symbol": "M2701",
       "gross": 453220,
       "liquidity": 867729,
-      "oi": 1699193.0
+      "oi": 1677772.0
     },
     "date": "2026-11-27",
     "members": {
@@ -22874,6 +22877,7 @@
     }
   },
   "carriedKeys": [
+    "hogRatio",
     "mysteelSoyImport"
   ]
 }
